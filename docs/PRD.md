@@ -96,9 +96,10 @@ A web-first internal booking application for managing group tour assignments. Th
 | **Pending** | Signed up, awaiting admin approval |
 | **Trainee** | Approved, currently in training — not yet eligible to book or lead tours |
 | **Active** | Cleared to book and lead tours |
-| **Suspended** | Temporarily or permanently deactivated |
+| **Rejected** | Signup rejected by admin — account is closed |
+| **Suspended** | Temporarily or permanently deactivated after being active |
 
-Status is set manually by admin. Typical progression: Pending → Trainee → Active.
+Status is set manually by admin. Typical progression: Pending → Trainee → Active. Pending → Rejected is a terminal state for denied signups. Rejected and Suspended are distinct: Rejected means the signup was never approved; Suspended means an active buddy was deactivated.
 
 Buddies are never deleted from the database. Suspended accounts remain in the DB with all history intact.
 
@@ -113,9 +114,13 @@ Once Active, an internal tier is assigned and updated manually by admin:
 | **Junior** | Recently activated, limited experience |
 | **Mid** | Comfortable with regular tours |
 | **Senior** | Experienced, handles complex groups |
-| **Expert** | Top-tier, can mentor others |
+| **Expert** | Top-tier, can mentor and guide others |
+| **Instructor** | Can teach and train buddies; must reach Expert first |
+| **Organizer** | Oversees full sessions, manages time and handles emergencies; must reach Instructor first. Can still participate as a buddy. |
 
 Tier is for internal reference only — buddies have no visibility.
+
+Typical progression: Junior → Mid → Senior → Expert → Instructor → Organizer.
 
 ### 5.3 Self-Managed Fields (edited by buddy)
 
@@ -183,8 +188,8 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 | Capacity | Integer | Max number of buddies for this tour |
 | Description / notes | Long text | Visible to buddies |
 | Admin memo | Long text | **Admin-only — not visible to buddies** |
-| Cancellation deadline | Date | Set per tour; overridable per buddy by admin |
-| Maybe confirmation deadline | Date | Deadline for "Maybe" buddies to confirm or decline |
+| Cancellation deadline | Date | Default: 7 days before tour; overridable per buddy by admin. Must be set after (closer to tour than) the Maybe deadline. |
+| Maybe confirmation deadline | Date | Default: 9 days before tour. Must be set before (further from tour than) the cancellation deadline. |
 | Notification schedule | List of offsets | Days-before-tour offsets; default: 3 days before and 1 day before; configurable per tour |
 | Status | Enum | Draft / Published / Cancelled / Completed |
 
@@ -240,8 +245,8 @@ All transitions allowed before cancellation deadline. After deadline, only admin
 ### 8.5 Maybe Flow
 
 1. Buddy selects "Maybe"
-2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 3 days before tour if not set; configurable globally)
-3. Buddy receives reminder as deadline approaches
+2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 9 days before tour if not set; configurable globally)
+3. Buddy receives reminders at **3 days** and **1 day** before the deadline (configurable globally and per tour)
 4. Buddy must update to **Confirmed** or **Declined** before deadline
 5. If no action taken by deadline, booking status remains **Maybe** and admin is notified to follow up manually
 
@@ -260,14 +265,14 @@ All transitions allowed before cancellation deadline. After deadline, only admin
 
 | Field | Type | Notes |
 |---|---|---|
-| Reason category | Enum | Physical condition (illness / injury) / Personal / Work conflict / Other |
-| Free text | Text | Required when category is "Other"; optional otherwise |
-| Unavoidable flag | Boolean | Driven by category; admin can override |
+| Reason category | Enum | `health` / `emergency` / `personal` / `work` / `other` |
+| Free text | Text | Optional — buddy's own explanation |
+| Unavoidable flag | Boolean | Set by admin only; no auto-logic |
 | Recorded by | User ref | Auto-filled (buddy or admin) |
 
-- **Physical condition** (illness, injury) is automatically flagged as unavoidable and excluded from reliability metrics
-- Admin can manually override the unavoidable flag for any reason
-- Cancellation reason categories are TBD (placeholders above); to be finalised before development
+- No category is automatically flagged as unavoidable — it is always a human (admin) judgement
+- Buddies may provide a free-text explanation when cancelling; this is optional
+- Admin reviews context and sets the unavoidable flag accordingly; admin can update it at any time
 
 After deadline, only admin can change status. Reason recording applies in all cases.
 
@@ -295,19 +300,25 @@ There are two distinct evaluation types: **admin evaluations** (internal, hidden
 | **Per-tour evaluation** | After a specific tour | Linked to a tour record |
 | **General profile evaluation** | Anytime | Not tied to a specific tour |
 
-#### Fields (v1, to be refined)
+#### Fields
 
-| Field | Type | Notes |
-|---|---|---|
-| Overall rating | Enum | e.g. Excellent / Good / Fair / Poor (placeholder) |
-| Reliability | Enum | TBD options |
-| Communication | Enum | TBD options |
-| Group engagement | Enum | TBD options |
-| Free text notes | Long text | Open comments |
-| Evaluator | Admin ref | Auto-filled |
-| Date | Date | Auto-filled |
+All score fields use the scale: **1 = Needs Improvement / 2 = Developing / 3 = Proficient / 4 = Advanced / 5 = Exceptional**. All text fields are optional.
 
-> **Note:** Specific enum values to be defined by the team before development begins.
+| Field | Score | Text | Notes |
+|---|---|---|---|
+| Overall rating | 1–5 | ✅ | |
+| Reliability | 1–5 | ✅ | Admin eval only |
+| Communication | 1–5 | ✅ | |
+| Group engagement | 1–5 | ✅ | |
+| Memory | 1–5 | ✅ | Remembering names, details, preferences |
+| Knowledge | 1–5 | ✅ | Content accuracy and depth |
+| Dedication | 1–5 | ✅ | Effort and commitment |
+| Dialogue | 1–5 | ✅ | **Core differentiating skill** — buddies open a genuine dialogue with participants, not just a one-way tour |
+| Adaptability | 1–5 | ✅ | Handling unexpected situations |
+| Emotion | — | ✅ | Warmth, empathy, expressiveness — cannot be meaningfully scored |
+| Confidence | 1–5 | ✅ | |
+| Evaluator | — | — | Admin ref, auto-filled |
+| Date | — | — | Auto-filled |
 
 #### Access
 - Only admins can create, read, or edit admin evaluations
@@ -325,14 +336,23 @@ There are two distinct evaluation types: **admin evaluations** (internal, hidden
 - When a tour is marked **Completed**, buddies who had **Confirmed** status receive a prompt to submit a self-evaluation for that tour
 - Prompt is optional — buddy can skip
 
-#### Fields (v1, to be refined — placeholder structure)
+#### Fields
 
-| Field | Type | Notes |
+Same scale as admin evaluations: **1 = Needs Improvement / … / 5 = Exceptional**. All text fields are optional. Reliability is admin-only and does not appear here.
+
+| Field | Score | Text |
 |---|---|---|
-| Overall self-rating | Enum | e.g. Excellent / Good / Fair / Poor (placeholder) |
-| What went well | Long text | Free text |
-| What could be improved | Long text | Free text |
-| Date | Date | Auto-filled |
+| Overall rating | 1–5 | ✅ |
+| Communication | 1–5 | ✅ |
+| Group engagement | 1–5 | ✅ |
+| Memory | 1–5 | ✅ |
+| Knowledge | 1–5 | ✅ |
+| Dedication | 1–5 | ✅ |
+| Dialogue | 1–5 | ✅ |
+| Adaptability | 1–5 | ✅ |
+| Emotion | — | ✅ |
+| Confidence | 1–5 | ✅ |
+| Date | — | Auto-filled |
 
 #### Access
 - Buddies can submit and view their own self-evaluations
@@ -437,16 +457,19 @@ When a buddy logs in, they see:
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Framework | Next.js (App Router) | Web-first, mobile-responsive PWA |
-| Hosting | GCP Cloud Run | Via GCP nonprofit credits |
+| Frontend | Next.js (App Router) | UI only — no business logic; web-first, mobile-responsive PWA |
+| Backend | Hono | Dedicated REST API; all business logic, auth middleware, Prisma access |
+| Repo | Monorepo (pnpm workspaces) | `apps/web`, `apps/api`, `packages/types`, `prisma/` |
+| Hosting | GCP Cloud Run | Both services; via GCP nonprofit credits |
 | Database | GCP Cloud SQL (Postgres) | Via GCP nonprofit credits |
-| ORM | Prisma | Type-safe; works cleanly with Postgres + Next.js |
-| Auth | Firebase Auth | Google + Apple OAuth; GCP ecosystem |
+| ORM | Prisma | Lives in `apps/api`; schema in `prisma/` |
+| Auth | Firebase Auth | Google + Apple OAuth; token validated in Hono middleware |
 | File storage | GCP Cloud Storage | Profile photos; via nonprofit credits |
-| Scheduled jobs | GCP Cloud Scheduler | Reminders, deadline checks, digest emails |
-| Email | Resend or Gmail API (abstracted) | Single `sendEmail()` utility; decide during build |
-| Slack notifications | Slack Incoming Webhooks | Admin notifications |
-| i18n | next-intl | |
+| Scheduled jobs | GCP Cloud Scheduler | Hits Hono API routes for reminders, deadline checks, digest flush |
+| Email | Resend or Gmail API (abstracted) | Single `sendEmail()` utility in `apps/api`; decide during build |
+| Slack notifications | Slack Incoming Webhooks | Admin notifications; fired from `apps/api` |
+| Shared types | Zod + TypeScript (`packages/types`) | Shared between frontend and backend |
+| i18n | next-intl | Frontend only |
 | CI/CD | GitHub Actions | Via GitHub nonprofit free Team plan |
 
 ### 13.2 Nonprofit Programs to Apply For
@@ -522,11 +545,11 @@ When GCP nonprofit credits run low:
 
 | # | Question | Owner | Status |
 |---|---|---|---|
-| 1 | Final enum values for evaluation fields (admin and self-evaluation) | Team | Open |
+| 1 | Final enum values for evaluation fields (admin and self-evaluation) | Team | **Resolved** — see §9 |
 | 2 | Exact fields to migrate from Google Sheets | Team | Open |
 | 3 | Slack workspace / webhook setup | Admin | Open |
 | 4 | Apple Developer account for Apple login | Dev | Open |
-| 5 | Default Maybe confirmation deadline offset (days before tour) | Team | Open |
-| 6 | Cancellation reason category enum values | Team | Open |
-| 7 | Group type enum values — School / Company / Community / Other sufficient? | Team | Open |
-| 8 | Internal tier names — Junior / Mid / Senior / Expert final? | Team | Open |
+| 5 | Default Maybe confirmation deadline offset (days before tour) | Team | **Resolved** — 9 days before tour; reminders at 3 days + 1 day before deadline. Cancellation deadline defaults to 7 days before (always after Maybe deadline). |
+| 6 | Cancellation reason category enum values | Team | **Resolved** — `health` / `emergency` / `personal` / `work` / `other` |
+| 7 | Group type enum values — School / Company / Community / Other sufficient? | Team | **Resolved** — confirmed as-is |
+| 8 | Internal tier names | Team | **Resolved** — `junior` / `mid` / `senior` / `expert` / `instructor` / `organizer` |

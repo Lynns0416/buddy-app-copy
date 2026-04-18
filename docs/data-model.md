@@ -39,8 +39,8 @@ Not in PRD. Core identity record shared by buddies and admins.
 |---|---|---|
 | id | UUID | PK |
 | userId | UUID | FK → User, Unique |
-| status | Enum | `pending` / `trainee` / `active` / `suspended` |
-| tier | Enum? | `junior` / `mid` / `senior` / `expert` |
+| status | Enum | `pending` / `trainee` / `active` / `rejected` / `suspended` |
+| tier | Enum? | `junior` / `mid` / `senior` / `expert` / `instructor` / `organizer` |
 | displayName | String | |
 | realName | String | |
 | photoUrl | String? | |
@@ -107,7 +107,7 @@ Waitlist seat claim uses a DB transaction with row lock on the Tour capacity cou
 |---|---|---|
 | id | UUID | PK |
 | bookingId | UUID | FK → Booking, Unique |
-| category | Enum | `physical` / `personal` / `work` / `other` — TBD |
+| category | Enum | `health` / `emergency` / `personal` / `work` / `other` |
 | freeText | Text? | |
 | unavoidable | Boolean | |
 | recordedBy | UUID | FK → User |
@@ -115,31 +115,67 @@ Waitlist seat claim uses a DB transaction with row lock on the Tour capacity cou
 
 ### AdminEvaluation
 
+Score fields are `Int?` (1–5). Scale: 1 = Needs Improvement / 2 = Developing / 3 = Proficient / 4 = Advanced / 5 = Exceptional. All note fields are `Text?` (optional).
+
 | Field | Type | Constraints |
 |---|---|---|
 | id | UUID | PK |
 | buddyId | UUID | FK → BuddyProfile |
 | tourId | UUID? | FK → Tour |
 | evaluatorId | UUID | FK → User |
-| overallRating | Enum | TBD |
-| reliability | Enum? | TBD |
-| communication | Enum? | TBD |
-| groupEngagement | Enum? | TBD |
-| notes | Text? | |
+| overallRating | Int? | 1–5 |
+| overallRatingNote | Text? | |
+| reliability | Int? | 1–5 |
+| reliabilityNote | Text? | |
+| communication | Int? | 1–5 |
+| communicationNote | Text? | |
+| groupEngagement | Int? | 1–5 |
+| groupEngagementNote | Text? | |
+| memory | Int? | 1–5 |
+| memoryNote | Text? | |
+| knowledge | Int? | 1–5 |
+| knowledgeNote | Text? | |
+| dedication | Int? | 1–5 |
+| dedicationNote | Text? | |
+| dialogue | Int? | 1–5 | Core differentiating skill |
+| dialogueNote | Text? | |
+| adaptability | Int? | 1–5 |
+| adaptabilityNote | Text? | |
+| emotionNote | Text? | No score — text only |
+| confidence | Int? | 1–5 |
+| confidenceNote | Text? | |
 | createdAt | Timestamp | |
 
 No unique constraint on `(buddyId, tourId, evaluatorId)` — multiple admin evaluations per buddy per tour are allowed.
 
 ### SelfEvaluation
 
+Same score scale as AdminEvaluation. All note fields optional. `reliability` does not appear in self-evaluations.
+
 | Field | Type | Constraints |
 |---|---|---|
 | id | UUID | PK |
 | buddyId | UUID | FK → BuddyProfile |
 | tourId | UUID | FK → Tour |
-| overallRating | Enum | TBD |
-| wentWell | Text? | |
-| improve | Text? | |
+| overallRating | Int? | 1–5 |
+| overallRatingNote | Text? | |
+| communication | Int? | 1–5 |
+| communicationNote | Text? | |
+| groupEngagement | Int? | 1–5 |
+| groupEngagementNote | Text? | |
+| memory | Int? | 1–5 |
+| memoryNote | Text? | |
+| knowledge | Int? | 1–5 |
+| knowledgeNote | Text? | |
+| dedication | Int? | 1–5 |
+| dedicationNote | Text? | |
+| dialogue | Int? | 1–5 |
+| dialogueNote | Text? | |
+| adaptability | Int? | 1–5 |
+| adaptabilityNote | Text? | |
+| emotionNote | Text? | No score — text only |
+| confidence | Int? | 1–5 |
+| confidenceNote | Text? | |
 | createdAt | Timestamp | |
 
 **Unique:** `(buddyId, tourId)`
