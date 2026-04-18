@@ -102,7 +102,7 @@ Status is set manually by admin. Typical progression: Pending → Trainee → Ac
 
 Buddies are never deleted from the database. Suspended accounts remain in the DB with all history intact.
 
-**Trainee access:** Trainees can log in and view the tour list (including status counts and remaining seats) but cannot make bookings.
+**Trainee access:** Trainees can log in and view the tour list and full tour detail pages (including status counts, remaining seats, description, location, etc.) but cannot make bookings.
 
 ### 5.2 Internal Tier (admin-managed, hidden from buddies)
 
@@ -243,16 +243,14 @@ All transitions allowed before cancellation deadline. After deadline, only admin
 2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 3 days before tour if not set; configurable globally)
 3. Buddy receives reminder as deadline approaches
 4. Buddy must update to **Confirmed** or **Declined** before deadline
-5. If no action taken by deadline, admin is notified to follow up
+5. If no action taken by deadline, booking status remains **Maybe** and admin is notified to follow up manually
 
 ### 8.6 Waitlist Flow
 
 1. Buddy selects "Waitlist"
 2. When a cancellation opens a seat, all Waitlisted buddies are notified simultaneously
 3. Buddy manually updates to **Confirmed** to claim the seat
-4. First to confirm gets the seat — no automatic assignment
-
-> **Note:** Tiebreaker policy for simultaneous claims is TBD. The server must handle concurrent confirmation attempts atomically to prevent overbooking. See Open Questions.
+4. First to confirm gets the seat — server handles concurrent attempts atomically; the second attempt fails and that buddy remains on Waitlist (promoted to first position in queue)
 
 ### 8.7 Cancellation & Cancellation Reasons
 
@@ -316,14 +314,15 @@ There are two distinct evaluation types: **admin evaluations** (internal, hidden
 - Buddies have no visibility into admin evaluations
 
 #### Evaluation Prompt
-- When admin marks a tour **Completed**, they are prompted with a list of participating buddies
+- When admin marks a tour **Completed**, they are prompted with a list of buddies who had **Confirmed** status
 - Admin selects which buddies to evaluate (can skip any or all)
 - Prompt is optional — admin can dismiss entirely
+- Multiple admins can each submit their own evaluation for the same buddy on the same tour
 
 ### 9.3 Buddy Self-Evaluations
 
 #### Trigger
-- When a tour is marked **Completed**, the buddy receives a prompt to submit a self-evaluation for that tour
+- When a tour is marked **Completed**, buddies who had **Confirmed** status receive a prompt to submit a self-evaluation for that tour
 - Prompt is optional — buddy can skip
 
 #### Fields (v1, to be refined — placeholder structure)
@@ -349,6 +348,7 @@ There are two distinct evaluation types: **admin evaluations** (internal, hidden
 | Event | Channel | Timing |
 |---|---|---|
 | New tour published | In-app + email | Immediately on publish |
+| Tour details changed (date/time/location) | In-app + email | Immediately on edit; sent to all Confirmed/Maybe/Waitlist buddies |
 | Tour reminder | In-app + email | Configurable per tour; default: 3 days before and 1 day before |
 | Maybe deadline reminder | In-app + email | Configurable; before Maybe confirmation deadline |
 | Waitlist seat opened | In-app + email | Immediately on cancellation |
@@ -368,7 +368,7 @@ Admins independently configure their preferred notification channel(s) and deliv
 
 **Email delivery modes (configurable per admin per event):**
 - **Immediate:** Email sent at time of event
-- **Daily digest:** Single email at 9:00 AM covering all activity from the previous day; only sent if there was activity
+- **Daily digest:** Single email at 9:00 AM JST covering all activity from the previous day; only sent if there was activity
 
 **Default email delivery modes:**
 - Cancellations and Maybe resolutions: Immediate
@@ -527,8 +527,6 @@ When GCP nonprofit credits run low:
 | 3 | Slack workspace / webhook setup | Admin | Open |
 | 4 | Apple Developer account for Apple login | Dev | Open |
 | 5 | Default Maybe confirmation deadline offset (days before tour) | Team | Open |
-| 6 | Waitlist tiebreaker policy (timestamp order, claim window, or admin decides) | Team | Open |
-| 7 | Auto-escalation when Maybe deadline passes with no action | Team | Open |
-| 8 | Cancellation reason category enum values | Team | Open |
-| 9 | Group type enum values — School / Company / Community / Other sufficient? | Team | Open |
-| 10 | Internal tier names — Junior / Mid / Senior / Expert final? | Team | Open |
+| 6 | Cancellation reason category enum values | Team | Open |
+| 7 | Group type enum values — School / Company / Community / Other sufficient? | Team | Open |
+| 8 | Internal tier names — Junior / Mid / Senior / Expert final? | Team | Open |
