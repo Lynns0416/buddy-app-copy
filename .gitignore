@@ -1,8 +1,17 @@
+# OS
+.DS_Store
+.pnpm-store/
+
+# node & next
 node_modules/
-.env
-.env.local
 .next/
 dist/
-.DS_Store
+
+# env
+.env
+.env.local
 apps/api/.env
 apps/web/.env.local
+
+# coverage
+apps/api/coverage/lcov-report

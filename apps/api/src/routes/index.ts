@@ -16,8 +16,7 @@ import type { FirebaseEnv, AuthEnv } from '../types'
 
 // Public routes: Firebase token required, but no DB user record needed
 const publicApp = new Hono<FirebaseEnv>()
-publicApp.use('*', firebaseAuthMiddleware)
-publicApp.post('/auth/register', registerHandler)
+publicApp.post('/auth/register', firebaseAuthMiddleware, registerHandler)
 
 // Protected routes: Firebase token + DB user record required
 const protectedApp = new Hono<AuthEnv>()
