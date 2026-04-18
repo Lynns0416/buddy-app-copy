@@ -1,5 +1,15 @@
 {
   "app": {
     "name": "Peace Buddy"
+  },
+  "login": {
+    "title": "Sign in",
+    "google": "Sign in with Google",
+    "apple": "Sign in with Apple"
+  },
+  "pending": {
+    "title": "Awaiting approval",
+    "message": "Your account is pending admin approval. You will be notified once approved.",
+    "signOut": "Sign out"
   }
 }

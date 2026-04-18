@@ -6,7 +6,7 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* .npmrc* ./
 COPY packages/types/package.json ./packages/types/
 COPY apps/api/package.json ./apps/api/
 COPY prisma/ ./prisma/
@@ -19,4 +19,7 @@ COPY tsconfig.base.json ./
 
 RUN pnpm --filter @peace-buddy/types build
 
-CMD ["sh", "-c", "pnpm --filter @peace-buddy/api exec prisma db push --schema /app/prisma/schema.prisma && pnpm --filter @peace-buddy/api dev"]
+RUN pnpm exec prisma generate --schema /app/prisma/schema.prisma
+
+
+CMD ["sh", "-c", "pnpm --filter @peace-buddy/types build && pnpm exec prisma generate --schema /app/prisma/schema.prisma && pnpm exec prisma db push --skip-generate --schema /app/prisma/schema.prisma && pnpm --filter @peace-buddy/api dev"]

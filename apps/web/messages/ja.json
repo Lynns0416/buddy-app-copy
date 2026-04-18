@@ -1,5 +1,15 @@
 {
   "app": {
     "name": "Peace Buddy"
+  },
+  "login": {
+    "title": "ログイン",
+    "google": "Googleでログイン",
+    "apple": "Appleでログイン"
+  },
+  "pending": {
+    "title": "承認待ち",
+    "message": "アカウントは管理者の承認待ちです。承認され次第、通知いたします。",
+    "signOut": "ログアウト"
   }
 }

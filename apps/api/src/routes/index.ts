@@ -1,8 +1,11 @@
 import { Hono } from 'hono'
+import { firebaseAuthMiddleware } from '../middleware/firebaseAuth'
 import { authMiddleware } from '../middleware/auth'
+import { registerHandler, authRoutes } from './auth'
+import type { FirebaseEnv, AuthEnv } from '../types'
 
 // TODO: import route modules as they are implemented
-// import { authRoutes } from './auth'
+// import { schedulerAuthMiddleware } from '../middleware/schedulerAuth'
 // import { buddyRoutes } from './buddies'
 // import { tourRoutes } from './tours'
 // import { bookingRoutes } from './bookings'
@@ -11,24 +14,30 @@ import { authMiddleware } from '../middleware/auth'
 // import { configRoutes } from './config'
 // import { jobRoutes } from './jobs'
 
+// Public routes: Firebase token required, but no DB user record needed
+const publicApp = new Hono<FirebaseEnv>()
+publicApp.use('*', firebaseAuthMiddleware)
+publicApp.post('/auth/register', registerHandler)
+
+// Protected routes: Firebase token + DB user record required
+const protectedApp = new Hono<AuthEnv>()
+protectedApp.use('*', authMiddleware)
+protectedApp.route('/auth', authRoutes)
+// protectedApp.route('/buddies', buddyRoutes)
+// protectedApp.route('/tours', tourRoutes)
+// protectedApp.route('/bookings', bookingRoutes)
+// protectedApp.route('/evaluations', evaluationRoutes)
+// protectedApp.route('/notifications', notificationRoutes)
+// protectedApp.route('/config', configRoutes)
+
+// Scheduler routes (add when implementing background jobs):
+// const schedulerApp = new Hono<SchedulerEnv>()
+// schedulerApp.use('*', schedulerAuthMiddleware)
+// schedulerApp.route('/jobs', jobRoutes)
+
 const routes = new Hono()
-
-// TODO: /auth/register and /auth/me need special handling —
-// /auth/register requires a valid Firebase token to decode the UID but no
-// DB user record exists yet, so authMiddleware (which does a DB lookup)
-// must either be skipped for that route or made optional.
-// Consider mounting authRoutes before the authMiddleware use() call, or
-// implementing a separate lightweight Firebase-only middleware for /auth/register.
-
-routes.use('*', authMiddleware)
-
-// routes.route('/auth', authRoutes)
-// routes.route('/buddies', buddyRoutes)
-// routes.route('/tours', tourRoutes)
-// routes.route('/bookings', bookingRoutes)
-// routes.route('/evaluations', evaluationRoutes)
-// routes.route('/notifications', notificationRoutes)
-// routes.route('/config', configRoutes)
-// routes.route('/jobs', jobRoutes)
+routes.route('/', publicApp)
+routes.route('/', protectedApp)
+// routes.route('/', schedulerApp)
 
 export { routes }

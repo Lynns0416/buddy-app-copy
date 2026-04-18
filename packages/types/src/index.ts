@@ -34,3 +34,14 @@ export type NotifEventType = z.infer<typeof NotifEventTypeSchema>
 
 export const EmailModeSchema = z.enum(['immediate', 'digest'])
 export type EmailMode = z.infer<typeof EmailModeSchema>
+
+// Auth
+
+export const RegisterRequestBodySchema = z.object({
+  displayName: z.string().optional(),
+  realName: z.string().optional(),
+  languages: z.array(z.string()).optional(),
+  photoUrl: z.string().optional(),
+  bio: z.string().optional(),
+})
+export type RegisterRequestBody = z.infer<typeof RegisterRequestBodySchema>
