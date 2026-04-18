@@ -5,3 +5,4 @@ type: user
 ---
 
 - Using Google Workspace for Nonprofits
+- Applying for Apple Developer nonprofit program (Apple sign-in deferred until approved)
