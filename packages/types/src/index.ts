@@ -45,3 +45,18 @@ export const RegisterRequestBodySchema = z.object({
   bio: z.string().optional(),
 })
 export type RegisterRequestBody = z.infer<typeof RegisterRequestBodySchema>
+
+// Buddy Profile
+
+export const UpdateBuddyProfileSchema = z.object({
+  displayName: z.string().optional(),
+  realName: z.string().optional(),
+  photoUrl: z.string().nullable().optional(),
+  bio: z.string().nullable().optional(),
+  contactInfo: z.string().nullable().optional(),
+  languages: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(),
+  availability: z.string().nullable().optional(),
+})
+export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
+

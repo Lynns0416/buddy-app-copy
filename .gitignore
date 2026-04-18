@@ -6,6 +6,7 @@
 node_modules/
 .next/
 dist/
+*.tsbuildinfo
 
 # env
 .env
@@ -13,5 +14,9 @@ dist/
 apps/api/.env
 apps/web/.env.local
 
+# firebase
+firebase-debug.log
+
 # coverage
 apps/api/coverage/lcov-report
+apps/api/coverage/coverage-summary.json

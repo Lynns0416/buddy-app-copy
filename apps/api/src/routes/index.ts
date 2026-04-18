@@ -2,12 +2,12 @@ import { Hono } from 'hono'
 import { firebaseAuthMiddleware } from '../middleware/firebaseAuth'
 import { authMiddleware } from '../middleware/auth'
 import { registerHandler, authRoutes } from './auth'
+import { buddyRoutes } from './buddies'
+import { tourRoutes } from './tours'
 import type { FirebaseEnv, AuthEnv } from '../types'
 
 // TODO: import route modules as they are implemented
 // import { schedulerAuthMiddleware } from '../middleware/schedulerAuth'
-// import { buddyRoutes } from './buddies'
-// import { tourRoutes } from './tours'
 // import { bookingRoutes } from './bookings'
 // import { evaluationRoutes } from './evaluations'
 // import { notificationRoutes } from './notifications'
@@ -22,8 +22,8 @@ publicApp.post('/auth/register', firebaseAuthMiddleware, registerHandler)
 const protectedApp = new Hono<AuthEnv>()
 protectedApp.use('*', authMiddleware)
 protectedApp.route('/auth', authRoutes)
-// protectedApp.route('/buddies', buddyRoutes)
-// protectedApp.route('/tours', tourRoutes)
+protectedApp.route('/me', buddyRoutes)
+protectedApp.route('/tours', tourRoutes)
 // protectedApp.route('/bookings', bookingRoutes)
 // protectedApp.route('/evaluations', evaluationRoutes)
 // protectedApp.route('/notifications', notificationRoutes)

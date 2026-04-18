@@ -31,6 +31,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/packages/types/node_modules
       - /app/apps/api/node_modules
 
   web:
