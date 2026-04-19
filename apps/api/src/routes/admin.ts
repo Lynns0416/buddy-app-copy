@@ -1,9 +1,12 @@
 import { Hono } from 'hono'
 import { BuddyStatusSchema, UpdateBuddyStatusSchema } from '@peace-buddy/types'
 import { listBuddies, updateBuddyStatus } from '../services/admin.service'
+import { adminGroupRoutes } from './adminGroups'
 import type { AuthEnv } from '../types'
 
 const adminRoutes = new Hono<AuthEnv>()
+
+adminRoutes.route('/groups', adminGroupRoutes)
 
 adminRoutes.get('/buddies', async (c) => {
   const statusParam = c.req.query('status')

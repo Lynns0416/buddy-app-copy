@@ -60,6 +60,28 @@ export const UpdateBuddyProfileSchema = z.object({
 })
 export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
 
+// Group
+
+export const CreateGroupSchema = z.object({
+  name: z.string().min(1),
+  type: GroupTypeSchema,
+  contactName: z.string().optional(),
+  contactEmail: z.string().email().optional(),
+  contactPhone: z.string().optional(),
+  notes: z.string().optional(),
+})
+export type CreateGroup = z.infer<typeof CreateGroupSchema>
+
+export const UpdateGroupSchema = z.object({
+  name: z.string().min(1).optional(),
+  type: GroupTypeSchema.optional(),
+  contactName: z.string().nullable().optional(),
+  contactEmail: z.string().email().nullable().optional(),
+  contactPhone: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+})
+export type UpdateGroup = z.infer<typeof UpdateGroupSchema>
+
 // Admin
 
 export const UpdateBuddyStatusSchema = z.discriminatedUnion('status', [
@@ -100,6 +122,33 @@ export type TourResponse = {
   notificationOffsets: number[]
   createdAt: string
   updatedAt: string
+}
+
+export type GroupResponse = {
+  id: string
+  name: string
+  type: GroupType
+  contactName: string | null
+  contactEmail: string | null
+  contactPhone: string | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type GroupTourSummary = {
+  id: string
+  status: TourStatus
+  tourDate: string
+  meetingTime: string
+  location: string
+  capacity: number
+  description: string | null
+  createdAt: string
+}
+
+export type GroupDetailResponse = GroupResponse & {
+  tours: GroupTourSummary[]
 }
 
 // Admin-only response — includes tier and internalNotes

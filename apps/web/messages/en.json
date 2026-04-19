@@ -9,7 +9,33 @@
   },
   "admin": {
     "title": "Admin",
-    "buddies": "Buddies"
+    "buddies": "Buddies",
+    "groups": "Groups"
+  },
+  "adminGroups": {
+    "title": "Groups",
+    "createTitle": "New Group",
+    "editTitle": "Edit Group",
+    "newGroup": "New Group",
+    "noResults": "No groups yet",
+    "name": "Name",
+    "type": "Type",
+    "contactName": "Contact Name",
+    "contactEmail": "Contact Email",
+    "contactPhone": "Contact Phone",
+    "notes": "Notes",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "back": "Back to Groups",
+    "backToDetail": "Back to Group",
+    "tours": "Tours",
+    "noTours": "No tours yet",
+    "tourDate": "Tour Date",
+    "status": "Status",
+    "location": "Location",
+    "capacity": "Capacity",
+    "actionError": "Action failed. Please try again."
   },
   "adminBuddies": {
     "title": "Pending Buddies",

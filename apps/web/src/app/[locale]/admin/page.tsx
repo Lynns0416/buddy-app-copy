@@ -30,6 +30,7 @@ export default function AdminPage() {
       <h1>{t('title')}</h1>
       <nav>
         <Link href={routes.adminBuddies(locale)}>{t('buddies')}</Link>
+        <Link href={routes.adminGroups(locale)}>{t('groups')}</Link>
       </nav>
     </main>
   )

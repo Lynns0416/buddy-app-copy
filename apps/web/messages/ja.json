@@ -9,7 +9,33 @@
   },
   "admin": {
     "title": "管理",
-    "buddies": "バディ一覧"
+    "buddies": "バディ一覧",
+    "groups": "グループ一覧"
+  },
+  "adminGroups": {
+    "title": "グループ",
+    "createTitle": "新規グループ",
+    "editTitle": "グループ編集",
+    "newGroup": "新規グループ",
+    "noResults": "グループはありません",
+    "name": "名前",
+    "type": "種別",
+    "contactName": "担当者名",
+    "contactEmail": "担当者メール",
+    "contactPhone": "担当者電話番号",
+    "notes": "メモ",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "edit": "編集",
+    "back": "グループ一覧に戻る",
+    "backToDetail": "グループ詳細に戻る",
+    "tours": "ツアー履歴",
+    "noTours": "ツアーはありません",
+    "tourDate": "ツアー日",
+    "status": "ステータス",
+    "location": "場所",
+    "capacity": "定員",
+    "actionError": "操作に失敗しました。もう一度お試しください。"
   },
   "adminBuddies": {
     "title": "承認待ちバディ",
