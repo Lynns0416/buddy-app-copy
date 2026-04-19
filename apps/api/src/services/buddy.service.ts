@@ -1,6 +1,5 @@
 import { db } from '../lib/db'
-import type { BuddyProfileResponse } from '../types'
-import type { UpdateBuddyProfile } from '@peace-buddy/types'
+import type { BuddyProfileResponse, UpdateBuddyProfile } from '@peace-buddy/types'
 
 // Explicit select — never fetches internalNotes, tier, or other admin-only fields
 const buddyProfileSelect = {
@@ -24,7 +23,7 @@ export async function getBuddyProfile(userId: string): Promise<BuddyProfileRespo
     select: buddyProfileSelect,
   })
   if (!profile) return null
-  return profile as BuddyProfileResponse
+  return profile as unknown as BuddyProfileResponse
 }
 
 export async function updateBuddyProfile(
@@ -37,7 +36,7 @@ export async function updateBuddyProfile(
       data,
       select: buddyProfileSelect,
     })
-    return updated as BuddyProfileResponse
+    return updated as unknown as BuddyProfileResponse
   } catch (e) {
     if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e

@@ -3,7 +3,8 @@ import { Hono } from 'hono'
 import { routes } from './index'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
-import type { AuthEnv, AdminBuddyResponse } from '../types'
+import type { AuthEnv } from '../types'
+import type { AdminBuddyResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -81,7 +82,7 @@ describe('GET /admin/buddies', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns buddy list', async () => {
-    mockListBuddies.mockResolvedValueOnce([mockBuddy])
+    mockListBuddies.mockResolvedValueOnce([mockBuddy] as unknown as AdminBuddyResponse[])
     const res = await buildApp('admin').request('/admin/buddies')
     expect(res.status).toBe(200)
     const body = await res.json() as AdminBuddyResponse[]
@@ -90,7 +91,7 @@ describe('GET /admin/buddies', () => {
   })
 
   it('filters by status query param', async () => {
-    mockListBuddies.mockResolvedValueOnce([mockBuddy])
+    mockListBuddies.mockResolvedValueOnce([mockBuddy] as unknown as AdminBuddyResponse[])
     await buildApp('admin').request('/admin/buddies?status=pending')
     expect(mockListBuddies).toHaveBeenCalledWith('pending')
   })
@@ -111,7 +112,7 @@ describe('PUT /admin/buddies/:id/status', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('approves a buddy', async () => {
-    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'active', tier: 'trainee' })
+    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'active', tier: 'trainee' } as unknown as AdminBuddyResponse)
     const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -122,7 +123,7 @@ describe('PUT /admin/buddies/:id/status', () => {
   })
 
   it('rejects a buddy', async () => {
-    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'rejected' })
+    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'rejected' } as unknown as AdminBuddyResponse)
     const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

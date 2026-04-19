@@ -18,29 +18,10 @@ import {
 } from 'firebase/auth'
 import { firebaseAuth } from './firebase'
 import { apiRequest } from './api'
+import type { UserResponse } from '@peace-buddy/types'
 
-// Local type matching the sanitized UserResponse from the API.
-// Defined here so the web app doesn't need to import from the API package.
-export type DbUser = {
-  id: string
-  email: string
-  role: string
-  createdAt: string
-  buddyProfile: {
-    id: string
-    status: string
-    displayName: string
-    realName: string
-    photoUrl: string | null
-    bio: string | null
-    contactInfo: string | null
-    languages: string[]
-    skills: string[]
-    availability: string | null
-    createdAt: string
-    updatedAt: string
-  } | null
-}
+// Alias for UserResponse — keeps call sites using useAuth().dbUser stable
+export type DbUser = UserResponse
 
 type AuthContextValue = {
   firebaseUser: FirebaseUser | null

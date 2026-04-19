@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { routes } from './index'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 import type { User } from '@prisma/client'
-import type { UserResponse } from '../types'
+import type { UserResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -90,7 +90,7 @@ describe('POST /auth/register', () => {
 
   it('returns 201 with the user on success', async () => {
     mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
-    mockUpsertUser.mockResolvedValueOnce(userResponse)
+    mockUpsertUser.mockResolvedValueOnce(userResponse as unknown as UserResponse)
 
     const res = await routes.request('/auth/register', {
       method: 'POST',
@@ -111,7 +111,7 @@ describe('POST /auth/register', () => {
       name: 'Firebase Name',
       picture: 'https://photo.url',
     } as unknown as DecodedIdToken)
-    mockUpsertUser.mockResolvedValueOnce(userResponse)
+    mockUpsertUser.mockResolvedValueOnce(userResponse as unknown as UserResponse)
 
     await routes.request('/auth/register', {
       method: 'POST',
@@ -162,7 +162,7 @@ describe('GET /auth/me', () => {
   it('returns 200 with sanitized user', async () => {
     mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
     mockFindUnique.mockResolvedValueOnce(dbUser as unknown as User)
-    mockGetUser.mockResolvedValueOnce(userResponse)
+    mockGetUser.mockResolvedValueOnce(userResponse as unknown as UserResponse)
 
     const res = await routes.request('/auth/me', {
       headers: { Authorization: `Bearer ${validToken}` },

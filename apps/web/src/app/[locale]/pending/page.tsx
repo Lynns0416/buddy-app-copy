@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
+import { BuddyStatusSchema } from '@peace-buddy/types'
 
 export default function PendingPage() {
   const { firebaseUser, dbUser, loading, signOut } = useAuth()
@@ -16,7 +17,7 @@ export default function PendingPage() {
     if (!loading) {
       if (!firebaseUser) {
         router.replace(routes.login(locale))
-      } else if (dbUser && dbUser.buddyProfile?.status !== 'pending') {
+      } else if (dbUser && dbUser.buddyProfile?.status !== BuddyStatusSchema.enum.pending) {
         router.replace(routes.dashboard(locale))
       }
     }

@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { routes } from './index'
 import { buddyRoutes } from './buddies'
-import type { AuthEnv, BuddyProfileResponse } from '../types'
+import type { AuthEnv } from '../types'
+import type { BuddyProfileResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -61,7 +62,7 @@ describe('GET /me/profile', () => {
   })
 
   it('returns 200 with the profile', async () => {
-    mockGetBuddyProfile.mockResolvedValueOnce(mockProfile)
+    mockGetBuddyProfile.mockResolvedValueOnce(mockProfile as unknown as BuddyProfileResponse)
     const res = await buildApp().request('/me/profile')
     expect(res.status).toBe(200)
     const body = await res.json() as BuddyProfileResponse
@@ -70,7 +71,7 @@ describe('GET /me/profile', () => {
   })
 
   it('does not expose admin-only fields', async () => {
-    mockGetBuddyProfile.mockResolvedValueOnce(mockProfile)
+    mockGetBuddyProfile.mockResolvedValueOnce(mockProfile as unknown as BuddyProfileResponse)
     const res = await buildApp().request('/me/profile')
     const body = await res.json() as Record<string, unknown>
     expect(body.internalNotes).toBeUndefined()
@@ -78,7 +79,7 @@ describe('GET /me/profile', () => {
   })
 
   it('calls getBuddyProfile with the db user id', async () => {
-    mockGetBuddyProfile.mockResolvedValueOnce(mockProfile)
+    mockGetBuddyProfile.mockResolvedValueOnce(mockProfile as unknown as BuddyProfileResponse)
     await buildApp().request('/me/profile')
     expect(mockGetBuddyProfile).toHaveBeenCalledWith('user-1')
   })
@@ -115,7 +116,7 @@ describe('PUT /me/profile', () => {
 
   it('returns 200 with updated profile', async () => {
     const updated = { ...mockProfile, bio: 'hello' }
-    mockUpdateBuddyProfile.mockResolvedValueOnce(updated)
+    mockUpdateBuddyProfile.mockResolvedValueOnce(updated as unknown as BuddyProfileResponse)
     const res = await buildApp().request('/me/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -127,7 +128,7 @@ describe('PUT /me/profile', () => {
   })
 
   it('passes parsed body to updateBuddyProfile', async () => {
-    mockUpdateBuddyProfile.mockResolvedValueOnce(mockProfile)
+    mockUpdateBuddyProfile.mockResolvedValueOnce(mockProfile as unknown as BuddyProfileResponse)
     await buildApp().request('/me/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -140,7 +141,7 @@ describe('PUT /me/profile', () => {
   })
 
   it('returns 200 with empty body (no-op update)', async () => {
-    mockUpdateBuddyProfile.mockResolvedValueOnce(mockProfile)
+    mockUpdateBuddyProfile.mockResolvedValueOnce(mockProfile as unknown as BuddyProfileResponse)
     const res = await buildApp().request('/me/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

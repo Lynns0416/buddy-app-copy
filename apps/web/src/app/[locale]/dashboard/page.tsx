@@ -6,45 +6,30 @@ import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { apiRequest } from '../../../lib/api'
-
-type Tour = {
-  id: string
-  groupId: string
-  group: { id: string; name: string; type: string }
-  status: string
-  tourDate: string
-  meetingTime: string
-  location: string
-  capacity: number
-  description: string | null
-  cancellationDeadline: string
-  maybeDeadline: string | null
-  notificationOffsets: number[]
-  createdAt: string
-  updatedAt: string
-}
+import type { TourResponse } from '@peace-buddy/types'
+import { BuddyStatusSchema } from '@peace-buddy/types'
 
 export default function DashboardPage() {
   const { firebaseUser, dbUser, loading, signOut } = useAuth()
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('dashboard')
-  const [tours, setTours] = useState<Tour[]>([])
+  const [tours, setTours] = useState<TourResponse[]>([])
 
   useEffect(() => {
     if (!loading) {
       if (!firebaseUser) {
         router.replace(routes.login(locale))
-      } else if (dbUser?.buddyProfile?.status === 'pending') {
+      } else if (dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.pending) {
         router.replace(routes.pending(locale))
       }
     }
   }, [loading, firebaseUser, dbUser, locale, router])
 
   useEffect(() => {
-    if (!loading && firebaseUser && dbUser?.buddyProfile?.status === 'active') {
+    if (!loading && firebaseUser && dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active) {
       const from = new Date().toISOString().split('T')[0]
-      apiRequest<Tour[]>(`/tours?from=${from}`)
+      apiRequest<TourResponse[]>(`/tours?from=${from}`)
         .then(setTours)
         .catch(() => {})
     }
@@ -52,7 +37,7 @@ export default function DashboardPage() {
 
   if (loading || !dbUser) return null
 
-  if (dbUser.buddyProfile?.status !== 'active') {
+  if (dbUser.buddyProfile?.status !== BuddyStatusSchema.enum.active) {
     return (
       <main>
         <p>{t('notRegistered')}</p>

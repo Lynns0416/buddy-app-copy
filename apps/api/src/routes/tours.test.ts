@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { routes } from './index'
 import { tourRoutes } from './tours'
-import type { AuthEnv, TourResponse } from '../types'
+import type { AuthEnv } from '../types'
+import type { TourResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },

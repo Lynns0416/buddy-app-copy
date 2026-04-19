@@ -1,6 +1,7 @@
 import { TourStatus } from '@prisma/client'
 import { db } from '../lib/db'
-import type { TourResponse, ToursQuery } from '../types'
+import type { TourResponse } from '@peace-buddy/types'
+import type { ToursQuery } from '../types'
 
 // Explicit select — never fetches adminMemo
 const tourSelect = {
@@ -36,5 +37,5 @@ export async function listTours(filters?: ToursQuery): Promise<TourResponse[]> {
     select: tourSelect,
     orderBy: { tourDate: 'asc' },
   })
-  return tours as TourResponse[]
+  return tours as unknown as TourResponse[]
 }

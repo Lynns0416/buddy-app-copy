@@ -6,26 +6,15 @@ import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../../lib/auth'
 import { routes } from '../../../../lib/routes'
 import { apiRequest } from '../../../../lib/api'
-
-type AdminBuddy = {
-  id: string
-  userId: string
-  status: string
-  tier: string | null
-  displayName: string
-  realName: string
-  email: string
-  internalNotes: string | null
-  createdAt: string
-  updatedAt: string
-}
+import type { AdminBuddyResponse } from '@peace-buddy/types'
+import { UserRoleSchema, BuddyStatusSchema } from '@peace-buddy/types'
 
 export default function AdminBuddiesPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('adminBuddies')
-  const [buddies, setBuddies] = useState<AdminBuddy[]>([])
+  const [buddies, setBuddies] = useState<AdminBuddyResponse[]>([])
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,15 +22,15 @@ export default function AdminBuddiesPage() {
     if (!loading) {
       if (!firebaseUser) {
         router.replace(routes.login(locale))
-      } else if (dbUser && dbUser.role !== 'admin' && dbUser.role !== 'super_admin') {
+      } else if (dbUser && dbUser.role !== UserRoleSchema.enum.admin && dbUser.role !== UserRoleSchema.enum.super_admin) {
         router.replace(routes.home(locale))
       }
     }
   }, [loading, firebaseUser, dbUser, locale, router])
 
   useEffect(() => {
-    if (!loading && firebaseUser && dbUser && (dbUser.role === 'admin' || dbUser.role === 'super_admin')) {
-      apiRequest<AdminBuddy[]>('/admin/buddies?status=pending')
+    if (!loading && firebaseUser && dbUser && (dbUser.role === UserRoleSchema.enum.admin || dbUser.role === UserRoleSchema.enum.super_admin)) {
+      apiRequest<AdminBuddyResponse[]>(`/admin/buddies?status=${BuddyStatusSchema.enum.pending}`)
         .then(setBuddies)
         .catch(() => {})
     }
@@ -53,7 +42,7 @@ export default function AdminBuddiesPage() {
     try {
       await apiRequest(`/admin/buddies/${id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: 'active' }),
+        body: JSON.stringify({ status: BuddyStatusSchema.enum.active }),
       })
       setBuddies((prev) => prev.filter((b) => b.id !== id))
     } catch {
@@ -69,7 +58,7 @@ export default function AdminBuddiesPage() {
     try {
       await apiRequest(`/admin/buddies/${id}/status`, {
         method: 'PUT',
-        body: JSON.stringify({ status: 'rejected' }),
+        body: JSON.stringify({ status: BuddyStatusSchema.enum.rejected }),
       })
       setBuddies((prev) => prev.filter((b) => b.id !== id))
     } catch {

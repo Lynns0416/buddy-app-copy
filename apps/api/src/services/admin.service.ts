@@ -1,6 +1,6 @@
 import { db } from '../lib/db'
-import type { AdminBuddyResponse } from '../types'
-import type { BuddyStatus, BuddyTier } from '@peace-buddy/types'
+import type { AdminBuddyResponse, BuddyStatus, BuddyTier } from '@peace-buddy/types'
+import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
 const adminBuddySelect = {
   id: true,
@@ -30,7 +30,7 @@ function mapBuddy(raw: {
   updatedAt: Date
 }): AdminBuddyResponse {
   const { user, ...rest } = raw
-  return { ...rest, email: user.email }
+  return { ...rest, email: user.email } as unknown as AdminBuddyResponse
 }
 
 export async function listBuddies(status?: BuddyStatus): Promise<AdminBuddyResponse[]> {
@@ -49,8 +49,8 @@ export async function updateBuddyStatus(
 ): Promise<AdminBuddyResponse | null> {
   try {
     const data: { status: BuddyStatus; tier?: BuddyTier } = { status }
-    if (status === 'active') {
-      data.tier = tier ?? 'trainee'
+    if (status === BuddyStatusSchema.enum.active) {
+      data.tier = tier ?? BuddyTierSchema.enum.trainee
     }
     const raw = await db.buddyProfile.update({
       where: { id },

@@ -67,3 +67,60 @@ export const UpdateBuddyStatusSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('rejected') }),
 ])
 export type UpdateBuddyStatus = z.infer<typeof UpdateBuddyStatusSchema>
+
+// Response types (HTTP wire format — dates serialized as ISO strings)
+
+export type BuddyProfileResponse = {
+  id: string
+  status: BuddyStatus
+  displayName: string
+  realName: string
+  photoUrl: string | null
+  bio: string | null
+  contactInfo: string | null
+  languages: string[]
+  skills: string[]
+  availability: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type TourResponse = {
+  id: string
+  groupId: string
+  group: { id: string; name: string; type: GroupType }
+  status: TourStatus
+  tourDate: string
+  meetingTime: string
+  location: string
+  capacity: number
+  description: string | null
+  cancellationDeadline: string
+  maybeDeadline: string | null
+  notificationOffsets: number[]
+  createdAt: string
+  updatedAt: string
+}
+
+// Admin-only response — includes tier and internalNotes
+export type AdminBuddyResponse = {
+  id: string
+  userId: string
+  status: BuddyStatus
+  tier: BuddyTier | null
+  displayName: string
+  realName: string
+  email: string
+  internalNotes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Sanitized response — no admin-only fields
+export type UserResponse = {
+  id: string
+  email: string
+  role: UserRole
+  createdAt: string
+  buddyProfile: BuddyProfileResponse | null
+}

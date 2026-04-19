@@ -13,7 +13,8 @@ Every session start:
 ## Patterns (never deviate)
 - **API**: route → service → Prisma. Business logic in service only.
 - **Prisma**: explicit `select` always. Never expose `internalNotes`, `tier`, `adminMemo`.
-- **Types**: Zod enum/request schemas → `packages/types`. API response types → `apps/api/src/types.ts`. HTTP transport schemas → route file.
+- **Types**: Zod schemas, enums, and all response types → `packages/types`. `apps/api/src/types.ts` holds Hono env types only (`FirebaseEnv`, `AuthEnv`, etc.) and internal API types (`ToursQuery`). HTTP transport/validation schemas → route file.
+- **Enum values**: always use `SchemaName.enum.value` (e.g. `BuddyStatusSchema.enum.active`), never magic strings.
 - **Zod**: validate at all system boundaries (routes). Parse, never cast.
 - **i18n**: every UI string via `useTranslations`. Update `en.json` + `ja.json` together, always.
 - **Tests**: Vitest, colocated `*.test.ts`. Route tests use `buildApp()` with stub auth middleware. Mock Prisma + Firebase via `vi.mock`.
@@ -23,8 +24,8 @@ Every session start:
 ## Key files
 - `apps/api/src/routes/index.ts` — publicApp + protectedApp composition
 - `apps/api/src/middleware/auth.ts` — token verify + DB lookup
-- `apps/api/src/types.ts` — Hono env types + API response types
-- `packages/types/src/index.ts` — shared Zod schemas
+- `apps/api/src/types.ts` — Hono env types only (`FirebaseEnv`, `AuthEnv`, `DbUser`, `ToursQuery`)
+- `packages/types/src/index.ts` — shared Zod schemas, enums, and all response types
 - `apps/web/src/lib/auth.tsx` — AuthProvider, session cookie
 - `apps/web/src/middleware.ts` — cookie guard + next-intl
 - `apps/web/src/lib/routes.ts` — all client-side routes; always use this, never raw strings

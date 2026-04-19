@@ -1,5 +1,6 @@
 import { db } from '../lib/db'
-import type { UserResponse } from '../types'
+import type { UserResponse } from '@peace-buddy/types'
+import { UserRoleSchema, BuddyStatusSchema } from '@peace-buddy/types'
 
 // Explicit select — never fetches internalNotes, tier, adminEvaluations, or other admin-only fields
 const userSelect = {
@@ -41,10 +42,10 @@ export async function upsertUser(
     create: {
       firebaseUid: uid,
       email,
-      role: 'buddy',
+      role: UserRoleSchema.enum.buddy,
       buddyProfile: {
         create: {
-          status: 'pending',
+          status: BuddyStatusSchema.enum.pending,
           displayName: data.displayName ?? email.split('@')[0],
           realName: data.realName ?? '',
           languages: data.languages ?? [],
@@ -57,7 +58,7 @@ export async function upsertUser(
     select: userSelect,
   })
 
-  return user as UserResponse
+  return user as unknown as UserResponse
 }
 
 export async function getUser(id: string): Promise<UserResponse | null> {
@@ -67,5 +68,5 @@ export async function getUser(id: string): Promise<UserResponse | null> {
   })
 
   if (!user) return null
-  return user as UserResponse
+  return user as unknown as UserResponse
 }

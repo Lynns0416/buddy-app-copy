@@ -15,6 +15,7 @@ type: project
 - Route name refactor (#10), admin dashboard setup (#9)
 - ESLint fully configured (flat config, strict TS rules) on both API and web (#12)
 - `/[locale]/dashboard/page.tsx` — buddy dashboard with tour list, auth guard, not-registered soft message
+- Response types moved to `packages/types`; local type dupes removed from web; magic strings replaced with enum values across API and web
 
 ## Blocker
 
@@ -22,7 +23,7 @@ None known.
 
 ## Next (priority order)
 
-1. **Shared response types** — move `TourResponse`, `AdminBuddyResponse`, etc. from `apps/api/src/types.ts` to `packages/types`; delete local type dupes in web pages (see `project_todo.md`)
+1. TBD
 
 ## Decisions
 
