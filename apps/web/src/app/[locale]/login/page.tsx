@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../lib/auth'
+import { routes } from '../../../lib/routes'
 
 export default function LoginPage() {
   const { firebaseUser, dbUser, loading, signInWithGoogle, signInWithApple } = useAuth()
@@ -14,9 +15,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (!loading && firebaseUser && dbUser) {
       if (dbUser.buddyProfile?.status === 'pending') {
-        router.replace(`/${locale}/pending`)
+        router.replace(routes.pending(locale))
       } else {
-        router.replace(`/${locale}/dashboard`)
+        router.replace(routes.dashboard(locale))
       }
     }
   }, [loading, firebaseUser, dbUser, locale, router])

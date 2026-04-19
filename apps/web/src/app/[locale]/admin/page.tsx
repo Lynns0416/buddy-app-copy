@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../lib/auth'
+import { routes } from '../../../lib/routes'
 
 export default function AdminPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -14,9 +15,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (!loading) {
       if (!firebaseUser) {
-        router.replace(`/${locale}/login`)
+        router.replace(routes.login(locale))
       } else if (dbUser && dbUser.role !== 'admin' && dbUser.role !== 'super_admin') {
-        router.replace(`/${locale}`)
+        router.replace(routes.home(locale))
       }
     }
   }, [loading, firebaseUser, dbUser, locale, router])

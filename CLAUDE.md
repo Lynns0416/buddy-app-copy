@@ -15,6 +15,7 @@ Read `memory/project_state.md` first every session.
 - **i18n**: every UI string via `useTranslations`. Update `en.json` + `ja.json` together, always.
 - **Tests**: Vitest, colocated `*.test.ts`. Route tests use `buildApp()` with stub auth middleware. Mock Prisma + Firebase via `vi.mock`.
 - **Commits**: one concern per commit, no co-author signature.
+- **Web routing**: always use `routes.*` from `apps/web/src/lib/routes.ts`, never raw strings.
 
 ## Key files
 - `apps/api/src/routes/index.ts` — publicApp + protectedApp composition
@@ -23,6 +24,7 @@ Read `memory/project_state.md` first every session.
 - `packages/types/src/index.ts` — shared Zod schemas
 - `apps/web/src/lib/auth.tsx` — AuthProvider, session cookie
 - `apps/web/src/middleware.ts` — cookie guard + next-intl
+- `apps/web/src/lib/routes.ts` — all client-side routes; always use this, never raw strings
 
 ## Never
 - Start implementing before user says go
