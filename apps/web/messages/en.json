@@ -18,6 +18,15 @@
     "noResults": "No pending buddies",
     "actionError": "Action failed. Please try again."
   },
+  "dashboard": {
+    "title": "Dashboard",
+    "noTours": "No upcoming tours",
+    "signOut": "Sign out",
+    "meetingTime": "Meeting time",
+    "location": "Location",
+    "capacity": "Capacity",
+    "notRegistered": "Sorry, but it seems like you're not registered as a buddy. If you have any questions, please contact any of plab staff."
+  },
   "pending": {
     "title": "Awaiting approval",
     "message": "Your account is pending admin approval. You will be notified once approved.",

@@ -10,17 +10,19 @@ type: project
 - Firebase Auth (Google; Apple deferred), session cookie
 - `POST /auth/register`, `GET /auth/me`
 - `GET /me/profile`, `PUT /me/profile`, `GET /tours` — buddy profile + Firebase emulator config, Vitest tests
-- `adminAuthMiddleware` (role check, 403), empty admin router at `/admin`, `/[locale]/admin/page.tsx`, i18n keys
+- `adminAuthMiddleware` (role check, 403), `/admin` router, `/[locale]/admin/page.tsx`
+- `GET /admin/buddies?status=`, `PUT /admin/buddies/:id/status`, `/[locale]/admin/buddies/page.tsx` — buddy approval flow with pending/approve/reject (#11)
+- Route name refactor (#10), admin dashboard setup (#9)
+- ESLint fully configured (flat config, strict TS rules) on both API and web (#12)
+- `/[locale]/dashboard/page.tsx` — buddy dashboard with tour list, auth guard, not-registered soft message
 
 ## Blocker
 
-Buddy stuck on `/pending` after login — `/dashboard` doesn't exist yet, no admin approval flow.
+None known.
 
 ## Next (priority order)
 
-1. **Buddy approval** — `GET /admin/buddies?status=`, `PUT /admin/buddies/:id/status`, `/[locale]/admin/buddies/page.tsx`
-2. **Buddy dashboard** — `/[locale]/dashboard/page.tsx` with real data from `GET /tours`
-3. **Auth test fixes** (low priority) — `routes/auth.test.ts` 2 broken tests, refactor to `buildApp()` pattern
+1. **Shared response types** — move `TourResponse`, `AdminBuddyResponse`, etc. from `apps/api/src/types.ts` to `packages/types`; delete local type dupes in web pages (see `project_todo.md`)
 
 ## Decisions
 
@@ -34,4 +36,3 @@ Buddy stuck on `/pending` after login — `/dashboard` doesn't exist yet, no adm
 ## Notes
 
 - Two Firebase projects: staging (under Workspace org) + prod (after nonprofit approval)
-- `api-test` Docker service missing `depends_on: db` — minor, not blocking

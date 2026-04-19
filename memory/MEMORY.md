@@ -2,6 +2,7 @@
 
 ## Project
 - [project_state.md](project_state.md) — Build status, blockers, next steps
+- [project_todo.md](project_todo.md) — Deferred requirements: tour timeline/duration fields, tour open/closed booking status
 
 ## User
 - [user_profile.md](user_profile.md) — Org context (Google Workspace for Nonprofits, Apple sign-in deferred)
