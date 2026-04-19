@@ -53,6 +53,17 @@
     "capacity": "Capacity",
     "notRegistered": "Sorry, but it seems like you're not registered as a buddy. If you have any questions, please contact any of plab staff."
   },
+  "shell": {
+    "appName": "Peace Buddy",
+    "signOut": "Sign out",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "nav": {
+      "dashboard": "Dashboard",
+      "buddies": "Buddies",
+      "groups": "Groups"
+    }
+  },
   "pending": {
     "title": "Awaiting approval",
     "message": "Your account is pending admin approval. You will be notified once approved.",

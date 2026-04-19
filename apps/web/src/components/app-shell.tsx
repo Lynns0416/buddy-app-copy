@@ -1,0 +1,127 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { useParams, usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Menu, X } from 'lucide-react'
+import { useAuth } from '@/lib/auth'
+import { routes } from '@/lib/routes'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+type NavItem = { href: string; label: string }
+
+type Props = {
+  variant: 'admin' | 'buddy'
+  children: React.ReactNode
+}
+
+export function AppShell({ variant, children }: Props) {
+  const { locale } = useParams<{ locale: string }>()
+  const pathname = usePathname()
+  const { signOut } = useAuth()
+  const t = useTranslations('shell')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const navItems: NavItem[] =
+    variant === 'admin'
+      ? [
+          { href: routes.adminBuddies(locale), label: t('nav.buddies') },
+          { href: routes.adminGroups(locale), label: t('nav.groups') },
+        ]
+      : [{ href: routes.dashboard(locale), label: t('nav.dashboard') }]
+
+  const navLinks = navItems.map((item) => (
+    <Link
+      key={item.href}
+      href={item.href}
+      onClick={() => setDrawerOpen(false)}
+      className={cn(
+        'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+        pathname.startsWith(item.href)
+          ? 'bg-accent text-primary font-semibold border-l-2 border-primary rounded-l-none'
+          : 'text-muted-foreground'
+      )}
+    >
+      {item.label}
+    </Link>
+  ))
+
+  return (
+    <div className={cn('flex min-h-screen bg-background', variant === 'admin' && 'theme-admin')}>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r bg-card">
+        <div className="flex h-14 items-center border-b px-4">
+          <span className="text-sm font-semibold tracking-tight">{t('appName')}</span>
+        </div>
+        <nav className="flex flex-1 flex-col gap-1 p-3">{navLinks}</nav>
+        <div className="border-t p-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground"
+            onClick={signOut}
+          >
+            {t('signOut')}
+          </Button>
+        </div>
+      </aside>
+
+      {/* Mobile overlay */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card transition-transform duration-200 md:hidden',
+          drawerOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="flex h-14 items-center justify-between border-b px-4">
+          <span className="text-sm font-semibold tracking-tight">{t('appName')}</span>
+          <button
+            onClick={() => setDrawerOpen(false)}
+            className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+            aria-label={t('closeMenu')}
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <nav className="flex flex-1 flex-col gap-1 p-3">{navLinks}</nav>
+        <div className="border-t p-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-muted-foreground"
+            onClick={signOut}
+          >
+            {t('signOut')}
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Mobile top bar */}
+        <header className="flex h-14 items-center border-b bg-card px-4 md:hidden">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+            aria-label={t('openMenu')}
+          >
+            <Menu size={20} />
+          </button>
+          <span className="ml-3 text-sm font-semibold tracking-tight">{t('appName')}</span>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+      </div>
+    </div>
+  )
+}

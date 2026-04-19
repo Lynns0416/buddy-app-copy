@@ -22,20 +22,6 @@ type: project
 
 ## Unbuilt features (from PRD v0.3)
 
-### Group management (§6)
-**API:**
-- `GET /admin/groups` — list all groups
-- `POST /admin/groups` — create group
-- `PUT /admin/groups/:id` — edit group
-- `GET /admin/groups/:id` — group detail + tour history
-
-**Web:**
-- Admin group list page
-- Admin group create/edit form
-- Admin group detail page (tour history)
-
----
-
 ### Tour management — admin (§7)
 **API:**
 - `POST /admin/tours` — create tour (draft)

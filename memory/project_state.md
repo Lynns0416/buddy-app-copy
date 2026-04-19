@@ -16,6 +16,8 @@ type: project
 - ESLint fully configured (flat config, strict TS rules) on both API and web (#12)
 - `/[locale]/dashboard/page.tsx` — buddy dashboard with tour list, auth guard, not-registered soft message
 - Response types moved to `packages/types`; local type dupes removed from web; magic strings replaced with enum values across API and web
+- Group management CRUD (#18): `GET/POST /admin/groups`, `GET/PUT /admin/groups/:id` + web pages (list, create, detail, edit)
+- Seed data added (#16); PRD todos added (#17)
 
 ## Blocker
 
@@ -23,7 +25,10 @@ None known.
 
 ## Next (priority order)
 
-1. TBD
+1. **Tour management — admin** (§7): create/edit/publish/cancel/complete tours, admin tour list + detail with booking list
+2. **Tour detail — buddy-facing** (§7, §8.2): `GET /tours/:id` with seat counts + own booking status
+3. **Booking system** (§8): create/update bookings, cancellation flow, waitlist logic
+4. *Resolve deferred data model questions before booking:* tour open/closed booking status, tour timeline/duration fields
 
 ## Decisions
 

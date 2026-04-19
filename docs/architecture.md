@@ -30,12 +30,31 @@ Monorepo managed with pnpm workspaces:
 ```
 /
 ├── apps/
-│   ├── web/        ← Next.js (frontend only — UI, routing, rendering)
-│   └── api/        ← Hono backend (all business logic, Prisma, auth middleware)
+│   ├── web/                    ← Next.js (frontend only — UI, routing, rendering)
+│   │   ├── src/
+│   │   │   ├── app/            ← Next.js App Router pages + globals.css
+│   │   │   ├── components/
+│   │   │   │   ├── ui/         ← shadcn/ui components (Button, Input, Table, Badge, …)
+│   │   │   │   └── app-shell.tsx ← sidebar layout (variant: admin | buddy)
+│   │   │   └── lib/
+│   │   │       └── utils.ts    ← cn() utility (clsx + tailwind-merge)
+│   │   └── components.json     ← shadcn config
+│   └── api/                    ← Hono backend (all business logic, Prisma, auth middleware)
 ├── packages/
-│   └── types/      ← shared Zod schemas and TypeScript types
-└── prisma/         ← shared Prisma schema; migrations live here
+│   └── types/                  ← shared Zod schemas and TypeScript types
+└── prisma/                     ← shared Prisma schema; migrations live here
 ```
+
+## UI Stack
+
+- **Tailwind CSS v4** — CSS-first config via `postcss.config.mjs`; no `tailwind.config.js`
+- **shadcn/ui** — component source lives in `apps/web/src/components/ui/`; owned by the project, not a package dependency
+- **Radix UI** — accessible primitives underlying shadcn components
+- **Theming** — CSS variables defined in `globals.css`:
+  - Default (buddy-facing): warm zinc palette
+  - Admin: slate/cool blue — applied via `.theme-admin` class on the `AppShell` wrapper
+  - Dark mode: enabled; toggled via `.dark` class
+- **`AppShell`** — shared sidebar layout used by admin and buddy pages. Accepts `variant: 'admin' | 'buddy'` to apply the correct theme and nav items.
 
 See PRD §13 for the full tech stack rationale.
 

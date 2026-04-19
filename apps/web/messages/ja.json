@@ -53,6 +53,17 @@
     "capacity": "定員",
     "notRegistered": "申し訳ありませんが、バディとして登録されていないようです。ご不明な点がある場合は、plabスタッフまでお問い合わせください。"
   },
+  "shell": {
+    "appName": "Peace Buddy",
+    "signOut": "ログアウト",
+    "openMenu": "メニューを開く",
+    "closeMenu": "メニューを閉じる",
+    "nav": {
+      "dashboard": "ダッシュボード",
+      "buddies": "バディ",
+      "groups": "グループ"
+    }
+  },
   "pending": {
     "title": "承認待ち",
     "message": "アカウントは管理者の承認待ちです。承認され次第、通知いたします。",

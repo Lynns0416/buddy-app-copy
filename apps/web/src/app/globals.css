@@ -1,0 +1,105 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ── Buddy theme (cyan #00a9c3 · teal-green) ── */
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: oklch(0.570 0.125 214);          /* darkened cyan for white text contrast */
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.938 0.040 162);        /* light teal-green wash */
+  --secondary-foreground: oklch(0.340 0.085 162);
+  --muted: oklch(0.958 0.018 188);            /* cyan/green midpoint */
+  --muted-foreground: oklch(0.520 0.022 195);
+  --accent: oklch(0.920 0.042 185);           /* teal hover */
+  --accent-foreground: oklch(0.310 0.075 185);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.902 0.018 195);
+  --input: oklch(0.902 0.018 195);
+  --ring: oklch(0.570 0.125 214);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.21 0.006 285.885);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.552 0.016 285.938);
+}
+
+/* ── Admin theme (blue #54a5d5 · indigo) ── */
+.theme-admin {
+  --primary: oklch(0.560 0.115 236);          /* darkened blue for white text contrast */
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.932 0.038 270);        /* light indigo wash */
+  --secondary-foreground: oklch(0.340 0.110 270);
+  --muted: oklch(0.955 0.018 253);            /* blue/indigo midpoint */
+  --muted-foreground: oklch(0.510 0.025 253);
+  --accent: oklch(0.918 0.030 253);           /* blue-indigo hover */
+  --accent-foreground: oklch(0.305 0.085 253);
+  --border: oklch(0.905 0.016 245);
+  --input: oklch(0.905 0.016 245);
+  --ring: oklch(0.560 0.115 236);
+}
+
+.dark .theme-admin,
+.theme-admin.dark {
+  --primary: oklch(0.929 0.013 255.508);
+  --primary-foreground: oklch(0.279 0.071 253.094);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.929 0.013 255.508);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
