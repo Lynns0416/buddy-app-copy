@@ -11,7 +11,8 @@
   "admin": {
     "title": "管理",
     "buddies": "バディ一覧",
-    "groups": "グループ一覧"
+    "groups": "グループ一覧",
+    "tours": "ツアー一覧"
   },
   "adminGroups": {
     "title": "グループ",
@@ -56,6 +57,47 @@
     "capacity": "定員",
     "notRegistered": "申し訳ありませんが、バディとして登録されていないようです。ご不明な点がある場合は、plabスタッフまでお問い合わせください。"
   },
+  "adminTours": {
+    "title": "ツアー",
+    "createTitle": "新規ツアー",
+    "editTitle": "ツアー編集",
+    "newTour": "新規ツアー",
+    "noResults": "ツアーはありません",
+    "group": "グループ",
+    "tourDate": "ツアー日",
+    "meetingTime": "集合時間",
+    "location": "場所",
+    "capacity": "定員",
+    "description": "説明",
+    "adminMemo": "管理者メモ",
+    "cancellationDeadline": "キャンセル期限",
+    "maybeDeadline": "仮参加確定期限",
+    "notificationOffsets": "通知タイミング（日前、カンマ区切り）",
+    "status": "ステータス",
+    "confirmedCount": "確定",
+    "bookings": "予約一覧",
+    "noBookings": "予約はありません",
+    "buddyName": "バディ",
+    "bookingStatus": "ステータス",
+    "bookedAt": "予約日時",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "back": "ツアー一覧に戻る",
+    "backToDetail": "ツアー詳細に戻る",
+    "edit": "編集",
+    "publish": "公開",
+    "cancelTour": "ツアーをキャンセル",
+    "completeTour": "完了にする",
+    "deleteTour": "削除",
+    "confirmDelete": "このツアーを削除しますか？この操作は元に戻せません。",
+    "confirmCancel": "このツアーをキャンセルしますか？確定・仮・キャンセル待ちの全バディに通知されます。",
+    "confirmComplete": "このツアーを完了にしますか？",
+    "statusDraft": "下書き",
+    "statusPublished": "公開中",
+    "statusCancelled": "キャンセル済",
+    "statusCompleted": "完了",
+    "actionError": "操作に失敗しました。もう一度お試しください。"
+  },
   "shell": {
     "appName": "Peace Buddy",
     "signOut": "ログアウト",
@@ -64,7 +106,8 @@
     "nav": {
       "dashboard": "ダッシュボード",
       "buddies": "バディ",
-      "groups": "グループ"
+      "groups": "グループ",
+      "tours": "ツアー"
     }
   },
   "pending": {

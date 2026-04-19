@@ -60,6 +60,56 @@ export const UpdateBuddyProfileSchema = z.object({
 })
 export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
 
+// Tour (admin)
+
+export const CreateTourSchema = z
+  .object({
+    groupId: z.string().uuid(),
+    tourDate: z.coerce.date(),
+    meetingTime: z.string().regex(/^\d{2}:\d{2}$/),
+    location: z.string().min(1),
+    capacity: z.number().int().positive(),
+    description: z.string().optional(),
+    adminMemo: z.string().optional(),
+    cancellationDeadline: z.coerce.date(),
+    maybeDeadline: z.coerce.date().optional(),
+    notificationOffsets: z.array(z.number().int().min(0)).default([3, 1]),
+  })
+  .refine((d) => !d.maybeDeadline || d.maybeDeadline < d.cancellationDeadline, {
+    message: 'maybeDeadline must be before cancellationDeadline',
+    path: ['maybeDeadline'],
+  })
+export type CreateTour = z.infer<typeof CreateTourSchema>
+
+export const UpdateTourSchema = z
+  .object({
+    groupId: z.string().uuid().optional(),
+    tourDate: z.coerce.date().optional(),
+    meetingTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    location: z.string().min(1).optional(),
+    capacity: z.number().int().positive().optional(),
+    description: z.string().nullable().optional(),
+    adminMemo: z.string().nullable().optional(),
+    cancellationDeadline: z.coerce.date().optional(),
+    maybeDeadline: z.coerce.date().nullable().optional(),
+    notificationOffsets: z.array(z.number().int().min(0)).optional(),
+  })
+  .refine(
+    (d) => {
+      if (d.maybeDeadline && d.cancellationDeadline) {
+        return d.maybeDeadline < d.cancellationDeadline
+      }
+      return true
+    },
+    { message: 'maybeDeadline must be before cancellationDeadline', path: ['maybeDeadline'] },
+  )
+export type UpdateTour = z.infer<typeof UpdateTourSchema>
+
+export const TourStatusActionSchema = z.object({
+  action: z.enum(['publish', 'cancel', 'complete']),
+})
+export type TourStatusAction = z.infer<typeof TourStatusActionSchema>
+
 // Group
 
 export const CreateGroupSchema = z.object({
@@ -172,4 +222,34 @@ export type UserResponse = {
   role: UserRole
   createdAt: string
   buddyProfile: BuddyProfileResponse | null
+}
+
+export type AdminTourBookingEntry = {
+  id: string
+  buddyId: string
+  displayName: string
+  status: BookingStatus
+  bookedAt: string
+}
+
+export type AdminTourSummaryResponse = {
+  id: string
+  group: { id: string; name: string; type: GroupType }
+  status: TourStatus
+  tourDate: string
+  meetingTime: string
+  location: string
+  capacity: number
+  description: string | null
+  confirmedCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type AdminTourDetailResponse = AdminTourSummaryResponse & {
+  adminMemo: string | null
+  cancellationDeadline: string
+  maybeDeadline: string | null
+  notificationOffsets: number[]
+  bookings: AdminTourBookingEntry[]
 }

@@ -29,6 +29,7 @@ export function AppShell({ variant, children }: Props) {
       ? [
           { href: routes.adminBuddies(locale), label: t('nav.buddies') },
           { href: routes.adminGroups(locale), label: t('nav.groups') },
+          { href: routes.adminTours(locale), label: t('nav.tours') },
         ]
       : [{ href: routes.dashboard(locale), label: t('nav.dashboard') }]
 
