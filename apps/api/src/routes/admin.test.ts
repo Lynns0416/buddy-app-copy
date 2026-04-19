@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { routes } from './index'
 import { adminRoutes } from './admin'
@@ -13,6 +13,16 @@ vi.mock('../lib/db', () => ({
   db: { user: { findUnique: vi.fn() } },
 }))
 
+vi.mock('../services/admin.service', () => ({
+  listBuddies: vi.fn(),
+  updateBuddyStatus: vi.fn(),
+}))
+
+import { listBuddies, updateBuddyStatus } from '../services/admin.service'
+
+const mockListBuddies = vi.mocked(listBuddies)
+const mockUpdateBuddyStatus = vi.mocked(updateBuddyStatus)
+
 function buildApp(role: string) {
   const app = new Hono<AuthEnv>()
   app.use('*', (c, next) => {
@@ -25,30 +35,127 @@ function buildApp(role: string) {
   return app
 }
 
+const mockBuddy = {
+  id: 'profile-1',
+  userId: 'user-1',
+  status: 'pending',
+  tier: null,
+  displayName: 'Test Buddy',
+  realName: 'Real Name',
+  email: 'buddy@example.com',
+  internalNotes: null,
+  createdAt: new Date('2026-01-01'),
+  updatedAt: new Date('2026-01-01'),
+}
+
 describe('admin routes — auth', () => {
   it('returns 401 with no token', async () => {
-    const res = await routes.request('/admin/')
+    const res = await routes.request('/admin/buddies')
     expect(res.status).toBe(401)
   })
 
   it('returns 403 for buddy role', async () => {
-    const res = await buildApp('buddy').request('/admin/')
+    const res = await buildApp('buddy').request('/admin/buddies')
     expect(res.status).toBe(403)
   })
 
-  it('returns 403 for trainee role', async () => {
-    const res = await buildApp('trainee').request('/admin/')
+  it('returns 403 for non-admin role', async () => {
+    const res = await buildApp('other').request('/admin/buddies')
     expect(res.status).toBe(403)
   })
 
   it('passes through for admin role', async () => {
-    const res = await buildApp('admin').request('/admin/')
-    // No routes defined yet — 404 means middleware passed
-    expect(res.status).toBe(404)
+    mockListBuddies.mockResolvedValueOnce([])
+    const res = await buildApp('admin').request('/admin/buddies')
+    expect(res.status).toBe(200)
   })
 
   it('passes through for super_admin role', async () => {
-    const res = await buildApp('super_admin').request('/admin/')
+    mockListBuddies.mockResolvedValueOnce([])
+    const res = await buildApp('super_admin').request('/admin/buddies')
+    expect(res.status).toBe(200)
+  })
+})
+
+describe('GET /admin/buddies', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns buddy list', async () => {
+    mockListBuddies.mockResolvedValueOnce([mockBuddy])
+    const res = await buildApp('admin').request('/admin/buddies')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toHaveLength(1)
+    expect(body[0].id).toBe('profile-1')
+  })
+
+  it('filters by status query param', async () => {
+    mockListBuddies.mockResolvedValueOnce([mockBuddy])
+    await buildApp('admin').request('/admin/buddies?status=pending')
+    expect(mockListBuddies).toHaveBeenCalledWith('pending')
+  })
+
+  it('returns 400 for invalid status', async () => {
+    const res = await buildApp('admin').request('/admin/buddies?status=invalid')
+    expect(res.status).toBe(400)
+  })
+
+  it('calls listBuddies with no args when status omitted', async () => {
+    mockListBuddies.mockResolvedValueOnce([])
+    await buildApp('admin').request('/admin/buddies')
+    expect(mockListBuddies).toHaveBeenCalledWith()
+  })
+})
+
+describe('PUT /admin/buddies/:id/status', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('approves a buddy', async () => {
+    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'active', tier: 'trainee' })
+    const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'active' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateBuddyStatus).toHaveBeenCalledWith('profile-1', 'active', undefined)
+  })
+
+  it('rejects a buddy', async () => {
+    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'rejected' })
+    const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'rejected' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateBuddyStatus).toHaveBeenCalledWith('profile-1', 'rejected', undefined)
+  })
+
+  it('returns 404 when buddy not found', async () => {
+    mockUpdateBuddyStatus.mockResolvedValueOnce(null)
+    const res = await buildApp('admin').request('/admin/buddies/missing/status', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'active' }),
+    })
     expect(res.status).toBe(404)
+  })
+
+  it('returns 400 for invalid body', async () => {
+    const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'pending' }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for non-JSON body', async () => {
+    const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
+      method: 'PUT',
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
   })
 })

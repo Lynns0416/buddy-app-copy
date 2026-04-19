@@ -8,7 +8,14 @@
     "apple": "Appleでログイン"
   },
   "admin": {
-    "title": "管理"
+    "title": "管理",
+    "buddies": "バディ一覧"
+  },
+  "adminBuddies": {
+    "title": "承認待ちバディ",
+    "approve": "承認",
+    "reject": "却下",
+    "noResults": "承認待ちのバディはいません"
   },
   "pending": {
     "title": "承認待ち",

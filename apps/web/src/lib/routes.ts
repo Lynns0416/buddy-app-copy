@@ -4,4 +4,5 @@ export const routes = {
   pending: (locale: string) => `/${locale}/pending`,
   dashboard: (locale: string) => `/${locale}/dashboard`,
   admin: (locale: string) => `/${locale}/admin`,
+  adminBuddies: (locale: string) => `/${locale}/admin/buddies`,
 }

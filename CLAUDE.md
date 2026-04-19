@@ -1,6 +1,9 @@
 # Peace Buddy — Claude Context
 
-Read `memory/project_state.md` first every session.
+Every session start:
+1. Read `memory/project_state.md`
+2. Run `git log --oneline main..HEAD` and `git log --oneline -10 main` to check what has merged since last recorded state
+3. Update `memory/project_state.md` to reflect merged branches before doing anything else
 
 ## Stack
 - Monorepo: `apps/api` (Hono), `apps/web` (Next.js App Router + next-intl), `packages/types` (Zod)
@@ -32,3 +35,4 @@ Read `memory/project_state.md` first every session.
 - Hardcode UI strings
 - Run commands outside Docker
 - Hold decisions in memory only — update relevant docs (PRD.md, architecture.md, data-model.md, etc.) immediately when a decision is made
+- Forget to update `memory/project_state.md` after a PR merges or branch work completes

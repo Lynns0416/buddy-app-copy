@@ -8,7 +8,14 @@
     "apple": "Sign in with Apple"
   },
   "admin": {
-    "title": "Admin"
+    "title": "Admin",
+    "buddies": "Buddies"
+  },
+  "adminBuddies": {
+    "title": "Pending Buddies",
+    "approve": "Approve",
+    "reject": "Reject",
+    "noResults": "No pending buddies"
   },
   "pending": {
     "title": "Awaiting approval",

@@ -15,13 +15,13 @@ enum UserRole {
 
 enum BuddyStatus {
   pending
-  trainee
   active
   rejected
   suspended
 }
 
 enum BuddyTier {
+  trainee
   junior
   mid
   senior

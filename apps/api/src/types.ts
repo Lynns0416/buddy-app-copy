@@ -54,6 +54,20 @@ export type TourResponse = {
   updatedAt: Date
 }
 
+// Admin-only response — includes tier and internalNotes
+export type AdminBuddyResponse = {
+  id: string
+  userId: string
+  status: string
+  tier: string | null
+  displayName: string
+  realName: string
+  email: string
+  internalNotes: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
 // Sanitized response type — no admin-only fields (internalNotes, tier, adminEvaluations, etc.)
 export type UserResponse = {
   id: string

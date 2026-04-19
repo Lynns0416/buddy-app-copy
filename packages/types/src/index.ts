@@ -5,10 +5,10 @@ import { z } from 'zod'
 export const UserRoleSchema = z.enum(['buddy', 'admin', 'super_admin'])
 export type UserRole = z.infer<typeof UserRoleSchema>
 
-export const BuddyStatusSchema = z.enum(['pending', 'trainee', 'active', 'rejected', 'suspended'])
+export const BuddyStatusSchema = z.enum(['pending', 'active', 'rejected', 'suspended'])
 export type BuddyStatus = z.infer<typeof BuddyStatusSchema>
 
-export const BuddyTierSchema = z.enum(['junior', 'mid', 'senior', 'expert', 'instructor', 'organizer'])
+export const BuddyTierSchema = z.enum(['trainee', 'junior', 'mid', 'senior', 'expert', 'instructor', 'organizer'])
 export type BuddyTier = z.infer<typeof BuddyTierSchema>
 
 export const BookingStatusSchema = z.enum(['confirmed', 'maybe', 'waitlist', 'declined'])
@@ -60,3 +60,10 @@ export const UpdateBuddyProfileSchema = z.object({
 })
 export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
 
+// Admin
+
+export const UpdateBuddyStatusSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('active'), tier: BuddyTierSchema.optional() }),
+  z.object({ status: z.literal('rejected') }),
+])
+export type UpdateBuddyStatus = z.infer<typeof UpdateBuddyStatusSchema>

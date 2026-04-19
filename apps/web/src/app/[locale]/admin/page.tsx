@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
@@ -27,6 +28,9 @@ export default function AdminPage() {
   return (
     <main>
       <h1>{t('title')}</h1>
+      <nav>
+        <Link href={routes.adminBuddies(locale)}>{t('buddies')}</Link>
+      </nav>
     </main>
   )
 }
