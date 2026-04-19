@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { listTours } from './tour.service'
 
@@ -11,7 +12,8 @@ vi.mock('../lib/db', () => ({
 
 import { db } from '../lib/db'
 
-const mockFindMany = vi.mocked(db.tour.findMany)
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockFindMany = vi.mocked(db.tour).findMany
 
 const mockTour = {
   id: 'tour-1',

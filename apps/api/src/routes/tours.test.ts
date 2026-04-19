@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { routes } from './index'
 import { tourRoutes } from './tours'
-import type { AuthEnv } from '../types'
+import type { AuthEnv, TourResponse } from '../types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -58,7 +59,7 @@ describe('GET /tours', () => {
     mockListTours.mockResolvedValueOnce([mockTour] as any)
     const res = await buildApp().request('/tours')
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = await res.json() as TourResponse[]
     expect(body).toHaveLength(1)
     expect(body[0].id).toBe('tour-1')
   })
@@ -67,7 +68,7 @@ describe('GET /tours', () => {
     mockListTours.mockResolvedValueOnce([])
     const res = await buildApp().request('/tours')
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = await res.json() as TourResponse[]
     expect(body).toEqual([])
   })
 
@@ -93,7 +94,7 @@ describe('GET /tours', () => {
   it('returns 400 for invalid status value', async () => {
     const res = await buildApp().request('/tours?status=invalid')
     expect(res.status).toBe(400)
-    const body = await res.json()
+    const body = await res.json() as { error: string }
     expect(body.error).toBe('Invalid query params')
   })
 

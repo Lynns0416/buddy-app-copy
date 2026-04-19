@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { routes } from './index'
 import { buddyRoutes } from './buddies'
-import type { AuthEnv } from '../types'
+import type { AuthEnv, BuddyProfileResponse } from '../types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -64,7 +64,7 @@ describe('GET /me/profile', () => {
     mockGetBuddyProfile.mockResolvedValueOnce(mockProfile)
     const res = await buildApp().request('/me/profile')
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = await res.json() as BuddyProfileResponse
     expect(body.id).toBe('profile-1')
     expect(body.displayName).toBe('Test Buddy')
   })
@@ -72,7 +72,7 @@ describe('GET /me/profile', () => {
   it('does not expose admin-only fields', async () => {
     mockGetBuddyProfile.mockResolvedValueOnce(mockProfile)
     const res = await buildApp().request('/me/profile')
-    const body = await res.json()
+    const body = await res.json() as Record<string, unknown>
     expect(body.internalNotes).toBeUndefined()
     expect(body.tier).toBeUndefined()
   })
@@ -99,7 +99,7 @@ describe('PUT /me/profile', () => {
       body: JSON.stringify({ languages: 'not-an-array' }),
     })
     expect(res.status).toBe(400)
-    const body = await res.json()
+    const body = await res.json() as { error: string }
     expect(body.error).toBe('Invalid request body')
   })
 
@@ -122,7 +122,7 @@ describe('PUT /me/profile', () => {
       body: JSON.stringify({ bio: 'hello' }),
     })
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = await res.json() as BuddyProfileResponse
     expect(body.bio).toBe('hello')
   })
 

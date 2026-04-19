@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getBuddyProfile, updateBuddyProfile } from './buddy.service'
 
@@ -12,8 +13,10 @@ vi.mock('../lib/db', () => ({
 
 import { db } from '../lib/db'
 
-const mockFindUnique = vi.mocked(db.buddyProfile.findUnique)
-const mockUpdate = vi.mocked(db.buddyProfile.update)
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockFindUnique = vi.mocked(db.buddyProfile).findUnique
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockUpdate = vi.mocked(db.buddyProfile).update
 
 const mockProfile = {
   id: 'profile-1',

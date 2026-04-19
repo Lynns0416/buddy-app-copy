@@ -15,7 +15,8 @@
     "title": "Pending Buddies",
     "approve": "Approve",
     "reject": "Reject",
-    "noResults": "No pending buddies"
+    "noResults": "No pending buddies",
+    "actionError": "Action failed. Please try again."
   },
   "pending": {
     "title": "Awaiting approval",

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { upsertUser, getUser } from './auth.service'
 
@@ -12,8 +13,10 @@ vi.mock('../lib/db', () => ({
 
 import { db } from '../lib/db'
 
-const mockUpsert = vi.mocked(db.user.upsert)
-const mockFindUnique = vi.mocked(db.user.findUnique)
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockUpsert = vi.mocked(db.user).upsert
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockFindUnique = vi.mocked(db.user).findUnique
 
 const mockUserRow = {
   id: 'user-1',

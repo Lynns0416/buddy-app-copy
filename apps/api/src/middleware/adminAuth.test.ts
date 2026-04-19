@@ -6,7 +6,7 @@ import type { AuthEnv } from '../types'
 function buildApp(role: string) {
   const app = new Hono<AuthEnv>()
   app.use('*', (c, next) => {
-    c.set('user', { id: 'user-1', firebaseUid: 'uid-123', email: 'test@example.com', role } as any)
+    c.set('user', { id: 'user-1', firebaseUid: 'uid-123', email: 'test@example.com', role })
     return next()
   })
   app.use('*', adminAuthMiddleware)

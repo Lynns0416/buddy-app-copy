@@ -59,7 +59,7 @@ export async function updateBuddyStatus(
     })
     return mapBuddy(raw)
   } catch (e) {
-    if (typeof e === 'object' && e !== null && (e as any).code === 'P2025') return null
+    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e
   }
 }

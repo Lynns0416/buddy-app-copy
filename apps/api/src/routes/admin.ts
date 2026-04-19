@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { BuddyStatusSchema, UpdateBuddyStatusSchema, type BuddyTier } from '@peace-buddy/types'
+import { BuddyStatusSchema, UpdateBuddyStatusSchema } from '@peace-buddy/types'
 import { listBuddies, updateBuddyStatus } from '../services/admin.service'
 import type { AuthEnv } from '../types'
 
@@ -34,7 +34,7 @@ adminRoutes.put('/buddies/:id/status', async (c) => {
     return c.json({ error: 'Invalid request body' }, 400)
   }
 
-  const tier = 'tier' in data ? (data.tier as BuddyTier | undefined) : undefined
+  const tier = 'tier' in data ? (data.tier) : undefined
   const buddy = await updateBuddyStatus(id, data.status, tier)
   if (!buddy) return c.json({ error: 'Buddy not found' }, 404)
 

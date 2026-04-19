@@ -2,13 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { firebaseAuthMiddleware } from './firebaseAuth'
 import type { FirebaseEnv } from '../types'
+import type { DecodedIdToken } from 'firebase-admin/auth'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
 }))
 
 import { auth } from '../lib/firebase'
-const mockVerify = vi.mocked(auth.verifyIdToken)
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockVerify = vi.mocked(auth).verifyIdToken
 
 function buildApp() {
   const app = new Hono<FirebaseEnv>()
@@ -47,19 +49,19 @@ describe('firebaseAuthMiddleware', () => {
       email: 'test@example.com',
       name: 'Test User',
       picture: undefined,
-    } as any)
+    } as unknown as DecodedIdToken)
 
     const res = await buildApp().request('/test', {
       headers: { Authorization: 'Bearer valid-token' },
     })
 
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = await res.json() as { uid: string }
     expect(body.uid).toBe('uid-123')
   })
 
   it('passes the token (not the Bearer prefix) to verifyIdToken', async () => {
-    mockVerify.mockResolvedValueOnce({ uid: 'uid-123', email: 'a@b.com' } as any)
+    mockVerify.mockResolvedValueOnce({ uid: 'uid-123', email: 'a@b.com' } as unknown as DecodedIdToken)
 
     await buildApp().request('/test', {
       headers: { Authorization: 'Bearer my-token' },

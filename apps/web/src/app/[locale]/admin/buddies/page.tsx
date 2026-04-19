@@ -26,6 +26,8 @@ export default function AdminBuddiesPage() {
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('adminBuddies')
   const [buddies, setBuddies] = useState<AdminBuddy[]>([])
+  const [pendingAction, setPendingAction] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading) {
@@ -46,19 +48,35 @@ export default function AdminBuddiesPage() {
   }, [loading, firebaseUser, dbUser])
 
   async function handleApprove(id: string) {
-    await apiRequest(`/admin/buddies/${id}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status: 'active' }),
-    })
-    setBuddies((prev) => prev.filter((b) => b.id !== id))
+    setPendingAction(id)
+    setError(null)
+    try {
+      await apiRequest(`/admin/buddies/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'active' }),
+      })
+      setBuddies((prev) => prev.filter((b) => b.id !== id))
+    } catch {
+      setError(t('actionError'))
+    } finally {
+      setPendingAction(null)
+    }
   }
 
   async function handleReject(id: string) {
-    await apiRequest(`/admin/buddies/${id}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status: 'rejected' }),
-    })
-    setBuddies((prev) => prev.filter((b) => b.id !== id))
+    setPendingAction(id)
+    setError(null)
+    try {
+      await apiRequest(`/admin/buddies/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'rejected' }),
+      })
+      setBuddies((prev) => prev.filter((b) => b.id !== id))
+    } catch {
+      setError(t('actionError'))
+    } finally {
+      setPendingAction(null)
+    }
   }
 
   if (loading || !dbUser) return null
@@ -66,6 +84,7 @@ export default function AdminBuddiesPage() {
   return (
     <main>
       <h1>{t('title')}</h1>
+      {error && <p>{error}</p>}
       {buddies.length === 0 ? (
         <p>{t('noResults')}</p>
       ) : (
@@ -74,8 +93,18 @@ export default function AdminBuddiesPage() {
             <li key={buddy.id}>
               <span>{buddy.displayName}</span>
               <span>{buddy.email}</span>
-              <button onClick={() => handleApprove(buddy.id)}>{t('approve')}</button>
-              <button onClick={() => handleReject(buddy.id)}>{t('reject')}</button>
+              <button
+                onClick={() => handleApprove(buddy.id)}
+                disabled={pendingAction !== null}
+              >
+                {t('approve')}
+              </button>
+              <button
+                onClick={() => handleReject(buddy.id)}
+                disabled={pendingAction !== null}
+              >
+                {t('reject')}
+              </button>
             </li>
           ))}
         </ul>

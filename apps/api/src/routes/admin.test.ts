@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { routes } from './index'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
-import type { AuthEnv } from '../types'
+import type { AuthEnv, AdminBuddyResponse } from '../types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -84,7 +84,7 @@ describe('GET /admin/buddies', () => {
     mockListBuddies.mockResolvedValueOnce([mockBuddy])
     const res = await buildApp('admin').request('/admin/buddies')
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = await res.json() as AdminBuddyResponse[]
     expect(body).toHaveLength(1)
     expect(body[0].id).toBe('profile-1')
   })

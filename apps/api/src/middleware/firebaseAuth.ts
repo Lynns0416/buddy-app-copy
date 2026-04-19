@@ -7,7 +7,7 @@ export async function verifyFirebaseToken(token: string): Promise<FirebaseUser> 
   return {
     uid: decoded.uid,
     email: decoded.email ?? '',
-    name: decoded.name,
+    name: decoded.name as string | undefined,
     picture: decoded.picture,
   }
 }

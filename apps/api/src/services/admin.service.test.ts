@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { listBuddies, updateBuddyStatus } from './admin.service'
 
@@ -12,8 +13,10 @@ vi.mock('../lib/db', () => ({
 
 import { db } from '../lib/db'
 
-const mockFindMany = vi.mocked(db.buddyProfile.findMany)
-const mockUpdate = vi.mocked(db.buddyProfile.update)
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockFindMany = vi.mocked(db.buddyProfile).findMany
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockUpdate = vi.mocked(db.buddyProfile).update
 
 const mockRaw = {
   id: 'profile-1',
@@ -70,7 +73,7 @@ describe('listBuddies', () => {
     mockFindMany.mockResolvedValueOnce([mockRaw] as any)
     const result = await listBuddies()
     expect(result[0].email).toBe('buddy@example.com')
-    expect((result[0] as any).user).toBeUndefined()
+    expect((result[0] as Record<string, unknown>).user).toBeUndefined()
   })
 })
 
@@ -117,6 +120,6 @@ describe('updateBuddyStatus', () => {
     mockUpdate.mockResolvedValueOnce(raw as any)
     const result = await updateBuddyStatus('profile-1', 'active')
     expect(result?.email).toBe('buddy@example.com')
-    expect((result as any)?.user).toBeUndefined()
+    expect((result as Record<string, unknown> | null)?.user).toBeUndefined()
   })
 })

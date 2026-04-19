@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { authMiddleware } from './auth'
 import type { AuthEnv } from '../types'
+import type { DecodedIdToken } from 'firebase-admin/auth'
+import type { User } from '@prisma/client'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -16,8 +18,10 @@ vi.mock('../lib/db', () => ({
 import { auth } from '../lib/firebase'
 import { db } from '../lib/db'
 
-const mockVerify = vi.mocked(auth.verifyIdToken)
-const mockFindUnique = vi.mocked(db.user.findUnique)
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockVerify = vi.mocked(auth).verifyIdToken
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockFindUnique = vi.mocked(db.user).findUnique
 
 function buildApp() {
   const app = new Hono<AuthEnv>()
@@ -47,33 +51,33 @@ describe('authMiddleware', () => {
   })
 
   it('returns 401 when user is not in the database', async () => {
-    mockVerify.mockResolvedValueOnce(mockDecodedToken as any)
-    mockFindUnique.mockResolvedValueOnce(null as any)
+    mockVerify.mockResolvedValueOnce(mockDecodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(null)
 
     const res = await buildApp().request('/test', {
       headers: { Authorization: 'Bearer valid-token' },
     })
     expect(res.status).toBe(401)
-    const body = await res.json()
+    const body = await res.json() as { error: string }
     expect(body.error).toBe('User not found')
   })
 
   it('calls next and sets user on context when token and DB user are valid', async () => {
-    mockVerify.mockResolvedValueOnce(mockDecodedToken as any)
-    mockFindUnique.mockResolvedValueOnce(mockDbUser as any)
+    mockVerify.mockResolvedValueOnce(mockDecodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(mockDbUser as unknown as User)
 
     const res = await buildApp().request('/test', {
       headers: { Authorization: 'Bearer valid-token' },
     })
 
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = await res.json() as { userId: string }
     expect(body.userId).toBe('user-1')
   })
 
   it('looks up DB user by firebaseUid from the token', async () => {
-    mockVerify.mockResolvedValueOnce(mockDecodedToken as any)
-    mockFindUnique.mockResolvedValueOnce(mockDbUser as any)
+    mockVerify.mockResolvedValueOnce(mockDecodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(mockDbUser as unknown as User)
 
     await buildApp().request('/test', {
       headers: { Authorization: 'Bearer valid-token' },

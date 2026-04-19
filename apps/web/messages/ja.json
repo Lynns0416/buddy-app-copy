@@ -15,7 +15,8 @@
     "title": "承認待ちバディ",
     "approve": "承認",
     "reject": "却下",
-    "noResults": "承認待ちのバディはいません"
+    "noResults": "承認待ちのバディはいません",
+    "actionError": "操作に失敗しました。もう一度お試しください。"
   },
   "pending": {
     "title": "承認待ち",

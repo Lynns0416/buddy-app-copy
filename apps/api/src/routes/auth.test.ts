@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { routes } from './index'
+import type { DecodedIdToken } from 'firebase-admin/auth'
+import type { User } from '@prisma/client'
+import type { UserResponse } from '../types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -23,8 +26,10 @@ import { auth } from '../lib/firebase'
 import { db } from '../lib/db'
 import { upsertUser, getUser } from '../services/auth.service'
 
-const mockVerify = vi.mocked(auth.verifyIdToken)
-const mockFindUnique = vi.mocked(db.user.findUnique)
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockVerify = vi.mocked(auth).verifyIdToken
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockFindUnique = vi.mocked(db.user).findUnique
 const mockUpsertUser = vi.mocked(upsertUser)
 const mockGetUser = vi.mocked(getUser)
 
@@ -71,7 +76,7 @@ describe('POST /auth/register', () => {
   })
 
   it('returns 400 when body has wrong field types', async () => {
-    mockVerify.mockResolvedValueOnce(decodedToken as any)
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
 
     const res = await routes.request('/auth/register', {
       method: 'POST',
@@ -79,12 +84,12 @@ describe('POST /auth/register', () => {
       body: JSON.stringify({ displayName: 123 }),
     })
     expect(res.status).toBe(400)
-    const body = await res.json()
+    const body = await res.json() as { error: string }
     expect(body.error).toBe('Invalid request body')
   })
 
   it('returns 201 with the user on success', async () => {
-    mockVerify.mockResolvedValueOnce(decodedToken as any)
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
     mockUpsertUser.mockResolvedValueOnce(userResponse)
 
     const res = await routes.request('/auth/register', {
@@ -94,9 +99,9 @@ describe('POST /auth/register', () => {
     })
 
     expect(res.status).toBe(201)
-    const body = await res.json()
+    const body = await res.json() as UserResponse
     expect(body.id).toBe('user-1')
-    expect(body.buddyProfile.status).toBe('pending')
+    expect(body.buddyProfile?.status).toBe('pending')
   })
 
   it('passes firebase name and picture to upsertUser', async () => {
@@ -105,7 +110,7 @@ describe('POST /auth/register', () => {
       email: 'test@example.com',
       name: 'Firebase Name',
       picture: 'https://photo.url',
-    } as any)
+    } as unknown as DecodedIdToken)
     mockUpsertUser.mockResolvedValueOnce(userResponse)
 
     await routes.request('/auth/register', {
@@ -134,8 +139,8 @@ describe('GET /auth/me', () => {
   })
 
   it('returns 401 when user is not in the database', async () => {
-    mockVerify.mockResolvedValueOnce(decodedToken as any)
-    mockFindUnique.mockResolvedValueOnce(null as any)
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(null)
 
     const res = await routes.request('/auth/me', {
       headers: { Authorization: `Bearer ${validToken}` },
@@ -144,8 +149,8 @@ describe('GET /auth/me', () => {
   })
 
   it('returns 404 when getUser returns null', async () => {
-    mockVerify.mockResolvedValueOnce(decodedToken as any)
-    mockFindUnique.mockResolvedValueOnce(dbUser as any)
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(dbUser as unknown as User)
     mockGetUser.mockResolvedValueOnce(null)
 
     const res = await routes.request('/auth/me', {
@@ -155,8 +160,8 @@ describe('GET /auth/me', () => {
   })
 
   it('returns 200 with sanitized user', async () => {
-    mockVerify.mockResolvedValueOnce(decodedToken as any)
-    mockFindUnique.mockResolvedValueOnce(dbUser as any)
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(dbUser as unknown as User)
     mockGetUser.mockResolvedValueOnce(userResponse)
 
     const res = await routes.request('/auth/me', {
@@ -164,11 +169,11 @@ describe('GET /auth/me', () => {
     })
 
     expect(res.status).toBe(200)
-    const body = await res.json()
+    const body = await res.json() as UserResponse & { firebaseUid?: unknown }
     expect(body.id).toBe('user-1')
-    expect(body.buddyProfile.status).toBe('pending')
+    expect(body.buddyProfile?.status).toBe('pending')
     expect(body.firebaseUid).toBeUndefined()
-    expect(body.buddyProfile.tier).toBeUndefined()
-    expect(body.buddyProfile.internalNotes).toBeUndefined()
+    expect((body.buddyProfile as Record<string, unknown> | null | undefined)?.tier).toBeUndefined()
+    expect((body.buddyProfile as Record<string, unknown> | null | undefined)?.internalNotes).toBeUndefined()
   })
 })

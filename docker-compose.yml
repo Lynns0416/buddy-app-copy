@@ -59,7 +59,7 @@ services:
       dockerfile: apps/api/Dockerfile
     working_dir: /app/apps/api
     entrypoint: []
-    command: pnpm test
+    command: sh -c "cd /app/packages/types && pnpm build && cd /app/apps/api && pnpm test"
     volumes:
       - .:/app
       - /app/node_modules
