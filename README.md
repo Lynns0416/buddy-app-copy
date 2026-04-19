@@ -103,6 +103,12 @@ docker compose up --build
 
 Migrations run automatically on API container start.
 
+To seed the database with dummy data for local development:
+
+```bash
+docker compose run --rm api sh -c "cd /app && pnpm exec prisma db seed"
+```
+
 To reset the database:
 
 ```bash
