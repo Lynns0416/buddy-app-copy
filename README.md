@@ -110,6 +110,19 @@ docker compose down -v
 docker compose up --build
 ```
 
+## Running Tests
+
+```bash
+# all tests
+docker compose run --rm api-test
+
+# specific file
+docker compose run --rm api-test pnpm test src/middleware/adminAuth.test.ts
+
+# with coverage
+docker compose run --rm api-test pnpm test:coverage
+```
+
 ## Scheduled Job Endpoints (Local Testing)
 
 ```bash

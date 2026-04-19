@@ -7,6 +7,9 @@
     "google": "Googleでログイン",
     "apple": "Appleでログイン"
   },
+  "admin": {
+    "title": "管理"
+  },
   "pending": {
     "title": "承認待ち",
     "message": "アカウントは管理者の承認待ちです。承認され次第、通知いたします。",

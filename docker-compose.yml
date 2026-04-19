@@ -52,5 +52,19 @@ services:
       - /app/apps/web/node_modules
       - /app/apps/web/.next
 
+  api-test:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    working_dir: /app/apps/api
+    entrypoint: []
+    command: pnpm test
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/packages/types/node_modules
+      - /app/apps/api/node_modules
+
 volumes:
   db_data:

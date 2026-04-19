@@ -1,9 +1,11 @@
 import { Hono } from 'hono'
 import { firebaseAuthMiddleware } from '../middleware/firebaseAuth'
 import { authMiddleware } from '../middleware/auth'
+import { adminAuthMiddleware } from '../middleware/adminAuth'
 import { registerHandler, authRoutes } from './auth'
 import { buddyRoutes } from './buddies'
 import { tourRoutes } from './tours'
+import { adminRoutes } from './admin'
 import type { FirebaseEnv, AuthEnv } from '../types'
 
 // TODO: import route modules as they are implemented
@@ -24,6 +26,8 @@ protectedApp.use('*', authMiddleware)
 protectedApp.route('/auth', authRoutes)
 protectedApp.route('/me', buddyRoutes)
 protectedApp.route('/tours', tourRoutes)
+protectedApp.use('/admin/*', adminAuthMiddleware)
+protectedApp.route('/admin', adminRoutes)
 // protectedApp.route('/bookings', bookingRoutes)
 // protectedApp.route('/evaluations', evaluationRoutes)
 // protectedApp.route('/notifications', notificationRoutes)

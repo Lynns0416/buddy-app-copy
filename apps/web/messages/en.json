@@ -7,6 +7,9 @@
     "google": "Sign in with Google",
     "apple": "Sign in with Apple"
   },
+  "admin": {
+    "title": "Admin"
+  },
   "pending": {
     "title": "Awaiting approval",
     "message": "Your account is pending admin approval. You will be notified once approved.",
