@@ -95,6 +95,7 @@
   --accent-foreground: oklch(0.929 0.013 255.508);
 }
 
+
 @layer base {
   * {
     @apply border-border;
