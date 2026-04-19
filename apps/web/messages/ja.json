@@ -3,6 +3,7 @@
     "name": "Peace Buddy"
   },
   "login": {
+    "appName": "Peace Buddy",
     "title": "ログイン",
     "google": "Googleでログイン",
     "apple": "Appleでログイン"
@@ -39,6 +40,8 @@
   },
   "adminBuddies": {
     "title": "承認待ちバディ",
+    "name": "名前",
+    "email": "メール",
     "approve": "承認",
     "reject": "却下",
     "noResults": "承認待ちのバディはいません",

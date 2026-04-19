@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { BuddyStatusSchema } from '@peace-buddy/types'
+import { Button } from '@/components/ui/button'
 
 export default function PendingPage() {
   const { firebaseUser, dbUser, loading, signOut } = useAuth()
@@ -26,10 +27,12 @@ export default function PendingPage() {
   if (loading) return null
 
   return (
-    <main>
-      <h1>{t('title')}</h1>
-      <p>{t('message')}</p>
-      <button onClick={signOut}>{t('signOut')}</button>
-    </main>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm rounded-xl border bg-card p-8 shadow-sm text-center">
+        <h1 className="mb-3 text-xl font-semibold">{t('title')}</h1>
+        <p className="mb-6 text-sm text-muted-foreground">{t('message')}</p>
+        <Button variant="outline" onClick={signOut}>{t('signOut')}</Button>
+      </div>
+    </div>
   )
 }

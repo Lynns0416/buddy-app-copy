@@ -8,6 +8,9 @@ import { routes } from '../../../../lib/routes'
 import { apiRequest } from '../../../../lib/api'
 import type { AdminBuddyResponse } from '@peace-buddy/types'
 import { UserRoleSchema, BuddyStatusSchema } from '@peace-buddy/types'
+import { AppShell } from '@/components/app-shell'
+import { Button } from '@/components/ui/button'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export default function AdminBuddiesPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -71,33 +74,57 @@ export default function AdminBuddiesPage() {
   if (loading || !dbUser) return null
 
   return (
-    <main>
-      <h1>{t('title')}</h1>
-      {error && <p>{error}</p>}
-      {buddies.length === 0 ? (
-        <p>{t('noResults')}</p>
-      ) : (
-        <ul>
-          {buddies.map((buddy) => (
-            <li key={buddy.id}>
-              <span>{buddy.displayName}</span>
-              <span>{buddy.email}</span>
-              <button
-                onClick={() => handleApprove(buddy.id)}
-                disabled={pendingAction !== null}
-              >
-                {t('approve')}
-              </button>
-              <button
-                onClick={() => handleReject(buddy.id)}
-                disabled={pendingAction !== null}
-              >
-                {t('reject')}
-              </button>
-            </li>
-          ))}
-        </ul>
+    <AppShell variant="admin">
+      <h1 className="mb-6 text-xl font-semibold">{t('title')}</h1>
+
+      {error && (
+        <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {error}
+        </p>
       )}
-    </main>
+
+      {buddies.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t('noResults')}</p>
+      ) : (
+        <div className="rounded-lg border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('name')}</TableHead>
+                <TableHead>{t('email')}</TableHead>
+                <TableHead className="w-40" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {buddies.map((buddy) => (
+                <TableRow key={buddy.id}>
+                  <TableCell className="font-medium">{buddy.displayName}</TableCell>
+                  <TableCell className="text-muted-foreground">{buddy.email}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApprove(buddy.id)}
+                        disabled={pendingAction !== null}
+                      >
+                        {t('approve')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleReject(buddy.id)}
+                        disabled={pendingAction !== null}
+                      >
+                        {t('reject')}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </AppShell>
   )
 }

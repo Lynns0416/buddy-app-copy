@@ -3,6 +3,7 @@
     "name": "Peace Buddy"
   },
   "login": {
+    "appName": "Peace Buddy",
     "title": "Sign in",
     "google": "Sign in with Google",
     "apple": "Sign in with Apple"
@@ -39,6 +40,8 @@
   },
   "adminBuddies": {
     "title": "Pending Buddies",
+    "name": "Name",
+    "email": "Email",
     "approve": "Approve",
     "reject": "Reject",
     "noResults": "No pending buddies",

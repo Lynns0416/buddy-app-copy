@@ -9,6 +9,10 @@ import { routes } from '../../../../../lib/routes'
 import { apiRequest } from '../../../../../lib/api'
 import type { GroupDetailResponse } from '@peace-buddy/types'
 import { UserRoleSchema } from '@peace-buddy/types'
+import { AppShell } from '@/components/app-shell'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export default function AdminGroupDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -37,67 +41,92 @@ export default function AdminGroupDetailPage() {
   }, [loading, firebaseUser, dbUser, id])
 
   if (loading || !dbUser) return null
-  if (fetchError) return <main><p>{fetchError}</p></main>
+
+  if (fetchError) {
+    return (
+      <AppShell variant="admin">
+        <p className="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{fetchError}</p>
+      </AppShell>
+    )
+  }
+
   if (!group) return null
 
   return (
-    <main>
-      <Link href={routes.adminGroups(locale)}>{t('back')}</Link>
-      <h1>{group.name}</h1>
-      <dl>
-        <dt>{t('type')}</dt>
-        <dd>{group.type}</dd>
-        {group.contactName && (
-          <>
-            <dt>{t('contactName')}</dt>
-            <dd>{group.contactName}</dd>
-          </>
-        )}
-        {group.contactEmail && (
-          <>
-            <dt>{t('contactEmail')}</dt>
-            <dd>{group.contactEmail}</dd>
-          </>
-        )}
-        {group.contactPhone && (
-          <>
-            <dt>{t('contactPhone')}</dt>
-            <dd>{group.contactPhone}</dd>
-          </>
-        )}
-        {group.notes && (
-          <>
-            <dt>{t('notes')}</dt>
-            <dd>{group.notes}</dd>
-          </>
-        )}
-      </dl>
-      <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
-      <h2>{t('tours')}</h2>
+    <AppShell variant="admin">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href={routes.adminGroups(locale)} className="text-sm text-muted-foreground hover:text-foreground">
+            ← {t('back')}
+          </Link>
+        </div>
+        <Button asChild size="sm">
+          <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
+        </Button>
+      </div>
+
+      <div className="mb-6 rounded-lg border bg-card p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <h1 className="text-xl font-semibold">{group.name}</h1>
+          <Badge variant="secondary">{group.type}</Badge>
+        </div>
+        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          {group.contactName && (
+            <div>
+              <dt className="text-muted-foreground">{t('contactName')}</dt>
+              <dd className="font-medium">{group.contactName}</dd>
+            </div>
+          )}
+          {group.contactEmail && (
+            <div>
+              <dt className="text-muted-foreground">{t('contactEmail')}</dt>
+              <dd className="font-medium">{group.contactEmail}</dd>
+            </div>
+          )}
+          {group.contactPhone && (
+            <div>
+              <dt className="text-muted-foreground">{t('contactPhone')}</dt>
+              <dd className="font-medium">{group.contactPhone}</dd>
+            </div>
+          )}
+          {group.notes && (
+            <div className="sm:col-span-2">
+              <dt className="text-muted-foreground">{t('notes')}</dt>
+              <dd className="font-medium">{group.notes}</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+
+      <h2 className="mb-3 text-base font-semibold">{t('tours')}</h2>
       {group.tours.length === 0 ? (
-        <p>{t('noTours')}</p>
+        <p className="text-sm text-muted-foreground">{t('noTours')}</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>{t('tourDate')}</th>
-              <th>{t('status')}</th>
-              <th>{t('location')}</th>
-              <th>{t('capacity')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {group.tours.map((tour) => (
-              <tr key={tour.id}>
-                <td>{tour.tourDate}</td>
-                <td>{tour.status}</td>
-                <td>{tour.location}</td>
-                <td>{tour.capacity}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="rounded-lg border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('tourDate')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead>{t('location')}</TableHead>
+                <TableHead>{t('capacity')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {group.tours.map((tour) => (
+                <TableRow key={tour.id}>
+                  <TableCell>{tour.tourDate}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{tour.status}</Badge>
+                  </TableCell>
+                  <TableCell>{tour.location}</TableCell>
+                  <TableCell>{tour.capacity}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
-    </main>
+    </AppShell>
   )
 }
