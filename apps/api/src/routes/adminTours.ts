@@ -35,7 +35,7 @@ adminTourRoutes.post('/', async (c) => {
   }
 
   const parsed = CreateTourSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
+  if (!parsed.success) return c.json({ error: 'Invalid request body', details: parsed.error.flatten() }, 400)
 
   return c.json(await createTour(parsed.data), 201)
 })
@@ -58,7 +58,7 @@ adminTourRoutes.put('/:id', async (c) => {
   }
 
   const parsed = UpdateTourSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
+  if (!parsed.success) return c.json({ error: 'Invalid request body', details: parsed.error.flatten() }, 400)
 
   try {
     return c.json(await updateTour(id, parsed.data))

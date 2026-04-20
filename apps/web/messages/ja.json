@@ -96,7 +96,9 @@
     "statusPublished": "公開中",
     "statusCancelled": "キャンセル済",
     "statusCompleted": "完了",
-    "actionError": "操作に失敗しました。もう一度お試しください。"
+    "actionError": "操作に失敗しました。もう一度お試しください。",
+    "validationError": "入力内容を確認してください。",
+    "maybeDeadlineError": "仮参加確定期限はキャンセル期限より前の日付にしてください。"
   },
   "shell": {
     "appName": "Peace Buddy",

@@ -96,7 +96,9 @@
     "statusPublished": "Published",
     "statusCancelled": "Cancelled",
     "statusCompleted": "Completed",
-    "actionError": "Action failed. Please try again."
+    "actionError": "Action failed. Please try again.",
+    "validationError": "Please fix the errors below.",
+    "maybeDeadlineError": "Maybe deadline must be before cancellation deadline."
   },
   "shell": {
     "appName": "Peace Buddy",
