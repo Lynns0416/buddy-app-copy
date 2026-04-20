@@ -241,6 +241,19 @@ export type UserResponse = {
   buddyProfile: BuddyProfileResponse | null
 }
 
+export type TourSeatCounts = {
+  confirmed: number
+  maybe: number
+  waitlist: number
+  declined: number
+}
+
+export type TourDetailResponse = TourResponse & {
+  seatCounts: TourSeatCounts
+  remainingSeats: number
+  myBookingStatus: BookingStatus | null
+}
+
 export type AdminTourBookingEntry = {
   id: string
   buddyId: string

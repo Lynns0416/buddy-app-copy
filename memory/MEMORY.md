@@ -13,3 +13,4 @@
 - [feedback_commits.md](feedback_commits.md) — No Co-Authored-By trailer; one concern per commit
 - [feedback_commit_size.md](feedback_commit_size.md) — Don't squash unrelated concerns into one large commit
 - [feedback_read_memory_first.md](feedback_read_memory_first.md) — Read memory/project_state.md at every session start before doing anything
+- [feedback_typecheck.md](feedback_typecheck.md) — Run tsc --noEmit in both apps before every commit

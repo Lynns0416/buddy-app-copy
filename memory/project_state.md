@@ -2,9 +2,9 @@
 name: Project state
 description: Current build status, blockers, and next steps
 type: project
+originSessionId: fc506377-5348-44f6-8a36-6390a05db19f
 ---
-
-## Built (merged to main, as of 2026-04-19)
+## Built (merged to main, as of 2026-04-20)
 
 - Monorepo, Prisma schema, Docker, next-intl i18n (ja/en)
 - Firebase Auth (Google; Apple deferred), session cookie
@@ -18,6 +18,11 @@ type: project
 - Response types moved to `packages/types`; local type dupes removed from web; magic strings replaced with enum values across API and web
 - Group management CRUD (#18): `GET/POST /admin/groups`, `GET/PUT /admin/groups/:id` + web pages (list, create, detail, edit)
 - Seed data added (#16); PRD todos added (#17)
+- Refactoring/frontend magic strings and test (#23)
+- `GET /admin/tours` + admin tour list page (#24)
+- Zod validation error details returned from API; `TourForm` component extracted (#25)
+- React Hook Form integration (#26); frontend tests added (#27)
+- Tour detail — buddy-facing: `GET /tours/:id` with seat counts + `myBookingStatus`; `/[locale]/dashboard/tours/[id]/page.tsx`; dashboard cards linked (in progress, not merged)
 
 ## Blocker
 
@@ -25,10 +30,8 @@ None known.
 
 ## Next (priority order)
 
-1. **Tour management — admin** (§7): create/edit/publish/cancel/complete tours, admin tour list + detail with booking list
-2. **Tour detail — buddy-facing** (§7, §8.2): `GET /tours/:id` with seat counts + own booking status
-3. **Booking system** (§8): create/update bookings, cancellation flow, waitlist logic
-4. *Resolve deferred data model questions before booking:* tour open/closed booking status, tour timeline/duration fields
+1. **Booking system** (§8): create/update bookings, cancellation flow, waitlist logic
+2. *Resolve deferred data model questions before booking:* tour open/closed booking status, tour timeline/duration fields
 
 ## Decisions
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { CalendarDays, MapPin, Users, Clock } from 'lucide-react'
 import { useAuth } from '../../../lib/auth'
@@ -57,7 +58,7 @@ export default function DashboardPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {tours.map((tour) => (
-            <div key={tour.id} className="rounded-lg border bg-card p-4">
+            <Link key={tour.id} href={routes.dashboardTour(locale, tour.id)} className="rounded-lg border bg-card p-4 hover:bg-accent transition-colors">
               <div className="mb-3 flex items-start justify-between gap-2">
                 <p className="font-medium">{tour.group.name}</p>
                 <Badge variant="secondary" className="shrink-0">
@@ -67,11 +68,11 @@ export default function DashboardPage() {
               <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays size={14} />
-                  {tour.tourDate}
+                  {tour.tourDate.slice(0, 10)}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Clock size={14} />
-                  {tour.meetingTime}
+                  {tour.meetingTime.slice(11, 16)}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin size={14} />
@@ -82,7 +83,7 @@ export default function DashboardPage() {
                   {tour.capacity}
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

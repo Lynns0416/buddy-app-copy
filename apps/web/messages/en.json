@@ -100,6 +100,27 @@
     "validationError": "Please fix the errors below.",
     "maybeDeadlineError": "Maybe deadline must be before cancellation deadline."
   },
+  "tourDetail": {
+    "back": "Back to Dashboard",
+    "tourDate": "Tour Date",
+    "meetingTime": "Meeting Time",
+    "location": "Location",
+    "capacity": "Capacity",
+    "description": "Description",
+    "seatCounts": "Seat Counts",
+    "confirmed": "Confirmed",
+    "maybe": "Maybe",
+    "waitlist": "Waitlist",
+    "declined": "Declined",
+    "remainingSeats": "Remaining Seats",
+    "myStatus": "My Status",
+    "noBooking": "Not booked",
+    "notFound": "Tour not found.",
+    "statusConfirmed": "Confirmed",
+    "statusMaybe": "Maybe",
+    "statusWaitlist": "Waitlist",
+    "statusDeclined": "Declined"
+  },
   "shell": {
     "appName": "Peace Buddy",
     "signOut": "Sign out",

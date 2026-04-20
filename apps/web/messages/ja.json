@@ -100,6 +100,27 @@
     "validationError": "入力内容を確認してください。",
     "maybeDeadlineError": "仮参加確定期限はキャンセル期限より前の日付にしてください。"
   },
+  "tourDetail": {
+    "back": "ダッシュボードに戻る",
+    "tourDate": "ツアー日",
+    "meetingTime": "集合時間",
+    "location": "場所",
+    "capacity": "定員",
+    "description": "説明",
+    "seatCounts": "参加状況",
+    "confirmed": "確定",
+    "maybe": "仮参加",
+    "waitlist": "キャンセル待ち",
+    "declined": "辞退",
+    "remainingSeats": "残席",
+    "myStatus": "自分のステータス",
+    "noBooking": "未予約",
+    "notFound": "ツアーが見つかりません。",
+    "statusConfirmed": "確定",
+    "statusMaybe": "仮参加",
+    "statusWaitlist": "キャンセル待ち",
+    "statusDeclined": "辞退"
+  },
   "shell": {
     "appName": "Peace Buddy",
     "signOut": "ログアウト",

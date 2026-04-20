@@ -7,6 +7,7 @@ import type {
   UpdateGroup,
   AdminBuddyResponse,
   TourResponse,
+  TourDetailResponse,
   AdminTourSummaryResponse,
   AdminTourDetailResponse,
   BuddyStatus,
@@ -81,4 +82,7 @@ export const apiClient = {
     apiRequest<TourResponse[]>(
       from ? `${apiPaths.tours}?from=${from}` : apiPaths.tours,
     ),
+
+  getTour: (id: string) =>
+    apiRequest<TourDetailResponse>(apiPaths.tour(id)),
 }
