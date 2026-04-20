@@ -40,7 +40,7 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
+      - name: Test (API)
         run: pnpm --filter @peace-buddy/api test:coverage
 
       - name: Coverage report
@@ -48,6 +48,9 @@ jobs:
         with:
           json-summary-path: apps/api/coverage/coverage-summary.json
           name: API
+
+      - name: Test (Web)
+        run: pnpm --filter @peace-buddy/web test
 
       - name: Notify Slack
         if: always()
