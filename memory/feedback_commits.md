@@ -14,3 +14,5 @@ Examples of correct splits:
 - `fix: correct not-registered condition` — bug fix only
 
 **Why:** User has asked for this repeatedly. Bundled commits obscure intent and make history hard to read.
+
+**NEVER commit autonomously.** Only commit when the user explicitly runs `/commit`. Do not commit as a side effect of any other task.

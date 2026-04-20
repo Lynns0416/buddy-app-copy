@@ -1,6 +1,8 @@
 'use client'
 
-import { type FormEvent, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { ApiError } from '@/lib/api'
@@ -9,6 +11,28 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+
+const timeRegex = /^\d{2}:\d{2}$/
+
+const TourFormSchema = z
+  .object({
+    groupId: z.string().uuid(),
+    tourDate: z.string().min(1),
+    meetingTime: z.string().regex(timeRegex),
+    location: z.string().min(1),
+    capacity: z.coerce.number().int().positive(),
+    description: z.string().optional(),
+    adminMemo: z.string().optional(),
+    cancellationDeadline: z.string().min(1),
+    maybeDeadline: z.string().optional(),
+    notificationOffsets: z.string(),
+  })
+  .refine(
+    (d) => !d.maybeDeadline || d.maybeDeadline < d.cancellationDeadline,
+    { message: 'maybeDeadlineError', path: ['maybeDeadline'] },
+  )
+
+type TourFormFields = z.infer<typeof TourFormSchema>
 
 export type TourFormValues = {
   groupId: string
@@ -32,136 +56,150 @@ type Props = {
 
 export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props) {
   const t = useTranslations('adminTours')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = new FormData(e.currentTarget)
-    const cancellationDeadline = form.get('cancellationDeadline') as string
-    const maybeDeadline = (form.get('maybeDeadline') as string) || null
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<TourFormFields>({
+    resolver: zodResolver(TourFormSchema),
+    defaultValues: {
+      groupId: defaultValues?.group.id ?? '',
+      tourDate: defaultValues?.tourDate.slice(0, 10) ?? '',
+      meetingTime: defaultValues?.meetingTime.slice(11, 16) ?? '',
+      location: defaultValues?.location ?? '',
+      capacity: defaultValues?.capacity ?? ('' as unknown as number),
+      description: defaultValues?.description ?? '',
+      adminMemo: defaultValues?.adminMemo ?? '',
+      cancellationDeadline: defaultValues?.cancellationDeadline.slice(0, 10) ?? '',
+      maybeDeadline: defaultValues?.maybeDeadline?.slice(0, 10) ?? '',
+      notificationOffsets: defaultValues
+        ? defaultValues.notificationOffsets.join(', ')
+        : '3, 1',
+    },
+  })
 
-    if (maybeDeadline && maybeDeadline >= cancellationDeadline) {
-      setFieldErrors({ maybeDeadline: [t('maybeDeadlineError')] })
-      setError(t('validationError'))
-      return
-    }
-
+  async function submit(fields: TourFormFields) {
     const values: TourFormValues = {
-      groupId: form.get('groupId') as string,
-      tourDate: form.get('tourDate') as string,
-      meetingTime: form.get('meetingTime') as string,
-      location: form.get('location') as string,
-      capacity: Number(form.get('capacity')),
-      description: (form.get('description') as string) || null,
-      adminMemo: (form.get('adminMemo') as string) || null,
-      cancellationDeadline,
-      maybeDeadline,
-      notificationOffsets: (form.get('notificationOffsets') as string)
+      groupId: fields.groupId,
+      tourDate: fields.tourDate,
+      meetingTime: fields.meetingTime,
+      location: fields.location,
+      capacity: fields.capacity,
+      description: fields.description || null,
+      adminMemo: fields.adminMemo || null,
+      cancellationDeadline: fields.cancellationDeadline,
+      maybeDeadline: fields.maybeDeadline || null,
+      notificationOffsets: fields.notificationOffsets
         .split(',')
         .map((s) => Number(s.trim()))
         .filter((n) => !isNaN(n)),
     }
-
-    setSubmitting(true)
-    setError(null)
-    setFieldErrors({})
     try {
       await onSubmit(values)
     } catch (err) {
       if (err instanceof ApiError && err.details) {
-        setFieldErrors(err.details.fieldErrors)
-        setError(
-          err.details.formErrors.length > 0
-            ? err.details.formErrors.join(' / ')
-            : t('validationError'),
-        )
+        for (const [field, messages] of Object.entries(err.details.fieldErrors)) {
+          setError(field as keyof TourFormFields, { message: messages[0] })
+        }
+        if (err.details.formErrors.length > 0) {
+          setError('root', { message: err.details.formErrors.join(' / ') })
+        }
       } else {
-        setError(err instanceof Error ? err.message : t('actionError'))
+        setError('root', { message: err instanceof Error ? err.message : t('actionError') })
       }
-    } finally {
-      setSubmitting(false)
     }
   }
 
   return (
-    <>
-      {error && (
-        <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</p>
+    <form onSubmit={handleSubmit(submit)} className="rounded-lg border bg-card p-6">
+      {errors.root && (
+        <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {errors.root.message}
+        </p>
       )}
 
-      <form onSubmit={handleSubmit} className="rounded-lg border bg-card p-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="groupId">{t('group')}</Label>
-            <select
-              id="groupId"
-              name="groupId"
-              required
-              defaultValue={defaultValues?.group.id}
-              className="border-input bg-background ring-offset-background flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="tourDate">{t('tourDate')}</Label>
-            <Input id="tourDate" name="tourDate" type="date" required defaultValue={defaultValues?.tourDate.slice(0, 10)} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="meetingTime">{t('meetingTime')}</Label>
-            <Input id="meetingTime" name="meetingTime" type="time" required defaultValue={defaultValues?.meetingTime.slice(11, 16)} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="location">{t('location')}</Label>
-            <Input id="location" name="location" required defaultValue={defaultValues?.location} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="capacity">{t('capacity')}</Label>
-            <Input id="capacity" name="capacity" type="number" min={1} required defaultValue={defaultValues?.capacity} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="cancellationDeadline">{t('cancellationDeadline')}</Label>
-            <Input id="cancellationDeadline" name="cancellationDeadline" type="date" required defaultValue={defaultValues?.cancellationDeadline.slice(0, 10)} />
-            {fieldErrors.cancellationDeadline?.map((e) => (
-              <p key={e} className="text-xs text-destructive">{e}</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="groupId">{t('group')}</Label>
+          <select
+            id="groupId"
+            {...register('groupId')}
+            className="border-input bg-background ring-offset-background flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
             ))}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="maybeDeadline">{t('maybeDeadline')}</Label>
-            <Input id="maybeDeadline" name="maybeDeadline" type="date" defaultValue={defaultValues?.maybeDeadline?.slice(0, 10) ?? ''} />
-            {fieldErrors.maybeDeadline?.map((e) => (
-              <p key={e} className="text-xs text-destructive">{e}</p>
-            ))}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="notificationOffsets">{t('notificationOffsets')}</Label>
-            <Input
-              id="notificationOffsets"
-              name="notificationOffsets"
-              defaultValue={defaultValues ? defaultValues.notificationOffsets.join(', ') : '3, 1'}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="description">{t('description')}</Label>
-            <Textarea id="description" name="description" rows={3} defaultValue={defaultValues?.description ?? ''} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="adminMemo">{t('adminMemo')}</Label>
-            <Textarea id="adminMemo" name="adminMemo" rows={3} defaultValue={defaultValues?.adminMemo ?? ''} />
-          </div>
+          </select>
+          {errors.groupId && <p className="text-xs text-destructive">{errors.groupId.message}</p>}
         </div>
 
-        <div className="mt-6 flex items-center gap-3">
-          <Button type="submit" disabled={submitting}>{t('save')}</Button>
-          <Button asChild variant="ghost">
-            <Link href={cancelHref}>{t('cancel')}</Link>
-          </Button>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="tourDate">{t('tourDate')}</Label>
+          <Input id="tourDate" type="date" {...register('tourDate')} />
+          {errors.tourDate && <p className="text-xs text-destructive">{errors.tourDate.message}</p>}
         </div>
-      </form>
-    </>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="meetingTime">{t('meetingTime')}</Label>
+          <Input id="meetingTime" type="time" {...register('meetingTime')} />
+          {errors.meetingTime && <p className="text-xs text-destructive">{errors.meetingTime.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="location">{t('location')}</Label>
+          <Input id="location" {...register('location')} />
+          {errors.location && <p className="text-xs text-destructive">{errors.location.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="capacity">{t('capacity')}</Label>
+          <Input id="capacity" type="number" min={1} {...register('capacity')} />
+          {errors.capacity && <p className="text-xs text-destructive">{errors.capacity.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="cancellationDeadline">{t('cancellationDeadline')}</Label>
+          <Input id="cancellationDeadline" type="date" {...register('cancellationDeadline')} />
+          {errors.cancellationDeadline && <p className="text-xs text-destructive">{errors.cancellationDeadline.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="maybeDeadline">{t('maybeDeadline')}</Label>
+          <Input id="maybeDeadline" type="date" {...register('maybeDeadline')} />
+          {errors.maybeDeadline && (
+            <p className="text-xs text-destructive">
+              {errors.maybeDeadline.message === 'maybeDeadlineError'
+                ? t('maybeDeadlineError')
+                : errors.maybeDeadline.message}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="notificationOffsets">{t('notificationOffsets')}</Label>
+          <Input id="notificationOffsets" {...register('notificationOffsets')} />
+          {errors.notificationOffsets && <p className="text-xs text-destructive">{errors.notificationOffsets.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="description">{t('description')}</Label>
+          <Textarea id="description" rows={3} {...register('description')} />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="adminMemo">{t('adminMemo')}</Label>
+          <Textarea id="adminMemo" rows={3} {...register('adminMemo')} />
+        </div>
+      </div>
+
+      <div className="mt-6 flex items-center gap-3">
+        <Button type="submit" disabled={isSubmitting}>{t('save')}</Button>
+        <Button asChild variant="ghost">
+          <Link href={cancelHref}>{t('cancel')}</Link>
+        </Button>
+      </div>
+    </form>
   )
 }
