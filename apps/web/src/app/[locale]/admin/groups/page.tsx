@@ -1,15 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import { useAuth } from '../../../../lib/auth'
-import { routes } from '../../../../lib/routes'
-import { apiRequest } from '../../../../lib/api'
+import { useAdminGuard } from '@/hooks/use-admin-guard'
+import { routes } from '@/lib/routes'
+import { apiClient } from '@/lib/api-client'
 import type { GroupResponse } from '@peace-buddy/types'
-import { UserRoleSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,9 +24,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 }
 
 export default function AdminGroupsPage() {
-  const { firebaseUser, dbUser, loading } = useAuth()
-  const router = useRouter()
-  const { locale } = useParams<{ locale: string }>()
+  const { ready, locale } = useAdminGuard()
   const t = useTranslations('adminGroups')
   const [groups, setGroups] = useState<GroupResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -36,22 +32,11 @@ export default function AdminGroupsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   useEffect(() => {
-    if (!loading) {
-      if (!firebaseUser) {
-        router.replace(routes.login(locale))
-      } else if (dbUser && dbUser.role !== UserRoleSchema.enum.admin && dbUser.role !== UserRoleSchema.enum.super_admin) {
-        router.replace(routes.home(locale))
-      }
-    }
-  }, [loading, firebaseUser, dbUser, locale, router])
-
-  useEffect(() => {
-    if (!loading && firebaseUser && dbUser && (dbUser.role === UserRoleSchema.enum.admin || dbUser.role === UserRoleSchema.enum.super_admin)) {
-      apiRequest<GroupResponse[]>('/admin/groups')
-        .then(setGroups)
-        .catch(() => setFetchError(t('actionError')))
-    }
-  }, [loading, firebaseUser, dbUser])
+    if (!ready) return
+    apiClient.listGroups()
+      .then(setGroups)
+      .catch(() => setFetchError(t('actionError')))
+  }, [ready, t])
 
   function handleSort(field: SortField) {
     if (field === sortField) {
@@ -67,7 +52,7 @@ export default function AdminGroupsPage() {
     return sortDir === 'asc' ? cmp : -cmp
   })
 
-  if (loading || !dbUser) return null
+  if (!ready) return null
 
   return (
     <AppShell variant="admin">

@@ -1,46 +1,33 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useAuth } from '../../../../../lib/auth'
-import { routes } from '../../../../../lib/routes'
-import { apiRequest } from '../../../../../lib/api'
+import { useAdminGuard } from '@/hooks/use-admin-guard'
+import { routes } from '@/lib/routes'
+import { apiClient } from '@/lib/api-client'
 import type { GroupDetailResponse } from '@peace-buddy/types'
-import { UserRoleSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export default function AdminGroupDetailPage() {
-  const { firebaseUser, dbUser, loading } = useAuth()
-  const router = useRouter()
-  const { locale, id } = useParams<{ locale: string; id: string }>()
+  const { ready, locale } = useAdminGuard()
+  const { id } = useParams<{ id: string }>()
   const t = useTranslations('adminGroups')
   const [group, setGroup] = useState<GroupDetailResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!loading) {
-      if (!firebaseUser) {
-        router.replace(routes.login(locale))
-      } else if (dbUser && dbUser.role !== UserRoleSchema.enum.admin && dbUser.role !== UserRoleSchema.enum.super_admin) {
-        router.replace(routes.home(locale))
-      }
-    }
-  }, [loading, firebaseUser, dbUser, locale, router])
+    if (!ready) return
+    apiClient.getGroup(id)
+      .then(setGroup)
+      .catch(() => setFetchError(t('actionError')))
+  }, [ready, id, t])
 
-  useEffect(() => {
-    if (!loading && firebaseUser && dbUser && (dbUser.role === UserRoleSchema.enum.admin || dbUser.role === UserRoleSchema.enum.super_admin)) {
-      apiRequest<GroupDetailResponse>(`/admin/groups/${id}`)
-        .then(setGroup)
-        .catch(() => setFetchError(t('actionError')))
-    }
-  }, [loading, firebaseUser, dbUser, id])
-
-  if (loading || !dbUser) return null
+  if (!ready) return null
 
   if (fetchError) {
     return (
@@ -55,11 +42,9 @@ export default function AdminGroupDetailPage() {
   return (
     <AppShell variant="admin">
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href={routes.adminGroups(locale)} className="text-sm text-muted-foreground hover:text-foreground">
-            ← {t('back')}
-          </Link>
-        </div>
+        <Link href={routes.adminGroups(locale)} className="text-sm text-muted-foreground hover:text-foreground">
+          ← {t('back')}
+        </Link>
         <Button asChild size="sm">
           <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
         </Button>
@@ -115,7 +100,7 @@ export default function AdminGroupDetailPage() {
             <TableBody>
               {group.tours.map((tour) => (
                 <TableRow key={tour.id}>
-                  <TableCell>{tour.tourDate}</TableCell>
+                  <TableCell>{tour.tourDate.slice(0, 10)}</TableCell>
                   <TableCell>
                     <Badge variant="secondary">{tour.status}</Badge>
                   </TableCell>

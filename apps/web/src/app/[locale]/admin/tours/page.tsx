@@ -1,14 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useAuth } from '../../../../lib/auth'
-import { routes } from '../../../../lib/routes'
-import { apiRequest } from '../../../../lib/api'
+import { useAdminGuard } from '@/hooks/use-admin-guard'
+import { routes } from '@/lib/routes'
+import { apiClient } from '@/lib/api-client'
 import type { AdminTourSummaryResponse, TourStatus } from '@peace-buddy/types'
-import { UserRoleSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,32 +20,19 @@ const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive'
 }
 
 export default function AdminToursPage() {
-  const { firebaseUser, dbUser, loading } = useAuth()
-  const router = useRouter()
-  const { locale } = useParams<{ locale: string }>()
+  const { ready, locale } = useAdminGuard()
   const t = useTranslations('adminTours')
   const [tours, setTours] = useState<AdminTourSummaryResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!loading) {
-      if (!firebaseUser) {
-        router.replace(routes.login(locale))
-      } else if (dbUser && dbUser.role !== UserRoleSchema.enum.admin && dbUser.role !== UserRoleSchema.enum.super_admin) {
-        router.replace(routes.home(locale))
-      }
-    }
-  }, [loading, firebaseUser, dbUser, locale, router])
+    if (!ready) return
+    apiClient.listAdminTours()
+      .then(setTours)
+      .catch(() => setFetchError(t('actionError')))
+  }, [ready, t])
 
-  useEffect(() => {
-    if (!loading && firebaseUser && dbUser && (dbUser.role === UserRoleSchema.enum.admin || dbUser.role === UserRoleSchema.enum.super_admin)) {
-      apiRequest<AdminTourSummaryResponse[]>('/admin/tours')
-        .then(setTours)
-        .catch(() => setFetchError(t('actionError')))
-    }
-  }, [loading, firebaseUser, dbUser])
-
-  if (loading || !dbUser) return null
+  if (!ready) return null
 
   return (
     <AppShell variant="admin">
@@ -89,7 +74,9 @@ export default function AdminToursPage() {
                   <TableCell>{tour.capacity}</TableCell>
                   <TableCell>{tour.confirmedCount}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANT[tour.status]}>{t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}</Badge>
+                    <Badge variant={STATUS_VARIANT[tour.status]}>
+                      {t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="ghost" size="sm">

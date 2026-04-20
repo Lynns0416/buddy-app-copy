@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useAuth } from '../../../../../lib/auth'
-import { routes } from '../../../../../lib/routes'
-import { apiRequest } from '../../../../../lib/api'
-import type { AdminTourDetailResponse, TourStatus } from '@peace-buddy/types'
-import { UserRoleSchema } from '@peace-buddy/types'
+import { useAdminGuard } from '@/hooks/use-admin-guard'
+import { routes } from '@/lib/routes'
+import { apiClient } from '@/lib/api-client'
+import { TourStatusSchema, TourActionSchema } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, TourStatus, TourAction } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,9 +22,9 @@ const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive'
 }
 
 export default function AdminTourDetailPage() {
-  const { firebaseUser, dbUser, loading } = useAuth()
+  const { ready, locale } = useAdminGuard()
   const router = useRouter()
-  const { locale, id } = useParams<{ locale: string; id: string }>()
+  const { id } = useParams<{ id: string }>()
   const t = useTranslations('adminTours')
   const [tour, setTour] = useState<AdminTourDetailResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -32,32 +32,18 @@ export default function AdminTourDetailPage() {
   const [acting, setActing] = useState(false)
 
   useEffect(() => {
-    if (!loading) {
-      if (!firebaseUser) {
-        router.replace(routes.login(locale))
-      } else if (dbUser && dbUser.role !== UserRoleSchema.enum.admin && dbUser.role !== UserRoleSchema.enum.super_admin) {
-        router.replace(routes.home(locale))
-      }
-    }
-  }, [loading, firebaseUser, dbUser, locale, router])
+    if (!ready) return
+    apiClient.getAdminTour(id)
+      .then(setTour)
+      .catch(() => setFetchError(t('actionError')))
+  }, [ready, id, t])
 
-  useEffect(() => {
-    if (!loading && firebaseUser && dbUser && (dbUser.role === UserRoleSchema.enum.admin || dbUser.role === UserRoleSchema.enum.super_admin)) {
-      apiRequest<AdminTourDetailResponse>(`/admin/tours/${id}`)
-        .then(setTour)
-        .catch(() => setFetchError(t('actionError')))
-    }
-  }, [loading, firebaseUser, dbUser, id])
-
-  async function handleTransition(action: 'publish' | 'cancel' | 'complete', confirmMsg?: string) {
+  async function handleTransition(action: TourAction, confirmMsg?: string) {
     if (confirmMsg && !window.confirm(confirmMsg)) return
     setActing(true)
     setActionError(null)
     try {
-      const updated = await apiRequest<AdminTourDetailResponse>(`/admin/tours/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ action }),
-      })
+      const updated = await apiClient.transitionAdminTourStatus(id, action)
       setTour(updated)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : t('actionError'))
@@ -71,7 +57,7 @@ export default function AdminTourDetailPage() {
     setActing(true)
     setActionError(null)
     try {
-      await apiRequest<void>(`/admin/tours/${id}`, { method: 'DELETE' })
+      await apiClient.deleteAdminTour(id)
       router.push(routes.adminTours(locale))
     } catch (err) {
       setActionError(err instanceof Error ? err.message : t('actionError'))
@@ -79,7 +65,7 @@ export default function AdminTourDetailPage() {
     }
   }
 
-  if (loading || !dbUser) return null
+  if (!ready) return null
 
   if (fetchError) {
     return (
@@ -99,7 +85,7 @@ export default function AdminTourDetailPage() {
         <Link href={routes.adminTours(locale)} className="text-sm text-muted-foreground hover:text-foreground">
           ← {t('back')}
         </Link>
-        {(tour.status === 'draft' || tour.status === 'published') && (
+        {(tour.status === TourStatusSchema.enum.draft || tour.status === TourStatusSchema.enum.published) && (
           <Button asChild size="sm">
             <Link href={routes.adminTourEdit(locale, tour.id)}>{t('edit')}</Link>
           </Button>
@@ -115,7 +101,6 @@ export default function AdminTourDetailPage() {
           <h1 className="text-xl font-semibold">{tour.group.name}</h1>
           <Badge variant={STATUS_VARIANT[tour.status]}>{statusLabel}</Badge>
         </div>
-
         <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">{t('tourDate')}</dt>
@@ -158,50 +143,26 @@ export default function AdminTourDetailPage() {
         </dl>
       </div>
 
-      {/* Status actions */}
       <div className="mb-6 flex flex-wrap gap-2">
-        {tour.status === 'draft' && (
+        {tour.status === TourStatusSchema.enum.draft && (
           <>
-            <Button
-              size="sm"
-              disabled={acting}
-              onClick={() => handleTransition('publish')}
-            >
+            <Button size="sm" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.publish)}>
               {t('publish')}
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={acting}
-              onClick={() => handleTransition('cancel', t('confirmCancel'))}
-            >
+            <Button size="sm" variant="secondary" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.cancel, t('confirmCancel'))}>
               {t('cancelTour')}
             </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              disabled={acting}
-              onClick={handleDelete}
-            >
+            <Button size="sm" variant="destructive" disabled={acting} onClick={handleDelete}>
               {t('deleteTour')}
             </Button>
           </>
         )}
-        {tour.status === 'published' && (
+        {tour.status === TourStatusSchema.enum.published && (
           <>
-            <Button
-              size="sm"
-              disabled={acting}
-              onClick={() => handleTransition('complete', t('confirmComplete'))}
-            >
+            <Button size="sm" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.complete, t('confirmComplete'))}>
               {t('completeTour')}
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={acting}
-              onClick={() => handleTransition('cancel', t('confirmCancel'))}
-            >
+            <Button size="sm" variant="secondary" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.cancel, t('confirmCancel'))}>
               {t('cancelTour')}
             </Button>
           </>

@@ -10,4 +10,6 @@
 ## Feedback
 - [feedback_memory.md](feedback_memory.md) — Save memories to project memory/ only, never ~/.claude/projects/
 - [feedback_docker.md](feedback_docker.md) — Always run commands via docker exec/compose, never directly
-- [feedback_commits.md](feedback_commits.md) — No Co-Authored-By trailer in commits
+- [feedback_commits.md](feedback_commits.md) — No Co-Authored-By trailer; one concern per commit
+- [feedback_commit_size.md](feedback_commit_size.md) — Don't squash unrelated concerns into one large commit
+- [feedback_read_memory_first.md](feedback_read_memory_first.md) — Read memory/project_state.md at every session start before doing anything

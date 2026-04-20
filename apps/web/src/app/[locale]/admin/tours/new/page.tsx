@@ -1,14 +1,13 @@
 'use client'
 
 import { type FormEvent, useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useAuth } from '../../../../../lib/auth'
-import { routes } from '../../../../../lib/routes'
-import { apiRequest } from '../../../../../lib/api'
+import { useAdminGuard } from '@/hooks/use-admin-guard'
+import { routes } from '@/lib/routes'
+import { apiClient } from '@/lib/api-client'
 import type { GroupResponse } from '@peace-buddy/types'
-import { UserRoleSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,34 +15,25 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
 export default function AdminTourNewPage() {
-  const { firebaseUser, dbUser, loading } = useAuth()
+  const { ready, locale } = useAdminGuard()
   const router = useRouter()
-  const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('adminTours')
   const [groups, setGroups] = useState<GroupResponse[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!loading) {
-      if (!firebaseUser) {
-        router.replace(routes.login(locale))
-      } else if (dbUser && dbUser.role !== UserRoleSchema.enum.admin && dbUser.role !== UserRoleSchema.enum.super_admin) {
-        router.replace(routes.home(locale))
-      }
-    }
-  }, [loading, firebaseUser, dbUser, locale, router])
-
-  useEffect(() => {
-    if (!loading && firebaseUser && dbUser && (dbUser.role === UserRoleSchema.enum.admin || dbUser.role === UserRoleSchema.enum.super_admin)) {
-      apiRequest<GroupResponse[]>('/admin/groups').then(setGroups).catch(() => {})
-    }
-  }, [loading, firebaseUser, dbUser])
+    if (!ready) return
+    apiClient.listGroups().then(setGroups).catch(() => {})
+  }, [ready])
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = new FormData(e.currentTarget)
-    const offsetsRaw = (form.get('notificationOffsets') as string).split(',').map((s) => Number(s.trim())).filter((n) => !isNaN(n))
+    const offsets = (form.get('notificationOffsets') as string)
+      .split(',')
+      .map((s) => Number(s.trim()))
+      .filter((n) => !isNaN(n))
     const body = {
       groupId: form.get('groupId') as string,
       tourDate: form.get('tourDate') as string,
@@ -54,12 +44,12 @@ export default function AdminTourNewPage() {
       adminMemo: (form.get('adminMemo') as string) || undefined,
       cancellationDeadline: form.get('cancellationDeadline') as string,
       maybeDeadline: (form.get('maybeDeadline') as string) || undefined,
-      notificationOffsets: offsetsRaw,
+      notificationOffsets: offsets,
     }
     setSubmitting(true)
     setError(null)
     try {
-      await apiRequest('/admin/tours', { method: 'POST', body: JSON.stringify(body) })
+      await apiClient.createAdminTour(body)
       router.push(routes.adminTours(locale))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('actionError'))
@@ -68,7 +58,7 @@ export default function AdminTourNewPage() {
     }
   }
 
-  if (loading || !dbUser) return null
+  if (!ready) return null
 
   return (
     <AppShell variant="admin">

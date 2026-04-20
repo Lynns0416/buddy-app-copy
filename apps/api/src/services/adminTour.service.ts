@@ -1,11 +1,16 @@
 import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
+import {
+  TourStatusSchema,
+  BookingStatusSchema,
+} from '@peace-buddy/types'
 import type {
   CreateTour,
   UpdateTour,
   AdminTourSummaryResponse,
   AdminTourDetailResponse,
   TourStatus,
+  TourAction,
   GroupType,
   BookingStatus,
 } from '@peace-buddy/types'
@@ -30,15 +35,15 @@ export class TourNotDraftError extends Error {
   }
 }
 
-const ACTION_TO_STATUS: Record<string, TourStatus> = {
-  publish: 'published',
-  cancel: 'cancelled',
-  complete: 'completed',
+const ACTION_TO_STATUS: Record<TourAction, TourStatus> = {
+  publish: TourStatusSchema.enum.published,
+  cancel: TourStatusSchema.enum.cancelled,
+  complete: TourStatusSchema.enum.completed,
 }
 
-const ALLOWED_TRANSITIONS: Record<string, TourStatus[]> = {
-  draft: ['published', 'cancelled'],
-  published: ['cancelled', 'completed'],
+const ALLOWED_TRANSITIONS: Partial<Record<TourStatus, TourStatus[]>> = {
+  draft: [TourStatusSchema.enum.published, TourStatusSchema.enum.cancelled],
+  published: [TourStatusSchema.enum.cancelled, TourStatusSchema.enum.completed],
 }
 
 function parseTime(hhmm: string): Date {
@@ -92,7 +97,7 @@ export async function listAdminTours(params: { status?: TourStatus }): Promise<A
       updatedAt: true,
       _count: {
         select: {
-          bookings: { where: { status: 'confirmed' } },
+          bookings: { where: { status: BookingStatusSchema.enum.confirmed } },
         },
       },
     },
@@ -105,7 +110,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
   const row = await db.tour.create({
     data: {
       groupId: data.groupId,
-      status: 'draft',
+      status: TourStatusSchema.enum.draft,
       tourDate: data.tourDate,
       meetingTime: parseTime(data.meetingTime),
       location: data.location,
@@ -183,7 +188,7 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
       },
       _count: {
         select: {
-          bookings: { where: { status: 'confirmed' } },
+          bookings: { where: { status: BookingStatusSchema.enum.confirmed } },
         },
       },
     },
@@ -218,7 +223,7 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
 export async function updateTour(id: string, data: UpdateTour): Promise<AdminTourDetailResponse> {
   const existing = await db.tour.findUnique({ where: { id }, select: { status: true } })
   if (!existing) throw new TourNotFoundError()
-  if (existing.status === 'cancelled' || existing.status === 'completed') throw new TourImmutableError()
+  if (existing.status === TourStatusSchema.enum.cancelled || existing.status === TourStatusSchema.enum.completed) throw new TourImmutableError()
 
   try {
     await db.tour.update({
@@ -247,7 +252,7 @@ export async function updateTour(id: string, data: UpdateTour): Promise<AdminTou
 
 export async function transitionTourStatus(
   id: string,
-  action: 'publish' | 'cancel' | 'complete',
+  action: TourAction,
 ): Promise<AdminTourDetailResponse> {
   const existing = await db.tour.findUnique({ where: { id }, select: { status: true } })
   if (!existing) throw new TourNotFoundError()
@@ -269,7 +274,7 @@ export async function transitionTourStatus(
 export async function deleteTour(id: string): Promise<void> {
   const existing = await db.tour.findUnique({ where: { id }, select: { status: true } })
   if (!existing) throw new TourNotFoundError()
-  if (existing.status !== 'draft') throw new TourNotDraftError()
+  if (existing.status !== TourStatusSchema.enum.draft) throw new TourNotDraftError()
 
   await db.tour.delete({ where: { id } })
 }

@@ -1,13 +1,13 @@
 'use client'
 
-import { type FormEvent, useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { type FormEvent, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { useAuth } from '../../../../../lib/auth'
-import { routes } from '../../../../../lib/routes'
-import { apiRequest } from '../../../../../lib/api'
-import { UserRoleSchema, GroupTypeSchema } from '@peace-buddy/types'
+import { useAdminGuard } from '@/hooks/use-admin-guard'
+import { routes } from '@/lib/routes'
+import { apiClient } from '@/lib/api-client'
+import { GroupTypeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,22 +15,11 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
 export default function AdminGroupNewPage() {
-  const { firebaseUser, dbUser, loading } = useAuth()
+  const { ready, locale } = useAdminGuard()
   const router = useRouter()
-  const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('adminGroups')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!loading) {
-      if (!firebaseUser) {
-        router.replace(routes.login(locale))
-      } else if (dbUser && dbUser.role !== UserRoleSchema.enum.admin && dbUser.role !== UserRoleSchema.enum.super_admin) {
-        router.replace(routes.home(locale))
-      }
-    }
-  }, [loading, firebaseUser, dbUser, locale, router])
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -46,7 +35,7 @@ export default function AdminGroupNewPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await apiRequest('/admin/groups', { method: 'POST', body: JSON.stringify(body) })
+      await apiClient.createGroup(body as Parameters<typeof apiClient.createGroup>[0])
       router.push(routes.adminGroups(locale))
     } catch {
       setError(t('actionError'))
@@ -55,7 +44,7 @@ export default function AdminGroupNewPage() {
     }
   }
 
-  if (loading || !dbUser) return null
+  if (!ready) return null
 
   return (
     <AppShell variant="admin">
@@ -86,7 +75,7 @@ export default function AdminGroupNewPage() {
                 required
                 className="border-input bg-background ring-offset-background flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                {GroupTypeSchema.options.map((opt) => (
+                {GroupTypeSchema.options.map((opt: string) => (
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>

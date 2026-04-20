@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { CalendarDays, MapPin, Users, Clock } from 'lucide-react'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
-import { apiRequest } from '../../../lib/api'
+import { apiClient } from '../../../lib/api-client'
 import type { TourResponse } from '@peace-buddy/types'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
@@ -32,9 +32,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && firebaseUser && dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active) {
       const from = new Date().toISOString().split('T')[0]
-      apiRequest<TourResponse[]>(`/tours?from=${from}`)
-        .then(setTours)
-        .catch(() => {})
+      apiClient.listTours(from).then(setTours).catch(() => {})
     }
   }, [loading, firebaseUser, dbUser])
 

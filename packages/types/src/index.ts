@@ -105,8 +105,11 @@ export const UpdateTourSchema = z
   )
 export type UpdateTour = z.infer<typeof UpdateTourSchema>
 
+export const TourActionSchema = z.enum(['publish', 'cancel', 'complete'])
+export type TourAction = z.infer<typeof TourActionSchema>
+
 export const TourStatusActionSchema = z.object({
-  action: z.enum(['publish', 'cancel', 'complete']),
+  action: TourActionSchema,
 })
 export type TourStatusAction = z.infer<typeof TourStatusActionSchema>
 
