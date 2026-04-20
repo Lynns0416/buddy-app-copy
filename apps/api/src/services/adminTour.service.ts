@@ -59,6 +59,9 @@ function mapSummary(row: {
   status: string
   tourDate: Date
   meetingTime: Date
+  startTime: Date | null
+  endTime: Date | null
+  bookingOpen: boolean
   location: string
   capacity: number
   description: string | null
@@ -72,6 +75,9 @@ function mapSummary(row: {
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
     meetingTime: row.meetingTime.toISOString(),
+    startTime: row.startTime ? row.startTime.toISOString() : null,
+    endTime: row.endTime ? row.endTime.toISOString() : null,
+    bookingOpen: row.bookingOpen,
     location: row.location,
     capacity: row.capacity,
     description: row.description,
@@ -90,6 +96,9 @@ export async function listAdminTours(params: { status?: TourStatus }): Promise<A
       status: true,
       tourDate: true,
       meetingTime: true,
+      startTime: true,
+      endTime: true,
+      bookingOpen: true,
       location: true,
       capacity: true,
       description: true,
@@ -127,6 +136,9 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
       status: true,
       tourDate: true,
       meetingTime: true,
+      startTime: true,
+      endTime: true,
+      bookingOpen: true,
       location: true,
       capacity: true,
       description: true,
@@ -144,6 +156,9 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
     meetingTime: row.meetingTime.toISOString(),
+    startTime: row.startTime ? row.startTime.toISOString() : null,
+    endTime: row.endTime ? row.endTime.toISOString() : null,
+    bookingOpen: row.bookingOpen,
     location: row.location,
     capacity: row.capacity,
     description: row.description,
@@ -167,6 +182,9 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
       status: true,
       tourDate: true,
       meetingTime: true,
+      startTime: true,
+      endTime: true,
+      bookingOpen: true,
       location: true,
       capacity: true,
       description: true,
@@ -200,6 +218,9 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
     meetingTime: row.meetingTime.toISOString(),
+    startTime: row.startTime ? row.startTime.toISOString() : null,
+    endTime: row.endTime ? row.endTime.toISOString() : null,
+    bookingOpen: row.bookingOpen,
     location: row.location,
     capacity: row.capacity,
     description: row.description,

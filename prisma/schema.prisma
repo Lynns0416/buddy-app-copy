@@ -129,6 +129,9 @@ model Tour {
   status               TourStatus
   tourDate             DateTime                            @db.Date
   meetingTime          DateTime                            @db.Time
+  startTime            DateTime?                           @db.Time
+  endTime              DateTime?                           @db.Time
+  bookingOpen          Boolean                             @default(false)
   location             String
   capacity             Int
   description          String?

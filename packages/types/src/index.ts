@@ -62,11 +62,16 @@ export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
 
 // Tour (admin)
 
+const timeRegex = /^\d{2}:\d{2}$/
+
 export const CreateTourSchema = z
   .object({
     groupId: z.string().uuid(),
     tourDate: z.coerce.date(),
-    meetingTime: z.string().regex(/^\d{2}:\d{2}$/),
+    meetingTime: z.string().regex(timeRegex),
+    startTime: z.string().regex(timeRegex).optional(),
+    endTime: z.string().regex(timeRegex).optional(),
+    bookingOpen: z.boolean().default(false),
     location: z.string().min(1),
     capacity: z.number().int().positive(),
     description: z.string().optional(),
@@ -85,7 +90,10 @@ export const UpdateTourSchema = z
   .object({
     groupId: z.string().uuid().optional(),
     tourDate: z.coerce.date().optional(),
-    meetingTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    meetingTime: z.string().regex(timeRegex).optional(),
+    startTime: z.string().regex(timeRegex).nullable().optional(),
+    endTime: z.string().regex(timeRegex).nullable().optional(),
+    bookingOpen: z.boolean().optional(),
     location: z.string().min(1).optional(),
     capacity: z.number().int().positive().optional(),
     description: z.string().nullable().optional(),
@@ -167,6 +175,9 @@ export type TourResponse = {
   status: TourStatus
   tourDate: string
   meetingTime: string
+  startTime: string | null
+  endTime: string | null
+  bookingOpen: boolean
   location: string
   capacity: number
   description: string | null
@@ -194,6 +205,9 @@ export type GroupTourSummary = {
   status: TourStatus
   tourDate: string
   meetingTime: string
+  startTime: string | null
+  endTime: string | null
+  bookingOpen: boolean
   location: string
   capacity: number
   description: string | null
@@ -241,6 +255,9 @@ export type AdminTourSummaryResponse = {
   status: TourStatus
   tourDate: string
   meetingTime: string
+  startTime: string | null
+  endTime: string | null
+  bookingOpen: boolean
   location: string
   capacity: number
   description: string | null

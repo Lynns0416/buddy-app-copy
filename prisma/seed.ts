@@ -10,6 +10,23 @@ import {
 
 const prisma = new PrismaClient()
 
+// Fixed IDs so re-running the seed is additive (upsert skips existing rows)
+const ID = {
+  adminUser:    'seed-user-admin-001',
+  buddy1User:   'seed-user-buddy-001',
+  buddy2User:   'seed-user-buddy-002',
+  buddy1:       'seed-profile-001',
+  buddy2:       'seed-profile-002',
+  school:       'seed-group-001',
+  company:      'seed-group-002',
+  tourUrgent:   'seed-tour-001',
+  tourMidterm:  'seed-tour-002',
+  tourOpen:     'seed-tour-003',
+  tourPast:     'seed-tour-004',
+  tourDraft:    'seed-tour-005',
+  tourCancelled:'seed-tour-006',
+}
+
 function daysFromNow(days: number): Date {
   const d = new Date()
   d.setDate(d.getDate() + days)
@@ -22,66 +39,80 @@ function timeOnly(hour: number, minute = 0): Date {
 }
 
 async function main() {
-  await prisma.booking.deleteMany()
-  await prisma.tour.deleteMany()
-  await prisma.group.deleteMany()
-  await prisma.buddyProfile.deleteMany()
-  await prisma.user.deleteMany()
-
-  await prisma.user.create({
-    data: {
+  // Users
+  await prisma.user.upsert({
+    where: { id: ID.adminUser },
+    update: {},
+    create: {
+      id: ID.adminUser,
       firebaseUid: 'seed-admin-001',
       email: 'admin@peacebuddies.dev',
       role: UserRole.admin,
     },
   })
 
-  const buddy1User = await prisma.user.create({
-    data: {
+  await prisma.user.upsert({
+    where: { id: ID.buddy1User },
+    update: {},
+    create: {
+      id: ID.buddy1User,
       firebaseUid: 'seed-buddy-001',
       email: 'hana@peacebuddies.dev',
       role: UserRole.buddy,
-      buddyProfile: {
-        create: {
-          status: BuddyStatus.active,
-          tier: BuddyTier.junior,
-          displayName: '田中 花',
-          realName: '田中 花奈',
-          bio: '日本の文化や歴史を訪問者に伝えることに情熱を持っています。',
-          languages: ['ja', 'en'],
-          skills: ['歴史', '食文化', '伝統芸能'],
-          availability: '週末希望',
-        },
-      },
     },
-    include: { buddyProfile: true },
   })
 
-  const buddy2User = await prisma.user.create({
-    data: {
+  await prisma.user.upsert({
+    where: { id: ID.buddy2User },
+    update: {},
+    create: {
+      id: ID.buddy2User,
       firebaseUid: 'seed-buddy-002',
       email: 'kenji@peacebuddies.dev',
       role: UserRole.buddy,
-      buddyProfile: {
-        create: {
-          status: BuddyStatus.active,
-          tier: BuddyTier.mid,
-          displayName: '松田 健二',
-          realName: '松田 健二',
-          languages: ['ja', 'en', 'zh'],
-          skills: ['テクノロジー', '建築', 'ポップカルチャー'],
-          availability: '柔軟対応可',
-        },
-      },
     },
-    include: { buddyProfile: true },
   })
 
-  const buddy1 = buddy1User.buddyProfile!
-  const buddy2 = buddy2User.buddyProfile!
+  // Buddy profiles
+  await prisma.buddyProfile.upsert({
+    where: { id: ID.buddy1 },
+    update: {},
+    create: {
+      id: ID.buddy1,
+      userId: ID.buddy1User,
+      status: BuddyStatus.active,
+      tier: BuddyTier.junior,
+      displayName: '田中 花',
+      realName: '田中 花奈',
+      bio: '日本の文化や歴史を訪問者に伝えることに情熱を持っています。',
+      languages: ['ja', 'en'],
+      skills: ['歴史', '食文化', '伝統芸能'],
+      availability: '週末希望',
+    },
+  })
 
-  const school = await prisma.group.create({
-    data: {
+  await prisma.buddyProfile.upsert({
+    where: { id: ID.buddy2 },
+    update: {},
+    create: {
+      id: ID.buddy2,
+      userId: ID.buddy2User,
+      status: BuddyStatus.active,
+      tier: BuddyTier.mid,
+      displayName: '松田 健二',
+      realName: '松田 健二',
+      languages: ['ja', 'en', 'zh'],
+      skills: ['テクノロジー', '建築', 'ポップカルチャー'],
+      availability: '柔軟対応可',
+    },
+  })
+
+  // Groups
+  await prisma.group.upsert({
+    where: { id: ID.school },
+    update: {},
+    create: {
+      id: ID.school,
       name: 'さくら国際高等学校',
       type: GroupType.school,
       contactName: '陳 先生',
@@ -89,8 +120,11 @@ async function main() {
     },
   })
 
-  const company = await prisma.group.create({
-    data: {
+  await prisma.group.upsert({
+    where: { id: ID.company },
+    update: {},
+    create: {
+      id: ID.company,
       name: 'テックグローバル株式会社',
       type: GroupType.company,
       contactName: '朴 様',
@@ -98,10 +132,13 @@ async function main() {
     },
   })
 
-  // Upcoming in 3 days — urgent, buddy1 confirmed
-  const tourUrgent = await prisma.tour.create({
-    data: {
-      groupId: school.id,
+  // Tours
+  await prisma.tour.upsert({
+    where: { id: ID.tourUrgent },
+    update: {},
+    create: {
+      id: ID.tourUrgent,
+      groupId: ID.school,
       status: TourStatus.published,
       tourDate: daysFromNow(3),
       meetingTime: timeOnly(9),
@@ -113,10 +150,12 @@ async function main() {
     },
   })
 
-  // Upcoming in 14 days — buddy1 confirmed, buddy2 maybe
-  const tourMidterm = await prisma.tour.create({
-    data: {
-      groupId: company.id,
+  await prisma.tour.upsert({
+    where: { id: ID.tourMidterm },
+    update: {},
+    create: {
+      id: ID.tourMidterm,
+      groupId: ID.company,
       status: TourStatus.published,
       tourDate: daysFromNow(14),
       meetingTime: timeOnly(13, 30),
@@ -129,10 +168,12 @@ async function main() {
     },
   })
 
-  // Upcoming in 30 days — open, no bookings yet
-  await prisma.tour.create({
-    data: {
-      groupId: school.id,
+  await prisma.tour.upsert({
+    where: { id: ID.tourOpen },
+    update: {},
+    create: {
+      id: ID.tourOpen,
+      groupId: ID.school,
       status: TourStatus.published,
       tourDate: daysFromNow(30),
       meetingTime: timeOnly(10),
@@ -144,10 +185,12 @@ async function main() {
     },
   })
 
-  // Past completed — buddy1 confirmed
-  const tourPast = await prisma.tour.create({
-    data: {
-      groupId: company.id,
+  await prisma.tour.upsert({
+    where: { id: ID.tourPast },
+    update: {},
+    create: {
+      id: ID.tourPast,
+      groupId: ID.company,
       status: TourStatus.completed,
       tourDate: daysFromNow(-30),
       meetingTime: timeOnly(14),
@@ -159,10 +202,12 @@ async function main() {
     },
   })
 
-  // Draft — not visible to buddies
-  await prisma.tour.create({
-    data: {
-      groupId: school.id,
+  await prisma.tour.upsert({
+    where: { id: ID.tourDraft },
+    update: {},
+    create: {
+      id: ID.tourDraft,
+      groupId: ID.school,
       status: TourStatus.draft,
       tourDate: daysFromNow(45),
       meetingTime: timeOnly(9),
@@ -173,10 +218,12 @@ async function main() {
     },
   })
 
-  // Cancelled — buddy2 had confirmed
-  const tourCancelled = await prisma.tour.create({
-    data: {
-      groupId: company.id,
+  await prisma.tour.upsert({
+    where: { id: ID.tourCancelled },
+    update: {},
+    create: {
+      id: ID.tourCancelled,
+      groupId: ID.company,
       status: TourStatus.cancelled,
       tourDate: daysFromNow(7),
       meetingTime: timeOnly(11),
@@ -187,15 +234,22 @@ async function main() {
     },
   })
 
-  await prisma.booking.createMany({
-    data: [
-      { buddyId: buddy1.id, tourId: tourUrgent.id, status: BookingStatus.confirmed },
-      { buddyId: buddy1.id, tourId: tourMidterm.id, status: BookingStatus.confirmed },
-      { buddyId: buddy2.id, tourId: tourMidterm.id, status: BookingStatus.maybe },
-      { buddyId: buddy1.id, tourId: tourPast.id, status: BookingStatus.confirmed },
-      { buddyId: buddy2.id, tourId: tourCancelled.id, status: BookingStatus.confirmed },
-    ],
-  })
+  // Bookings — @@unique([buddyId, tourId]) allows upsert on compound key
+  const bookings = [
+    { buddyId: ID.buddy1, tourId: ID.tourUrgent,   status: BookingStatus.confirmed },
+    { buddyId: ID.buddy1, tourId: ID.tourMidterm,  status: BookingStatus.confirmed },
+    { buddyId: ID.buddy2, tourId: ID.tourMidterm,  status: BookingStatus.maybe },
+    { buddyId: ID.buddy1, tourId: ID.tourPast,     status: BookingStatus.confirmed },
+    { buddyId: ID.buddy2, tourId: ID.tourCancelled,status: BookingStatus.confirmed },
+  ]
+
+  for (const b of bookings) {
+    await prisma.booking.upsert({
+      where: { buddyId_tourId: { buddyId: b.buddyId, tourId: b.tourId } },
+      update: {},
+      create: b,
+    })
+  }
 
   console.log('シード完了')
   console.log('  バディ: hana@peacebuddies.dev, kenji@peacebuddies.dev')

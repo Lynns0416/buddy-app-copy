@@ -19,6 +19,9 @@ const groupTourSelect = {
   status: true,
   tourDate: true,
   meetingTime: true,
+  startTime: true,
+  endTime: true,
+  bookingOpen: true,
   location: true,
   capacity: true,
   description: true,
@@ -54,6 +57,9 @@ function mapGroupTour(raw: {
   status: string
   tourDate: Date
   meetingTime: Date
+  startTime: Date | null
+  endTime: Date | null
+  bookingOpen: boolean
   location: string
   capacity: number
   description: string | null
@@ -64,6 +70,9 @@ function mapGroupTour(raw: {
     status: raw.status as TourStatus,
     tourDate: raw.tourDate.toISOString(),
     meetingTime: raw.meetingTime.toISOString(),
+    startTime: raw.startTime ? raw.startTime.toISOString() : null,
+    endTime: raw.endTime ? raw.endTime.toISOString() : null,
+    bookingOpen: raw.bookingOpen,
     location: raw.location,
     capacity: raw.capacity,
     description: raw.description,

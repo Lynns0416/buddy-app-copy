@@ -52,42 +52,69 @@ export default function AdminToursPage() {
       {tours.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('noResults')}</p>
       ) : (
-        <div className="rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('tourDate')}</TableHead>
-                <TableHead>{t('group')}</TableHead>
-                <TableHead>{t('location')}</TableHead>
-                <TableHead>{t('capacity')}</TableHead>
-                <TableHead>{t('confirmedCount')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tours.map((tour) => (
-                <TableRow key={tour.id}>
-                  <TableCell className="tabular-nums">{tour.tourDate.slice(0, 10)}</TableCell>
-                  <TableCell>{tour.group.name}</TableCell>
-                  <TableCell>{tour.location}</TableCell>
-                  <TableCell>{tour.capacity}</TableCell>
-                  <TableCell>{tour.confirmedCount}</TableCell>
-                  <TableCell>
-                    <Badge variant={STATUS_VARIANT[tour.status]}>
-                      {t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button asChild variant="ghost" size="sm">
-                      <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
-                    </Button>
-                  </TableCell>
+        <>
+          {/* Mobile: cards */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            {tours.map((tour) => (
+              <div key={tour.id} className="rounded-lg border bg-card p-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="tabular-nums text-sm font-medium">{tour.tourDate.slice(0, 10)}</span>
+                  <Badge variant={STATUS_VARIANT[tour.status]}>
+                    {t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
+                  </Badge>
+                </div>
+                <p className="mb-2 font-medium">{tour.group.name}</p>
+                <p className="mb-3 text-sm text-muted-foreground">{tour.location}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    {t('confirmedCount')} {tour.confirmedCount} / {tour.capacity}
+                  </span>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* sm+: scrollable table */}
+          <div className="hidden sm:block overflow-x-auto rounded-lg border bg-card">
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">{t('tourDate')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('group')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('location')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('capacity')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('confirmedCount')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('status')}</TableHead>
+                  <TableHead className="w-24" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {tours.map((tour) => (
+                  <TableRow key={tour.id}>
+                    <TableCell className="tabular-nums">{tour.tourDate.slice(0, 10)}</TableCell>
+                    <TableCell>{tour.group.name}</TableCell>
+                    <TableCell>{tour.location}</TableCell>
+                    <TableCell>{tour.capacity}</TableCell>
+                    <TableCell>{tour.confirmedCount}</TableCell>
+                    <TableCell>
+                      <Badge variant={STATUS_VARIANT[tour.status]}>
+                        {t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </AppShell>
   )

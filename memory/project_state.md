@@ -38,6 +38,9 @@ None known.
 - `status` = lifecycle only: `pending | active | rejected | suspended` — `trainee` removed
 - `tier` = expertise level: `trainee | junior | mid | senior | expert | instructor | organizer` — `trainee` added here
 - Approval from pending → `status: active, tier: trainee` (default)
+- Tour time fields: `startTime Time?` + `endTime Time?` on Tour (nullable). Duration is derived in UI. TourTimeline/itinerary deferred.
+- `bookingOpen Boolean @default(false)`: purely manual admin gate. Auto-close is API logic: reject new bookings when `tourDate <= today`. UI: tour list must handle multiple tours per day sorted by startTime, visually flag back-to-back tours.
+- Booking allowed when: `status=published AND bookingOpen=true AND tourDate > today`
 
 ## Notes
 
