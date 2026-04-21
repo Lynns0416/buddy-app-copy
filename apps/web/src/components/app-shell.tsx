@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useParams, usePathname } from 'next/navigation'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
@@ -20,9 +20,15 @@ type Props = {
 export function AppShell({ variant, children }: Props) {
   const { locale } = useParams<{ locale: string }>()
   const pathname = usePathname()
+  const router = useRouter()
   const { signOut } = useAuth()
   const t = useTranslations('shell')
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  async function handleSignOut() {
+    await signOut()
+    router.push(routes.login(locale))
+  }
 
   const navItems: NavItem[] =
     variant === 'admin'
@@ -62,7 +68,7 @@ export function AppShell({ variant, children }: Props) {
             variant="ghost"
             size="sm"
             className="w-full justify-start text-muted-foreground"
-            onClick={signOut}
+            onClick={handleSignOut}
           >
             {t('signOut')}
           </Button>
@@ -100,7 +106,7 @@ export function AppShell({ variant, children }: Props) {
             variant="ghost"
             size="sm"
             className="w-full justify-start text-muted-foreground"
-            onClick={signOut}
+            onClick={handleSignOut}
           >
             {t('signOut')}
           </Button>

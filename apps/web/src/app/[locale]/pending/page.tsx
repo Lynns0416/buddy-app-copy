@@ -31,7 +31,7 @@ export default function PendingPage() {
       <div className="w-full max-w-sm rounded-xl border bg-card p-8 shadow-sm text-center">
         <h1 className="mb-3 text-xl font-semibold">{t('title')}</h1>
         <p className="mb-6 text-sm text-muted-foreground">{t('message')}</p>
-        <Button variant="outline" onClick={signOut}>{t('signOut')}</Button>
+        <Button variant="outline" onClick={async () => { await signOut(); router.push(routes.login(locale)) }}>{t('signOut')}</Button>
       </div>
     </div>
   )
