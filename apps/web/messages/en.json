@@ -134,7 +134,20 @@
     "cancelBooking": "Cancel Booking",
     "confirmCancel": "Cancel your booking? You won't be able to undo this.",
     "bookingError": "Action failed. Please try again.",
-    "tourFull": "Tour is full."
+    "tourFull": "Tour is full.",
+    "deadlinePassed": "The cancellation deadline has passed.",
+    "cancelReasonTitle": "Reason for cancellation",
+    "cancelReasonCategory": "Category",
+    "cancelReasonCategoryPlaceholder": "Select a reason",
+    "cancelReasonHealth": "Health",
+    "cancelReasonEmergency": "Emergency",
+    "cancelReasonPersonal": "Personal",
+    "cancelReasonWork": "Work",
+    "cancelReasonOther": "Other",
+    "cancelReasonFreeText": "Additional details (optional)",
+    "cancelReasonUnavoidable": "This cancellation was unavoidable",
+    "cancelReasonSubmit": "Confirm cancellation",
+    "cancelReasonBack": "Go back"
   },
   "shell": {
     "appName": "Peace Buddy",

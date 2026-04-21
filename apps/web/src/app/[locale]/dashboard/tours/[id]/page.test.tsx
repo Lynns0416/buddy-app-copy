@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import TourDetailPage from './page'
 import type { TourDetailResponse } from '@peace-buddy/types'
 
@@ -24,6 +24,28 @@ vi.mock('@/components/app-shell', () => ({
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
     <button onClick={onClick} disabled={disabled}>{children}</button>
+  ),
+}))
+
+vi.mock('@/components/ui/label', () => ({
+  Label: ({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) => (
+    <label htmlFor={htmlFor}>{children}</label>
+  ),
+}))
+
+vi.mock('@/components/ui/select', () => ({
+  Select: ({ value, onValueChange, children }: { value: string; onValueChange: (v: string) => void; children: React.ReactNode }) => (
+    <select value={value} onChange={(e) => onValueChange(e.target.value)}>{children}</select>
+  ),
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => <option value={value}>{children}</option>,
+  SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder}</span>,
+}))
+
+vi.mock('@/components/ui/textarea', () => ({
+  Textarea: ({ value, onChange, id, rows }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; id?: string; rows?: number }) => (
+    <textarea value={value} onChange={onChange} id={id} rows={rows} />
   ),
 }))
 
@@ -197,16 +219,36 @@ describe('TourDetailPage', () => {
     await waitFor(() => expect(screen.getByText('setMaybe')).toBeInTheDocument())
   })
 
-  it('calls updateBooking on cancel', async () => {
+  it('shows cancellation reason form when cancel button is clicked (confirmed)', async () => {
+    const confirmedTour = { ...mockTour, myBookingStatus: 'confirmed' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
+    mockGetTour.mockResolvedValue(confirmedTour)
+    render(<TourDetailPage />)
+    await waitFor(() => expect(screen.getByText('cancelBooking')).toBeInTheDocument())
+    screen.getByText('cancelBooking').click()
+    await waitFor(() => expect(screen.getByText('cancelReasonTitle')).toBeInTheDocument())
+    expect(screen.getByText('cancelReasonSubmit')).toBeInTheDocument()
+  })
+
+  it('calls updateBooking with reason on cancel (confirmed → declined)', async () => {
     const confirmedTour = { ...mockTour, myBookingStatus: 'confirmed' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
     const cancelledTour = { ...confirmedTour, myBookingStatus: 'declined' as const }
     mockGetTour.mockResolvedValueOnce(confirmedTour).mockResolvedValueOnce(cancelledTour)
     mockUpdateBooking.mockResolvedValueOnce({ id: 'b1', tourId: 'tour-1', status: 'declined', bookedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' })
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('cancelBooking')).toBeInTheDocument())
     screen.getByText('cancelBooking').click()
-    await waitFor(() => expect(mockUpdateBooking).toHaveBeenCalledWith('tour-1', 'declined'))
+
+    await waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument())
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'health' } })
+    screen.getByText('cancelReasonSubmit').click()
+
+    await waitFor(() =>
+      expect(mockUpdateBooking).toHaveBeenCalledWith(
+        'tour-1',
+        'declined',
+        expect.objectContaining({ category: 'health', unavoidable: false }),
+      )
+    )
   })
 })

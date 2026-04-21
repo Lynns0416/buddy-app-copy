@@ -177,7 +177,7 @@ export default function AdminTourDetailPage() {
             <Button size="sm" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.publish)}>
               {t('publish')}
             </Button>
-            <Button size="sm" variant="secondary" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.cancel, t('confirmCancel'))}>
+            <Button size="sm" variant="outline" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.cancel, t('confirmCancel'))}>
               {t('cancelTour')}
             </Button>
             <Button size="sm" variant="destructive" disabled={acting} onClick={handleDelete}>
@@ -190,7 +190,7 @@ export default function AdminTourDetailPage() {
             <Button size="sm" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.complete, t('confirmComplete'))}>
               {t('completeTour')}
             </Button>
-            <Button size="sm" variant="secondary" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.cancel, t('confirmCancel'))}>
+            <Button size="sm" variant="outline" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.cancel, t('confirmCancel'))}>
               {t('cancelTour')}
             </Button>
           </>

@@ -12,6 +12,7 @@ import type {
   AdminTourDetailResponse,
   BookingResponse,
   UpdateBookingBody,
+  CancellationReasonBody,
   BuddyStatus,
   TourStatus,
   TourStatusAction,
@@ -91,9 +92,9 @@ export const apiClient = {
   createBooking: (tourId: string) =>
     apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), { method: 'POST' }),
 
-  updateBooking: (tourId: string, status: UpdateBookingBody['status']) =>
+  updateBooking: (tourId: string, status: UpdateBookingBody['status'], reason?: CancellationReasonBody) =>
     apiRequest<BookingResponse>(apiPaths.tourBookingMe(tourId), {
       method: 'PUT',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, reason }),
     }),
 }

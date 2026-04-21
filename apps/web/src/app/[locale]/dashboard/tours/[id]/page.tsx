@@ -9,11 +9,14 @@ import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
 import { apiClient } from '@/lib/api-client'
 import { ApiError } from '@/lib/api'
-import type { TourDetailResponse, BookingStatus, UpdateBookingBody } from '@peace-buddy/types'
-import { TourStatusSchema, BookingStatusSchema } from '@peace-buddy/types'
+import type { TourDetailResponse, BookingStatus, UpdateBookingBody, CancellationReasonBody, CancellationCategory } from '@peace-buddy/types'
+import { TourStatusSchema, BookingStatusSchema, CancellationCategorySchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 const MY_STATUS_VARIANT: Record<BookingStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   [BookingStatusSchema.enum.confirmed]: 'default',
@@ -21,6 +24,14 @@ const MY_STATUS_VARIANT: Record<BookingStatus, 'default' | 'secondary' | 'destru
   [BookingStatusSchema.enum.waitlist]: 'outline',
   [BookingStatusSchema.enum.declined]: 'destructive',
 }
+
+const CANCEL_CATEGORIES: CancellationCategory[] = [
+  CancellationCategorySchema.enum.health,
+  CancellationCategorySchema.enum.emergency,
+  CancellationCategorySchema.enum.personal,
+  CancellationCategorySchema.enum.work,
+  CancellationCategorySchema.enum.other,
+]
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -30,6 +41,12 @@ export default function TourDetailPage() {
   const [notFound, setNotFound] = useState(false)
   const [acting, setActing] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  // Cancellation reason form state (only shown for confirmed → declined)
+  const [cancelRequested, setCancelRequested] = useState(false)
+  const [cancelCategory, setCancelCategory] = useState<CancellationCategory | ''>('')
+  const [cancelFreeText, setCancelFreeText] = useState('')
+  const [cancelUnavoidable, setCancelUnavoidable] = useState(false)
 
   useEffect(() => {
     if (!loading && firebaseUser) {
@@ -52,23 +69,45 @@ export default function TourDetailPage() {
       if (intent !== BookingStatusSchema.enum.confirmed) {
         await apiClient.updateBooking(id, intent as UpdateBookingBody['status'])
       }
+      await refreshTour()
     } catch {
       setActionError(t('bookingError'))
     } finally {
-      await refreshTour().catch(() => {})
       setActing(false)
     }
   }
 
-  const handleUpdate = async (status: UpdateBookingBody['status'], confirm?: string) => {
-    if (confirm && !window.confirm(confirm)) return
+  const handleUpdate = async (status: UpdateBookingBody['status']) => {
     setActing(true)
     setActionError(null)
     try {
       await apiClient.updateBooking(id, status)
       await refreshTour()
     } catch (err) {
-      setActionError(err instanceof ApiError && err.status === 409 ? t('tourFull') : t('bookingError'))
+      if (err instanceof ApiError && err.status === 409) setActionError(t('tourFull'))
+      else if (err instanceof ApiError && err.status === 422) setActionError(t('deadlinePassed'))
+      else setActionError(t('bookingError'))
+    } finally {
+      setActing(false)
+    }
+  }
+
+  const handleCancelConfirmed = async () => {
+    if (!cancelCategory) return
+    const reason: CancellationReasonBody = {
+      category: cancelCategory,
+      freeText: cancelFreeText.trim() || undefined,
+      unavoidable: cancelUnavoidable,
+    }
+    setActing(true)
+    setActionError(null)
+    try {
+      await apiClient.updateBooking(id, BookingStatusSchema.enum.declined, reason)
+      setCancelRequested(false)
+      await refreshTour()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 422) setActionError(t('deadlinePassed'))
+      else setActionError(t('bookingError'))
     } finally {
       setActing(false)
     }
@@ -90,11 +129,10 @@ export default function TourDetailPage() {
     ? (`status${tour.myBookingStatus.charAt(0).toUpperCase()}${tour.myBookingStatus.slice(1)}` as 'statusConfirmed')
     : null
 
-  const todayStr = new Date().toLocaleDateString('en-CA')
   const isBookable =
     tour.status === TourStatusSchema.enum.published &&
     tour.bookingOpen &&
-    tour.tourDate.slice(0, 10) >= todayStr
+    new Date(tour.tourDate) > new Date()
 
   return (
     <AppShell variant="buddy">
@@ -178,46 +216,108 @@ export default function TourDetailPage() {
             <p className="text-sm text-muted-foreground">{t('noBooking')}</p>
           )}
           {tour.status !== TourStatusSchema.enum.cancelled && tour.status !== TourStatusSchema.enum.completed && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {tour.myBookingStatus === null && isBookable && (
-                <>
-                  <Button onClick={() => handleInitialResponse(BookingStatusSchema.enum.confirmed)} disabled={acting}>
-                    {t('join')}
-                  </Button>
-                  <Button variant="secondary" onClick={() => handleInitialResponse(BookingStatusSchema.enum.maybe)} disabled={acting}>
-                    {t('respondMaybe')}
-                  </Button>
-                  <Button variant="outline" onClick={() => handleInitialResponse(BookingStatusSchema.enum.declined)} disabled={acting}>
-                    {t('decline')}
-                  </Button>
-                </>
-              )}
-              {tour.myBookingStatus === BookingStatusSchema.enum.declined && isBookable && tour.remainingSeats > 0 && (
-                <Button variant="outline" onClick={() => handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>
-                  {t('revert')}
-                </Button>
-              )}
-              {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && (
-                <Button variant="outline" onClick={() => handleUpdate(BookingStatusSchema.enum.maybe)} disabled={acting}>
-                  {t('setMaybe')}
-                </Button>
-              )}
-              {tour.myBookingStatus === BookingStatusSchema.enum.maybe && isBookable && (
-                <Button onClick={() => handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>
-                  {t('confirmBooking')}
-                </Button>
-              )}
-              {(tour.myBookingStatus === BookingStatusSchema.enum.confirmed ||
-                tour.myBookingStatus === BookingStatusSchema.enum.maybe ||
-                tour.myBookingStatus === BookingStatusSchema.enum.waitlist) && (
-                <Button
-                  variant="outline"
-                  className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => handleUpdate(BookingStatusSchema.enum.declined, t('confirmCancel'))}
-                  disabled={acting}
-                >
-                  {t('cancelBooking')}
-                </Button>
+            <div className="mt-4">
+              {cancelRequested ? (
+                <div className="space-y-4 rounded-md border p-4">
+                  <h3 className="text-sm font-semibold">{t('cancelReasonTitle')}</h3>
+                  <div className="space-y-1">
+                    <Label htmlFor="cancel-category">{t('cancelReasonCategory')}</Label>
+                    <Select value={cancelCategory} onValueChange={(v) => setCancelCategory(v as CancellationCategory)}>
+                      <SelectTrigger id="cancel-category">
+                        <SelectValue placeholder={t('cancelReasonCategoryPlaceholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CANCEL_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {t(`cancelReason${cat.charAt(0).toUpperCase()}${cat.slice(1)}` as 'cancelReasonHealth')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="cancel-freetext">{t('cancelReasonFreeText')}</Label>
+                    <Textarea
+                      id="cancel-freetext"
+                      value={cancelFreeText}
+                      onChange={(e) => setCancelFreeText(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={cancelUnavoidable}
+                      onChange={(e) => setCancelUnavoidable(e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    {t('cancelReasonUnavoidable')}
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      disabled={!cancelCategory || acting}
+                      onClick={handleCancelConfirmed}
+                    >
+                      {t('cancelReasonSubmit')}
+                    </Button>
+                    <Button variant="outline" disabled={acting} onClick={() => setCancelRequested(false)}>
+                      {t('cancelReasonBack')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {tour.myBookingStatus === null && isBookable && (
+                    <>
+                      <Button onClick={() => handleInitialResponse(BookingStatusSchema.enum.confirmed)} disabled={acting}>
+                        {t('join')}
+                      </Button>
+                      <Button variant="secondary" onClick={() => handleInitialResponse(BookingStatusSchema.enum.maybe)} disabled={acting}>
+                        {t('respondMaybe')}
+                      </Button>
+                      <Button variant="outline" onClick={() => handleInitialResponse(BookingStatusSchema.enum.declined)} disabled={acting}>
+                        {t('decline')}
+                      </Button>
+                    </>
+                  )}
+                  {tour.myBookingStatus === BookingStatusSchema.enum.declined && isBookable && tour.remainingSeats > 0 && (
+                    <Button variant="outline" onClick={() => handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>
+                      {t('revert')}
+                    </Button>
+                  )}
+                  {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && (
+                    <Button variant="outline" onClick={() => handleUpdate(BookingStatusSchema.enum.maybe)} disabled={acting}>
+                      {t('setMaybe')}
+                    </Button>
+                  )}
+                  {tour.myBookingStatus === BookingStatusSchema.enum.maybe && isBookable && (
+                    <Button onClick={() => handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>
+                      {t('confirmBooking')}
+                    </Button>
+                  )}
+                  {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && (
+                    <Button
+                      variant="outline"
+                      className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setCancelRequested(true)}
+                      disabled={acting}
+                    >
+                      {t('cancelBooking')}
+                    </Button>
+                  )}
+                  {(tour.myBookingStatus === BookingStatusSchema.enum.maybe ||
+                    tour.myBookingStatus === BookingStatusSchema.enum.waitlist) && (
+                    <Button
+                      variant="outline"
+                      className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => handleUpdate(BookingStatusSchema.enum.declined)}
+                      disabled={acting}
+                    >
+                      {t('cancelBooking')}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}

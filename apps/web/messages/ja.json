@@ -134,7 +134,20 @@
     "cancelBooking": "予約をキャンセル",
     "confirmCancel": "予約をキャンセルしますか？この操作は元に戻せません。",
     "bookingError": "操作に失敗しました。もう一度お試しください。",
-    "tourFull": "満員です。"
+    "tourFull": "満員です。",
+    "deadlinePassed": "キャンセル期限を過ぎています。",
+    "cancelReasonTitle": "キャンセル理由",
+    "cancelReasonCategory": "理由区分",
+    "cancelReasonCategoryPlaceholder": "理由を選択してください",
+    "cancelReasonHealth": "体調不良",
+    "cancelReasonEmergency": "緊急事態",
+    "cancelReasonPersonal": "個人的な事情",
+    "cancelReasonWork": "仕事の都合",
+    "cancelReasonOther": "その他",
+    "cancelReasonFreeText": "詳細（任意）",
+    "cancelReasonUnavoidable": "やむを得ない事情によるキャンセル",
+    "cancelReasonSubmit": "キャンセルを確定する",
+    "cancelReasonBack": "戻る"
   },
   "shell": {
     "appName": "Peace Buddy",

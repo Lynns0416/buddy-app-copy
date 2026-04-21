@@ -264,13 +264,44 @@ describe('PUT /tours/:id/bookings/me', () => {
     expect(res.status).toBe(409)
   })
 
-  it('passes tourId, userId, and status to updateBooking', async () => {
-    mockUpdateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
-    await buildApp().request('/tours/tour-1/bookings/me', {
+  it('returns 422 when deadline has passed', async () => {
+    mockUpdateBooking.mockResolvedValueOnce({ ok: false, code: 'DEADLINE_PASSED' })
+    const res = await buildApp().request('/tours/tour-1/bookings/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'declined' }),
     })
-    expect(mockUpdateBooking).toHaveBeenCalledWith('tour-1', dbUser.id, 'declined')
+    expect(res.status).toBe(422)
+  })
+
+  it('returns 400 when reason is required', async () => {
+    mockUpdateBooking.mockResolvedValueOnce({ ok: false, code: 'REASON_REQUIRED' })
+    const res = await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'declined' }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('passes tourId, userId, status, and reason to updateBooking', async () => {
+    const reason = { category: 'health', unavoidable: false }
+    mockUpdateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
+    await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'declined', reason }),
+    })
+    expect(mockUpdateBooking).toHaveBeenCalledWith('tour-1', dbUser.id, 'declined', reason)
+  })
+
+  it('passes undefined reason when not provided', async () => {
+    mockUpdateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
+    await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'maybe' }),
+    })
+    expect(mockUpdateBooking).toHaveBeenCalledWith('tour-1', dbUser.id, 'maybe', undefined)
   })
 })

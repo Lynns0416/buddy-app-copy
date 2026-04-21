@@ -54,10 +54,12 @@ tourRoutes.put('/:id/bookings/me', async (c) => {
   } catch {
     return c.json({ error: 'Invalid request body' }, 400)
   }
-  const result = await updateBooking(tourId, userId, body.status)
+  const result = await updateBooking(tourId, userId, body.status, body.reason)
   if (!result.ok) {
     if (result.code === 'NOT_FOUND') return c.json({ error: 'Booking not found' }, 404)
     if (result.code === 'TOUR_FULL') return c.json({ error: 'Tour is full' }, 409)
+    if (result.code === 'DEADLINE_PASSED') return c.json({ error: 'Cancellation deadline has passed' }, 422)
+    if (result.code === 'REASON_REQUIRED') return c.json({ error: 'Cancellation reason required' }, 400)
     return c.json({ error: 'Buddy profile not found' }, 422)
   }
   return c.json(result.booking)

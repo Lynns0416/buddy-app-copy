@@ -254,8 +254,16 @@ export type TourDetailResponse = TourResponse & {
   myBookingStatus: BookingStatus | null
 }
 
+export const CancellationReasonBodySchema = z.object({
+  category: CancellationCategorySchema,
+  freeText: z.string().optional(),
+  unavoidable: z.boolean(),
+})
+export type CancellationReasonBody = z.infer<typeof CancellationReasonBodySchema>
+
 export const UpdateBookingBodySchema = z.object({
   status: z.enum(['confirmed', 'maybe', 'declined']),
+  reason: CancellationReasonBodySchema.optional(),
 })
 export type UpdateBookingBody = z.infer<typeof UpdateBookingBodySchema>
 
