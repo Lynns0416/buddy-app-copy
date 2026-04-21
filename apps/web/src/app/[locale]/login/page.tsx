@@ -3,7 +3,7 @@
 import { useEffect, Suspense } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { BuddyStatusSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, UserRoleSchema } from '@peace-buddy/types'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { GoogleSignInButton } from '@/components/google-sign-in-button'
@@ -30,6 +30,8 @@ export default function LoginPage() {
     if (!loading && firebaseUser && dbUser) {
       if (dbUser.buddyProfile?.status === BuddyStatusSchema.enum.pending) {
         router.replace(routes.pending(locale))
+      } else if (dbUser.role === UserRoleSchema.enum.admin || dbUser.role === UserRoleSchema.enum.super_admin) {
+        router.replace(routes.admin(locale))
       } else {
         router.replace(routes.dashboard(locale))
       }
