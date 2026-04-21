@@ -122,6 +122,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
       status: TourStatusSchema.enum.draft,
       tourDate: data.tourDate,
       meetingTime: parseTime(data.meetingTime),
+      bookingOpen: data.bookingOpen,
       location: data.location,
       capacity: data.capacity,
       description: data.description ?? null,
@@ -259,6 +260,7 @@ export async function updateTour(id: string, data: UpdateTour): Promise<AdminTou
         ...(data.adminMemo !== undefined ? { adminMemo: data.adminMemo } : {}),
         ...(data.cancellationDeadline !== undefined ? { cancellationDeadline: data.cancellationDeadline } : {}),
         ...(data.maybeDeadline !== undefined ? { maybeDeadline: data.maybeDeadline } : {}),
+        ...(data.bookingOpen !== undefined ? { bookingOpen: data.bookingOpen } : {}),
         ...(data.notificationOffsets !== undefined ? { notificationOffsets: data.notificationOffsets } : {}),
       },
     })

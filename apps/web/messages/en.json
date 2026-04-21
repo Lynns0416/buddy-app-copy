@@ -96,6 +96,11 @@
     "statusPublished": "Published",
     "statusCancelled": "Cancelled",
     "statusCompleted": "Completed",
+    "bookingOpen": "Booking Open",
+    "bookingOpenYes": "Open",
+    "bookingOpenNo": "Closed",
+    "openBooking": "Open Booking",
+    "closeBooking": "Close Booking",
     "actionError": "Action failed. Please try again.",
     "validationError": "Please fix the errors below.",
     "maybeDeadlineError": "Maybe deadline must be before cancellation deadline."
@@ -119,7 +124,17 @@
     "statusConfirmed": "Confirmed",
     "statusMaybe": "Maybe",
     "statusWaitlist": "Waitlist",
-    "statusDeclined": "Declined"
+    "statusDeclined": "Declined",
+    "join": "Join",
+    "respondMaybe": "Maybe",
+    "decline": "Decline",
+    "revert": "Revert cancellation",
+    "setMaybe": "Change to Maybe",
+    "confirmBooking": "Confirm",
+    "cancelBooking": "Cancel Booking",
+    "confirmCancel": "Cancel your booking? You won't be able to undo this.",
+    "bookingError": "Action failed. Please try again.",
+    "tourFull": "Tour is full."
   },
   "shell": {
     "appName": "Peace Buddy",

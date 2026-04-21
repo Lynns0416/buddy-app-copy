@@ -6,6 +6,8 @@ export const apiPaths = {
 
   tours: '/tours',
   tour: (id: string) => `/tours/${id}`,
+  tourBookings: (tourId: string) => `/tours/${tourId}/bookings`,
+  tourBookingMe: (tourId: string) => `/tours/${tourId}/bookings/me`,
 
   adminBuddies: '/admin/buddies',
   adminBuddyStatus: (id: string) => `/admin/buddies/${id}/status`,

@@ -1,5 +1,8 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
+import { createRequire } from 'module'
+
+const require = createRequire(import.meta.url)
 
 export default defineConfig({
   test: {
@@ -10,6 +13,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
+      '@peace-buddy/types': resolve(__dirname, '../../packages/types/src/index.ts'),
+      'zod': require.resolve('zod'),
     },
   },
   esbuild: {

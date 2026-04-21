@@ -10,6 +10,8 @@ import type {
   TourDetailResponse,
   AdminTourSummaryResponse,
   AdminTourDetailResponse,
+  BookingResponse,
+  UpdateBookingBody,
   BuddyStatus,
   TourStatus,
   TourStatusAction,
@@ -85,4 +87,13 @@ export const apiClient = {
 
   getTour: (id: string) =>
     apiRequest<TourDetailResponse>(apiPaths.tour(id)),
+
+  createBooking: (tourId: string) =>
+    apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), { method: 'POST' }),
+
+  updateBooking: (tourId: string, status: UpdateBookingBody['status']) =>
+    apiRequest<BookingResponse>(apiPaths.tourBookingMe(tourId), {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
 }

@@ -22,7 +22,7 @@ originSessionId: fc506377-5348-44f6-8a36-6390a05db19f
 - `GET /admin/tours` + admin tour list page (#24)
 - Zod validation error details returned from API; `TourForm` component extracted (#25)
 - React Hook Form integration (#26); frontend tests added (#27)
-- Tour detail — buddy-facing: `GET /tours/:id` with seat counts + `myBookingStatus`; `/[locale]/dashboard/tours/[id]/page.tsx`; dashboard cards linked (in progress, not merged)
+- Tour detail — buddy-facing: `GET /tours/:id` with seat counts + `myBookingStatus`; `/[locale]/dashboard/tours/[id]/page.tsx`; dashboard cards linked (#28)
 
 ## Blocker
 
@@ -30,8 +30,8 @@ None known.
 
 ## Next (priority order)
 
-1. **Booking system** (§8): create/update bookings, cancellation flow, waitlist logic
-2. *Resolve deferred data model questions before booking:* tour open/closed booking status, tour timeline/duration fields
+1. **Booking system** (§8): `POST /tours/:id/bookings` (create), `PUT /tours/:id/bookings/:bookingId` (update status), cancellation flow, waitlist auto-promotion
+2. *Data model questions already resolved:* `bookingOpen Boolean @default(false)` manual gate; `startTime`/`endTime Time?` nullable on Tour
 
 ## Decisions
 

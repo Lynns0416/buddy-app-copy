@@ -21,6 +21,7 @@ const TourFormSchema = z
     meetingTime: z.string().regex(timeRegex),
     location: z.string().min(1),
     capacity: z.coerce.number().int().positive(),
+    bookingOpen: z.boolean(),
     description: z.string().optional(),
     adminMemo: z.string().optional(),
     cancellationDeadline: z.string().min(1),
@@ -40,6 +41,7 @@ export type TourFormValues = {
   meetingTime: string
   location: string
   capacity: number
+  bookingOpen: boolean
   description: string | null
   adminMemo: string | null
   cancellationDeadline: string
@@ -70,6 +72,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
       meetingTime: defaultValues?.meetingTime.slice(11, 16) ?? '',
       location: defaultValues?.location ?? '',
       capacity: defaultValues?.capacity ?? ('' as unknown as number),
+      bookingOpen: defaultValues?.bookingOpen ?? false,
       description: defaultValues?.description ?? '',
       adminMemo: defaultValues?.adminMemo ?? '',
       cancellationDeadline: defaultValues?.cancellationDeadline.slice(0, 10) ?? '',
@@ -87,6 +90,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
       meetingTime: fields.meetingTime,
       location: fields.location,
       capacity: fields.capacity,
+      bookingOpen: fields.bookingOpen,
       description: fields.description || null,
       adminMemo: fields.adminMemo || null,
       cancellationDeadline: fields.cancellationDeadline,
@@ -157,6 +161,16 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
           <Label htmlFor="capacity">{t('capacity')}</Label>
           <Input id="capacity" type="number" min={1} {...register('capacity')} />
           {errors.capacity && <p className="text-xs text-destructive">{errors.capacity.message}</p>}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            id="bookingOpen"
+            type="checkbox"
+            {...register('bookingOpen')}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          <Label htmlFor="bookingOpen">{t('bookingOpen')}</Label>
         </div>
 
         <div className="flex flex-col gap-1.5">

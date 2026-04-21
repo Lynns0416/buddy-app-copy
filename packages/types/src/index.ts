@@ -254,6 +254,19 @@ export type TourDetailResponse = TourResponse & {
   myBookingStatus: BookingStatus | null
 }
 
+export const UpdateBookingBodySchema = z.object({
+  status: z.enum(['confirmed', 'maybe', 'declined']),
+})
+export type UpdateBookingBody = z.infer<typeof UpdateBookingBodySchema>
+
+export type BookingResponse = {
+  id: string
+  tourId: string
+  status: BookingStatus
+  bookedAt: string
+  updatedAt: string
+}
+
 export type AdminTourBookingEntry = {
   id: string
   buddyId: string

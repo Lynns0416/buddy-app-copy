@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Hono } from 'hono'
 import { routes } from './index'
 import { tourRoutes } from './tours'
 import type { AuthEnv } from '../types'
-import type { TourResponse, TourDetailResponse } from '@peace-buddy/types'
+import { BookingStatusSchema } from '@peace-buddy/types'
+import type { TourResponse, TourDetailResponse, BookingResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -15,12 +15,28 @@ vi.mock('../services/tour.service', () => ({
   getTour: vi.fn(),
 }))
 
+vi.mock('../services/booking.service', () => ({
+  createBooking: vi.fn(),
+  updateBooking: vi.fn(),
+}))
+
 import { listTours, getTour } from '../services/tour.service'
+import { createBooking, updateBooking } from '../services/booking.service'
 
 const mockListTours = vi.mocked(listTours)
 const mockGetTour = vi.mocked(getTour)
+const mockCreateBooking = vi.mocked(createBooking)
+const mockUpdateBooking = vi.mocked(updateBooking)
 
 const dbUser = { id: 'user-1', firebaseUid: 'uid-123', email: 'test@example.com', role: 'buddy' }
+
+const mockBooking: BookingResponse = {
+  id: 'booking-1',
+  tourId: 'tour-1',
+  status: BookingStatusSchema.enum.confirmed,
+  bookedAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+}
 
 const mockTour: TourResponse = {
   id: 'tour-1',
@@ -150,5 +166,111 @@ describe('GET /tours/:id', () => {
     const res = await buildApp().request('/tours/tour-1')
     const body = await res.json() as Record<string, unknown>
     expect(body.adminMemo).toBeUndefined()
+  })
+})
+
+describe('POST /tours/:id/bookings', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await routes.request('/tours/tour-1/bookings', { method: 'POST' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 201 with booking on success', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
+    const res = await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
+    expect(res.status).toBe(201)
+    const body = await res.json() as BookingResponse
+    expect(body.id).toBe('booking-1')
+    expect(body.status).toBe('confirmed')
+  })
+
+  it('returns 404 when tour not found', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: false, code: 'TOUR_NOT_FOUND' })
+    const res = await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 409 when already booked', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: false, code: 'ALREADY_BOOKED' })
+    const res = await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
+    expect(res.status).toBe(409)
+  })
+
+  it('returns 422 when tour is not bookable', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: false, code: 'NOT_BOOKABLE' })
+    const res = await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
+    expect(res.status).toBe(422)
+  })
+
+  it('passes tourId and userId to createBooking', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
+    await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
+    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', dbUser.id)
+  })
+})
+
+describe('PUT /tours/:id/bookings/me', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await routes.request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'declined' }),
+    })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 200 with updated booking', async () => {
+    mockUpdateBooking.mockResolvedValueOnce({ ok: true, booking: { ...mockBooking, status: 'maybe' } })
+    const res = await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'maybe' }),
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json() as BookingResponse
+    expect(body.status).toBe('maybe')
+  })
+
+  it('returns 400 for invalid status in body', async () => {
+    const res = await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'waitlist' }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 404 when booking not found', async () => {
+    mockUpdateBooking.mockResolvedValueOnce({ ok: false, code: 'NOT_FOUND' })
+    const res = await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'declined' }),
+    })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 409 when tour is full', async () => {
+    mockUpdateBooking.mockResolvedValueOnce({ ok: false, code: 'TOUR_FULL' })
+    const res = await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'confirmed' }),
+    })
+    expect(res.status).toBe(409)
+  })
+
+  it('passes tourId, userId, and status to updateBooking', async () => {
+    mockUpdateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
+    await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'declined' }),
+    })
+    expect(mockUpdateBooking).toHaveBeenCalledWith('tour-1', dbUser.id, 'declined')
   })
 })

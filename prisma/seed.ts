@@ -152,7 +152,7 @@ async function main() {
 
   await prisma.tour.upsert({
     where: { id: ID.tourMidterm },
-    update: {},
+    update: { bookingOpen: true },
     create: {
       id: ID.tourMidterm,
       groupId: ID.company,
@@ -161,6 +161,7 @@ async function main() {
       meetingTime: timeOnly(13, 30),
       location: '渋谷・原宿',
       capacity: 4,
+      bookingOpen: true,
       description: '企業チーム向けの午後の文化体験ツアーです。',
       cancellationDeadline: daysFromNow(10),
       maybeDeadline: daysFromNow(5),
@@ -170,7 +171,7 @@ async function main() {
 
   await prisma.tour.upsert({
     where: { id: ID.tourOpen },
-    update: {},
+    update: { bookingOpen: true },
     create: {
       id: ID.tourOpen,
       groupId: ID.school,
@@ -179,6 +180,7 @@ async function main() {
       meetingTime: timeOnly(10),
       location: '上野公園・博物館エリア',
       capacity: 3,
+      bookingOpen: true,
       description: '中学生向けの上野ミュージアム巡り一日ツアーです。',
       cancellationDeadline: daysFromNow(24),
       notificationOffsets: [14, 7],

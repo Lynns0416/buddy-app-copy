@@ -52,6 +52,20 @@ export default function AdminTourDetailPage() {
     }
   }
 
+  async function handleToggleBooking() {
+    if (!tour) return
+    setActing(true)
+    setActionError(null)
+    try {
+      const updated = await apiClient.updateAdminTour(id, { bookingOpen: !tour.bookingOpen })
+      setTour(updated)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t('actionError'))
+    } finally {
+      setActing(false)
+    }
+  }
+
   async function handleDelete() {
     if (!window.confirm(t('confirmDelete'))) return
     setActing(true)
@@ -134,6 +148,10 @@ export default function AdminTourDetailPage() {
               <dd className="font-medium whitespace-pre-wrap">{tour.description}</dd>
             </div>
           )}
+          <div>
+            <dt className="text-muted-foreground">{t('bookingOpen')}</dt>
+            <dd className="font-medium">{tour.bookingOpen ? t('bookingOpenYes') : t('bookingOpenNo')}</dd>
+          </div>
           {tour.adminMemo && (
             <div className="sm:col-span-2">
               <dt className="text-muted-foreground">{t('adminMemo')}</dt>
@@ -144,6 +162,16 @@ export default function AdminTourDetailPage() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
+        {(tour.status === TourStatusSchema.enum.draft || tour.status === TourStatusSchema.enum.published) && (
+          <Button
+            size="sm"
+            variant={tour.bookingOpen ? 'secondary' : 'outline'}
+            disabled={acting}
+            onClick={handleToggleBooking}
+          >
+            {tour.bookingOpen ? t('closeBooking') : t('openBooking')}
+          </Button>
+        )}
         {tour.status === TourStatusSchema.enum.draft && (
           <>
             <Button size="sm" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.publish)}>
