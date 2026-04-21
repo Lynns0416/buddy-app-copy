@@ -5,6 +5,10 @@ Every session start:
 2. Run `git log --oneline main..HEAD` and `git log --oneline -10 main` to check what has merged since last recorded state
 3. Update `memory/project_state.md` to reflect merged branches before doing anything else
 
+After a PR merges to main:
+1. Check off completed items in `docs/TASKS.md`
+2. Update the **Built** list and **Next** section in `memory/project_state.md`
+
 ## Stack
 - Monorepo: `apps/api` (Hono), `apps/web` (Next.js App Router + next-intl), `packages/types` (Zod)
 - DB: Postgres via Prisma. All commands run in Docker.
