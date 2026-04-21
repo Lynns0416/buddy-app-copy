@@ -170,7 +170,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
             {...register('bookingOpen')}
             className="h-4 w-4 rounded border-input accent-primary"
           />
-          <Label htmlFor="bookingOpen">{t('bookingOpen')}</Label>
+          <Label htmlFor="bookingOpen">{t('bookingOpenDescription')}</Label>
         </div>
 
         <div className="flex flex-col gap-1.5">

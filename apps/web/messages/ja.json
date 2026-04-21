@@ -6,7 +6,8 @@
     "appName": "Peace Buddy",
     "title": "ログイン",
     "google": "Googleでログイン",
-    "apple": "Appleでログイン"
+    "apple": "Appleでログイン",
+    "sessionExpired": "ログアウトされたようです。お手数ですが、再度サインインをお願いします 🙇"
   },
   "admin": {
     "title": "管理",
@@ -36,7 +37,7 @@
     "tourDate": "ツアー日",
     "status": "ステータス",
     "location": "場所",
-    "capacity": "定員",
+    "capacity": "バディ数",
     "actionError": "操作に失敗しました。もう一度お試しください。"
   },
   "adminBuddies": {
@@ -54,7 +55,7 @@
     "signOut": "ログアウト",
     "meetingTime": "集合時間",
     "location": "場所",
-    "capacity": "定員",
+    "capacity": "バディ数",
     "notRegistered": "申し訳ありませんが、バディとして登録されていないようです。ご不明な点がある場合は、plabスタッフまでお問い合わせください。"
   },
   "adminTours": {
@@ -67,7 +68,7 @@
     "tourDate": "ツアー日",
     "meetingTime": "集合時間",
     "location": "場所",
-    "capacity": "定員",
+    "capacity": "バディ数",
     "description": "説明",
     "adminMemo": "管理者メモ",
     "cancellationDeadline": "キャンセル期限",
@@ -96,7 +97,8 @@
     "statusPublished": "公開中",
     "statusCancelled": "キャンセル済",
     "statusCompleted": "完了",
-    "bookingOpen": "予約受付",
+    "bookingOpen": "バディ予約受付",
+    "bookingOpenDescription": "バディが予約できるようにする",
     "bookingOpenYes": "受付中",
     "bookingOpenNo": "受付停止",
     "openBooking": "予約を開く",
@@ -110,7 +112,7 @@
     "tourDate": "ツアー日",
     "meetingTime": "集合時間",
     "location": "場所",
-    "capacity": "定員",
+    "capacity": "バディ数",
     "description": "説明",
     "seatCounts": "参加状況",
     "confirmed": "確定",

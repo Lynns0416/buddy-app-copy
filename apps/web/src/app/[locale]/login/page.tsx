@@ -1,13 +1,24 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useEffect, Suspense } from 'react'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { GoogleSignInButton } from '@/components/google-sign-in-button'
 import { AppleSignInButton } from '@/components/apple-sign-in-button'
+
+function SessionExpiredBanner() {
+  const t = useTranslations('login')
+  const searchParams = useSearchParams()
+  if (searchParams.get('reason') !== 'session_expired') return null
+  return (
+    <p className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+      {t('sessionExpired')}
+    </p>
+  )
+}
 
 export default function LoginPage() {
   const { firebaseUser, dbUser, loading, signInWithGoogle, signInWithApple } = useAuth()
@@ -48,6 +59,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm rounded-xl border bg-card p-8 shadow-sm">
         <h1 className="mb-1 text-2xl font-bold tracking-tight">{t('appName')}</h1>
         <p className="mb-8 text-sm text-muted-foreground">{t('title')}</p>
+        <Suspense>
+          <SessionExpiredBanner />
+        </Suspense>
         <div className="flex flex-col gap-3">
           <GoogleSignInButton label={t('google')} onClick={handleGoogle} />
           <AppleSignInButton label={t('apple')} onClick={handleApple} />

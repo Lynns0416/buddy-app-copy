@@ -6,7 +6,8 @@
     "appName": "Peace Buddy",
     "title": "Sign in",
     "google": "Sign in with Google",
-    "apple": "Sign in with Apple"
+    "apple": "Sign in with Apple",
+    "sessionExpired": "Seems like you've been logged out, sorry. Please sign in again 🙇"
   },
   "admin": {
     "title": "Admin",
@@ -97,6 +98,7 @@
     "statusCancelled": "Cancelled",
     "statusCompleted": "Completed",
     "bookingOpen": "Booking Open",
+    "bookingOpenDescription": "Allow buddies to book",
     "bookingOpenYes": "Open",
     "bookingOpenNo": "Closed",
     "openBooking": "Open Booking",

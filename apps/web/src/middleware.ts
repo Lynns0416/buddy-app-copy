@@ -18,10 +18,9 @@ export default function middleware(request: NextRequest) {
   if (!isPublic) {
     const token = request.cookies.get('__session')?.value
     if (!token) {
-      // Detect locale from the path, fall back to default
       const localeMatch = pathname.match(/^\/(ja|en)/)
       const locale = localeMatch ? localeMatch[1] : routing.defaultLocale
-      return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
+      return NextResponse.redirect(new URL(`/${locale}/login?reason=session_expired`, request.url))
     }
   }
 

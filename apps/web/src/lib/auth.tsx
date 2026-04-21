@@ -17,7 +17,7 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth'
 import { firebaseAuth } from './firebase'
-import { apiRequest } from './api'
+import { apiRequest, ApiError } from './api'
 import type { UserResponse } from '@peace-buddy/types'
 
 // Alias for UserResponse — keeps call sites using useAuth().dbUser stable
@@ -70,7 +70,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Fetch asynchronously and update state once resolved
           apiRequest<DbUser>('/auth/me')
             .then((me) => setDbUser(me))
-            .catch(() => setDbUser(null))
+            .catch((err) => {
+              if (err instanceof ApiError && err.status === 401) {
+                if (window.location.pathname.includes('/login')) {
+                  setDbUser(null)
+                  return
+                }
+                firebaseSignOut(firebaseAuth).catch(() => {})
+                clearTokenCookie()
+                const localeMatch = window.location.pathname.match(/^\/(ja|en)/)
+                const locale = localeMatch ? localeMatch[1] : 'ja'
+                window.location.replace(`/${locale}/login?reason=session_expired`)
+                return
+              }
+              setDbUser(null)
+            })
           return null
         })
       } else {

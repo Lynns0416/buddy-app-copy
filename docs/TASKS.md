@@ -32,10 +32,10 @@ Linked to PRD sections — refer to `docs/PRD.md` for full spec.
 - [x] `GET /admin/tours` — tour list (all statuses)
 - [x] Admin tour list page
 - [x] `TourForm` component (React Hook Form)
-- [ ] `POST /admin/tours` — create tour (draft) · PRD §7
-- [ ] `PUT /admin/tours/:id` — edit tour fields
-- [ ] `PUT /admin/tours/:id/status` — publish / cancel / complete
-- [ ] `DELETE /admin/tours/:id` — hard delete (draft only)
+- [x] `POST /admin/tours` — create tour (draft) · PRD §7
+- [x] `PUT /admin/tours/:id` — edit tour fields
+- [x] `PUT /admin/tours/:id/status` — publish / cancel / complete
+- [x] `DELETE /admin/tours/:id` — hard delete (draft only)
 - [ ] `GET /admin/tours/:id` — tour detail (booking list, adminMemo)
 - [ ] Admin tour create/edit form (all fields incl. deadlines, notification offsets)
 - [ ] Admin tour detail page (booking list: buddy name, status, booked time)
@@ -52,9 +52,9 @@ Linked to PRD sections — refer to `docs/PRD.md` for full spec.
 ## M5 — Booking system · PRD §8 ⬜ next up
 - [ ] `POST /tours/:id/bookings` — create (Confirmed / Maybe / Waitlist)
 - [ ] `PUT /tours/:id/bookings/:bookingId` — update status (full transition matrix)
-  - [ ] Cancellation reason modal (category + optional free text) on Confirmed → Declined
-  - [ ] Cancellation deadline enforcement (buddy blocked after deadline)
-  - [ ] Admin override: `PUT /admin/tours/:id/bookings/:buddyId/deadline`
+- [ ] Cancellation reason modal (category + optional free text) on Confirmed → Declined
+- [ ] Cancellation deadline enforcement (buddy blocked after deadline)
+- [ ] Admin override: `PUT /admin/tours/:id/bookings/:buddyId/deadline`
 - [ ] Waitlist auto-notify on seat open (all waitlisted buddies)
 - [ ] Maybe deadline enforcement + reminder hooks
 - [ ] Atomic seat claim (DB transaction, second claim fails gracefully)
