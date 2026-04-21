@@ -7,11 +7,18 @@ import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
 import { apiClient } from '@/lib/api-client'
-import type { GroupDetailResponse } from '@peace-buddy/types'
+import type { GroupDetailResponse, GroupType } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
+const GROUP_TYPE_CLASS: Record<GroupType, string> = {
+  school: 'bg-blue-100 text-blue-800 border-blue-200',
+  company: 'bg-amber-100 text-amber-800 border-amber-200',
+  community: 'bg-green-100 text-green-800 border-green-200',
+  other: 'bg-slate-100 text-slate-700 border-slate-200',
+}
 
 export default function AdminGroupDetailPage() {
   const { ready, locale } = useAdminGuard()
@@ -53,7 +60,7 @@ export default function AdminGroupDetailPage() {
       <div className="mb-6 rounded-lg border bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
           <h1 className="text-xl font-semibold">{group.name}</h1>
-          <Badge variant="secondary">{group.type}</Badge>
+          <Badge className={GROUP_TYPE_CLASS[group.type]}>{group.type}</Badge>
         </div>
         <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           {group.contactName && (

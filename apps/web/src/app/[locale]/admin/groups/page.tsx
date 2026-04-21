@@ -7,11 +7,18 @@ import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
 import { apiClient } from '@/lib/api-client'
-import type { GroupResponse } from '@peace-buddy/types'
+import type { GroupResponse, GroupType } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
+const GROUP_TYPE_CLASS: Record<GroupType, string> = {
+  school: 'bg-blue-100 text-blue-800 border-blue-200',
+  company: 'bg-amber-100 text-amber-800 border-amber-200',
+  community: 'bg-green-100 text-green-800 border-green-200',
+  other: 'bg-slate-100 text-slate-700 border-slate-200',
+}
 
 type SortField = 'name' | 'type'
 type SortDir = 'asc' | 'desc'
@@ -72,55 +79,77 @@ export default function AdminGroupsPage() {
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('noResults')}</p>
       ) : (
-        <div className="rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <button
-                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                    onClick={() => handleSort('name')}
-                  >
-                    {t('name')}
-                    <SortIcon active={sortField === 'name'} dir={sortDir} />
-                  </button>
-                </TableHead>
-                <TableHead>
-                  <button
-                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                    onClick={() => handleSort('type')}
-                  >
-                    {t('type')}
-                    <SortIcon active={sortField === 'type'} dir={sortDir} />
-                  </button>
-                </TableHead>
-                <TableHead className="w-20" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.map((group) => (
-                <TableRow key={group.id}>
-                  <TableCell>
-                    <Link
-                      href={routes.adminGroupDetail(locale, group.id)}
-                      className="font-medium hover:underline"
+        <>
+          {/* Mobile: cards */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            {sorted.map((group) => (
+              <div key={group.id} className="rounded-lg border bg-card p-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <Link href={routes.adminGroupDetail(locale, group.id)} className="font-medium hover:underline">
+                    {group.name}
+                  </Link>
+                  <Badge className={GROUP_TYPE_CLASS[group.type]}>{group.type}</Badge>
+                </div>
+                <div className="flex justify-end">
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* sm+: scrollable table */}
+          <div className="hidden sm:block overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <button
+                      className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                      onClick={() => handleSort('name')}
                     >
-                      {group.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{group.type}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button asChild variant="ghost" size="sm">
-                      <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
-                    </Button>
-                  </TableCell>
+                      {t('name')}
+                      <SortIcon active={sortField === 'name'} dir={sortDir} />
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                      onClick={() => handleSort('type')}
+                    >
+                      {t('type')}
+                      <SortIcon active={sortField === 'type'} dir={sortDir} />
+                    </button>
+                  </TableHead>
+                  <TableHead className="w-20" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((group) => (
+                  <TableRow key={group.id}>
+                    <TableCell>
+                      <Link
+                        href={routes.adminGroupDetail(locale, group.id)}
+                        className="font-medium hover:underline"
+                      >
+                        {group.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={GROUP_TYPE_CLASS[group.type]}>{group.type}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </AppShell>
   )
