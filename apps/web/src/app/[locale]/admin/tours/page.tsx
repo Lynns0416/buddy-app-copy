@@ -11,6 +11,7 @@ import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SortIcon, type SortDir } from '@/components/sort-icon'
 
 const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   draft: 'outline',
@@ -19,11 +20,15 @@ const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive'
   completed: 'secondary',
 }
 
+type SortField = 'tourDate' | 'group' | 'location' | 'capacity' | 'confirmedCount' | 'status'
+
 export default function AdminToursPage() {
   const { ready, locale } = useAdminGuard()
   const t = useTranslations('adminTours')
   const [tours, setTours] = useState<AdminTourSummaryResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<SortField>('tourDate')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   useEffect(() => {
     if (!ready) return
@@ -31,6 +36,28 @@ export default function AdminToursPage() {
       .then(setTours)
       .catch(() => setFetchError(t('actionError')))
   }, [ready, t])
+
+  function handleSort(field: SortField) {
+    if (field === sortField) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const sorted = [...tours].sort((a, b) => {
+    let cmp = 0
+    switch (sortField) {
+      case 'tourDate': cmp = a.tourDate.localeCompare(b.tourDate); break
+      case 'group': cmp = a.group.name.localeCompare(b.group.name, 'ja'); break
+      case 'location': cmp = a.location.localeCompare(b.location, 'ja'); break
+      case 'capacity': cmp = a.capacity - b.capacity; break
+      case 'confirmedCount': cmp = a.confirmedCount - b.confirmedCount; break
+      case 'status': cmp = a.status.localeCompare(b.status); break
+    }
+    return sortDir === 'asc' ? cmp : -cmp
+  })
 
   if (!ready) return null
 
@@ -49,13 +76,13 @@ export default function AdminToursPage() {
         </p>
       )}
 
-      {tours.length === 0 ? (
+      {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('noResults')}</p>
       ) : (
         <>
           {/* Mobile: cards */}
           <div className="flex flex-col gap-3 sm:hidden">
-            {tours.map((tour) => (
+            {sorted.map((tour) => (
               <div key={tour.id} className="rounded-lg border bg-card p-4">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="tabular-nums text-sm font-medium">{tour.tourDate.slice(0, 10)}</span>
@@ -82,17 +109,29 @@ export default function AdminToursPage() {
             <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="whitespace-nowrap">{t('tourDate')}</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('group')}</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('location')}</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('capacity')}</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('confirmedCount')}</TableHead>
-                  <TableHead className="whitespace-nowrap">{t('status')}</TableHead>
+                  {([
+                    { field: 'tourDate', label: t('tourDate') },
+                    { field: 'group', label: t('group') },
+                    { field: 'location', label: t('location') },
+                    { field: 'capacity', label: t('capacity') },
+                    { field: 'confirmedCount', label: t('confirmedCount') },
+                    { field: 'status', label: t('status') },
+                  ] as { field: SortField; label: string }[]).map(({ field, label }) => (
+                    <TableHead key={field} className="whitespace-nowrap">
+                      <button
+                        className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                        onClick={() => handleSort(field)}
+                      >
+                        {label}
+                        <SortIcon active={sortField === field} dir={sortDir} />
+                      </button>
+                    </TableHead>
+                  ))}
                   <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tours.map((tour) => (
+                {sorted.map((tour) => (
                   <TableRow key={tour.id}>
                     <TableCell className="tabular-nums">{tour.tourDate.slice(0, 10)}</TableCell>
                     <TableCell>{tour.group.name}</TableCell>

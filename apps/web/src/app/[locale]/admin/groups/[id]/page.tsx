@@ -12,6 +12,9 @@ import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SortIcon, type SortDir } from '@/components/sort-icon'
+
+type TourSortField = 'tourDate' | 'status' | 'location' | 'capacity'
 
 const GROUP_TYPE_CLASS: Record<GroupType, string> = {
   school: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -26,6 +29,17 @@ export default function AdminGroupDetailPage() {
   const t = useTranslations('adminGroups')
   const [group, setGroup] = useState<GroupDetailResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [tourSortField, setTourSortField] = useState<TourSortField>('tourDate')
+  const [tourSortDir, setTourSortDir] = useState<SortDir>('asc')
+
+  function handleTourSort(field: TourSortField) {
+    if (field === tourSortField) {
+      setTourSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setTourSortField(field)
+      setTourSortDir('asc')
+    }
+  }
 
   useEffect(() => {
     if (!ready) return
@@ -98,14 +112,35 @@ export default function AdminGroupDetailPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('tourDate')}</TableHead>
-                <TableHead>{t('status')}</TableHead>
-                <TableHead>{t('location')}</TableHead>
-                <TableHead>{t('capacity')}</TableHead>
+                {([
+                  { field: 'tourDate' as const, label: t('tourDate') },
+                  { field: 'status' as const, label: t('status') },
+                  { field: 'location' as const, label: t('location') },
+                  { field: 'capacity' as const, label: t('capacity') },
+                ]).map(({ field, label }) => (
+                  <TableHead key={field}>
+                    <button
+                      className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                      onClick={() => handleTourSort(field)}
+                    >
+                      {label}
+                      <SortIcon active={tourSortField === field} dir={tourSortDir} />
+                    </button>
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {group.tours.map((tour) => (
+              {[...group.tours].sort((a, b) => {
+                let cmp = 0
+                switch (tourSortField) {
+                  case 'tourDate': cmp = a.tourDate.localeCompare(b.tourDate); break
+                  case 'status': cmp = a.status.localeCompare(b.status); break
+                  case 'location': cmp = a.location.localeCompare(b.location, 'ja'); break
+                  case 'capacity': cmp = a.capacity - b.capacity; break
+                }
+                return tourSortDir === 'asc' ? cmp : -cmp
+              }).map((tour) => (
                 <TableRow key={tour.id}>
                   <TableCell>{tour.tourDate.slice(0, 10)}</TableCell>
                   <TableCell>

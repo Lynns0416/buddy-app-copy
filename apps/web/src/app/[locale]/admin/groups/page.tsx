@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
 import { apiClient } from '@/lib/api-client'
@@ -12,6 +11,7 @@ import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SortIcon, type SortDir } from '@/components/sort-icon'
 
 const GROUP_TYPE_CLASS: Record<GroupType, string> = {
   school: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -21,14 +21,6 @@ const GROUP_TYPE_CLASS: Record<GroupType, string> = {
 }
 
 type SortField = 'name' | 'type'
-type SortDir = 'asc' | 'desc'
-
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <ChevronsUpDown className="ml-1 inline h-3.5 w-3.5 opacity-40" />
-  return dir === 'asc'
-    ? <ChevronUp className="ml-1 inline h-3.5 w-3.5" />
-    : <ChevronDown className="ml-1 inline h-3.5 w-3.5" />
-}
 
 export default function AdminGroupsPage() {
   const { ready, locale } = useAdminGuard()

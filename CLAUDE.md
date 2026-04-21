@@ -24,6 +24,7 @@ After a PR merges to main:
 - **Tests**: Vitest, colocated `*.test.ts`. Route tests use `buildApp()` with stub auth middleware. Mock Prisma + Firebase via `vi.mock`.
 - **Commits**: one concern per commit, no co-author signature.
 - **Web routing**: always use `routes.*` from `apps/web/src/lib/routes.ts`, never raw strings.
+- **Admin tables**: all columns must be client-side sortable. Use the `SortIcon` component from `apps/web/src/components/sort-icon.tsx` with `SortField`/`SortDir`/`handleSort`/`sorted` pattern (see `admin/groups/page.tsx` for reference).
 
 ## Key files
 - `apps/api/src/routes/index.ts` — publicApp + protectedApp composition

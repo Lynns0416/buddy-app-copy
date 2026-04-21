@@ -9,6 +9,7 @@ import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SortIcon, type SortDir } from '@/components/sort-icon'
 
 export default function AdminBuddiesPage() {
   const { ready } = useAdminGuard()
@@ -16,6 +17,24 @@ export default function AdminBuddiesPage() {
   const [buddies, setBuddies] = useState<AdminBuddyResponse[]>([])
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<'displayName' | 'email'>('displayName')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  function handleSort(field: 'displayName' | 'email') {
+    if (field === sortField) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const sorted = [...buddies].sort((a, b) => {
+    const cmp = sortField === 'displayName'
+      ? a.displayName.localeCompare(b.displayName, 'ja')
+      : a.email.localeCompare(b.email)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
 
   useEffect(() => {
     if (!ready) return
@@ -62,20 +81,36 @@ export default function AdminBuddiesPage() {
         </p>
       )}
 
-      {buddies.length === 0 ? (
+      {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('noResults')}</p>
       ) : (
         <div className="rounded-lg border bg-card">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('name')}</TableHead>
-                <TableHead>{t('email')}</TableHead>
+                <TableHead>
+                  <button
+                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                    onClick={() => handleSort('displayName')}
+                  >
+                    {t('name')}
+                    <SortIcon active={sortField === 'displayName'} dir={sortDir} />
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                    onClick={() => handleSort('email')}
+                  >
+                    {t('email')}
+                    <SortIcon active={sortField === 'email'} dir={sortDir} />
+                  </button>
+                </TableHead>
                 <TableHead className="w-40" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {buddies.map((buddy) => (
+              {sorted.map((buddy) => (
                 <TableRow key={buddy.id}>
                   <TableCell className="font-medium">{buddy.displayName}</TableCell>
                   <TableCell className="text-muted-foreground">{buddy.email}</TableCell>

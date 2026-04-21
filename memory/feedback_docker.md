@@ -8,4 +8,4 @@ Never run commands (npm, npx, pnpm, prisma, etc.) directly in the shell. No exce
 
 **Why:** The project runs in a Docker environment. This rule has been violated multiple times across sessions despite being written in CLAUDE.md and this memory. The user is explicitly frustrated by repeated violations.
 
-**How to apply:** Before running any shell command, ask: is this going via `docker-compose exec <service>`? If not, stop. Check docker-compose.yml for service names. `npm test`, `npx vitest`, `tsc` etc. must all go through Docker.
+**How to apply:** Before running any shell command, ask: is this going via `docker-compose exec <service>`? If not, stop. Check docker-compose.yml for service names. `npm test`, `npx vitest`, `tsc` etc. must all go through Docker. `pnpm` is NOT installed locally — there is no local Node toolchain at all. Every tool invocation must go through Docker, no exceptions, no fallback attempts.

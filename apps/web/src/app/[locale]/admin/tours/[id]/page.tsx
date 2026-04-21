@@ -13,6 +13,7 @@ import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SortIcon, type SortDir } from '@/components/sort-icon'
 
 const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   draft: 'outline',
@@ -30,6 +31,17 @@ export default function AdminTourDetailPage() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [acting, setActing] = useState(false)
+  const [bookingSortField, setBookingSortField] = useState<'displayName' | 'status' | 'bookedAt'>('bookedAt')
+  const [bookingSortDir, setBookingSortDir] = useState<SortDir>('asc')
+
+  function handleBookingSort(field: 'displayName' | 'status' | 'bookedAt') {
+    if (field === bookingSortField) {
+      setBookingSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setBookingSortField(field)
+      setBookingSortDir('asc')
+    }
+  }
 
   useEffect(() => {
     if (!ready) return
@@ -205,13 +217,33 @@ export default function AdminTourDetailPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('buddyName')}</TableHead>
-                <TableHead>{t('bookingStatus')}</TableHead>
-                <TableHead>{t('bookedAt')}</TableHead>
+                {([
+                  { field: 'displayName' as const, label: t('buddyName') },
+                  { field: 'status' as const, label: t('bookingStatus') },
+                  { field: 'bookedAt' as const, label: t('bookedAt') },
+                ]).map(({ field, label }) => (
+                  <TableHead key={field}>
+                    <button
+                      className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                      onClick={() => handleBookingSort(field)}
+                    >
+                      {label}
+                      <SortIcon active={bookingSortField === field} dir={bookingSortDir} />
+                    </button>
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tour.bookings.map((b) => (
+              {[...tour.bookings].sort((a, b) => {
+                let cmp = 0
+                switch (bookingSortField) {
+                  case 'displayName': cmp = a.displayName.localeCompare(b.displayName, 'ja'); break
+                  case 'status': cmp = a.status.localeCompare(b.status); break
+                  case 'bookedAt': cmp = a.bookedAt.localeCompare(b.bookedAt); break
+                }
+                return bookingSortDir === 'asc' ? cmp : -cmp
+              }).map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-medium">{b.displayName}</TableCell>
                   <TableCell>
