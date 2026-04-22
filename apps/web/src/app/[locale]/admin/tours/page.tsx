@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
 import { apiClient } from '@/lib/api-client'
 import type { AdminTourSummaryResponse, TourStatus } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon, type SortDir } from '@/components/sort-icon'
 
@@ -24,6 +25,7 @@ type SortField = 'tourDate' | 'group' | 'location' | 'capacity' | 'confirmedCoun
 
 export default function AdminToursPage() {
   const { ready, locale } = useAdminGuard()
+  const router = useRouter()
   const t = useTranslations('adminTours')
   const [tours, setTours] = useState<AdminTourSummaryResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -83,7 +85,11 @@ export default function AdminToursPage() {
           {/* Mobile: cards */}
           <div className="flex flex-col gap-3 sm:hidden">
             {sorted.map((tour) => (
-              <div key={tour.id} className="rounded-lg border bg-card p-4">
+              <Link
+                key={tour.id}
+                href={routes.adminTourDetail(locale, tour.id)}
+                className="block rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+              >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="tabular-nums text-sm font-medium">{tour.tourDate.slice(0, 10)}</span>
                   <Badge variant={STATUS_VARIANT[tour.status]}>
@@ -91,16 +97,11 @@ export default function AdminToursPage() {
                   </Badge>
                 </div>
                 <p className="mb-2 font-medium">{tour.group.name}</p>
-                <p className="mb-3 text-sm text-muted-foreground">{tour.location}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {t('confirmedCount')} {tour.confirmedCount} / {tour.capacity}
-                  </span>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
-                  </Button>
-                </div>
-              </div>
+                <p className="mb-1 text-sm text-muted-foreground">{tour.location}</p>
+                <span className="text-sm text-muted-foreground">
+                  {t('confirmedCount')} {tour.confirmedCount} / {tour.capacity}
+                </span>
+              </Link>
             ))}
           </div>
 
@@ -127,12 +128,15 @@ export default function AdminToursPage() {
                       </button>
                     </TableHead>
                   ))}
-                  <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sorted.map((tour) => (
-                  <TableRow key={tour.id}>
+                  <TableRow
+                    key={tour.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
+                  >
                     <TableCell className="tabular-nums">{tour.tourDate.slice(0, 10)}</TableCell>
                     <TableCell>{tour.group.name}</TableCell>
                     <TableCell>{tour.location}</TableCell>
@@ -142,11 +146,6 @@ export default function AdminToursPage() {
                       <Badge variant={STATUS_VARIANT[tour.status]}>
                         {t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
-                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

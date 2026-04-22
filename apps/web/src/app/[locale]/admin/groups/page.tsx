@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
@@ -24,6 +25,7 @@ type SortField = 'name' | 'type'
 
 export default function AdminGroupsPage() {
   const { ready, locale } = useAdminGuard()
+  const router = useRouter()
   const t = useTranslations('adminGroups')
   const [groups, setGroups] = useState<GroupResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -75,15 +77,17 @@ export default function AdminGroupsPage() {
           {/* Mobile: cards */}
           <div className="flex flex-col gap-3 sm:hidden">
             {sorted.map((group) => (
-              <div key={group.id} className="rounded-lg border bg-card p-4">
+              <div
+                key={group.id}
+                className="cursor-pointer rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+                onClick={() => router.push(routes.adminGroupDetail(locale, group.id))}
+              >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <Link href={routes.adminGroupDetail(locale, group.id)} className="font-medium hover:underline">
-                    {group.name}
-                  </Link>
+                  <span className="font-medium">{group.name}</span>
                   <Badge className={GROUP_TYPE_CLASS[group.type]}>{group.type}</Badge>
                 </div>
                 <div className="flex justify-end">
-                  <Button asChild variant="ghost" size="sm">
+                  <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
                     <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
                   </Button>
                 </div>
@@ -119,20 +123,17 @@ export default function AdminGroupsPage() {
               </TableHeader>
               <TableBody>
                 {sorted.map((group) => (
-                  <TableRow key={group.id}>
-                    <TableCell>
-                      <Link
-                        href={routes.adminGroupDetail(locale, group.id)}
-                        className="font-medium hover:underline"
-                      >
-                        {group.name}
-                      </Link>
-                    </TableCell>
+                  <TableRow
+                    key={group.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(routes.adminGroupDetail(locale, group.id))}
+                  >
+                    <TableCell className="font-medium">{group.name}</TableCell>
                     <TableCell>
                       <Badge className={GROUP_TYPE_CLASS[group.type]}>{group.type}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="ghost" size="sm">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button asChild variant="outline" size="sm">
                         <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
                       </Button>
                     </TableCell>
