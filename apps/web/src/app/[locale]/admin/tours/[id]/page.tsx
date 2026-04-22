@@ -8,7 +8,7 @@ import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
 import { apiClient } from '@/lib/api-client'
 import { TourStatusSchema, TourActionSchema } from '@peace-buddy/types'
-import type { AdminTourDetailResponse, TourStatus, TourAction } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, TourStatus, TourAction, BookingStatus } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,13 @@ const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive'
   published: 'default',
   cancelled: 'destructive',
   completed: 'secondary',
+}
+
+const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
+  confirmed: 'bg-green-100 text-green-800 border-green-200',
+  maybe: 'bg-amber-100 text-amber-800 border-amber-200',
+  waitlist: 'bg-blue-100 text-blue-800 border-blue-200',
+  declined: 'bg-slate-100 text-slate-700 border-slate-200',
 }
 
 export default function AdminTourDetailPage() {
@@ -91,6 +98,20 @@ export default function AdminTourDetailPage() {
     }
   }
 
+  const tourStatusLabel: Record<TourStatus, string> = {
+    draft: t('statusDraft'),
+    published: t('statusPublished'),
+    cancelled: t('statusCancelled'),
+    completed: t('statusCompleted'),
+  }
+
+  const bookingStatusLabel: Record<BookingStatus, string> = {
+    confirmed: t('statusConfirmed'),
+    maybe: t('statusMaybe'),
+    waitlist: t('statusWaitlist'),
+    declined: t('statusDeclined'),
+  }
+
   if (!ready) return null
 
   if (fetchError) {
@@ -102,8 +123,6 @@ export default function AdminTourDetailPage() {
   }
 
   if (!tour) return null
-
-  const statusLabel = t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')
 
   return (
     <AppShell variant="admin">
@@ -125,7 +144,7 @@ export default function AdminTourDetailPage() {
       <div className="mb-6 rounded-lg border bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
           <h1 className="text-xl font-semibold">{tour.group.name}</h1>
-          <Badge variant={STATUS_VARIANT[tour.status]}>{statusLabel}</Badge>
+          <Badge variant={STATUS_VARIANT[tour.status]}>{tourStatusLabel[tour.status]}</Badge>
         </div>
         <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
@@ -247,7 +266,7 @@ export default function AdminTourDetailPage() {
                 <TableRow key={b.id}>
                   <TableCell className="font-medium">{b.displayName}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{b.status}</Badge>
+                    <Badge className={BOOKING_STATUS_CLASS[b.status]}>{bookingStatusLabel[b.status]}</Badge>
                   </TableCell>
                   <TableCell className="tabular-nums text-sm text-muted-foreground">
                     {new Date(b.bookedAt).toLocaleString()}

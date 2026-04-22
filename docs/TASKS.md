@@ -28,7 +28,8 @@ Linked to PRD sections — refer to `docs/PRD.md` for full spec.
 
 ---
 
-## M3 — Tour management (admin) 🔄 partially done
+## M3 — Tour management (admin) ✅
+- [x] `GET /tours` — buddy tour list
 - [x] `GET /admin/tours` — tour list (all statuses)
 - [x] Admin tour list page
 - [x] `TourForm` component (React Hook Form)
@@ -36,9 +37,9 @@ Linked to PRD sections — refer to `docs/PRD.md` for full spec.
 - [x] `PUT /admin/tours/:id` — edit tour fields
 - [x] `PUT /admin/tours/:id/status` — publish / cancel / complete
 - [x] `DELETE /admin/tours/:id` — hard delete (draft only)
-- [ ] `GET /admin/tours/:id` — tour detail (booking list, adminMemo)
-- [ ] Admin tour create/edit form (all fields incl. deadlines, notification offsets)
-- [ ] Admin tour detail page (booking list: buddy name, status, booked time)
+- [x] `GET /admin/tours/:id` — tour detail (booking list, adminMemo)
+- [x] Admin tour create/edit form (all fields incl. deadlines, notification offsets)
+- [x] Admin tour detail page (booking list: buddy name, status, booked time)
 
 ---
 

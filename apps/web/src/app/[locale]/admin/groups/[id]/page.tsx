@@ -70,6 +70,13 @@ export default function AdminGroupDetailPage() {
 
   if (!group) return null
 
+  const tourStatusLabel: Record<TourStatus, string> = {
+    draft: tTour('statusDraft'),
+    published: tTour('statusPublished'),
+    cancelled: tTour('statusCancelled'),
+    completed: tTour('statusCompleted'),
+  }
+
   return (
     <AppShell variant="admin">
       <div className="mb-6 flex items-center justify-between">
@@ -141,7 +148,7 @@ export default function AdminGroupDetailPage() {
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="tabular-nums text-sm font-medium">{tour.tourDate.slice(0, 10)}</span>
                     <Badge variant={STATUS_VARIANT[tour.status]}>
-                      {tTour(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
+                      {tourStatusLabel[tour.status]}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{tour.location}</p>
@@ -183,7 +190,7 @@ export default function AdminGroupDetailPage() {
                       <TableCell className="tabular-nums">{tour.tourDate.slice(0, 10)}</TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANT[tour.status]}>
-                          {tTour(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
+                          {tourStatusLabel[tour.status]}
                         </Badge>
                       </TableCell>
                       <TableCell>{tour.location}</TableCell>

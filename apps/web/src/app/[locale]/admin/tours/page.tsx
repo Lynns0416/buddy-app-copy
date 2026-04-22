@@ -61,6 +61,13 @@ export default function AdminToursPage() {
     return sortDir === 'asc' ? cmp : -cmp
   })
 
+  const tourStatusLabel: Record<TourStatus, string> = {
+    draft: t('statusDraft'),
+    published: t('statusPublished'),
+    cancelled: t('statusCancelled'),
+    completed: t('statusCompleted'),
+  }
+
   if (!ready) return null
 
   return (
@@ -93,7 +100,7 @@ export default function AdminToursPage() {
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="tabular-nums text-sm font-medium">{tour.tourDate.slice(0, 10)}</span>
                   <Badge variant={STATUS_VARIANT[tour.status]}>
-                    {t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
+                    {tourStatusLabel[tour.status]}
                   </Badge>
                 </div>
                 <p className="mb-2 font-medium">{tour.group.name}</p>
@@ -144,7 +151,7 @@ export default function AdminToursPage() {
                     <TableCell>{tour.confirmedCount}</TableCell>
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[tour.status]}>
-                        {t(`status${tour.status.charAt(0).toUpperCase()}${tour.status.slice(1)}` as 'statusDraft')}
+                        {tourStatusLabel[tour.status]}
                       </Badge>
                     </TableCell>
                   </TableRow>

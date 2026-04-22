@@ -125,9 +125,20 @@ export default function TourDetailPage() {
 
   if (!tour) return null
 
-  const myStatusKey = tour.myBookingStatus
-    ? (`status${tour.myBookingStatus.charAt(0).toUpperCase()}${tour.myBookingStatus.slice(1)}` as 'statusConfirmed')
-    : null
+  const bookingStatusLabel: Record<BookingStatus, string> = {
+    [BookingStatusSchema.enum.confirmed]: t('statusConfirmed'),
+    [BookingStatusSchema.enum.maybe]: t('statusMaybe'),
+    [BookingStatusSchema.enum.waitlist]: t('statusWaitlist'),
+    [BookingStatusSchema.enum.declined]: t('statusDeclined'),
+  }
+
+  const cancelCategoryLabel: Record<CancellationCategory, string> = {
+    [CancellationCategorySchema.enum.health]: t('cancelReasonHealth'),
+    [CancellationCategorySchema.enum.emergency]: t('cancelReasonEmergency'),
+    [CancellationCategorySchema.enum.personal]: t('cancelReasonPersonal'),
+    [CancellationCategorySchema.enum.work]: t('cancelReasonWork'),
+    [CancellationCategorySchema.enum.other]: t('cancelReasonOther'),
+  }
 
   const isBookable =
     tour.status === TourStatusSchema.enum.published &&
@@ -210,8 +221,8 @@ export default function TourDetailPage() {
       {dbUser && (
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-3 text-base font-semibold">{t('myStatus')}</h2>
-          {myStatusKey ? (
-            <Badge variant={MY_STATUS_VARIANT[tour.myBookingStatus!]}>{t(myStatusKey)}</Badge>
+          {tour.myBookingStatus ? (
+            <Badge variant={MY_STATUS_VARIANT[tour.myBookingStatus]}>{bookingStatusLabel[tour.myBookingStatus]}</Badge>
           ) : (
             <p className="text-sm text-muted-foreground">{t('noBooking')}</p>
           )}
@@ -229,7 +240,7 @@ export default function TourDetailPage() {
                       <SelectContent>
                         {CANCEL_CATEGORIES.map((cat) => (
                           <SelectItem key={cat} value={cat}>
-                            {t(`cancelReason${cat.charAt(0).toUpperCase()}${cat.slice(1)}` as 'cancelReasonHealth')}
+                            {cancelCategoryLabel[cat]}
                           </SelectItem>
                         ))}
                       </SelectContent>
