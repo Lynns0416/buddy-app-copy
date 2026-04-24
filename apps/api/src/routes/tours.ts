@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { TourStatusSchema, UpdateBookingBodySchema } from '@peace-buddy/types'
+import { TourStatusSchema, UpdateBookingBodySchema, CreateBookingBodySchema } from '@peace-buddy/types'
 import { listTours, getTour } from '../services/tour.service'
 import { createBooking, updateBooking } from '../services/booking.service'
 import type { AuthEnv } from '../types'
@@ -36,7 +36,16 @@ tourRoutes.get('/:id', async (c) => {
 tourRoutes.post('/:id/bookings', async (c) => {
   const tourId = c.req.param('id')
   const userId = c.get('user').id
-  const result = await createBooking(tourId, userId)
+
+  let initialStatus: 'confirmed' | 'maybe' | 'declined' | undefined
+  try {
+    const body = CreateBookingBodySchema.parse(await c.req.json())
+    initialStatus = body.initialStatus
+  } catch {
+    // no body or invalid JSON — use default auto-assign
+  }
+
+  const result = await createBooking(tourId, userId, initialStatus)
   if (!result.ok) {
     if (result.code === 'TOUR_NOT_FOUND') return c.json({ error: 'Tour not found' }, 404)
     if (result.code === 'ALREADY_BOOKED') return c.json({ error: 'Already booked' }, 409)
@@ -59,6 +68,7 @@ tourRoutes.put('/:id/bookings/me', async (c) => {
     if (result.code === 'NOT_FOUND') return c.json({ error: 'Booking not found' }, 404)
     if (result.code === 'TOUR_FULL') return c.json({ error: 'Tour is full' }, 409)
     if (result.code === 'DEADLINE_PASSED') return c.json({ error: 'Cancellation deadline has passed' }, 422)
+    if (result.code === 'MAYBE_DEADLINE_PASSED') return c.json({ error: 'Maybe deadline has passed' }, 422)
     if (result.code === 'REASON_REQUIRED') return c.json({ error: 'Cancellation reason required' }, 400)
     return c.json({ error: 'Buddy profile not found' }, 422)
   }

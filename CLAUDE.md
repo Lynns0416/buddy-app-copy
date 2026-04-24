@@ -1,13 +1,7 @@
 # Peace Buddy — Claude Context
 
-Every session start:
-1. Read `memory/project_state.md`
-2. Run `git log --oneline main..HEAD` and `git log --oneline -10 main` to check what has merged since last recorded state
-3. Update `memory/project_state.md` to reflect merged branches before doing anything else
-
-After a PR merges to main:
-1. Check off completed items in `docs/TASKS.md`
-2. Update the **Built** list and **Next** section in `memory/project_state.md`
+At session start, read `memory/project_state.md`.
+After a PR merges: update **Built** and **Next** in `memory/project_state.md`.
 
 ## Stack
 - Monorepo: `apps/api` (Hono), `apps/web` (Next.js App Router + next-intl), `packages/types` (Zod)

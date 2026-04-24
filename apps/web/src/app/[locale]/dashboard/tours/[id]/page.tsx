@@ -61,14 +61,11 @@ export default function TourDetailPage() {
     setTour(updated)
   }
 
-  const handleInitialResponse = async (intent: BookingStatus) => {
+  const handleInitialResponse = async (intent: 'confirmed' | 'maybe' | 'declined') => {
     setActing(true)
     setActionError(null)
     try {
-      await apiClient.createBooking(id)
-      if (intent !== BookingStatusSchema.enum.confirmed) {
-        await apiClient.updateBooking(id, intent as UpdateBookingBody['status'])
-      }
+      await apiClient.createBooking(id, intent)
       await refreshTour()
     } catch {
       setActionError(t('bookingError'))
@@ -85,6 +82,7 @@ export default function TourDetailPage() {
       await refreshTour()
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) setActionError(t('tourFull'))
+      else if (err instanceof ApiError && err.message === 'Maybe deadline has passed') setActionError(t('maybeDeadlinePassed'))
       else if (err instanceof ApiError && err.status === 422) setActionError(t('deadlinePassed'))
       else setActionError(t('bookingError'))
     } finally {
@@ -140,6 +138,10 @@ export default function TourDetailPage() {
     [CancellationCategorySchema.enum.other]: t('cancelReasonOther'),
   }
 
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const isPastCancellationDeadline = todayStr >= tour.cancellationDeadline.slice(0, 10)
+  const isPastMaybeDeadline = tour.maybeDeadline ? todayStr >= tour.maybeDeadline.slice(0, 10) : false
+
   const isBookable =
     tour.status === TourStatusSchema.enum.published &&
     tour.bookingOpen &&
@@ -184,6 +186,20 @@ export default function TourDetailPage() {
               {tour.capacity}
             </dd>
           </div>
+          <div>
+            <dt className="text-muted-foreground">{t('cancellationDeadline')}</dt>
+            <dd className={`font-medium tabular-nums${isPastCancellationDeadline ? ' text-destructive' : ''}`}>
+              {tour.cancellationDeadline.slice(0, 10)}
+            </dd>
+          </div>
+          {tour.maybeDeadline && (
+            <div>
+              <dt className="text-muted-foreground">{t('maybeDeadline')}</dt>
+              <dd className={`font-medium tabular-nums${isPastMaybeDeadline ? ' text-destructive' : ''}`}>
+                {tour.maybeDeadline.slice(0, 10)}
+              </dd>
+            </div>
+          )}
           {tour.description && (
             <div className="sm:col-span-2">
               <dt className="text-muted-foreground">{t('description')}</dt>
@@ -284,9 +300,11 @@ export default function TourDetailPage() {
                       <Button onClick={() => handleInitialResponse(BookingStatusSchema.enum.confirmed)} disabled={acting}>
                         {t('join')}
                       </Button>
-                      <Button variant="secondary" onClick={() => handleInitialResponse(BookingStatusSchema.enum.maybe)} disabled={acting}>
-                        {t('respondMaybe')}
-                      </Button>
+                      {!isPastMaybeDeadline && (
+                        <Button variant="secondary" onClick={() => handleInitialResponse(BookingStatusSchema.enum.maybe)} disabled={acting}>
+                          {t('respondMaybe')}
+                        </Button>
+                      )}
                       <Button variant="outline" onClick={() => handleInitialResponse(BookingStatusSchema.enum.declined)} disabled={acting}>
                         {t('decline')}
                       </Button>
@@ -297,7 +315,7 @@ export default function TourDetailPage() {
                       {t('revert')}
                     </Button>
                   )}
-                  {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && (
+                  {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && !isPastMaybeDeadline && (
                     <Button variant="outline" onClick={() => handleUpdate(BookingStatusSchema.enum.maybe)} disabled={acting}>
                       {t('setMaybe')}
                     </Button>
@@ -307,7 +325,7 @@ export default function TourDetailPage() {
                       {t('confirmBooking')}
                     </Button>
                   )}
-                  {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && (
+                  {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && !isPastCancellationDeadline && (
                     <Button
                       variant="outline"
                       className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -318,7 +336,8 @@ export default function TourDetailPage() {
                     </Button>
                   )}
                   {(tour.myBookingStatus === BookingStatusSchema.enum.maybe ||
-                    tour.myBookingStatus === BookingStatusSchema.enum.waitlist) && (
+                    tour.myBookingStatus === BookingStatusSchema.enum.waitlist) &&
+                    !isPastCancellationDeadline && (
                     <Button
                       variant="outline"
                       className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"

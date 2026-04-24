@@ -5,10 +5,14 @@ import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 
 export default defineConfig({
+  css: {
+    postcss: { plugins: [] },
+  },
   test: {
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    css: false,
   },
   resolve: {
     alias: {

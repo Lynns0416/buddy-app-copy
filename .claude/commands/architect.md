@@ -10,5 +10,7 @@ Rules:
 - Do NOT write implementation code
 - Do NOT modify files unless explicitly updating a doc (PRD.md, architecture.md, data-model.md)
 - End with open questions or tradeoffs that need a decision before implementation
+- **Flag any business logic found in page/component files — it belongs in a service layer or hook**
+- **Flag any component that manages both data fetching and rendering — these must be separated**
 
 $ARGUMENTS

@@ -1,18 +1,21 @@
 ---
-name: Commit style
-description: Commit in meaningful units, no co-author signature
+name: Commit rules
+description: No co-author, one concern per commit, feature branches, typecheck before committing
 type: feedback
 ---
 
 Never add `Co-Authored-By: Claude ...` to commit messages.
 
-Commit in meaningful units — one concern per commit. Do not bundle unrelated changes (e.g. feature code + memory updates + i18n + bug fixes) into a single commit.
+Commit in one-concern units. Do not bundle unrelated changes (page + i18n together is fine; feature + memory update + bug fix is not). Never squash multiple concerns into one large commit even when cleaning up history — tooling/config, lib extraction, tests, and page changes each get their own commit.
 
-Examples of correct splits:
-- `feat: add buddy dashboard page` — page.tsx + i18n files only
-- `chore: update project memory` — memory files only
-- `fix: correct not-registered condition` — bug fix only
+Never commit directly to `main`. Always create a feature branch first (e.g. `feat/booking-system`), then commit there.
 
-**Why:** User has asked for this repeatedly. Bundled commits obscure intent and make history hard to read.
+Before every commit, run tsc --noEmit via Docker in both apps:
+```
+docker-compose run --rm -w /app/apps/api api npx tsc --noEmit
+docker-compose run --rm -w /app/apps/web web npx tsc --noEmit
+```
 
-**NEVER commit autonomously.** Only commit when the user explicitly runs `/commit`. Do not commit as a side effect of any other task.
+**NEVER commit autonomously.** Only commit when the user explicitly runs `/commit`.
+
+**Why:** Direct main commits, large squashes, missing typechecks, and co-author tags have all caused problems.

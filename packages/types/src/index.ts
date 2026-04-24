@@ -261,8 +261,13 @@ export const CancellationReasonBodySchema = z.object({
 })
 export type CancellationReasonBody = z.infer<typeof CancellationReasonBodySchema>
 
+export const CreateBookingBodySchema = z.object({
+  initialStatus: z.enum(['confirmed', 'maybe', 'declined']).optional(),
+})
+export type CreateBookingBody = z.infer<typeof CreateBookingBodySchema>
+
 export const UpdateBookingBodySchema = z.object({
-  status: z.enum(['confirmed', 'maybe', 'declined']),
+  status: z.enum(['confirmed', 'maybe', 'waitlist', 'declined']),
   reason: CancellationReasonBodySchema.optional(),
 })
 export type UpdateBookingBody = z.infer<typeof UpdateBookingBodySchema>

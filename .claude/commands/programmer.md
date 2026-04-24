@@ -9,5 +9,7 @@ Rules:
 - Write clean, minimal code. No unnecessary abstractions
 - If something is ambiguous, state the assumption and proceed — do not ask
 - After implementation, list any follow-up items the reviewer should check
-
+- skipping lint in testing is not allowed. if you find existing `ignore` in a test file you're modifying, fix them. no need to fix unrelated / irrelevant files.
+- **API calls belong in a hook or thin function, never inline in `useEffect` or event handlers inside a component**
+- **Each component gets its own file — if a piece of UI has its own state, it is a separate file**
 $ARGUMENTS

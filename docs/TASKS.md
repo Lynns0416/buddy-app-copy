@@ -51,9 +51,9 @@ Linked to PRD sections — refer to `docs/PRD.md` for full spec.
 ---
 
 ## M5 — Booking system · PRD §8 ⬜ next up
-- [ ] `POST /tours/:id/bookings` — create (Confirmed / Maybe / Waitlist)
-- [ ] `PUT /tours/:id/bookings/:bookingId` — update status (full transition matrix)
-- [ ] Cancellation reason modal (category + optional free text) on Confirmed → Declined
+- [x] `POST /tours/:id/bookings` — create (Confirmed / Maybe / Waitlist)
+- [x] `PUT /tours/:id/bookings/:bookingId` — update status (full transition matrix)
+- [x] Cancellation reason modal (category + optional free text) on Confirmed → Declined
 - [ ] Cancellation deadline enforcement (buddy blocked after deadline)
 - [ ] Admin override: `PUT /admin/tours/:id/bookings/:buddyId/deadline`
 - [ ] Waitlist auto-notify on seat open (all waitlisted buddies)

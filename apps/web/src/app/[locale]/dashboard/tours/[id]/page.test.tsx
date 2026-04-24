@@ -202,7 +202,7 @@ describe('TourDetailPage', () => {
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('join')).toBeInTheDocument())
     screen.getByText('join').click()
-    await waitFor(() => expect(mockCreateBooking).toHaveBeenCalledWith('tour-1'))
+    await waitFor(() => expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', 'confirmed'))
   })
 
   it('shows cancel button when booking is confirmed', async () => {

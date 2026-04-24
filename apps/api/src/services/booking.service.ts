@@ -1,4 +1,4 @@
-import { TourStatus, BookingStatus as PrismaBookingStatus, CancellationCategory as PrismaCancellationCategory } from '@prisma/client'
+import { TourStatus, BookingStatus as PrismaBookingStatus, CancellationCategory as PrismaCancellationCategory, Prisma } from '@prisma/client'
 import { db } from '../lib/db'
 import { BookingStatusSchema } from '@peace-buddy/types'
 import type { BookingResponse, BookingStatus, CancellationReasonBody } from '@peace-buddy/types'
@@ -9,7 +9,7 @@ type CreateBookingResult =
 
 type UpdateBookingResult =
   | { ok: true; booking: BookingResponse }
-  | { ok: false; code: 'NOT_FOUND' | 'TOUR_FULL' | 'BUDDY_NOT_FOUND' | 'DEADLINE_PASSED' | 'REASON_REQUIRED' }
+  | { ok: false; code: 'NOT_FOUND' | 'TOUR_FULL' | 'BUDDY_NOT_FOUND' | 'DEADLINE_PASSED' | 'MAYBE_DEADLINE_PASSED' | 'REASON_REQUIRED' }
 
 const bookingSelect = {
   id: true,
@@ -39,7 +39,11 @@ function mapBooking(row: {
   }
 }
 
-export async function createBooking(tourId: string, userId: string): Promise<CreateBookingResult> {
+export async function createBooking(
+  tourId: string,
+  userId: string,
+  initialStatus?: 'confirmed' | 'maybe' | 'declined',
+): Promise<CreateBookingResult> {
   const [tour, buddy] = await Promise.all([
     db.tour.findUnique({
       where: { id: tourId },
@@ -55,35 +59,53 @@ export async function createBooking(tourId: string, userId: string): Promise<Cre
     return { ok: false, code: 'NOT_BOOKABLE' }
   }
 
-  const existing = await db.booking.findUnique({
-    where: { buddyId_tourId: { buddyId: buddy.id, tourId } },
-    select: { id: true },
-  })
-  if (existing) return { ok: false, code: 'ALREADY_BOOKED' }
+  try {
+    const booking = await db.$transaction(async (tx) => {
+      const existing = await tx.booking.findUnique({
+        where: { buddyId_tourId: { buddyId: buddy.id, tourId } },
+        select: { id: true },
+      })
+      if (existing) throw new Error('ALREADY_BOOKED')
 
-  const confirmedCount = await db.booking.count({
-    where: { tourId, status: PrismaBookingStatus.confirmed },
-  })
-  const newStatus =
-    confirmedCount < tour.capacity ? PrismaBookingStatus.confirmed : PrismaBookingStatus.waitlist
+      let status: PrismaBookingStatus
+      if (initialStatus === 'maybe') {
+        status = PrismaBookingStatus.maybe
+      } else if (initialStatus === 'declined') {
+        status = PrismaBookingStatus.declined
+      } else {
+        const confirmedCount = await tx.booking.count({
+          where: { tourId, status: PrismaBookingStatus.confirmed },
+        })
+        status = confirmedCount < tour.capacity ? PrismaBookingStatus.confirmed : PrismaBookingStatus.waitlist
+      }
 
-  const booking = await db.booking.create({
-    data: { buddyId: buddy.id, tourId, status: newStatus },
-    select: bookingSelect,
-  })
+      return tx.booking.create({
+        data: { buddyId: buddy.id, tourId, status },
+        select: bookingSelect,
+      })
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
-  return { ok: true, booking: mapBooking(booking) }
+    return { ok: true, booking: mapBooking(booking) }
+  } catch (err) {
+    if (err instanceof Error && err.message === 'ALREADY_BOOKED') {
+      return { ok: false, code: 'ALREADY_BOOKED' }
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return { ok: false, code: 'ALREADY_BOOKED' }
+    }
+    throw err
+  }
 }
 
 export async function updateBooking(
   tourId: string,
   userId: string,
-  newStatus: 'confirmed' | 'maybe' | 'declined',
+  newStatus: 'confirmed' | 'maybe' | 'waitlist' | 'declined',
   reason?: CancellationReasonBody,
 ): Promise<UpdateBookingResult> {
   const [buddy, tour] = await Promise.all([
     db.buddyProfile.findUnique({ where: { userId }, select: { id: true } }),
-    db.tour.findUnique({ where: { id: tourId }, select: { cancellationDeadline: true, capacity: true } }),
+    db.tour.findUnique({ where: { id: tourId }, select: { cancellationDeadline: true, maybeDeadline: true, capacity: true } }),
   ])
   if (!buddy) return { ok: false, code: 'BUDDY_NOT_FOUND' }
   if (!tour) return { ok: false, code: 'NOT_FOUND' }
@@ -105,9 +127,8 @@ export async function updateBooking(
     return { ok: false, code: 'DEADLINE_PASSED' }
   }
 
-  if (newStatus === BookingStatusSchema.enum.confirmed && booking.status !== PrismaBookingStatus.confirmed) {
-    const confirmedCount = await db.booking.count({ where: { tourId, status: PrismaBookingStatus.confirmed } })
-    if (confirmedCount >= tour.capacity) return { ok: false, code: 'TOUR_FULL' }
+  if (newStatus === BookingStatusSchema.enum.maybe && tour.maybeDeadline && localDateStr(new Date()) >= localDateStr(tour.maybeDeadline)) {
+    return { ok: false, code: 'MAYBE_DEADLINE_PASSED' }
   }
 
   const wasConfirmed = booking.status === PrismaBookingStatus.confirmed
@@ -115,24 +136,46 @@ export async function updateBooking(
     return { ok: false, code: 'REASON_REQUIRED' }
   }
 
+  // Atomic seat claim: wrap count + update in a serializable transaction to prevent double-booking
+  if (newStatus === BookingStatusSchema.enum.confirmed && !wasConfirmed) {
+    try {
+      const updated = await db.$transaction(async (tx) => {
+        const confirmedCount = await tx.booking.count({
+          where: { tourId, status: PrismaBookingStatus.confirmed },
+        })
+        if (confirmedCount >= tour.capacity) throw new Error('TOUR_FULL')
+        return tx.booking.update({
+          where: { id: booking.id },
+          data: { status: PrismaBookingStatus.confirmed },
+          select: bookingSelect,
+        })
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
+      return { ok: true, booking: mapBooking(updated) }
+    } catch (err) {
+      if (err instanceof Error && err.message === 'TOUR_FULL') return { ok: false, code: 'TOUR_FULL' }
+      throw err
+    }
+  }
+
   const updated = await db.booking.update({
     where: { id: booking.id },
-    data: { status: newStatus },
+    data: { status: newStatus as PrismaBookingStatus },
     select: bookingSelect,
   })
 
-  if (wasConfirmed && newStatus === BookingStatusSchema.enum.declined && reason) {
-    await db.cancellationReason.create({
-      data: {
-        bookingId: booking.id,
-        category: reason.category as PrismaCancellationCategory,
-        freeText: reason.freeText,
-        unavoidable: reason.unavoidable,
-        recordedBy: userId,
-      },
-    })
-    await promoteWaitlist(tourId, tour.capacity)
-  } else if (wasConfirmed && newStatus === BookingStatusSchema.enum.declined) {
+  if (wasConfirmed && newStatus === BookingStatusSchema.enum.declined) {
+    if (reason) {
+      await db.cancellationReason.create({
+        data: {
+          bookingId: booking.id,
+          category: reason.category as PrismaCancellationCategory,
+          freeText: reason.freeText,
+          unavoidable: reason.unavoidable,
+          recordedBy: userId,
+        },
+      })
+    }
+    // M8: notify all waitlisted buddies that a seat has opened; for now auto-promote oldest
     await promoteWaitlist(tourId, tour.capacity)
   }
 

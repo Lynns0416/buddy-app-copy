@@ -89,8 +89,11 @@ export const apiClient = {
   getTour: (id: string) =>
     apiRequest<TourDetailResponse>(apiPaths.tour(id)),
 
-  createBooking: (tourId: string) =>
-    apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), { method: 'POST' }),
+  createBooking: (tourId: string, initialStatus?: 'confirmed' | 'maybe' | 'declined') =>
+    apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), {
+      method: 'POST',
+      ...(initialStatus !== undefined && { body: JSON.stringify({ initialStatus }) }),
+    }),
 
   updateBooking: (tourId: string, status: UpdateBookingBody['status'], reason?: CancellationReasonBody) =>
     apiRequest<BookingResponse>(apiPaths.tourBookingMe(tourId), {

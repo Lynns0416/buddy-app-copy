@@ -2,8 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createBooking, updateBooking } from './booking.service'
 
-vi.mock('../lib/db', () => ({
-  db: {
+vi.mock('../lib/db', () => {
+  const mockDb: any = {
     tour: { findUnique: vi.fn() },
     buddyProfile: { findUnique: vi.fn() },
     booking: {
@@ -15,8 +15,11 @@ vi.mock('../lib/db', () => ({
     },
     buddyCancellationDeadlineOverride: { findUnique: vi.fn() },
     cancellationReason: { create: vi.fn() },
-  },
-}))
+// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
+    $transaction: vi.fn().mockImplementation((fn: any) => fn(mockDb)),
+  }
+  return { db: mockDb }
+})
 
 import { db } from '../lib/db'
 
@@ -64,7 +67,7 @@ const mockBookingRow = {
 const mockReason = { category: 'health' as const, unavoidable: false }
 
 describe('createBooking', () => {
-  beforeEach(() => vi.resetAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it('returns TOUR_NOT_FOUND when tour does not exist', async () => {
     mockTourFindUnique.mockResolvedValueOnce(null as any)
@@ -148,10 +151,38 @@ describe('createBooking', () => {
     expect(call.data.buddyId).toBe('buddy-1')
     expect(call.data.tourId).toBe('tour-1')
   })
+
+  it('creates booking with maybe status when initialStatus is maybe', async () => {
+    mockTourFindUnique.mockResolvedValueOnce(futureTour as any)
+    mockBuddyFindUnique.mockResolvedValueOnce(mockBuddy as any)
+    mockBookingFindUnique.mockResolvedValueOnce(null as any)
+    mockBookingCreate.mockResolvedValueOnce({ ...mockBookingRow, status: 'maybe' } as any)
+
+    const result = await createBooking('tour-1', 'user-1', 'maybe')
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.booking.status).toBe('maybe')
+    const call = mockBookingCreate.mock.calls[0][0] as any
+    expect(call.data.status).toBe('maybe')
+    expect(mockBookingCount).not.toHaveBeenCalled()
+  })
+
+  it('creates booking with declined status when initialStatus is declined', async () => {
+    mockTourFindUnique.mockResolvedValueOnce(futureTour as any)
+    mockBuddyFindUnique.mockResolvedValueOnce(mockBuddy as any)
+    mockBookingFindUnique.mockResolvedValueOnce(null as any)
+    mockBookingCreate.mockResolvedValueOnce({ ...mockBookingRow, status: 'declined' } as any)
+
+    const result = await createBooking('tour-1', 'user-1', 'declined')
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.booking.status).toBe('declined')
+    const call = mockBookingCreate.mock.calls[0][0] as any
+    expect(call.data.status).toBe('declined')
+    expect(mockBookingCount).not.toHaveBeenCalled()
+  })
 })
 
 describe('updateBooking', () => {
-  beforeEach(() => vi.resetAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it('returns BUDDY_NOT_FOUND when buddy profile does not exist', async () => {
     mockBuddyFindUnique.mockResolvedValueOnce(null as any)
@@ -194,7 +225,7 @@ describe('updateBooking', () => {
     expect(result).toEqual({ ok: false, code: 'REASON_REQUIRED' })
   })
 
-  it('updates booking status successfully', async () => {
+  it('updates confirmed booking to maybe', async () => {
     mockBuddyFindUnique.mockResolvedValueOnce(mockBuddy as any)
     mockTourFindUnique.mockResolvedValueOnce(futureTourWithDeadline as any)
     mockBookingFindUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'confirmed' } as any)
@@ -204,6 +235,18 @@ describe('updateBooking', () => {
     const result = await updateBooking('tour-1', 'user-1', 'maybe')
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.booking.status).toBe('maybe')
+  })
+
+  it('updates confirmed booking to waitlist', async () => {
+    mockBuddyFindUnique.mockResolvedValueOnce(mockBuddy as any)
+    mockTourFindUnique.mockResolvedValueOnce(futureTourWithDeadline as any)
+    mockBookingFindUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'confirmed' } as any)
+    mockDeadlineOverrideFindUnique.mockResolvedValueOnce(null as any)
+    mockBookingUpdate.mockResolvedValueOnce({ ...mockBookingRow, status: 'waitlist' } as any)
+
+    const result = await updateBooking('tour-1', 'user-1', 'waitlist')
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.booking.status).toBe('waitlist')
   })
 
   it('returns TOUR_FULL when trying to confirm and tour is at capacity', async () => {

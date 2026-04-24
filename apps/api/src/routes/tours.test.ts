@@ -204,10 +204,20 @@ describe('POST /tours/:id/bookings', () => {
     expect(res.status).toBe(422)
   })
 
-  it('passes tourId and userId to createBooking', async () => {
+  it('passes tourId, userId, and undefined initialStatus to createBooking when no body', async () => {
     mockCreateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
     await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
-    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', dbUser.id)
+    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', dbUser.id, undefined)
+  })
+
+  it('passes initialStatus to createBooking when provided', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
+    await buildApp().request('/tours/tour-1/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initialStatus: 'maybe' }),
+    })
+    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', dbUser.id, 'maybe')
   })
 })
 
@@ -239,9 +249,19 @@ describe('PUT /tours/:id/bookings/me', () => {
     const res = await buildApp().request('/tours/tour-1/bookings/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'waitlist' }),
+      body: JSON.stringify({ status: 'invalid_status' }),
     })
     expect(res.status).toBe(400)
+  })
+
+  it('accepts waitlist as a valid status', async () => {
+    mockUpdateBooking.mockResolvedValueOnce({ ok: true, booking: { ...mockBooking, status: 'waitlist' } })
+    const res = await buildApp().request('/tours/tour-1/bookings/me', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'waitlist' }),
+    })
+    expect(res.status).toBe(200)
   })
 
   it('returns 404 when booking not found', async () => {
