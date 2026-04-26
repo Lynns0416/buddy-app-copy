@@ -135,6 +135,7 @@ describe('GET /admin/tours', () => {
   it('returns 400 for invalid status', async () => {
     const res = await buildApp().request('/admin/tours?status=invalid')
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 })
 
@@ -159,6 +160,7 @@ describe('POST /admin/tours', () => {
       body: JSON.stringify({ location: 'Tokyo' }),
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 for invalid meetingTime format', async () => {
@@ -168,6 +170,7 @@ describe('POST /admin/tours', () => {
       body: JSON.stringify({ ...validCreateBody, meetingTime: '9:00am' }),
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 when maybeDeadline is not before cancellationDeadline', async () => {
@@ -181,6 +184,7 @@ describe('POST /admin/tours', () => {
       }),
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 for non-JSON body', async () => {
@@ -189,6 +193,7 @@ describe('POST /admin/tours', () => {
       body: 'not json',
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 })
 
@@ -254,6 +259,7 @@ describe('PUT /admin/tours/:id', () => {
       body: 'not json',
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 })
 
@@ -311,6 +317,7 @@ describe('PATCH /admin/tours/:id/status', () => {
       body: JSON.stringify({ action: 'invalid' }),
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 })
 

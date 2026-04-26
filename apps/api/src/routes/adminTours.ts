@@ -21,7 +21,7 @@ adminTourRoutes.get('/', async (c) => {
   const statusParam = c.req.query('status')
   if (statusParam !== undefined) {
     const parsed = TourStatusSchema.safeParse(statusParam)
-    if (!parsed.success) return c.json({ error: 'Invalid status' }, 400)
+    if (!parsed.success) return c.json(apiError('invalid_request'), 400)
     return c.json(await listAdminTours({ status: parsed.data }))
   }
   return c.json(await listAdminTours({}))
@@ -32,11 +32,11 @@ adminTourRoutes.post('/', async (c) => {
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return c.json(apiError('invalid_request'), 400)
   }
 
   const parsed = CreateTourSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid request body', details: parsed.error.flatten() }, 400)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
 
   return c.json(await createTour(parsed.data), 201)
 })
@@ -55,11 +55,11 @@ adminTourRoutes.put('/:id', async (c) => {
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return c.json(apiError('invalid_request'), 400)
   }
 
   const parsed = UpdateTourSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid request body', details: parsed.error.flatten() }, 400)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
 
   try {
     return c.json(await updateTour(id, parsed.data))
@@ -77,11 +77,11 @@ adminTourRoutes.patch('/:id/status', async (c) => {
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return c.json(apiError('invalid_request'), 400)
   }
 
   const parsed = TourStatusActionSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
 
   try {
     return c.json(await transitionTourStatus(id, parsed.data.action))

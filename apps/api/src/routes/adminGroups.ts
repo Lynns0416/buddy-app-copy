@@ -15,11 +15,11 @@ adminGroupRoutes.post('/', async (c) => {
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return c.json(apiError('invalid_request'), 400)
   }
 
   const parsed = CreateGroupSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
 
   return c.json(await createGroup(parsed.data), 201)
 })
@@ -38,11 +38,11 @@ adminGroupRoutes.put('/:id', async (c) => {
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return c.json(apiError('invalid_request'), 400)
   }
 
   const parsed = UpdateGroupSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
 
   const group = await updateGroup(id, parsed.data)
   if (!group) return c.json(apiError('not_found'), 404)

@@ -1,29 +1,13 @@
-import type { GroupResponse, GroupDetailResponse, CreateGroup, UpdateGroup, AppError } from '@peace-buddy/types'
-import { AppErrorCodeSchema } from '@peace-buddy/types'
+import type { GroupResponse, GroupDetailResponse, CreateGroup, UpdateGroup } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
-import { ApiError } from '@/lib/api'
-
-export type ActionResult<T = void> =
-  | { ok: true; data: T }
-  | { ok: false; error: AppError }
+import type { ActionResult } from '../lib/action'
+import { classifyApiError } from '../lib/api-error'
+import { ASC, DESC } from '../lib/constants'
 
 export type GroupSortField = 'name' | 'type'
 export type GroupTourSortField = 'tourDate' | 'status' | 'location' | 'capacity'
-
-const ASC: SortDir = 'asc'
-const DESC: SortDir = 'desc'
-
-function classifyApiError(err: unknown): AppError {
-  if (err instanceof ApiError) {
-    if (err.status === 404) return { code: AppErrorCodeSchema.enum.not_found }
-    if (err.status === 403) return { code: AppErrorCodeSchema.enum.forbidden }
-    if (err.status === 409) return { code: AppErrorCodeSchema.enum.conflict }
-    return { code: AppErrorCodeSchema.enum.unknown }
-  }
-  return { code: AppErrorCodeSchema.enum.network }
-}
 
 export function sortGroups(
   groups: GroupResponse[],

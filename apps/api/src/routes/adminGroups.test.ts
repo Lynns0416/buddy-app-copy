@@ -94,6 +94,7 @@ describe('POST /admin/groups', () => {
       body: JSON.stringify({ type: 'school' }),
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 when type is missing', async () => {
@@ -103,6 +104,7 @@ describe('POST /admin/groups', () => {
       body: JSON.stringify({ name: 'No Type' }),
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 for invalid type', async () => {
@@ -112,6 +114,7 @@ describe('POST /admin/groups', () => {
       body: JSON.stringify({ name: 'Test', type: 'invalid' }),
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 for non-JSON body', async () => {
@@ -120,6 +123,7 @@ describe('POST /admin/groups', () => {
       body: 'not json',
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 })
 
@@ -178,6 +182,7 @@ describe('PUT /admin/groups/:id', () => {
       body: JSON.stringify({ type: 'invalid' }),
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 for non-JSON body', async () => {
@@ -186,5 +191,6 @@ describe('PUT /admin/groups/:id', () => {
       body: 'not json',
     })
     expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 })

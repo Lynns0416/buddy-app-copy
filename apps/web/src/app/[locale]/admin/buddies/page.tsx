@@ -3,71 +3,59 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
-import { apiClient } from '@/lib/api-client'
-import type { AdminBuddyResponse } from '@peace-buddy/types'
-import { BuddyStatusSchema } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AppError, BuddyStatus } from '@peace-buddy/types'
+import { AppErrorCodeSchema, BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SortIcon, type SortDir } from '@/components/sort-icon'
+import { SortIcon } from '@/components/sort-icon'
+import { fetchBuddies, sortBuddies, nextBuddySort, updateBuddyStatus, type BuddySortField } from './admin.buddy'
 
 export default function AdminBuddiesPage() {
   const { ready } = useAdminGuard()
   const t = useTranslations('adminBuddies')
   const [buddies, setBuddies] = useState<AdminBuddyResponse[]>([])
   const [pendingAction, setPendingAction] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [sortField, setSortField] = useState<'displayName' | 'email'>('displayName')
-  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<BuddySortField>('displayName')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
-  function handleSort(field: 'displayName' | 'email') {
-    if (field === sortField) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortField(field)
-      setSortDir('asc')
+  function errorMessage(error: AppError): string {
+    switch (error.code) {
+      case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
+      case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
+      case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
+      case AppErrorCodeSchema.enum.network:    return t('error.network')
+      default:                                 return t('error.unknown')
     }
   }
-
-  const sorted = [...buddies].sort((a, b) => {
-    const cmp = sortField === 'displayName'
-      ? a.displayName.localeCompare(b.displayName, 'ja')
-      : a.email.localeCompare(b.email)
-    return sortDir === 'asc' ? cmp : -cmp
-  })
 
   useEffect(() => {
     if (!ready) return
-    apiClient.listBuddies(BuddyStatusSchema.enum.pending)
-      .then(setBuddies)
-      .catch(() => {})
-  }, [ready])
+    fetchBuddies(BuddyStatusSchema.enum.pending).then((result) => {
+      if (result.ok) setBuddies(result.data)
+      else setFetchError(errorMessage(result.error))
+    })
+  }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleApprove(id: string) {
-    setPendingAction(id)
-    setError(null)
-    try {
-      await apiClient.updateBuddyStatus(id, { status: BuddyStatusSchema.enum.active })
-      setBuddies((prev) => prev.filter((b) => b.id !== id))
-    } catch {
-      setError(t('actionError'))
-    } finally {
-      setPendingAction(null)
-    }
+  function handleSort(field: BuddySortField) {
+    const next = nextBuddySort({ field: sortField, dir: sortDir }, field)
+    setSortField(next.field)
+    setSortDir(next.dir)
   }
 
-  async function handleReject(id: string) {
+  async function handleStatusChange(id: string, newStatus: BuddyStatus) {
     setPendingAction(id)
-    setError(null)
-    try {
-      await apiClient.updateBuddyStatus(id, { status: BuddyStatusSchema.enum.rejected })
+    const result = await updateBuddyStatus(id, newStatus)
+    if (result.ok) {
       setBuddies((prev) => prev.filter((b) => b.id !== id))
-    } catch {
-      setError(t('actionError'))
-    } finally {
-      setPendingAction(null)
+    } else {
+      // Generic error message, could add specific handling if needed
     }
+    setPendingAction(null)
   }
+
+  const sorted = sortBuddies(buddies, sortField, sortDir)
 
   if (!ready) return null
 
@@ -75,9 +63,9 @@ export default function AdminBuddiesPage() {
     <AppShell variant="admin">
       <h1 className="mb-6 text-xl font-semibold">{t('title')}</h1>
 
-      {error && (
+      {fetchError && (
         <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
-          {error}
+          {fetchError}
         </p>
       )}
 
@@ -118,7 +106,7 @@ export default function AdminBuddiesPage() {
                     <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
-                        onClick={() => handleApprove(buddy.id)}
+                        onClick={() => handleStatusChange(buddy.id, BuddyStatusSchema.enum.active)}
                         disabled={pendingAction !== null}
                       >
                         {t('approve')}
@@ -126,7 +114,7 @@ export default function AdminBuddiesPage() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => handleReject(buddy.id)}
+                        onClick={() => handleStatusChange(buddy.id, BuddyStatusSchema.enum.rejected)}
                         disabled={pendingAction !== null}
                       >
                         {t('reject')}

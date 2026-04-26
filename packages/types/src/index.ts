@@ -36,7 +36,7 @@ export const EmailModeSchema = z.enum(['immediate', 'digest'])
 export type EmailMode = z.infer<typeof EmailModeSchema>
 
 // `network` is client-only and is never emitted by the server
-export const AppErrorCodeSchema = z.enum(['not_found', 'forbidden', 'conflict', 'network', 'unknown'])
+export const AppErrorCodeSchema = z.enum(['not_found', 'forbidden', 'conflict', 'invalid_request', 'network', 'unknown'])
 export type AppErrorCode = z.infer<typeof AppErrorCodeSchema>
 
 export type AppError = { code: AppErrorCode; detail?: string }
