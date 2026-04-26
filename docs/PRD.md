@@ -1,8 +1,8 @@
 # Product Requirements Document
 ## Buddy Booking App
 
-**Version:** 0.3 (MVP)
-**Last Updated:** 2026-04-18
+**Version:** 0.4 (MVP)
+**Last Updated:** 2026-04-26
 **Author:** [Your Name]
 **Status:** Draft
 
@@ -192,6 +192,8 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 | Maybe confirmation deadline | Date | Default: 9 days before tour. Must be set before (further from tour than) the cancellation deadline. |
 | Notification schedule | List of offsets | Days-before-tour offsets; default: 3 days before and 1 day before; configurable per tour |
 | Status | Enum | Draft / Published / Cancelled / Completed |
+| Assigned admins | Admin refs (many) | Optional; admins responsible for this tour |
+| Staff in charge | Admin ref (one) | Required if at least one admin is assigned; must be one of the assigned admins |
 
 ### 7.2 Tour Status Lifecycle
 
@@ -204,6 +206,37 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 - Only admins can create, edit, cancel, or complete tours
 - Tours must be **Published** before Active or Trainee buddies can see them
 - Only **Active** buddies can book tours
+
+### 7.4 Tour Admin Assignment
+
+Each tour can have one or more admins assigned to it.
+
+**Assignment rules:**
+- Any admin can assign or unassign admins to a tour
+- Assignments can be made at any point — during draft, after publishing, or even post-cancellation for record-keeping
+- A tour is not required to have assigned admins (optional)
+
+**Staff in charge:**
+- One assigned admin must be designated as **staff in charge**
+- Staff in charge is required if at least one admin is assigned; optional otherwise (i.e. if no admins are assigned, the field is empty)
+- Staff in charge must be one of the assigned admins
+- Staff in charge has no additional system permissions — it is a designation for operational clarity and record-keeping
+
+**Removing an assigned admin who is staff in charge triggers a prompt with two paths:**
+1. **Designate a replacement from remaining assigned admins** (if others exist)
+2. **Assign a new admin and designate them as staff in charge** (always available)
+
+If the admin being removed is the only assigned admin, removing them leaves the tour with no assigned admins and no staff in charge — which is a valid data state but flagged visually in the admin UI as unresolved.
+
+**Notification routing:**
+- Tour-specific notifications (booking changes, cancellations, Maybe deadline events, post-deadline "I can't go" reports) are sent to assigned admins only
+- If no admins are assigned to a tour, no tour-specific notifications are sent for that tour
+
+**Data:**
+- Assignment stored as a many-to-many relation between admins and tours
+- Staff in charge stored as a single foreign key on the tour record
+- Visible to all admins in tour detail view
+- Not visible to buddies
 
 ---
 
@@ -231,6 +264,7 @@ Buddies can see all status counts per tour (Confirmed / Maybe / Waitlist / Decli
 - Booking open while tour is Published and cancellation deadline has not passed
 - Admin can override cancellation deadline per buddy
 - **Cancellation deadline takes precedence:** Once the cancellation deadline passes, the "Maybe" status becomes unavailable (cannot be selected or changed to). Buddies in confirmed status may not transition to maybe. This is because after the cancellation deadline, buddies are expected to attend regardless of their prior maybe status — no cancellation is permitted.
+- **Post-deadline "I can't go":** After the cancellation deadline has passed, buddies can still report that they cannot attend via the system. The buddy submits a reason (category + optional free text), and the status is changed to Declined immediately — no admin confirmation required. Assigned admins are notified immediately via all configured channels (no digest delay). This is treated as high-priority due to likely operational impact.
 
 ### 8.4 Status Transition Matrix
 
@@ -241,7 +275,7 @@ Buddies can see all status counts per tour (Confirmed / Maybe / Waitlist / Decli
 | Waitlist | ✅ | ✅ | — | ✅ |
 | Declined | ✅ | ✅ | ✅ | — |
 
-All transitions allowed before cancellation deadline. After deadline, only admin can change status.
+All transitions allowed before cancellation deadline. After deadline, buddies can only transition to Declined (via "I can't go" report). All other status changes after deadline require admin action.
 
 ### 8.5 Maybe Flow
 
@@ -249,7 +283,7 @@ All transitions allowed before cancellation deadline. After deadline, only admin
 2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 9 days before tour if not set; configurable globally)
 3. Buddy receives reminders at **3 days** and **1 day** before the deadline (configurable globally and per tour)
 4. Buddy must update to **Confirmed** or **Declined** before deadline
-5. If no action taken by deadline, booking status remains **Maybe** and admin is notified to follow up manually
+5. If no action taken by deadline, booking status remains **Maybe** and assigned admins are notified to follow up manually
 6. **After cancellation deadline:** The maybe deadline becomes irrelevant. The "Maybe" status is no longer available, and buddies in confirmed status cannot transition to maybe (they are committed to attending). Buddies in maybe status who have not resolved must attend.
 
 ### 8.6 Waitlist Flow
@@ -262,7 +296,8 @@ All transitions allowed before cancellation deadline. After deadline, only admin
 ### 8.7 Cancellation & Cancellation Reasons
 
 - Buddies can cancel (change status to Declined) up to the cancellation deadline
-- When any status changes **to Declined from Confirmed** — whether initiated by the buddy or by an admin — a **cancellation reason** must be recorded
+- After the cancellation deadline, buddies can still submit an "I can't go" report — status changes to Declined immediately; assigned admins are notified urgently
+- When any status changes **to Declined from Confirmed** — whether initiated by the buddy or by an admin, before or after deadline — a **cancellation reason** must be recorded
 - Cancellation reason fields:
 
 | Field | Type | Notes |
@@ -275,8 +310,6 @@ All transitions allowed before cancellation deadline. After deadline, only admin
 - No category is automatically flagged as unavoidable — it is always a human (admin) judgement
 - Buddies may provide a free-text explanation when cancelling; this is optional
 - Admin reviews context and sets the unavoidable flag accordingly; admin can update it at any time
-
-After deadline, only admin can change status. Reason recording applies in all cases.
 
 ### 8.8 Booking History
 
@@ -378,13 +411,14 @@ Same scale as admin evaluations: **1 = Needs Improvement / … / 5 = Exceptional
 
 ### 10.2 Admin Notifications
 
-Admins independently configure their preferred notification channel(s) and delivery mode per event type.
+Admins independently configure their preferred notification channel(s) and delivery mode per event type. Tour-specific events (booking changes, cancellations, post-deadline reports) are routed to **assigned admins only**. If no admins are assigned to a tour, no tour-specific notifications are sent.
 
 | Event | Available Channels | Default Timing |
 |---|---|---|
 | New buddy signup (pending) | Email and/or Slack | Immediate |
 | New booking | Email and/or Slack | See below |
-| Booking cancelled (Confirmed → Declined) | Email and/or Slack | Immediate |
+| Booking cancelled (Confirmed → Declined) — before deadline | Email and/or Slack | Immediate |
+| Post-deadline "I can't go" report | Email and/or Slack | **Always immediate — no digest option** |
 | Maybe → Confirmed or Declined | Email and/or Slack | Immediate |
 | Maybe deadline passed unresolved | Email and/or Slack | On deadline |
 
@@ -395,6 +429,7 @@ Admins independently configure their preferred notification channel(s) and deliv
 **Default email delivery modes:**
 - Cancellations and Maybe resolutions: Immediate
 - New bookings and new signups: Daily digest
+- Post-deadline "I can't go" reports: Always immediate (not configurable)
 
 Slack notifications are always immediate when enabled.
 
@@ -418,6 +453,8 @@ When a buddy logs in, they see:
 - Set Maybe confirmation deadlines
 - Configure per-tour notification schedule
 - Add / edit admin-only memo
+- Assign / unassign admins to a tour
+- Designate staff in charge from assigned admins
 
 ### 11.3 Group Management
 - Create, edit groups
@@ -555,3 +592,4 @@ When GCP nonprofit credits run low:
 | 6 | Cancellation reason category enum values | Team | **Resolved** — `health` / `emergency` / `personal` / `work` / `other` |
 | 7 | Group type enum values — School / Company / Community / Other sufficient? | Team | **Resolved** — confirmed as-is |
 | 8 | Internal tier names | Team | **Resolved** — `junior` / `mid` / `senior` / `expert` / `instructor` / `organizer` |
+| 9 | When no admins are assigned to a tour, should post-deadline "I can't go" reports notify all admins as a fallback? | Team | **Resolved** — no fallback; notification only goes to assigned admins. Tours without assigned admins flagged visually in UI as unresolved. |
