@@ -56,7 +56,20 @@
     "meetingTime": "Meeting time",
     "location": "Location",
     "capacity": "Capacity",
-    "notRegistered": "Sorry, but it seems like you're not registered as a buddy. If you have any questions, please contact any of plab staff."
+    "notRegistered": "Sorry, but it seems like you're not registered as a buddy. If you have any questions, please contact any of plab staff.",
+    "myBookingsLink": "My bookings"
+  },
+  "bookingHistory": {
+    "title": "My bookings",
+    "back": "Back to dashboard",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "noUpcoming": "No upcoming bookings",
+    "noPast": "No past bookings",
+    "tourDate": "Date",
+    "group": "Group",
+    "location": "Location",
+    "viewTour": "View"
   },
   "adminTours": {
     "title": "Tours",

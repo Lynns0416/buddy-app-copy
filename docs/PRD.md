@@ -230,6 +230,7 @@ Buddies can see all status counts per tour (Confirmed / Maybe / Waitlist / Decli
 - Only **Active** buddies can book
 - Booking open while tour is Published and cancellation deadline has not passed
 - Admin can override cancellation deadline per buddy
+- **Cancellation deadline takes precedence:** Once the cancellation deadline passes, the "Maybe" status becomes unavailable (cannot be selected or changed to). Buddies in confirmed status may not transition to maybe. This is because after the cancellation deadline, buddies are expected to attend regardless of their prior maybe status — no cancellation is permitted.
 
 ### 8.4 Status Transition Matrix
 
@@ -244,11 +245,12 @@ All transitions allowed before cancellation deadline. After deadline, only admin
 
 ### 8.5 Maybe Flow
 
-1. Buddy selects "Maybe"
+1. Buddy selects "Maybe" (only available before cancellation deadline)
 2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 9 days before tour if not set; configurable globally)
 3. Buddy receives reminders at **3 days** and **1 day** before the deadline (configurable globally and per tour)
 4. Buddy must update to **Confirmed** or **Declined** before deadline
 5. If no action taken by deadline, booking status remains **Maybe** and admin is notified to follow up manually
+6. **After cancellation deadline:** The maybe deadline becomes irrelevant. The "Maybe" status is no longer available, and buddies in confirmed status cannot transition to maybe (they are committed to attending). Buddies in maybe status who have not resolved must attend.
 
 ### 8.6 Waitlist Flow
 

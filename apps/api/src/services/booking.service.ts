@@ -1,7 +1,7 @@
 import { TourStatus, BookingStatus as PrismaBookingStatus, CancellationCategory as PrismaCancellationCategory, Prisma } from '@prisma/client'
 import { db } from '../lib/db'
 import { BookingStatusSchema } from '@peace-buddy/types'
-import type { BookingResponse, BookingStatus, CancellationReasonBody } from '@peace-buddy/types'
+import type { BookingResponse, BookingStatus, CancellationReasonBody, MyBookingEntry } from '@peace-buddy/types'
 
 type CreateBookingResult =
   | { ok: true; booking: BookingResponse }
@@ -199,4 +199,41 @@ async function promoteWaitlist(tourId: string, capacity: number): Promise<void> 
     where: { id: oldest.id },
     data: { status: PrismaBookingStatus.confirmed },
   })
+}
+
+export async function listMyBookings(userId: string): Promise<MyBookingEntry[]> {
+  const rows = await db.booking.findMany({
+    where: { buddy: { userId }, status: PrismaBookingStatus.confirmed },
+    orderBy: { tour: { tourDate: 'desc' } },
+    select: {
+      id: true,
+      tourId: true,
+      status: true,
+      bookedAt: true,
+      updatedAt: true,
+      tour: {
+        select: {
+          tourDate: true,
+          meetingTime: true,
+          location: true,
+          status: true,
+          group: { select: { name: true } },
+        },
+      },
+    },
+  })
+  return rows.map((r) => ({
+    id: r.id,
+    tourId: r.tourId,
+    status: r.status as BookingStatus,
+    bookedAt: r.bookedAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+    tour: {
+      tourDate: r.tour.tourDate.toISOString(),
+      meetingTime: r.tour.meetingTime.toISOString(),
+      location: r.tour.location,
+      status: r.tour.status as import('@peace-buddy/types').TourStatus,
+      group: { name: r.tour.group.name },
+    },
+  }))
 }

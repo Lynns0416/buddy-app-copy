@@ -52,19 +52,27 @@ services:
       - /app/apps/web/node_modules
       - /app/apps/web/.next
 
-  api-test:
-    profiles: [test]
+  ci:
+    profiles: [ci]
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
-    working_dir: /app/apps/api
+      dockerfile: apps/api/Dockerfile  # reuse any image that has all deps
     entrypoint: []
-    command: sh -c "cd /app/packages/types && pnpm build && cd /app/apps/api && pnpm test"
+    command: sh -c "
+      cd /app && pnpm install --frozen-lockfile &&
+      cd /app/packages/types && pnpm build &&
+      cd /app/apps/api && pnpm lint && pnpm typecheck &&
+      cd /app/apps/web && pnpm lint && pnpm typecheck
+      "
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - .:/app
       - /app/node_modules
       - /app/packages/types/node_modules
       - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
 
 volumes:
   db_data:

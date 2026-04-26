@@ -6,25 +6,37 @@ import {
   GroupType,
   TourStatus,
   BookingStatus,
+  CancellationCategory,
 } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// Fixed IDs so re-running the seed is additive (upsert skips existing rows)
+// Load all Firebase accounts from emulator export
+const authExport = require('../.firebase/emulators/auth_export/accounts.json')
+const adminAccount = authExport.users.find((u: any) =>
+  u.email.toLowerCase().includes('admin') || u.displayName.toLowerCase().includes('admin')
+)
+const buddyAccounts = authExport.users.filter((u: any) => u !== adminAccount)
+const FIREBASE_UIDS = authExport.users.map((u: any) => u.localId)
+
+// Fixed IDs for groups, tours (never auto-created via login)
 const ID = {
-  adminUser:    'seed-user-admin-001',
-  buddy1User:   'seed-user-buddy-001',
-  buddy2User:   'seed-user-buddy-002',
-  buddy1:       'seed-profile-001',
-  buddy2:       'seed-profile-002',
-  school:       'seed-group-001',
-  company:      'seed-group-002',
-  tourUrgent:   'seed-tour-001',
-  tourMidterm:  'seed-tour-002',
-  tourOpen:     'seed-tour-003',
-  tourPast:     'seed-tour-004',
-  tourDraft:    'seed-tour-005',
-  tourCancelled:'seed-tour-006',
+  school:        'seed-group-001',
+  company:       'seed-group-002',
+  hs1:           'seed-group-hs-001',
+  hs2:           'seed-group-hs-002',
+  jhs1:          'seed-group-jhs-001',
+  jhs2:          'seed-group-jhs-002',
+  tourUrgent:    'seed-tour-001',
+  tourMidterm:   'seed-tour-002',
+  tourOpen:      'seed-tour-003',
+  tourPast:      'seed-tour-004',
+  tourDraft:     'seed-tour-005',
+  tourCancelled: 'seed-tour-006',
+  tourPeace1:    'seed-tour-peace-001',
+  tourPeace2:    'seed-tour-peace-002',
+  tourPeace3:    'seed-tour-peace-003',
+  tourPeace4:    'seed-tour-peace-004',
 }
 
 function daysFromNow(days: number): Date {
@@ -39,75 +51,48 @@ function timeOnly(hour: number, minute = 0): Date {
 }
 
 async function main() {
-  // Users
-  await prisma.user.upsert({
-    where: { id: ID.adminUser },
-    update: {},
-    create: {
-      id: ID.adminUser,
-      firebaseUid: 'seed-admin-001',
-      email: 'admin@peacebuddies.dev',
-      role: UserRole.admin,
-    },
+  // ── Admin user ───────────────────────────────────────────────
+  const adminUser = await prisma.user.upsert({
+    where: { firebaseUid: adminAccount.localId },
+    update: { email: adminAccount.email, role: UserRole.admin },
+    create: { firebaseUid: adminAccount.localId, email: adminAccount.email, role: UserRole.admin },
   })
 
-  await prisma.user.upsert({
-    where: { id: ID.buddy1User },
-    update: {},
-    create: {
-      id: ID.buddy1User,
-      firebaseUid: 'seed-buddy-001',
-      email: 'hana@peacebuddies.dev',
-      role: UserRole.buddy,
-    },
-  })
+  // ── Buddy users and profiles (dynamic from accounts.json) ─────
+  const buddies: string[] = []
+  for (const account of buddyAccounts) {
+    const user = await prisma.user.upsert({
+      where: { firebaseUid: account.localId },
+      update: { email: account.email, role: UserRole.buddy },
+      create: { firebaseUid: account.localId, email: account.email, role: UserRole.buddy },
+    })
 
-  await prisma.user.upsert({
-    where: { id: ID.buddy2User },
-    update: {},
-    create: {
-      id: ID.buddy2User,
-      firebaseUid: 'seed-buddy-002',
-      email: 'kenji@peacebuddies.dev',
-      role: UserRole.buddy,
-    },
-  })
+    const profile = await prisma.buddyProfile.upsert({
+      where: { userId: user.id },
+      update: {
+        displayName: account.displayName ?? account.email.split('@')[0],
+        realName: account.displayName ?? '',
+        status: BuddyStatus.active,
+        languages: ['ja', 'en'],
+        skills: [],
+      },
+      create: {
+        userId: user.id,
+        status: BuddyStatus.active,
+        displayName: account.displayName ?? account.email.split('@')[0],
+        realName: account.displayName ?? '',
+        languages: ['ja', 'en'],
+        skills: [],
+      },
+    })
 
-  // Buddy profiles
-  await prisma.buddyProfile.upsert({
-    where: { id: ID.buddy1 },
-    update: {},
-    create: {
-      id: ID.buddy1,
-      userId: ID.buddy1User,
-      status: BuddyStatus.active,
-      tier: BuddyTier.junior,
-      displayName: '田中 花',
-      realName: '田中 花奈',
-      bio: '日本の文化や歴史を訪問者に伝えることに情熱を持っています。',
-      languages: ['ja', 'en'],
-      skills: ['歴史', '食文化', '伝統芸能'],
-      availability: '週末希望',
-    },
-  })
+    buddies.push(profile.id)
+  }
 
-  await prisma.buddyProfile.upsert({
-    where: { id: ID.buddy2 },
-    update: {},
-    create: {
-      id: ID.buddy2,
-      userId: ID.buddy2User,
-      status: BuddyStatus.active,
-      tier: BuddyTier.mid,
-      displayName: '松田 健二',
-      realName: '松田 健二',
-      languages: ['ja', 'en', 'zh'],
-      skills: ['テクノロジー', '建築', 'ポップカルチャー'],
-      availability: '柔軟対応可',
-    },
-  })
+  // Helper: cycle through buddy IDs for booking distribution
+  const b = (i: number) => buddies.length > 0 ? buddies[i % buddies.length] : null
 
-  // Groups
+  // ── Groups ──────────────────────────────────────────────────
   await prisma.group.upsert({
     where: { id: ID.school },
     update: {},
@@ -132,7 +117,55 @@ async function main() {
     },
   })
 
-  // Tours
+  await prisma.group.upsert({
+    where: { id: ID.hs1 },
+    update: {},
+    create: {
+      id: ID.hs1,
+      name: '広島県立桜が丘高等学校',
+      type: GroupType.school,
+      contactName: '山田 先生',
+      contactEmail: 'yamada@sakuragaoka-hs.ed.jp',
+    },
+  })
+
+  await prisma.group.upsert({
+    where: { id: ID.hs2 },
+    update: {},
+    create: {
+      id: ID.hs2,
+      name: '福岡第一高等学校',
+      type: GroupType.school,
+      contactName: '鈴木 先生',
+      contactEmail: 'suzuki@fukuoka-daiichi-hs.ed.jp',
+    },
+  })
+
+  await prisma.group.upsert({
+    where: { id: ID.jhs1 },
+    update: {},
+    create: {
+      id: ID.jhs1,
+      name: '広島市立平和中学校',
+      type: GroupType.school,
+      contactName: '中村 先生',
+      contactEmail: 'nakamura@heiwa-jhs.hiroshima.ed.jp',
+    },
+  })
+
+  await prisma.group.upsert({
+    where: { id: ID.jhs2 },
+    update: {},
+    create: {
+      id: ID.jhs2,
+      name: '松山市立南中学校',
+      type: GroupType.school,
+      contactName: '林 先生',
+      contactEmail: 'hayashi@minami-jhs.matsuyama.ed.jp',
+    },
+  })
+
+  // ── Tours (existing) ────────────────────────────────────────
   await prisma.tour.upsert({
     where: { id: ID.tourUrgent },
     update: {},
@@ -236,26 +269,168 @@ async function main() {
     },
   })
 
-  // Bookings — @@unique([buddyId, tourId]) allows upsert on compound key
-  const bookings = [
-    { buddyId: ID.buddy1, tourId: ID.tourUrgent,   status: BookingStatus.confirmed },
-    { buddyId: ID.buddy1, tourId: ID.tourMidterm,  status: BookingStatus.confirmed },
-    { buddyId: ID.buddy2, tourId: ID.tourMidterm,  status: BookingStatus.maybe },
-    { buddyId: ID.buddy1, tourId: ID.tourPast,     status: BookingStatus.confirmed },
-    { buddyId: ID.buddy2, tourId: ID.tourCancelled,status: BookingStatus.confirmed },
-  ]
+  // ── Tours (new — all at 平和公園) ───────────────────────────
+  // peace-001: cancellation deadline 2 days ago, tour in 5 days
+  await prisma.tour.upsert({
+    where: { id: ID.tourPeace1 },
+    update: {},
+    create: {
+      id: ID.tourPeace1,
+      groupId: ID.hs1,
+      status: TourStatus.published,
+      tourDate: daysFromNow(5),
+      meetingTime: timeOnly(9, 30),
+      location: '平和公園',
+      capacity: 3,
+      bookingOpen: false,
+      description: '広島県立桜が丘高等学校の修学旅行生向け平和学習ツアーです。原爆ドームと平和記念資料館を巡ります。',
+      cancellationDeadline: daysFromNow(-2),
+      notificationOffsets: [7, 1],
+    },
+  })
 
-  for (const b of bookings) {
+  await prisma.tour.upsert({
+    where: { id: ID.tourPeace2 },
+    update: {},
+    create: {
+      id: ID.tourPeace2,
+      groupId: ID.jhs1,
+      status: TourStatus.published,
+      tourDate: daysFromNow(14),
+      meetingTime: timeOnly(10),
+      location: '平和公園',
+      capacity: 4,
+      bookingOpen: true,
+      description: '広島市立平和中学校の生徒を対象とした平和記念公園の学習ツアーです。',
+      cancellationDeadline: daysFromNow(9),
+      maybeDeadline: daysFromNow(5),
+      notificationOffsets: [14, 3],
+    },
+  })
+
+  await prisma.tour.upsert({
+    where: { id: ID.tourPeace3 },
+    update: {},
+    create: {
+      id: ID.tourPeace3,
+      groupId: ID.hs2,
+      status: TourStatus.published,
+      tourDate: daysFromNow(28),
+      meetingTime: timeOnly(13),
+      location: '平和公園',
+      capacity: 5,
+      bookingOpen: true,
+      description: '福岡第一高等学校の修学旅行。平和公園から元安橋周辺を半日かけて巡るプログラムです。',
+      cancellationDeadline: daysFromNow(21),
+      maybeDeadline: daysFromNow(14),
+      notificationOffsets: [14, 7, 3],
+    },
+  })
+
+  await prisma.tour.upsert({
+    where: { id: ID.tourPeace4 },
+    update: {},
+    create: {
+      id: ID.tourPeace4,
+      groupId: ID.jhs2,
+      status: TourStatus.draft,
+      tourDate: daysFromNow(50),
+      meetingTime: timeOnly(9),
+      location: '平和公園',
+      capacity: 3,
+      description: '松山市立南中学校の平和学習ツアー（日程調整中）。',
+      cancellationDeadline: daysFromNow(44),
+      notificationOffsets: [],
+    },
+  })
+
+  // ── Bookings (skip if no buddies) ───────────────────────────
+  if (buddies.length === 0) {
+    console.log('  警告: バディがいません。ブッキングをスキップしました。')
+  } else {
+    // Existing bookings
+    const existingBookings = [
+      { buddyId: b(0)!, tourId: ID.tourUrgent,    status: BookingStatus.confirmed },
+      { buddyId: b(0)!, tourId: ID.tourMidterm,   status: BookingStatus.confirmed },
+      { buddyId: b(1)!, tourId: ID.tourMidterm,   status: BookingStatus.maybe },
+      { buddyId: b(0)!, tourId: ID.tourPast,      status: BookingStatus.confirmed },
+      { buddyId: b(1)!, tourId: ID.tourCancelled, status: BookingStatus.confirmed },
+    ]
+    for (const booking of existingBookings) {
+      await prisma.booking.upsert({
+        where: { buddyId_tourId: { buddyId: booking.buddyId, tourId: booking.tourId } },
+        update: {},
+        create: booking,
+      })
+    }
+
+    // peace-001: confirmed + declined
     await prisma.booking.upsert({
-      where: { buddyId_tourId: { buddyId: b.buddyId, tourId: b.tourId } },
+      where: { buddyId_tourId: { buddyId: b(0)!, tourId: ID.tourPeace1 } },
       update: {},
-      create: b,
+      create: { buddyId: b(0)!, tourId: ID.tourPeace1, status: BookingStatus.confirmed },
     })
+
+    const declinedBooking = await prisma.booking.upsert({
+      where: { buddyId_tourId: { buddyId: b(1)!, tourId: ID.tourPeace1 } },
+      update: {},
+      create: { buddyId: b(1)!, tourId: ID.tourPeace1, status: BookingStatus.declined },
+    })
+    await prisma.cancellationReason.upsert({
+      where: { bookingId: declinedBooking.id },
+      update: {},
+      create: {
+        bookingId: declinedBooking.id,
+        category: CancellationCategory.personal,
+        freeText: '個人的な事情により参加できなくなりました。大変申し訳ございません。',
+        unavoidable: false,
+        recordedBy: adminUser.id,
+      },
+    })
+
+    // peace-002, peace-003
+    const newTourBookings = [
+      { buddyId: b(0)!, tourId: ID.tourPeace2, status: BookingStatus.confirmed },
+      { buddyId: b(1)!, tourId: ID.tourPeace2, status: BookingStatus.maybe },
+      { buddyId: b(1)!, tourId: ID.tourPeace3, status: BookingStatus.confirmed },
+    ]
+    for (const booking of newTourBookings) {
+      await prisma.booking.upsert({
+        where: { buddyId_tourId: { buddyId: booking.buddyId, tourId: booking.tourId } },
+        update: {},
+        create: booking,
+      })
+    }
+  }
+
+  // ── Dynamic "me" ────────────────────────────────────────────
+  // Finds any non-seed user who logged in. Login once, then re-run seed.
+  const dynamicUser = await prisma.user.findFirst({
+    where: { firebaseUid: { notIn: FIREBASE_UIDS } },
+    include: { buddyProfile: true },
+  })
+
+  if (dynamicUser?.buddyProfile) {
+    const myBuddyId = dynamicUser.buddyProfile.id
+    const myBookings = [
+      { buddyId: myBuddyId, tourId: ID.tourPeace1,  status: BookingStatus.confirmed },
+      { buddyId: myBuddyId, tourId: ID.tourPeace2,  status: BookingStatus.confirmed },
+      { buddyId: myBuddyId, tourId: ID.tourMidterm, status: BookingStatus.confirmed },
+    ]
+    for (const booking of myBookings) {
+      await prisma.booking.upsert({
+        where: { buddyId_tourId: { buddyId: booking.buddyId, tourId: booking.tourId } },
+        update: {},
+        create: booking,
+      })
+    }
+    console.log(`  動的バディ: ${dynamicUser.email} → ブッキング追加済み`)
   }
 
   console.log('シード完了')
-  console.log('  バディ: hana@peacebuddies.dev, kenji@peacebuddies.dev')
-  console.log('  ツアー: 公開4件（緊急・中期・空き・キャンセル済）、完了1件、下書き1件')
+  console.log(`  ログイン: ${adminAccount.email}${buddyAccounts.length > 0 ? ' / ' + buddyAccounts.map((u: any) => u.email).join(' / ') : ''}`)
+  console.log('  ツアー: 平和公園 4件（締切済み・中期・遠日程・下書き）')
+  console.log('  peace-001: 参加中(buddy0) + キャンセル済み+理由あり(buddy1)')
 }
 
 main()

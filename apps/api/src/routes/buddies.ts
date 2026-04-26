@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { UpdateBuddyProfileSchema } from '@peace-buddy/types'
 import { getBuddyProfile, updateBuddyProfile } from '../services/buddy.service'
+import { listMyBookings } from '../services/booking.service'
 import type { AuthEnv } from '../types'
 
 const buddyRoutes = new Hono<AuthEnv>()
@@ -35,6 +36,12 @@ buddyRoutes.put('/profile', async (c) => {
   if (!profile) return c.json({ error: 'Profile not found' }, 404)
 
   return c.json(profile)
+})
+
+buddyRoutes.get('/bookings', async (c) => {
+  const { id } = c.get('user')
+  const bookings = await listMyBookings(id)
+  return c.json(bookings)
 })
 
 export { buddyRoutes }

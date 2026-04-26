@@ -312,3 +312,18 @@ export type AdminTourDetailResponse = AdminTourSummaryResponse & {
   notificationOffsets: number[]
   bookings: AdminTourBookingEntry[]
 }
+
+export type MyBookingEntry = {
+  id: string
+  tourId: string
+  status: BookingStatus
+  bookedAt: string
+  updatedAt: string
+  tour: {
+    tourDate: string
+    meetingTime: string
+    location: string
+    group: { name: string }
+    status: TourStatus
+  }
+}

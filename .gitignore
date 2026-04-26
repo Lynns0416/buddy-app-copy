@@ -16,6 +16,7 @@ apps/web/.env.local
 
 # firebase
 firebase-debug.log
+.firebase
 
 # coverage
 apps/api/coverage/lcov-report

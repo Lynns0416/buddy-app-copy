@@ -116,7 +116,27 @@ export async function listAdminTours(params: { status?: TourStatus }): Promise<A
 }
 
 export async function createTour(data: CreateTour): Promise<AdminTourDetailResponse> {
-  const row = await db.tour.create({
+  type CreateTourSelect = {
+    id: string
+    group: { id: string; name: string; type: string }
+    status: string
+    tourDate: Date
+    meetingTime: Date
+    startTime: Date | null
+    endTime: Date | null
+    bookingOpen: boolean
+    location: string
+    capacity: number
+    description: string | null
+    adminMemo: string | null
+    cancellationDeadline: Date
+    maybeDeadline: Date | null
+    notificationOffsets: number[]
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  const row = (await db.tour.create({
     data: {
       groupId: data.groupId,
       status: TourStatusSchema.enum.draft,
@@ -150,7 +170,8 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
       createdAt: true,
       updatedAt: true,
     },
-  })
+  })) as CreateTourSelect
+
   return {
     id: row.id,
     group: { id: row.group.id, name: row.group.name, type: row.group.type as GroupType },
@@ -175,7 +196,37 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
 }
 
 export async function getAdminTourDetail(id: string): Promise<AdminTourDetailResponse | null> {
-  const row = await db.tour.findUnique({
+  type DetailTourSelect = {
+    id: string
+    group: { id: string; name: string; type: string }
+    status: string
+    tourDate: Date
+    meetingTime: Date
+    startTime: Date | null
+    endTime: Date | null
+    bookingOpen: boolean
+    location: string
+    capacity: number
+    description: string | null
+    adminMemo: string | null
+    cancellationDeadline: Date
+    maybeDeadline: Date | null
+    notificationOffsets: number[]
+    createdAt: Date
+    updatedAt: Date
+    bookings: Array<{
+      id: string
+      buddyId: string
+      buddy: { displayName: string }
+      status: string
+      bookedAt: Date
+    }>
+    _count: {
+      bookings: number
+    }
+  }
+
+  const row = (await db.tour.findUnique({
     where: { id },
     select: {
       id: true,
@@ -211,7 +262,8 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
         },
       },
     },
-  })
+  })) as DetailTourSelect | null
+
   if (!row) return null
   return {
     id: row.id,

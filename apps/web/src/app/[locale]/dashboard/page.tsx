@@ -53,6 +53,12 @@ export default function DashboardPage() {
     <AppShell variant="buddy">
       <h1 className="mb-6 text-xl font-semibold">{t('title')}</h1>
 
+      <div className="mb-6">
+        <Link href={routes.dashboardBookings(locale)} className="text-sm font-medium text-primary hover:underline">
+          {t('myBookingsLink')}
+        </Link>
+      </div>
+
       {tours.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('noTours')}</p>
       ) : (

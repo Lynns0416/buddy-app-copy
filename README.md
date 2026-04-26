@@ -65,6 +65,17 @@ NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST="localhost:9099"
 
 `DATABASE_URL` and `NEXT_PUBLIC_API_URL` are set automatically by `docker-compose.yml` — do not add them to `.env` files.
 
+## Docker Commands Reference
+
+All commands use the modern `docker-compose` syntax. Run all one-off commands with `--rm` to clean up containers.
+
+| Task | Command |
+|------|---------|
+| Start dev servers | `docker-compose up --build` |
+| Seed database | `docker-compose run --rm api sh -c "cd /app && pnpm exec prisma db seed"` |
+| Reset database | `docker-compose down -v && docker compose up --build` |
+| Stop all services | `docker-compose down` |
+
 ## 2. Firebase Auth Emulator
 
 Run this on your host machine (outside Docker):
@@ -94,7 +105,7 @@ First time: create `firebase.json` at the repo root:
 ## 3. Start Everything
 
 ```bash
-docker compose up --build
+docker-compose up --build
 ```
 
 - Web: http://localhost:3000
@@ -106,27 +117,39 @@ Migrations run automatically on API container start.
 To seed the database with dummy data for local development:
 
 ```bash
-docker compose run --rm api sh -c "cd /app && pnpm exec prisma db seed"
+docker-compose run --rm api sh -c "cd /app && pnpm exec prisma db seed"
 ```
 
 To reset the database:
 
 ```bash
-docker compose down -v
-docker compose up --build
+docker-compose down -v
+docker-compose up --build
 ```
 
 ## Running Tests
 
-```bash
-# all tests
-docker compose run --rm api-test
+All test services run with the `test` profile and clean up automatically with `--rm`.
 
+```bash
+# API tests
+docker-compose --profile test run api-test
+
+# Web tests
+docker-compose --profile test run web-test
+
+# Lint check
+docker-compose --profile test run lint
+```
+
+### API Tests (detailed)
+
+```bash
 # specific file
-docker compose run --rm api-test pnpm test src/middleware/adminAuth.test.ts
+docker-compose --profile test run api-test pnpm test src/middleware/adminAuth.test.ts
 
 # with coverage
-docker compose run --rm api-test pnpm test:coverage
+docker-compose --profile test run api-test pnpm test:coverage
 ```
 
 ## Scheduled Job Endpoints (Local Testing)

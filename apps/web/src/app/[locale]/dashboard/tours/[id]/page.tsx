@@ -147,6 +147,9 @@ export default function TourDetailPage() {
     tour.bookingOpen &&
     new Date(tour.tourDate) > new Date()
 
+  const canSelectMaybe = !isPastMaybeDeadline && !isPastCancellationDeadline
+  const showMaybeDeadline = tour.maybeDeadline && !isPastCancellationDeadline
+
   return (
     <AppShell variant="buddy">
       <div className="mb-6">
@@ -192,11 +195,11 @@ export default function TourDetailPage() {
               {tour.cancellationDeadline.slice(0, 10)}
             </dd>
           </div>
-          {tour.maybeDeadline && (
+          {showMaybeDeadline && (
             <div>
               <dt className="text-muted-foreground">{t('maybeDeadline')}</dt>
               <dd className={`font-medium tabular-nums${isPastMaybeDeadline ? ' text-destructive' : ''}`}>
-                {tour.maybeDeadline.slice(0, 10)}
+                {tour.maybeDeadline ? tour.maybeDeadline.slice(0, 10) : ''}
               </dd>
             </div>
           )}
@@ -300,7 +303,7 @@ export default function TourDetailPage() {
                       <Button onClick={() => handleInitialResponse(BookingStatusSchema.enum.confirmed)} disabled={acting}>
                         {t('join')}
                       </Button>
-                      {!isPastMaybeDeadline && (
+                      {canSelectMaybe && (
                         <Button variant="secondary" onClick={() => handleInitialResponse(BookingStatusSchema.enum.maybe)} disabled={acting}>
                           {t('respondMaybe')}
                         </Button>
@@ -315,7 +318,7 @@ export default function TourDetailPage() {
                       {t('revert')}
                     </Button>
                   )}
-                  {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && !isPastMaybeDeadline && (
+                  {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && canSelectMaybe && (
                     <Button variant="outline" onClick={() => handleUpdate(BookingStatusSchema.enum.maybe)} disabled={acting}>
                       {t('setMaybe')}
                     </Button>

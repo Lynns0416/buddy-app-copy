@@ -3,6 +3,7 @@ export const apiPaths = {
   authMe: '/auth/me',
 
   meProfile: '/me/profile',
+  meBookings: '/me/bookings',
 
   tours: '/tours',
   tour: (id: string) => `/tours/${id}`,

@@ -13,6 +13,7 @@ import type {
   BookingResponse,
   UpdateBookingBody,
   CancellationReasonBody,
+  MyBookingEntry,
   BuddyStatus,
   TourStatus,
   TourStatusAction,
@@ -100,4 +101,7 @@ export const apiClient = {
       method: 'PUT',
       body: JSON.stringify({ status, reason }),
     }),
+
+  getMyBookings: () =>
+    apiRequest<MyBookingEntry[]>(apiPaths.meBookings),
 }
