@@ -2,9 +2,9 @@ import type { AdminBuddyResponse, BuddyStatus } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
-import type { ActionResult } from '../lib/action'
-import { classifyApiError } from '../lib/api-error'
-import { ASC, DESC } from '../lib/constants'
+import type { ActionResult } from '../../../../lib/action'
+import { classifyApiError } from '../../../../lib/api-error'
+import { ASC, DESC } from '../../../../lib/constants'
 
 export type BuddySortField = 'displayName' | 'email'
 

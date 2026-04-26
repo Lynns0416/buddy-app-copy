@@ -7,14 +7,14 @@ import { useTranslations } from 'next-intl'
 import { CalendarDays, MapPin, Users, Clock } from 'lucide-react'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
-import { apiClient } from '../../../lib/api-client'
 import type { TourResponse } from '@peace-buddy/types'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
+import { fetchUpcomingTours } from './dashboard.tour'
 
 export default function DashboardPage() {
-  const { firebaseUser, dbUser, loading, signOut } = useAuth()
+  const { firebaseUser, dbUser, loading } = useAuth()
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('dashboard')
@@ -33,7 +33,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && firebaseUser && dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active) {
       const from = new Date().toISOString().split('T')[0]
-      apiClient.listTours(from).then(setTours).catch(() => {})
+      void fetchUpcomingTours(from).then((result) => {
+        if (result.ok) setTours(result.data)
+      })
     }
   }, [loading, firebaseUser, dbUser])
 

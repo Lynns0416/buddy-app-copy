@@ -1,15 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { CalendarDays, MapPin, Users, Clock } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
-import { apiClient } from '@/lib/api-client'
-import { ApiError } from '@/lib/api'
-import type { TourDetailResponse, BookingStatus, UpdateBookingBody, CancellationReasonBody, CancellationCategory } from '@peace-buddy/types'
+import type { BookingStatus, CancellationReasonBody, CancellationCategory } from '@peace-buddy/types'
 import { TourStatusSchema, BookingStatusSchema, CancellationCategorySchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
@@ -17,28 +15,16 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-
-const MY_STATUS_VARIANT: Record<BookingStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  [BookingStatusSchema.enum.confirmed]: 'default',
-  [BookingStatusSchema.enum.maybe]: 'secondary',
-  [BookingStatusSchema.enum.waitlist]: 'outline',
-  [BookingStatusSchema.enum.declined]: 'destructive',
-}
-
-const CANCEL_CATEGORIES: CancellationCategory[] = [
-  CancellationCategorySchema.enum.health,
-  CancellationCategorySchema.enum.emergency,
-  CancellationCategorySchema.enum.personal,
-  CancellationCategorySchema.enum.work,
-  CancellationCategorySchema.enum.other,
-]
+import { useTourDetail } from '../../hooks/use-tour-detail'
+import { createInitialBooking, updateBookingStatus, mapErrorToI18nKey } from './dashboard.booking'
+import { MY_STATUS_VARIANT, CANCEL_CATEGORIES } from '../../lib/constants'
+import { isPastDeadline, canSelectMaybeStatus, isBookingAllowed } from '../../lib/deadline'
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
   const { locale, id } = useParams<{ locale: string; id: string }>()
   const t = useTranslations('tourDetail')
-  const [tour, setTour] = useState<TourDetailResponse | null>(null)
-  const [notFound, setNotFound] = useState(false)
+  const { tour, error: notFound, refetch } = useTourDetail(id, !loading && !!firebaseUser)
   const [acting, setActing] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -48,80 +34,61 @@ export default function TourDetailPage() {
   const [cancelFreeText, setCancelFreeText] = useState('')
   const [cancelUnavoidable, setCancelUnavoidable] = useState(false)
 
-  useEffect(() => {
-    if (!loading && firebaseUser) {
-      apiClient.getTour(id)
-        .then(setTour)
-        .catch(() => setNotFound(true))
-    }
-  }, [loading, firebaseUser, id])
-
-  const refreshTour = async () => {
-    const updated = await apiClient.getTour(id)
-    setTour(updated)
-  }
-
   const handleInitialResponse = async (intent: 'confirmed' | 'maybe' | 'declined') => {
     setActing(true)
     setActionError(null)
-    try {
-      await apiClient.createBooking(id, intent)
-      await refreshTour()
-    } catch {
-      setActionError(t('bookingError'))
-    } finally {
-      setActing(false)
+    const result = await createInitialBooking(id, intent)
+    if (result.ok) {
+      await refetch()
+    } else {
+      const key = result.specialMessage || mapErrorToI18nKey(result.error.code)
+      setActionError(t(key))
     }
+    setActing(false)
   }
 
-  const handleUpdate = async (status: UpdateBookingBody['status']) => {
+  const handleUpdate = async (status: string) => {
     setActing(true)
     setActionError(null)
-    try {
-      await apiClient.updateBooking(id, status)
-      await refreshTour()
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) setActionError(t('tourFull'))
-      else if (err instanceof ApiError && err.message === 'Maybe deadline has passed') setActionError(t('maybeDeadlinePassed'))
-      else if (err instanceof ApiError && err.status === 422) setActionError(t('deadlinePassed'))
-      else setActionError(t('bookingError'))
-    } finally {
-      setActing(false)
+    const result = await updateBookingStatus(id, status)
+    if (result.ok) {
+      await refetch()
+    } else {
+      const key = mapErrorToI18nKey(result.error.code)
+      setActionError(t(key))
     }
+    setActing(false)
   }
 
   const handleCancelConfirmed = async () => {
     if (!cancelCategory) return
     const reason: CancellationReasonBody = {
-      category: cancelCategory,
+      category: cancelCategory as CancellationCategory,
       freeText: cancelFreeText.trim() || undefined,
       unavoidable: cancelUnavoidable,
     }
     setActing(true)
     setActionError(null)
-    try {
-      await apiClient.updateBooking(id, BookingStatusSchema.enum.declined, reason)
+    const result = await updateBookingStatus(id, BookingStatusSchema.enum.declined, reason)
+    if (result.ok) {
       setCancelRequested(false)
-      await refreshTour()
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 422) setActionError(t('deadlinePassed'))
-      else setActionError(t('bookingError'))
-    } finally {
-      setActing(false)
+      await refetch()
+    } else {
+      const key = mapErrorToI18nKey(result.error.code)
+      setActionError(t(key))
     }
+    setActing(false)
   }
 
-  if (loading || (!tour && !notFound)) return null
+  if (loading) return null
 
-  if (notFound) {
+  if (notFound || !tour) {
     return (
       <AppShell variant="buddy">
         <p className="text-sm text-muted-foreground">{t('notFound')}</p>
       </AppShell>
     )
   }
-
-  if (!tour) return null
 
   const bookingStatusLabel: Record<BookingStatus, string> = {
     [BookingStatusSchema.enum.confirmed]: t('statusConfirmed'),
@@ -139,15 +106,12 @@ export default function TourDetailPage() {
   }
 
   const todayStr = new Date().toISOString().slice(0, 10)
-  const isPastCancellationDeadline = todayStr >= tour.cancellationDeadline.slice(0, 10)
-  const isPastMaybeDeadline = tour.maybeDeadline ? todayStr >= tour.maybeDeadline.slice(0, 10) : false
+  const isPastCancellationDeadline = isPastDeadline(todayStr, tour.cancellationDeadline)
+  const isPastMaybeDeadline = tour.maybeDeadline ? isPastDeadline(todayStr, tour.maybeDeadline) : false
 
-  const isBookable =
-    tour.status === TourStatusSchema.enum.published &&
-    tour.bookingOpen &&
-    new Date(tour.tourDate) > new Date()
+  const isBookable = isBookingAllowed(tour.status, tour.bookingOpen, tour.tourDate)
 
-  const canSelectMaybe = !isPastMaybeDeadline && !isPastCancellationDeadline
+  const canSelectMaybe = canSelectMaybeStatus(isPastMaybeDeadline, isPastCancellationDeadline)
   const showMaybeDeadline = tour.maybeDeadline && !isPastCancellationDeadline
 
   return (
@@ -287,7 +251,7 @@ export default function TourDetailPage() {
                     <Button
                       variant="destructive"
                       disabled={!cancelCategory || acting}
-                      onClick={handleCancelConfirmed}
+                      onClick={() => void handleCancelConfirmed()}
                     >
                       {t('cancelReasonSubmit')}
                     </Button>
@@ -300,7 +264,7 @@ export default function TourDetailPage() {
                 <div className="flex flex-wrap gap-2">
                   {tour.myBookingStatus === null && isBookable && (
                     <>
-                      <Button onClick={() => handleInitialResponse(BookingStatusSchema.enum.confirmed)} disabled={acting}>
+                      <Button onClick={() => void handleInitialResponse(BookingStatusSchema.enum.confirmed)} disabled={acting}>
                         {t('join')}
                       </Button>
                       {canSelectMaybe && (
@@ -314,12 +278,12 @@ export default function TourDetailPage() {
                     </>
                   )}
                   {tour.myBookingStatus === BookingStatusSchema.enum.declined && isBookable && tour.remainingSeats > 0 && (
-                    <Button variant="outline" onClick={() => handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>
+                    <Button variant="outline" onClick={() => void handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>
                       {t('revert')}
                     </Button>
                   )}
                   {tour.myBookingStatus === BookingStatusSchema.enum.confirmed && canSelectMaybe && (
-                    <Button variant="outline" onClick={() => handleUpdate(BookingStatusSchema.enum.maybe)} disabled={acting}>
+                    <Button variant="outline" onClick={() => void handleUpdate(BookingStatusSchema.enum.maybe)} disabled={acting}>
                       {t('setMaybe')}
                     </Button>
                   )}
@@ -344,7 +308,7 @@ export default function TourDetailPage() {
                     <Button
                       variant="outline"
                       className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => handleUpdate(BookingStatusSchema.enum.declined)}
+                      onClick={() => void handleUpdate(BookingStatusSchema.enum.declined)}
                       disabled={acting}
                     >
                       {t('cancelBooking')}

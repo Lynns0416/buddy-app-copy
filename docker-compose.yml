@@ -57,6 +57,8 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile  # reuse any image that has all deps
+    environment:
+      CI: "true"
     entrypoint: []
     command: sh -c "
       cd /app && pnpm install --frozen-lockfile &&
@@ -69,10 +71,10 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - /app/node_modules
-      - /app/packages/types/node_modules
-      - /app/apps/api/node_modules
-      - /app/apps/web/node_modules
+      - ci_nm_root:/app/node_modules
+      - ci_nm_types:/app/packages/types/node_modules
+      - ci_nm_api:/app/apps/api/node_modules
+      - ci_nm_web:/app/apps/web/node_modules
 
 volumes:
   db_data:

@@ -2,9 +2,9 @@ import type { GroupResponse, GroupDetailResponse, CreateGroup, UpdateGroup } fro
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
-import type { ActionResult } from '../lib/action'
-import { classifyApiError } from '../lib/api-error'
-import { ASC, DESC } from '../lib/constants'
+import type { ActionResult } from '../../../../lib/action'
+import { classifyApiError } from '../../../../lib/api-error'
+import { ASC, DESC } from '../../../../lib/constants'
 
 export type GroupSortField = 'name' | 'type'
 export type GroupTourSortField = 'tourDate' | 'status' | 'location' | 'capacity'
