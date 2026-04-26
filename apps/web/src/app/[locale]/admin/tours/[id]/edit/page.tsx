@@ -6,12 +6,12 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import { apiClient } from '@/lib/api-client'
-import { TourStatusSchema } from '@peace-buddy/types'
-import type { AdminTourDetailResponse, GroupResponse } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, GroupResponse, AppError } from '@peace-buddy/types'
+import { TourStatusSchema, AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { TourForm } from '../../_components/tour-form'
 import type { TourFormValues } from '../../_components/tour-form'
+import { fetchTour, fetchGroups, updateTour } from '../../admin.tour'
 
 export default function AdminTourEditPage() {
   const { ready, locale } = useAdminGuard()
@@ -22,32 +22,50 @@ export default function AdminTourEditPage() {
   const [groups, setGroups] = useState<GroupResponse[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  function errorMessage(err: AppError): string {
+    switch (err.code) {
+      case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
+      case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
+      case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
+      case AppErrorCodeSchema.enum.network:    return t('error.network')
+      default:                                 return t('error.unknown')
+    }
+  }
+
   useEffect(() => {
     if (!ready) return
-    Promise.all([apiClient.getAdminTour(id), apiClient.listGroups()])
-      .then(([fetchedTour, fetchedGroups]) => {
+    Promise.all([fetchTour(id), fetchGroups()])
+      .then(([tourResult, groupsResult]) => {
+        if (!tourResult.ok) {
+          setLoadError(errorMessage(tourResult.error))
+          return
+        }
+        if (!groupsResult.ok) {
+          setLoadError(errorMessage(groupsResult.error))
+          return
+        }
         if (
-          fetchedTour.status === TourStatusSchema.enum.cancelled ||
-          fetchedTour.status === TourStatusSchema.enum.completed
+          tourResult.data.status === TourStatusSchema.enum.cancelled ||
+          tourResult.data.status === TourStatusSchema.enum.completed
         ) {
           router.replace(routes.adminTourDetail(locale, id))
         } else {
-          setTour(fetchedTour)
-          setGroups(fetchedGroups)
+          setTour(tourResult.data)
+          setGroups(groupsResult.data)
         }
       })
-      .catch(() => setLoadError(t('actionError')))
-  }, [ready, id, locale, router, t])
+  }, [ready, id, locale, router]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(values: TourFormValues) {
-    await apiClient.updateAdminTour(id, values)
-    router.push(routes.adminTourDetail(locale, id))
+    const result = await updateTour(id, values as Record<string, unknown>)
+    if (result.ok) router.push(routes.adminTourDetail(locale, id))
+    else setLoadError(errorMessage(result.error))
   }
 
   if (!ready) return null
   if (loadError) return (
     <AppShell variant="admin">
-      <p className="text-sm text-destructive">{loadError}</p>
+      <p className="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{loadError}</p>
     </AppShell>
   )
   if (!tour) return null

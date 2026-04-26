@@ -6,14 +6,17 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import { apiClient } from '@/lib/api-client'
-import { TourStatusSchema, TourActionSchema } from '@peace-buddy/types'
-import type { AdminTourDetailResponse, TourStatus, TourAction, BookingStatus } from '@peace-buddy/types'
+import { TourStatusSchema, TourActionSchema, AppErrorCodeSchema } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, TourStatus, TourAction, BookingStatus, AppError } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SortIcon, type SortDir } from '@/components/sort-icon'
+import { SortIcon } from '@/components/sort-icon'
+import {
+  sortBookings, nextBookingSort, fetchTour, transitionTour, toggleTourBooking, deleteTour,
+  type BookingSortField,
+} from '../admin.tour'
 
 const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   draft: 'outline',
@@ -38,62 +41,61 @@ export default function AdminTourDetailPage() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [acting, setActing] = useState(false)
-  const [bookingSortField, setBookingSortField] = useState<'displayName' | 'status' | 'bookedAt'>('bookedAt')
-  const [bookingSortDir, setBookingSortDir] = useState<SortDir>('asc')
+  const [bookingSortField, setBookingSortField] = useState<BookingSortField>('bookedAt')
+  const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc')
 
-  function handleBookingSort(field: 'displayName' | 'status' | 'bookedAt') {
-    if (field === bookingSortField) {
-      setBookingSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setBookingSortField(field)
-      setBookingSortDir('asc')
+  function handleBookingSort(field: BookingSortField) {
+    const next = nextBookingSort({ field: bookingSortField, dir: bookingSortDir }, field)
+    setBookingSortField(next.field)
+    setBookingSortDir(next.dir)
+  }
+
+  function errorMessage(error: AppError): string {
+    switch (error.code) {
+      case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
+      case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
+      case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
+      case AppErrorCodeSchema.enum.network:    return t('error.network')
+      default:                                 return t('error.unknown')
     }
   }
 
   useEffect(() => {
     if (!ready) return
-    apiClient.getAdminTour(id)
-      .then(setTour)
-      .catch(() => setFetchError(t('actionError')))
-  }, [ready, id, t])
+    fetchTour(id).then((result) => {
+      if (result.ok) setTour(result.data)
+      else setFetchError(errorMessage(result.error))
+    })
+  }, [ready, id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleTransition(action: TourAction, confirmMsg?: string) {
     if (confirmMsg && !window.confirm(confirmMsg)) return
     setActing(true)
     setActionError(null)
-    try {
-      const updated = await apiClient.transitionAdminTourStatus(id, action)
-      setTour(updated)
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : t('actionError'))
-    } finally {
-      setActing(false)
-    }
+    const result = await transitionTour(id, action)
+    if (result.ok) setTour(result.data)
+    else setActionError(errorMessage(result.error))
+    setActing(false)
   }
 
   async function handleToggleBooking() {
     if (!tour) return
     setActing(true)
     setActionError(null)
-    try {
-      const updated = await apiClient.updateAdminTour(id, { bookingOpen: !tour.bookingOpen })
-      setTour(updated)
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : t('actionError'))
-    } finally {
-      setActing(false)
-    }
+    const result = await toggleTourBooking(id, tour.bookingOpen)
+    if (result.ok) setTour(result.data)
+    else setActionError(errorMessage(result.error))
+    setActing(false)
   }
 
   async function handleDelete() {
     if (!window.confirm(t('confirmDelete'))) return
     setActing(true)
     setActionError(null)
-    try {
-      await apiClient.deleteAdminTour(id)
-      router.push(routes.adminTours(locale))
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : t('actionError'))
+    const result = await deleteTour(id)
+    if (result.ok) router.push(routes.adminTours(locale))
+    else {
+      setActionError(errorMessage(result.error))
       setActing(false)
     }
   }
@@ -254,15 +256,7 @@ export default function AdminTourDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...tour.bookings].sort((a, b) => {
-                let cmp = 0
-                switch (bookingSortField) {
-                  case 'displayName': cmp = a.displayName.localeCompare(b.displayName, 'ja'); break
-                  case 'status': cmp = a.status.localeCompare(b.status); break
-                  case 'bookedAt': cmp = a.bookedAt.localeCompare(b.bookedAt); break
-                }
-                return bookingSortDir === 'asc' ? cmp : -cmp
-              }).map((b) => (
+              {sortBookings(tour.bookings, bookingSortField, bookingSortDir).map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-medium">{b.displayName}</TableCell>
                   <TableCell>

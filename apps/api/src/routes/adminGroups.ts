@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { CreateGroupSchema, UpdateGroupSchema } from '@peace-buddy/types'
 import { listGroups, createGroup, updateGroup, getGroup } from '../services/group.service'
+import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
 
 const adminGroupRoutes = new Hono<AuthEnv>()
@@ -26,7 +27,7 @@ adminGroupRoutes.post('/', async (c) => {
 adminGroupRoutes.get('/:id', async (c) => {
   const id = c.req.param('id')
   const group = await getGroup(id)
-  if (!group) return c.json({ error: 'Group not found' }, 404)
+  if (!group) return c.json(apiError('not_found'), 404)
   return c.json(group)
 })
 
@@ -44,7 +45,7 @@ adminGroupRoutes.put('/:id', async (c) => {
   if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
 
   const group = await updateGroup(id, parsed.data)
-  if (!group) return c.json({ error: 'Group not found' }, 404)
+  if (!group) return c.json(apiError('not_found'), 404)
   return c.json(group)
 })
 

@@ -6,13 +6,14 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import { apiClient } from '@/lib/api-client'
-import type { GroupResponse, GroupType } from '@peace-buddy/types'
+import type { GroupResponse, GroupType, AppError } from '@peace-buddy/types'
+import { AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SortIcon, type SortDir } from '@/components/sort-icon'
+import { SortIcon } from '@/components/sort-icon'
+import { fetchGroups, sortGroups, nextGroupSort, type GroupSortField } from './admin.group'
 
 const GROUP_TYPE_CLASS: Record<GroupType, string> = {
   school: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -21,37 +22,40 @@ const GROUP_TYPE_CLASS: Record<GroupType, string> = {
   other: 'bg-slate-100 text-slate-700 border-slate-200',
 }
 
-type SortField = 'name' | 'type'
-
 export default function AdminGroupsPage() {
   const { ready, locale } = useAdminGuard()
   const router = useRouter()
   const t = useTranslations('adminGroups')
   const [groups, setGroups] = useState<GroupResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
-  const [sortField, setSortField] = useState<SortField>('name')
-  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [sortField, setSortField] = useState<GroupSortField>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
-  useEffect(() => {
-    if (!ready) return
-    apiClient.listGroups()
-      .then(setGroups)
-      .catch(() => setFetchError(t('actionError')))
-  }, [ready, t])
-
-  function handleSort(field: SortField) {
-    if (field === sortField) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortField(field)
-      setSortDir('asc')
+  function errorMessage(error: AppError): string {
+    switch (error.code) {
+      case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
+      case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
+      case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
+      case AppErrorCodeSchema.enum.network:    return t('error.network')
+      default:                                 return t('error.unknown')
     }
   }
 
-  const sorted = [...groups].sort((a, b) => {
-    const cmp = a[sortField].localeCompare(b[sortField], 'ja')
-    return sortDir === 'asc' ? cmp : -cmp
-  })
+  useEffect(() => {
+    if (!ready) return
+    fetchGroups().then((result) => {
+      if (result.ok) setGroups(result.data)
+      else setFetchError(errorMessage(result.error))
+    })
+  }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleSort(field: GroupSortField) {
+    const next = nextGroupSort({ field: sortField, dir: sortDir }, field)
+    setSortField(next.field)
+    setSortDir(next.dir)
+  }
+
+  const sorted = sortGroups(groups, sortField, sortDir)
 
   if (!ready) return null
 

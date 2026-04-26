@@ -139,6 +139,7 @@ describe('GET /admin/groups/:id', () => {
     mockGetGroup.mockResolvedValueOnce(null)
     const res = await buildApp().request('/admin/groups/missing')
     expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
   })
 })
 
@@ -167,6 +168,7 @@ describe('PUT /admin/groups/:id', () => {
       body: JSON.stringify({ name: 'X' }),
     })
     expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
   })
 
   it('returns 400 for invalid type', async () => {

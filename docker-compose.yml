@@ -61,8 +61,8 @@ services:
     command: sh -c "
       cd /app && pnpm install --frozen-lockfile &&
       cd /app/packages/types && pnpm build &&
-      cd /app/apps/api && pnpm lint && pnpm typecheck &&
-      cd /app/apps/web && pnpm lint && pnpm typecheck
+      cd /app/apps/api && pnpm lint && pnpm typecheck && pnpm test &&
+      cd /app/apps/web && pnpm lint && pnpm typecheck && pnpm test
       "
     depends_on:
       db:

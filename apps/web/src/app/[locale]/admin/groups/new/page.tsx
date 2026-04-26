@@ -6,13 +6,15 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import { apiClient } from '@/lib/api-client'
-import { GroupTypeSchema } from '@peace-buddy/types'
+import type { AppError } from '@peace-buddy/types'
+import { GroupTypeSchema, AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { createGroup } from '../admin.group'
+import type { CreateGroup } from '@peace-buddy/types'
 
 export default function AdminGroupNewPage() {
   const { ready, locale } = useAdminGuard()
@@ -21,12 +23,22 @@ export default function AdminGroupNewPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  function errorMessage(err: AppError): string {
+    switch (err.code) {
+      case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
+      case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
+      case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
+      case AppErrorCodeSchema.enum.network:    return t('error.network')
+      default:                                 return t('error.unknown')
+    }
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = new FormData(e.currentTarget)
-    const body = {
+    const body: CreateGroup = {
       name: form.get('name') as string,
-      type: form.get('type') as string,
+      type: form.get('type') as CreateGroup['type'],
       contactName: (form.get('contactName') as string) || undefined,
       contactEmail: (form.get('contactEmail') as string) || undefined,
       contactPhone: (form.get('contactPhone') as string) || undefined,
@@ -34,14 +46,10 @@ export default function AdminGroupNewPage() {
     }
     setSubmitting(true)
     setError(null)
-    try {
-      await apiClient.createGroup(body as Parameters<typeof apiClient.createGroup>[0])
-      router.push(routes.adminGroups(locale))
-    } catch {
-      setError(t('actionError'))
-    } finally {
-      setSubmitting(false)
-    }
+    const result = await createGroup(body)
+    if (result.ok) router.push(routes.adminGroups(locale))
+    else setError(errorMessage(result.error))
+    setSubmitting(false)
   }
 
   if (!ready) return null

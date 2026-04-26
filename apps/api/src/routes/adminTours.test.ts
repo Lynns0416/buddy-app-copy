@@ -204,10 +204,11 @@ describe('GET /admin/tours/:id', () => {
     expect(body.bookings).toEqual([])
   })
 
-  it('returns 404 when not found', async () => {
+  it('returns 404 with code when not found', async () => {
     mockGetAdminTourDetail.mockResolvedValueOnce(null)
     const res = await buildApp().request('/admin/tours/missing')
     expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
   })
 })
 
@@ -225,7 +226,7 @@ describe('PUT /admin/tours/:id', () => {
     expect(mockUpdateTour).toHaveBeenCalledWith('tour-1', expect.objectContaining({ location: 'Shibuya' }))
   })
 
-  it('returns 404 when tour not found', async () => {
+  it('returns 404 with code when tour not found', async () => {
     mockUpdateTour.mockRejectedValueOnce(new TourNotFoundError())
     const res = await buildApp().request('/admin/tours/missing', {
       method: 'PUT',
@@ -233,9 +234,10 @@ describe('PUT /admin/tours/:id', () => {
       body: JSON.stringify({ location: 'X' }),
     })
     expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
   })
 
-  it('returns 409 when tour is immutable', async () => {
+  it('returns 409 with code when tour is immutable', async () => {
     mockUpdateTour.mockRejectedValueOnce(new TourImmutableError())
     const res = await buildApp().request('/admin/tours/tour-1', {
       method: 'PUT',
@@ -243,6 +245,7 @@ describe('PUT /admin/tours/:id', () => {
       body: JSON.stringify({ location: 'X' }),
     })
     expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
   })
 
   it('returns 400 for non-JSON body', async () => {
@@ -279,7 +282,7 @@ describe('PATCH /admin/tours/:id/status', () => {
     expect(mockTransitionTourStatus).toHaveBeenCalledWith('tour-1', 'cancel')
   })
 
-  it('returns 409 for invalid transition', async () => {
+  it('returns 409 with code for invalid transition', async () => {
     mockTransitionTourStatus.mockRejectedValueOnce(new TourTransitionError("Cannot transition from 'cancelled' to 'published'"))
     const res = await buildApp().request('/admin/tours/tour-1/status', {
       method: 'PATCH',
@@ -287,9 +290,10 @@ describe('PATCH /admin/tours/:id/status', () => {
       body: JSON.stringify({ action: 'publish' }),
     })
     expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
   })
 
-  it('returns 404 when tour not found', async () => {
+  it('returns 404 with code when tour not found', async () => {
     mockTransitionTourStatus.mockRejectedValueOnce(new TourNotFoundError())
     const res = await buildApp().request('/admin/tours/missing/status', {
       method: 'PATCH',
@@ -297,6 +301,7 @@ describe('PATCH /admin/tours/:id/status', () => {
       body: JSON.stringify({ action: 'publish' }),
     })
     expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
   })
 
   it('returns 400 for invalid action', async () => {
@@ -319,15 +324,17 @@ describe('DELETE /admin/tours/:id', () => {
     expect(mockDeleteTour).toHaveBeenCalledWith('tour-1')
   })
 
-  it('returns 404 when tour not found', async () => {
+  it('returns 404 with code when tour not found', async () => {
     mockDeleteTour.mockRejectedValueOnce(new TourNotFoundError())
     const res = await buildApp().request('/admin/tours/missing', { method: 'DELETE' })
     expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
   })
 
-  it('returns 409 when tour is not draft', async () => {
+  it('returns 409 with code when tour is not draft', async () => {
     mockDeleteTour.mockRejectedValueOnce(new TourNotDraftError())
     const res = await buildApp().request('/admin/tours/tour-1', { method: 'DELETE' })
     expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
   })
 })

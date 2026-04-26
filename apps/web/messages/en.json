@@ -38,7 +38,14 @@
     "status": "Status",
     "location": "Location",
     "capacity": "Capacity",
-    "actionError": "Action failed. Please try again."
+    "actionError": "Action failed. Please try again.",
+    "error": {
+      "notFound": "This group no longer exists.",
+      "forbidden": "You don't have permission to perform this action.",
+      "conflict": "This action can no longer be performed.",
+      "network": "Connection error. Please check your network and try again.",
+      "unknown": "Something went wrong. Please try again."
+    }
   },
   "adminBuddies": {
     "title": "Pending Buddies",
@@ -122,7 +129,14 @@
     "closeBooking": "Close Booking",
     "actionError": "Action failed. Please try again.",
     "validationError": "Please fix the errors below.",
-    "maybeDeadlineError": "Maybe deadline must be before cancellation deadline."
+    "maybeDeadlineError": "Maybe deadline must be before cancellation deadline.",
+    "error": {
+      "notFound": "This tour no longer exists.",
+      "forbidden": "You don't have permission to perform this action.",
+      "conflict": "This action can no longer be performed.",
+      "network": "Connection error. Please check your network and try again.",
+      "unknown": "Something went wrong. Please try again."
+    }
   },
   "tourDetail": {
     "back": "Back to Dashboard",
