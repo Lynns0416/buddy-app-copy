@@ -88,7 +88,11 @@ export default function DashboardPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Users size={14} />
-                  {tour.capacity}
+                  {t('capacity')}: {tour.capacity}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Users size={14} />
+                  {t('participantCount')}: {tour.participantCount}
                 </span>
               </div>
             </Link>

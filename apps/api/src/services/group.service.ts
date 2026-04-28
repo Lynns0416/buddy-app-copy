@@ -24,6 +24,7 @@ const groupTourSelect = {
   bookingOpen: true,
   location: true,
   capacity: true,
+  participantCount: true,
   description: true,
   createdAt: true,
 } as const
@@ -62,6 +63,7 @@ function mapGroupTour(raw: {
   bookingOpen: boolean
   location: string
   capacity: number
+  participantCount: number
   description: string | null
   createdAt: Date
 }): GroupTourSummary {
@@ -75,6 +77,7 @@ function mapGroupTour(raw: {
     bookingOpen: raw.bookingOpen,
     location: raw.location,
     capacity: raw.capacity,
+    participantCount: raw.participantCount,
     description: raw.description,
     createdAt: raw.createdAt.toISOString(),
   }

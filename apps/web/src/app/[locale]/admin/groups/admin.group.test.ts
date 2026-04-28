@@ -116,6 +116,7 @@ const tour = (overrides: Partial<GroupDetailResponse['tours'][0]>): GroupDetailR
   bookingOpen: false,
   location: 'Tokyo',
   capacity: 10,
+  participantCount: 0,
   description: null,
   createdAt: '2025-01-01T00:00:00Z',
   ...overrides,

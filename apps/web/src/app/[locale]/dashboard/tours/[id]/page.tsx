@@ -154,6 +154,13 @@ export default function TourDetailPage() {
             </dd>
           </div>
           <div>
+            <dt className="text-muted-foreground">{t('participantCount')}</dt>
+            <dd className="flex items-center gap-1.5 font-medium">
+              <Users size={14} className="text-muted-foreground" />
+              {tour.participantCount}
+            </dd>
+          </div>
+          <div>
             <dt className="text-muted-foreground">{t('cancellationDeadline')}</dt>
             <dd className={`font-medium tabular-nums${isPastCancellationDeadline ? ' text-destructive' : ''}`}>
               {tour.cancellationDeadline.slice(0, 10)}

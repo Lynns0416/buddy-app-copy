@@ -93,6 +93,7 @@ export default function AdminToursPage() {
                   { field: 'group' as const, label: t('group') },
                   { field: 'location' as const, label: t('location') },
                   { field: 'capacity' as const, label: t('capacity') },
+                  { field: 'participantCount' as const, label: t('participantCount') },
                   { field: 'confirmedCount' as const, label: t('confirmedCount') },
                   { field: 'status' as const, label: t('status') },
                 ]).map(({ field, label }) => (
@@ -120,6 +121,7 @@ export default function AdminToursPage() {
                   <TableCell className="font-medium">{tour.group.name}</TableCell>
                   <TableCell>{tour.location}</TableCell>
                   <TableCell className="text-center">{tour.capacity}</TableCell>
+                  <TableCell className="text-center">{tour.participantCount}</TableCell>
                   <TableCell className="text-center">{tour.confirmedCount}</TableCell>
                   <TableCell>
                     <Badge variant={STATUS_VARIANT[tour.status]}>

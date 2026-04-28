@@ -81,6 +81,7 @@ export const CreateTourSchema = z
     bookingOpen: z.boolean().default(false),
     location: z.string().min(1),
     capacity: z.number().int().positive(),
+    participantCount: z.number().int().min(0).optional(),
     description: z.string().optional(),
     adminMemo: z.string().optional(),
     cancellationDeadline: z.coerce.date(),
@@ -103,6 +104,7 @@ export const UpdateTourSchema = z
     bookingOpen: z.boolean().optional(),
     location: z.string().min(1).optional(),
     capacity: z.number().int().positive().optional(),
+    participantCount: z.number().int().min(0).optional(),
     description: z.string().nullable().optional(),
     adminMemo: z.string().nullable().optional(),
     cancellationDeadline: z.coerce.date().optional(),
@@ -187,6 +189,7 @@ export type TourResponse = {
   bookingOpen: boolean
   location: string
   capacity: number
+  participantCount: number
   description: string | null
   cancellationDeadline: string
   maybeDeadline: string | null
@@ -217,6 +220,7 @@ export type GroupTourSummary = {
   bookingOpen: boolean
   location: string
   capacity: number
+  participantCount: number
   description: string | null
   createdAt: string
 }
@@ -308,6 +312,7 @@ export type AdminTourSummaryResponse = {
   capacity: number
   description: string | null
   confirmedCount: number
+  participantCount: number
   createdAt: string
   updatedAt: string
 }

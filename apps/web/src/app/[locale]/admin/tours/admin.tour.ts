@@ -6,7 +6,7 @@ import type { ActionResult } from '../../../../lib/action'
 import { classifyApiError } from '../../../../lib/api-error'
 import { ASC, DESC } from '../../../../lib/constants'
 
-export type TourListSortField = 'tourDate' | 'group' | 'location' | 'capacity' | 'confirmedCount' | 'status'
+export type TourListSortField = 'tourDate' | 'group' | 'location' | 'capacity' | 'participantCount' | 'confirmedCount' | 'status'
 export type BookingSortField = 'displayName' | 'status' | 'bookedAt'
 
 // ── Tour list sorting ──────────────────────────────────────────────────────
@@ -23,6 +23,7 @@ export function sortTours(
       case 'group':         cmp = a.group.name.localeCompare(b.group.name, routing.defaultLocale); break
       case 'location':      cmp = a.location.localeCompare(b.location, routing.defaultLocale); break
       case 'capacity':      cmp = a.capacity - b.capacity; break
+      case 'participantCount': cmp = a.participantCount - b.participantCount; break
       case 'confirmedCount': cmp = a.confirmedCount - b.confirmedCount; break
       case 'status':        cmp = a.status.localeCompare(b.status); break
     }

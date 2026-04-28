@@ -50,6 +50,7 @@ const mockTour: TourResponse = {
   bookingOpen: true,
   location: 'Tokyo Station',
   capacity: 10,
+  participantCount: 0,
   description: null,
   cancellationDeadline: '2026-04-28T00:00:00.000Z',
   maybeDeadline: null,

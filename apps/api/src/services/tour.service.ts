@@ -15,6 +15,7 @@ const tourSelect = {
   bookingOpen: true,
   location: true,
   capacity: true,
+  participantCount: true,
   description: true,
   cancellationDeadline: true,
   maybeDeadline: true,
@@ -35,6 +36,7 @@ function mapTour(row: {
   bookingOpen: boolean
   location: string
   capacity: number
+  participantCount: number
   description: string | null
   cancellationDeadline: Date
   maybeDeadline: Date | null
@@ -54,6 +56,7 @@ function mapTour(row: {
     bookingOpen: row.bookingOpen,
     location: row.location,
     capacity: row.capacity,
+    participantCount: row.participantCount,
     description: row.description,
     cancellationDeadline: row.cancellationDeadline.toISOString(),
     maybeDeadline: row.maybeDeadline ? row.maybeDeadline.toISOString() : null,

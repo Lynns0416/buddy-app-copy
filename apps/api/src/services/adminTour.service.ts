@@ -64,6 +64,7 @@ function mapSummary(row: {
   bookingOpen: boolean
   location: string
   capacity: number
+  participantCount: number
   description: string | null
   createdAt: Date
   updatedAt: Date
@@ -82,6 +83,7 @@ function mapSummary(row: {
     capacity: row.capacity,
     description: row.description,
     confirmedCount: row._count.bookings,
+    participantCount: row.participantCount,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -101,6 +103,7 @@ export async function listAdminTours(params: { status?: TourStatus }): Promise<A
       bookingOpen: true,
       location: true,
       capacity: true,
+      participantCount: true,
       description: true,
       createdAt: true,
       updatedAt: true,
@@ -127,6 +130,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
     bookingOpen: boolean
     location: string
     capacity: number
+    participantCount: number
     description: string | null
     adminMemo: string | null
     cancellationDeadline: Date
@@ -145,6 +149,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
       bookingOpen: data.bookingOpen,
       location: data.location,
       capacity: data.capacity,
+      participantCount: data.participantCount ?? 0,
       description: data.description ?? null,
       adminMemo: data.adminMemo ?? null,
       cancellationDeadline: data.cancellationDeadline,
@@ -162,6 +167,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
       bookingOpen: true,
       location: true,
       capacity: true,
+      participantCount: true,
       description: true,
       adminMemo: true,
       cancellationDeadline: true,
@@ -185,6 +191,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
     capacity: row.capacity,
     description: row.description,
     confirmedCount: 0,
+    participantCount: row.participantCount,
     adminMemo: row.adminMemo,
     cancellationDeadline: row.cancellationDeadline.toISOString(),
     maybeDeadline: row.maybeDeadline ? row.maybeDeadline.toISOString() : null,
@@ -207,6 +214,7 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
     bookingOpen: boolean
     location: string
     capacity: number
+    participantCount: number
     description: string | null
     adminMemo: string | null
     cancellationDeadline: Date
@@ -239,6 +247,7 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
       bookingOpen: true,
       location: true,
       capacity: true,
+      participantCount: true,
       description: true,
       adminMemo: true,
       cancellationDeadline: true,
@@ -278,6 +287,7 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
     capacity: row.capacity,
     description: row.description,
     confirmedCount: row._count.bookings,
+    participantCount: row.participantCount,
     adminMemo: row.adminMemo,
     cancellationDeadline: row.cancellationDeadline.toISOString(),
     maybeDeadline: row.maybeDeadline ? row.maybeDeadline.toISOString() : null,
@@ -308,6 +318,7 @@ export async function updateTour(id: string, data: UpdateTour): Promise<AdminTou
         ...(data.meetingTime !== undefined ? { meetingTime: parseTime(data.meetingTime) } : {}),
         ...(data.location !== undefined ? { location: data.location } : {}),
         ...(data.capacity !== undefined ? { capacity: data.capacity } : {}),
+        ...(data.participantCount !== undefined ? { participantCount: data.participantCount } : {}),
         ...(data.description !== undefined ? { description: data.description } : {}),
         ...(data.adminMemo !== undefined ? { adminMemo: data.adminMemo } : {}),
         ...(data.cancellationDeadline !== undefined ? { cancellationDeadline: data.cancellationDeadline } : {}),

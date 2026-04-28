@@ -21,6 +21,7 @@ const TourFormSchema = z
     meetingTime: z.string().regex(timeRegex),
     location: z.string().min(1),
     capacity: z.coerce.number().int().positive(),
+    participantCount: z.coerce.number().int().min(0),
     bookingOpen: z.boolean(),
     description: z.string().optional(),
     adminMemo: z.string().optional(),
@@ -41,6 +42,7 @@ export type TourFormValues = {
   meetingTime: string
   location: string
   capacity: number
+  participantCount: number
   bookingOpen: boolean
   description: string | null
   adminMemo: string | null
@@ -72,6 +74,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
       meetingTime: defaultValues?.meetingTime.slice(11, 16) ?? '',
       location: defaultValues?.location ?? '',
       capacity: defaultValues?.capacity ?? ('' as unknown as number),
+      participantCount: defaultValues?.participantCount ?? ('' as unknown as number),
       bookingOpen: defaultValues?.bookingOpen ?? false,
       description: defaultValues?.description ?? '',
       adminMemo: defaultValues?.adminMemo ?? '',
@@ -90,6 +93,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
       meetingTime: fields.meetingTime,
       location: fields.location,
       capacity: fields.capacity,
+      participantCount: fields.participantCount,
       bookingOpen: fields.bookingOpen,
       description: fields.description || null,
       adminMemo: fields.adminMemo || null,
@@ -161,6 +165,12 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
           <Label htmlFor="capacity">{t('capacity')}</Label>
           <Input id="capacity" type="number" min={1} {...register('capacity')} />
           {errors.capacity && <p className="text-xs text-destructive">{errors.capacity.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="participantCount">{t('participantCount')}</Label>
+          <Input id="participantCount" type="number" min={0} {...register('participantCount')} />
+          {errors.participantCount && <p className="text-xs text-destructive">{errors.participantCount.message}</p>}
         </div>
 
         <div className="flex items-center gap-2">

@@ -174,6 +174,7 @@ describe('TourForm', () => {
           bookingOpen: false,
           location: 'Nagasaki',
           capacity: 10,
+          participantCount: 0,
           description: 'A tour',
           confirmedCount: 0,
           adminMemo: null,

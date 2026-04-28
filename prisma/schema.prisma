@@ -134,6 +134,7 @@ model Tour {
   bookingOpen          Boolean                             @default(false)
   location             String
   capacity             Int
+  participantCount     Int                                 @default(0)
   description          String?
   adminMemo            String?
   cancellationDeadline DateTime                            @db.Date

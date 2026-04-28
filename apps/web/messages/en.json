@@ -63,6 +63,7 @@
     "meetingTime": "Meeting time",
     "location": "Location",
     "capacity": "Capacity",
+    "participantCount": "Participants",
     "notRegistered": "Sorry, but it seems like you're not registered as a buddy. If you have any questions, please contact any of plab staff.",
     "myBookingsLink": "My bookings"
   },
@@ -89,6 +90,7 @@
     "meetingTime": "Meeting Time",
     "location": "Location",
     "capacity": "Capacity",
+    "participantCount": "Participants",
     "description": "Description",
     "adminMemo": "Admin Memo",
     "cancellationDeadline": "Cancellation Deadline",
@@ -144,6 +146,7 @@
     "meetingTime": "Meeting Time",
     "location": "Location",
     "capacity": "Capacity",
+    "participantCount": "Participants",
     "cancellationDeadline": "Cancellation Deadline",
     "maybeDeadline": "Maybe Deadline",
     "description": "Description",
