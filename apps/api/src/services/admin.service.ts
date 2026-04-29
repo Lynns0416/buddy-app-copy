@@ -42,6 +42,19 @@ export async function listBuddies(status?: BuddyStatus): Promise<AdminBuddyRespo
   return rows.map(mapBuddy)
 }
 
+export async function getBuddyDetail(id: string): Promise<AdminBuddyResponse | null> {
+  try {
+    const raw = await db.buddyProfile.findUnique({
+      where: { id },
+      select: adminBuddySelect,
+    })
+    return raw ? mapBuddy(raw) : null
+  } catch (e) {
+    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
+    throw e
+  }
+}
+
 export async function updateBuddyStatus(
   id: string,
   status: BuddyStatus,
@@ -52,6 +65,36 @@ export async function updateBuddyStatus(
     if (status === BuddyStatusSchema.enum.active) {
       data.tier = tier ?? BuddyTierSchema.enum.trainee
     }
+    const raw = await db.buddyProfile.update({
+      where: { id },
+      data,
+      select: adminBuddySelect,
+    })
+    return mapBuddy(raw)
+  } catch (e) {
+    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
+    throw e
+  }
+}
+
+export async function updateBuddyProfile(
+  id: string,
+  tier?: BuddyTier | null,
+  internalNotes?: string | null
+): Promise<AdminBuddyResponse | null> {
+  try {
+    const data: Record<string, unknown> = {}
+    if (tier !== undefined) data.tier = tier
+    if (internalNotes !== undefined) data.internalNotes = internalNotes
+
+    if (Object.keys(data).length === 0) {
+      const raw = await db.buddyProfile.findUnique({
+        where: { id },
+        select: adminBuddySelect,
+      })
+      return raw ? mapBuddy(raw) : null
+    }
+
     const raw = await db.buddyProfile.update({
       where: { id },
       data,

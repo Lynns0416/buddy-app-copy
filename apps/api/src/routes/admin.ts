@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
-import { BuddyStatusSchema, UpdateBuddyStatusSchema } from '@peace-buddy/types'
-import { listBuddies, updateBuddyStatus } from '../services/admin.service'
+import { BuddyStatusSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema } from '@peace-buddy/types'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from '../services/admin.service'
 import { adminGroupRoutes } from './adminGroups'
 import { adminTourRoutes } from './adminTours'
 import type { AuthEnv } from '../types'
@@ -20,6 +20,36 @@ adminRoutes.get('/buddies', async (c) => {
   }
 
   return c.json(await listBuddies())
+})
+
+adminRoutes.get('/buddies/:id', async (c) => {
+  const id = c.req.param('id')
+  const buddy = await getBuddyDetail(id)
+  if (!buddy) return c.json({ error: 'Buddy not found' }, 404)
+  return c.json(buddy)
+})
+
+adminRoutes.put('/buddies/:id', async (c) => {
+  const id = c.req.param('id')
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400)
+  }
+
+  let data
+  try {
+    data = UpdateAdminBuddyProfileSchema.parse(body)
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400)
+  }
+
+  const buddy = await updateBuddyProfile(id, data.tier, data.internalNotes)
+  if (!buddy) return c.json({ error: 'Buddy not found' }, 404)
+
+  return c.json(buddy)
 })
 
 adminRoutes.put('/buddies/:id/status', async (c) => {

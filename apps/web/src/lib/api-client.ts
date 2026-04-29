@@ -45,6 +45,15 @@ export const apiClient = {
       status ? `${apiPaths.adminBuddies}?status=${status}` : apiPaths.adminBuddies,
     ),
 
+  getBuddy: (id: string) =>
+    apiRequest<AdminBuddyResponse>(apiPaths.adminBuddy(id)),
+
+  updateBuddy: (id: string, data: Record<string, unknown>) =>
+    apiRequest<AdminBuddyResponse>(apiPaths.adminBuddy(id), {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   updateBuddyStatus: (id: string, data: Record<string, unknown>) =>
     apiRequest(apiPaths.adminBuddyStatus(id), {
       method: 'PUT',

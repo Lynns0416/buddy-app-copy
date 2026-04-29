@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { listBuddies, updateBuddyStatus } from './admin.service'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from './admin.service'
 
 vi.mock('../lib/db', () => ({
   db: {
     buddyProfile: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       update: vi.fn(),
     },
   },
@@ -15,6 +16,8 @@ import { db } from '../lib/db'
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const mockFindMany = vi.mocked(db.buddyProfile).findMany
+// eslint-disable-next-line @typescript-eslint/unbound-method
+const mockFindUnique = vi.mocked(db.buddyProfile).findUnique
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const mockUpdate = vi.mocked(db.buddyProfile).update
 
@@ -74,6 +77,72 @@ describe('listBuddies', () => {
     const result = await listBuddies()
     expect(result[0].email).toBe('buddy@example.com')
     expect((result[0] as Record<string, unknown>).user).toBeUndefined()
+  })
+})
+
+describe('getBuddyDetail', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns mapped buddy when found', async () => {
+    mockFindUnique.mockResolvedValueOnce(mockRaw as any)
+    const result = await getBuddyDetail('profile-1')
+    expect(result).toEqual(mockMapped)
+    expect(mockFindUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'profile-1' } })
+    )
+  })
+
+  it('returns null when not found', async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const result = await getBuddyDetail('missing')
+    expect(result).toBeNull()
+  })
+
+  it('returns null on P2025', async () => {
+    mockFindUnique.mockRejectedValueOnce({ code: 'P2025' })
+    const result = await getBuddyDetail('profile-1')
+    expect(result).toBeNull()
+  })
+})
+
+describe('updateBuddyProfile', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('updates tier and internalNotes', async () => {
+    const updated = { ...mockRaw, tier: 'junior', internalNotes: 'good notes' }
+    mockUpdate.mockResolvedValueOnce(updated as any)
+    const result = await updateBuddyProfile('profile-1', 'junior', 'good notes')
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'profile-1' }, data: { tier: 'junior', internalNotes: 'good notes' } })
+    )
+    expect(result?.email).toBe('buddy@example.com')
+  })
+
+  it('updates only tier when internalNotes is undefined', async () => {
+    mockUpdate.mockResolvedValueOnce({ ...mockRaw, tier: 'senior' } as any)
+    await updateBuddyProfile('profile-1', 'senior', undefined)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { tier: 'senior' } })
+    )
+  })
+
+  it('falls back to findUnique when no fields provided', async () => {
+    mockFindUnique.mockResolvedValueOnce(mockRaw as any)
+    const result = await updateBuddyProfile('profile-1', undefined, undefined)
+    expect(mockUpdate).not.toHaveBeenCalled()
+    expect(mockFindUnique).toHaveBeenCalled()
+    expect(result).toEqual(mockMapped)
+  })
+
+  it('returns null on P2025', async () => {
+    mockUpdate.mockRejectedValueOnce({ code: 'P2025' })
+    const result = await updateBuddyProfile('profile-1', 'junior', null)
+    expect(result).toBeNull()
+  })
+
+  it('rethrows non-P2025 errors', async () => {
+    mockUpdate.mockRejectedValueOnce(new Error('db failure'))
+    await expect(updateBuddyProfile('profile-1', 'junior', null)).rejects.toThrow('db failure')
   })
 })
 

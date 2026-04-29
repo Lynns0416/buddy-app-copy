@@ -33,27 +33,31 @@ export function AppShell({ variant, children }: Props) {
   const navItems: NavItem[] =
     variant === 'admin'
       ? [
+          { href: routes.adminBuddiesPending(locale), label: t('nav.buddiesPending') },
           { href: routes.adminBuddies(locale), label: t('nav.buddies') },
           { href: routes.adminGroups(locale), label: t('nav.groups') },
           { href: routes.adminTours(locale), label: t('nav.tours') },
         ]
       : [{ href: routes.dashboard(locale), label: t('nav.dashboard') }]
 
-  const navLinks = navItems.map((item) => (
-    <Link
-      key={item.href}
-      href={item.href}
-      onClick={() => setDrawerOpen(false)}
-      className={cn(
-        'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
-        pathname.startsWith(item.href)
-          ? 'bg-accent text-primary font-semibold border-l-2 border-primary rounded-l-none'
-          : 'text-muted-foreground'
-      )}
-    >
-      {item.label}
-    </Link>
-  ))
+  const navLinks = navItems.map((item) => {
+    const isActive = pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== routes.adminBuddies(locale))
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={() => setDrawerOpen(false)}
+        className={cn(
+          'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+          isActive
+            ? 'bg-accent text-primary font-semibold border-l-2 border-primary rounded-l-none'
+            : 'text-muted-foreground'
+        )}
+      >
+        {item.label}
+      </Link>
+    )
+  })
 
   return (
     <div className={cn('flex min-h-screen bg-background', variant === 'admin' && 'theme-admin')}>

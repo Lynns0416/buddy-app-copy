@@ -11,6 +11,7 @@ export const apiPaths = {
   tourBookingMe: (tourId: string) => `/tours/${tourId}/bookings/me`,
 
   adminBuddies: '/admin/buddies',
+  adminBuddy: (id: string) => `/admin/buddies/${id}`,
   adminBuddyStatus: (id: string) => `/admin/buddies/${id}/status`,
 
   adminGroups: '/admin/groups',

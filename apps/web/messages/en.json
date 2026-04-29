@@ -48,13 +48,45 @@
     }
   },
   "adminBuddies": {
-    "title": "Pending Buddies",
+    "title": "Buddies",
+    "titlePending": "Pending Approval",
     "name": "Name",
     "email": "Email",
+    "tier": "Tier",
+    "realName": "Real Name",
+    "status": "Status",
+    "createdAt": "Created",
+    "internalNotes": "Internal Notes",
+    "internalNotesPlaceholder": "Add notes for internal reference",
+    "tierPlaceholder": "Select tier",
+    "tierNone": "None (not set)",
+    "tierTrainee": "Trainee",
+    "tierJunior": "Junior",
+    "tierMid": "Mid",
+    "tierSenior": "Senior",
+    "tierExpert": "Expert",
+    "tierInstructor": "Instructor",
+    "tierOrganizer": "Organizer",
+    "statusActive": "Active",
+    "statusPending": "Pending",
+    "statusRejected": "Rejected",
+    "statusSuspended": "Suspended",
     "approve": "Approve",
     "reject": "Reject",
-    "noResults": "No pending buddies",
-    "actionError": "Action failed. Please try again."
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back to buddies",
+    "view": "View",
+    "editForm": "Edit Profile",
+    "noResults": "No buddies found",
+    "actionError": "Action failed. Please try again.",
+    "error": {
+      "notFound": "Buddy not found.",
+      "forbidden": "You don't have permission to perform this action.",
+      "conflict": "This action cannot be performed in the current state.",
+      "network": "Network error. Please check your connection.",
+      "unknown": "An error occurred. Please try again."
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -195,6 +227,7 @@
     "closeMenu": "Close menu",
     "nav": {
       "dashboard": "Dashboard",
+      "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
       "groups": "Groups",
       "tours": "Tours"

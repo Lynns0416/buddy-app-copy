@@ -2,20 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
+import { useLocale } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import type { AdminBuddyResponse, AppError, BuddyStatus } from '@peace-buddy/types'
 import { AppErrorCodeSchema, BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
-import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
-import { fetchBuddies, sortBuddies, nextBuddySort, updateBuddyStatus, type BuddySortField } from './admin.buddy'
+import { routes } from '@/lib/routes'
+import { fetchBuddies, sortBuddies, nextBuddySort, type BuddySortField } from './admin.buddy'
 
 export default function AdminBuddiesPage() {
   const { ready } = useAdminGuard()
+  const locale = useLocale()
   const t = useTranslations('adminBuddies')
   const [buddies, setBuddies] = useState<AdminBuddyResponse[]>([])
-  const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [sortField, setSortField] = useState<BuddySortField>('displayName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -32,7 +34,7 @@ export default function AdminBuddiesPage() {
 
   useEffect(() => {
     if (!ready) return
-    fetchBuddies(BuddyStatusSchema.enum.pending).then((result) => {
+    fetchBuddies(BuddyStatusSchema.enum.active).then((result) => {
       if (result.ok) setBuddies(result.data)
       else setFetchError(errorMessage(result.error))
     })
@@ -42,17 +44,6 @@ export default function AdminBuddiesPage() {
     const next = nextBuddySort({ field: sortField, dir: sortDir }, field)
     setSortField(next.field)
     setSortDir(next.dir)
-  }
-
-  async function handleStatusChange(id: string, newStatus: BuddyStatus) {
-    setPendingAction(id)
-    const result = await updateBuddyStatus(id, newStatus)
-    if (result.ok) {
-      setBuddies((prev) => prev.filter((b) => b.id !== id))
-    } else {
-      // Generic error message, could add specific handling if needed
-    }
-    setPendingAction(null)
   }
 
   const sorted = sortBuddies(buddies, sortField, sortDir)
@@ -94,7 +85,16 @@ export default function AdminBuddiesPage() {
                     <SortIcon active={sortField === 'email'} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead className="w-40" />
+                <TableHead>
+                  <button
+                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                    onClick={() => handleSort('tier')}
+                  >
+                    {t('tier')}
+                    <SortIcon active={sortField === 'tier'} dir={sortDir} />
+                  </button>
+                </TableHead>
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -102,24 +102,14 @@ export default function AdminBuddiesPage() {
                 <TableRow key={buddy.id}>
                   <TableCell className="font-medium">{buddy.displayName}</TableCell>
                   <TableCell className="text-muted-foreground">{buddy.email}</TableCell>
+                  <TableCell>{buddy.tier || '—'}</TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusChange(buddy.id, BuddyStatusSchema.enum.active)}
-                        disabled={pendingAction !== null}
-                      >
-                        {t('approve')}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleStatusChange(buddy.id, BuddyStatusSchema.enum.rejected)}
-                        disabled={pendingAction !== null}
-                      >
-                        {t('reject')}
-                      </Button>
-                    </div>
+                    <Link
+                      href={routes.adminBuddyDetail(locale, buddy.id)}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      {t('view')}
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))}

@@ -1,4 +1,4 @@
-import type { AdminBuddyResponse, BuddyStatus } from '@peace-buddy/types'
+import type { AdminBuddyResponse, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -6,7 +6,7 @@ import type { ActionResult } from '../../../../lib/action'
 import { classifyApiError } from '../../../../lib/api-error'
 import { ASC, DESC } from '../../../../lib/constants'
 
-export type BuddySortField = 'displayName' | 'email'
+export type BuddySortField = 'displayName' | 'email' | 'tier'
 
 export function sortBuddies(
   buddies: AdminBuddyResponse[],
@@ -14,9 +14,16 @@ export function sortBuddies(
   dir: SortDir,
 ): AdminBuddyResponse[] {
   return [...buddies].sort((a, b) => {
-    const cmp = field === 'displayName'
-      ? a.displayName.localeCompare(b.displayName, routing.defaultLocale)
-      : a.email.localeCompare(b.email)
+    let cmp = 0
+    if (field === 'displayName') {
+      cmp = a.displayName.localeCompare(b.displayName, routing.defaultLocale)
+    } else if (field === 'email') {
+      cmp = a.email.localeCompare(b.email)
+    } else if (field === 'tier') {
+      const aTier = a.tier || ''
+      const bTier = b.tier || ''
+      cmp = aTier.localeCompare(bTier)
+    }
     return dir === ASC ? cmp : -cmp
   })
 }
@@ -43,6 +50,22 @@ export async function updateBuddyStatus(id: string, status: BuddyStatus): Promis
   try {
     await apiClient.updateBuddyStatus(id, { status })
     return { ok: true, data: undefined }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function fetchBuddy(id: string): Promise<ActionResult<AdminBuddyResponse>> {
+  try {
+    return { ok: true, data: await apiClient.getBuddy(id) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function updateBuddy(id: string, data: UpdateAdminBuddyProfile): Promise<ActionResult<AdminBuddyResponse>> {
+  try {
+    return { ok: true, data: await apiClient.updateBuddy(id, data) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }

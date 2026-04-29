@@ -462,12 +462,72 @@ When a buddy logs in, they see:
 - Manage contact info and notes
 
 ### 11.4 Buddy Management
-- View all profiles (full detail: status, tier, admin evaluations, self-evaluations)
-- Approve / reject pending signups
-- Set / update account status and internal tier
-- Edit admin-managed fields
-- View booking history per buddy
-- Submit and view admin evaluations
+
+#### Pages & Routes
+
+**Flat navigation:** Both "Pending Approval" and "Buddies" shown as separate top-level menu items.
+
+| Route | Purpose | Access |
+|---|---|---|
+| `/admin/buddies/pending` | Approval queue — pending signups awaiting admin decision | Admin only |
+| `/admin/buddies` | Buddy roster — all approved (active) buddies with tier management | Admin only |
+| `/admin/buddies/:id` | Buddy detail — full profile, tier/notes editor, booking history | Admin only |
+
+#### Pending Approval Page (`/admin/buddies/pending`)
+
+- **Table:** displayName, email, [Approve] [Reject]
+- **Sortable by:** name, email
+- **Actions:**
+  - **Approve** → sets status=active, assigns default tier=trainee, removes from pending queue, adds to buddy roster
+  - **Reject** → sets status=rejected, removes from pending queue (terminal state)
+
+#### Buddy Roster (`/admin/buddies`)
+
+- **Table:** displayName, email, tier, [View Detail]
+- **Sortable by:** name, email, tier, status
+- **Actions:** Click row → navigate to detail page
+
+#### Buddy Detail Page (`/admin/buddies/:id`)
+
+**Display section:**
+- Real name
+- Email
+- Status (active / suspended / rejected)
+- Tier (trainee / junior / mid / senior / expert / instructor / organizer)
+- Internal notes
+- Created date
+- Full booking history (table of tours + booking status)
+
+**Edit form:**
+- Tier dropdown (nullable; only set when status=active)
+- Internal notes textarea
+- [Save] [Cancel]
+
+#### API Endpoints
+
+Note: frontend page routes and API endpoints are separate layers. `/admin/buddies/pending` is a Next.js page URL; the underlying API call uses query parameters, consistent with the rest of the codebase (e.g. `/admin/tours?status=...`).
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/admin/buddies?status=pending` | List pending buddies (called by the `/admin/buddies/pending` page) |
+| `GET` | `/admin/buddies?status=active` | List active buddies (called by the `/admin/buddies` page) |
+| `GET` | `/admin/buddies/:id` | Fetch buddy detail |
+| `PUT` | `/admin/buddies/:id/status` | Change status (approve/reject/suspend) |
+| `PUT` | `/admin/buddies/:id` | Update tier and internalNotes |
+
+#### Business Rules
+
+- **Approval:** Only admins can approve/reject pending buddies
+- **Tier assignment:** Tier is set automatically to `trainee` on approval; admin can update anytime thereafter
+- **Internal notes:** Admins only; never visible to buddies
+- **Status transitions:**
+  - Pending → Active (via Approve button)
+  - Pending → Rejected (via Reject button, terminal)
+  - Active → Suspended (via detail page)
+  - Suspended → Active (via detail page)
+- **Tier constraints:** Tier values are: trainee, junior, mid, senior, expert, instructor, organizer
+- **Typical flow:** Pending → Active (tier: trainee) → Admin updates tier as buddy gains experience
+- **Data retention:** Buddies are never deleted; all history retained even after rejection or suspension
 
 ### 11.5 System Configuration (Super Admin only)
 - Manage admin accounts and roles

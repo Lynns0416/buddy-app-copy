@@ -17,12 +17,16 @@ vi.mock('../lib/db', () => ({
 vi.mock('../services/admin.service', () => ({
   listBuddies: vi.fn(),
   updateBuddyStatus: vi.fn(),
+  getBuddyDetail: vi.fn(),
+  updateBuddyProfile: vi.fn(),
 }))
 
-import { listBuddies, updateBuddyStatus } from '../services/admin.service'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from '../services/admin.service'
 
 const mockListBuddies = vi.mocked(listBuddies)
 const mockUpdateBuddyStatus = vi.mocked(updateBuddyStatus)
+const mockGetBuddyDetail = vi.mocked(getBuddyDetail)
+const mockUpdateBuddyProfile = vi.mocked(updateBuddyProfile)
 
 function buildApp(role: string) {
   const app = new Hono<AuthEnv>()
@@ -105,6 +109,67 @@ describe('GET /admin/buddies', () => {
     mockListBuddies.mockResolvedValueOnce([])
     await buildApp('admin').request('/admin/buddies')
     expect(mockListBuddies).toHaveBeenCalledWith()
+  })
+})
+
+describe('GET /admin/buddies/:id', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns buddy detail', async () => {
+    mockGetBuddyDetail.mockResolvedValueOnce(mockBuddy as unknown as AdminBuddyResponse)
+    const res = await buildApp('admin').request('/admin/buddies/profile-1')
+    expect(res.status).toBe(200)
+    const body = await res.json() as AdminBuddyResponse
+    expect(body.id).toBe('profile-1')
+    expect(mockGetBuddyDetail).toHaveBeenCalledWith('profile-1')
+  })
+
+  it('returns 404 when buddy not found', async () => {
+    mockGetBuddyDetail.mockResolvedValueOnce(null)
+    const res = await buildApp('admin').request('/admin/buddies/missing')
+    expect(res.status).toBe(404)
+  })
+})
+
+describe('PUT /admin/buddies/:id', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('updates tier and internalNotes', async () => {
+    mockUpdateBuddyProfile.mockResolvedValueOnce({ ...mockBuddy, tier: 'junior', internalNotes: 'good' } as unknown as AdminBuddyResponse)
+    const res = await buildApp('admin').request('/admin/buddies/profile-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier: 'junior', internalNotes: 'good' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateBuddyProfile).toHaveBeenCalledWith('profile-1', 'junior', 'good')
+  })
+
+  it('returns 404 when buddy not found', async () => {
+    mockUpdateBuddyProfile.mockResolvedValueOnce(null)
+    const res = await buildApp('admin').request('/admin/buddies/missing', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier: 'junior' }),
+    })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 400 for invalid body', async () => {
+    const res = await buildApp('admin').request('/admin/buddies/profile-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier: 'invalid_tier' }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for non-JSON body', async () => {
+    const res = await buildApp('admin').request('/admin/buddies/profile-1', {
+      method: 'PUT',
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
   })
 })
 

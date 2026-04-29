@@ -48,13 +48,45 @@
     }
   },
   "adminBuddies": {
-    "title": "承認待ちバディ",
+    "title": "バディ一覧",
+    "titlePending": "承認待ちバディ",
     "name": "名前",
     "email": "メール",
+    "tier": "レベル",
+    "realName": "本名",
+    "status": "ステータス",
+    "createdAt": "作成日",
+    "internalNotes": "内部メモ",
+    "internalNotesPlaceholder": "内部参照用のメモを追加",
+    "tierPlaceholder": "レベルを選択",
+    "tierNone": "未設定",
+    "tierTrainee": "トレーニー",
+    "tierJunior": "ジュニア",
+    "tierMid": "ミッド",
+    "tierSenior": "シニア",
+    "tierExpert": "エキスパート",
+    "tierInstructor": "インストラクター",
+    "tierOrganizer": "オーガナイザー",
+    "statusActive": "アクティブ",
+    "statusPending": "承認待ち",
+    "statusRejected": "却下",
+    "statusSuspended": "停止中",
     "approve": "承認",
     "reject": "却下",
-    "noResults": "承認待ちのバディはいません",
-    "actionError": "操作に失敗しました。もう一度お試しください。"
+    "save": "保存",
+    "cancel": "キャンセル",
+    "back": "バディ一覧に戻る",
+    "view": "詳細",
+    "editForm": "プロフィール編集",
+    "noResults": "バディが見つかりません",
+    "actionError": "操作に失敗しました。もう一度お試しください。",
+    "error": {
+      "notFound": "このバディは見つかりません。",
+      "forbidden": "この操作を行う権限がありません。",
+      "conflict": "この操作はすでに実行できない状態です。",
+      "network": "接続エラーです。ネットワークを確認してください。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    }
   },
   "dashboard": {
     "title": "ダッシュボード",
@@ -195,6 +227,7 @@
     "closeMenu": "メニューを閉じる",
     "nav": {
       "dashboard": "ダッシュボード",
+      "buddiesPending": "承認待ち",
       "buddies": "バディ",
       "groups": "グループ",
       "tours": "ツアー"

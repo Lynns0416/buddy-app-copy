@@ -160,6 +160,12 @@ export const UpdateBuddyStatusSchema = z.discriminatedUnion('status', [
 ])
 export type UpdateBuddyStatus = z.infer<typeof UpdateBuddyStatusSchema>
 
+export const UpdateAdminBuddyProfileSchema = z.object({
+  tier: BuddyTierSchema.nullable().optional(),
+  internalNotes: z.string().nullable().optional(),
+})
+export type UpdateAdminBuddyProfile = z.infer<typeof UpdateAdminBuddyProfileSchema>
+
 // Response types (HTTP wire format — dates serialized as ISO strings)
 
 export type BuddyProfileResponse = {

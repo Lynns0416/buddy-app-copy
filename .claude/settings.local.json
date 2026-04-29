@@ -45,7 +45,8 @@
       "Bash(gh pr *)",
       "Bash(find /Users/lynnsakashita/dev/plab/peace-buddy/apps/web/src/app/[locale]/admin -type f -name \"*.ts\" -o -name \"*.tsx\")",
       "Bash(npm run *)",
-      "Bash(find apps/web/src/app/[locale]/admin/buddies -type f -name \"*.ts\" -o -name \"*.tsx\")"
+      "Bash(find apps/web/src/app/[locale]/admin/buddies -type f -name \"*.ts\" -o -name \"*.tsx\")",
+      "Bash(echo \"CI_EXIT:$?\")"
     ]
   }
 }

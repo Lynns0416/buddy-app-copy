@@ -62,6 +62,7 @@ services:
     entrypoint: []
     command: sh -c "
       cd /app && pnpm install --frozen-lockfile &&
+      pnpm exec prisma generate --schema /app/prisma/schema.prisma &&
       cd /app/packages/types && pnpm build &&
       cd /app/apps/api && pnpm lint && pnpm typecheck && pnpm test &&
       cd /app/apps/web && pnpm lint && pnpm typecheck && pnpm test
@@ -71,10 +72,11 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - ci_nm_root:/app/node_modules
-      - ci_nm_types:/app/packages/types/node_modules
-      - ci_nm_api:/app/apps/api/node_modules
-      - ci_nm_web:/app/apps/web/node_modules
+      - ci:/app/node_modules
+      - ci:/app/packages/types/node_modules
+      - ci:/app/apps/api/node_modules
+      - ci:/app/apps/web/node_modules
 
 volumes:
   db_data:
+  ci:
