@@ -4,7 +4,7 @@ import { routes } from './index'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
 import type { AuthEnv } from '../types'
-import type { AdminBuddyResponse } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -51,6 +51,7 @@ const mockBuddy = {
   internalNotes: null,
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
+  bookings: [],
 }
 
 describe('admin routes — auth', () => {
@@ -116,10 +117,10 @@ describe('GET /admin/buddies/:id', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns buddy detail', async () => {
-    mockGetBuddyDetail.mockResolvedValueOnce(mockBuddy as unknown as AdminBuddyResponse)
+    mockGetBuddyDetail.mockResolvedValueOnce(mockBuddy as unknown as AdminBuddyDetailResponse)
     const res = await buildApp('admin').request('/admin/buddies/profile-1')
     expect(res.status).toBe(200)
-    const body = await res.json() as AdminBuddyResponse
+    const body = await res.json() as AdminBuddyDetailResponse
     expect(body.id).toBe('profile-1')
     expect(mockGetBuddyDetail).toHaveBeenCalledWith('profile-1')
   })

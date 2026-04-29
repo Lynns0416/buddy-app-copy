@@ -62,27 +62,37 @@ export type ApiErrorResponse = { code: AppErrorCode; detail?: string }
 
 // Auth
 
-export const RegisterRequestBodySchema = z.object({
-  displayName: z.string().optional(),
-  realName: z.string().optional(),
-  languages: z.array(LanguageSchema).optional(),
-  photoUrl: z.string().optional(),
-  bio: z.string().optional(),
-})
+export const RegisterRequestBodySchema = z
+  .object({
+    displayName: z.string().optional(),
+    realName: z.string().optional(),
+    languages: z.array(LanguageSchema).optional(),
+    photoUrl: z.string().optional(),
+    bio: z.string().optional(),
+  })
+  .refine(
+    (d) => !d.languages || d.languages.length === new Set(d.languages).size,
+    { message: 'Duplicate languages are not allowed', path: ['languages'] }
+  )
 export type RegisterRequestBody = z.infer<typeof RegisterRequestBodySchema>
 
 // Buddy Profile
 
-export const UpdateBuddyProfileSchema = z.object({
-  displayName: z.string().optional(),
-  realName: z.string().optional(),
-  photoUrl: z.string().nullable().optional(),
-  bio: z.string().nullable().optional(),
-  contactInfo: z.string().nullable().optional(),
-  languages: z.array(LanguageSchema).optional(),
-  skills: z.array(z.string()).optional(),
-  availability: z.string().nullable().optional(),
-})
+export const UpdateBuddyProfileSchema = z
+  .object({
+    displayName: z.string().optional(),
+    realName: z.string().optional(),
+    photoUrl: z.string().nullable().optional(),
+    bio: z.string().nullable().optional(),
+    contactInfo: z.string().nullable().optional(),
+    languages: z.array(LanguageSchema).optional(),
+    skills: z.array(z.string()).optional(),
+    availability: z.string().nullable().optional(),
+  })
+  .refine(
+    (d) => !d.languages || d.languages.length === new Set(d.languages).size,
+    { message: 'Duplicate languages are not allowed', path: ['languages'] }
+  )
 export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
 
 // Tour (admin)
@@ -265,6 +275,23 @@ export type AdminBuddyResponse = {
   internalNotes: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type AdminBuddyBookingEntry = {
+  id: string
+  tourId: string
+  status: BookingStatus
+  bookedAt: string
+  tour: {
+    tourDate: string
+    location: string
+    group: { name: string }
+    status: TourStatus
+  }
+}
+
+export type AdminBuddyDetailResponse = AdminBuddyResponse & {
+  bookings: AdminBuddyBookingEntry[]
 }
 
 // Sanitized response — no admin-only fields

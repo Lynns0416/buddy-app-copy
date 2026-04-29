@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortBuddies, nextBuddySort, fetchBuddies, updateBuddyStatus, fetchBuddy, updateBuddy } from './admin.buddy'
-import type { AdminBuddyResponse } from '@peace-buddy/types'
+import { sortBuddies, nextBuddySort, fetchBuddies, updateBuddyStatus, fetchBuddy, updateBuddy, sortBookingHistory, nextBookingSort } from './admin.buddy'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry } from '@peace-buddy/types'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 
 vi.mock('@/lib/api-client', () => ({
@@ -121,6 +121,91 @@ describe('nextBuddySort', () => {
   })
 })
 
+// ── sortBookingHistory ─────────────────────────────────────────────────────
+
+const booking = (overrides: {
+  id?: string
+  groupName?: string
+  tourDate?: string
+  status?: 'confirmed' | 'maybe' | 'waitlist' | 'declined'
+} = {}): AdminBuddyBookingEntry => ({
+  id: overrides.id ?? 'bk1',
+  tourId: 't1',
+  status: overrides.status ?? 'confirmed',
+  bookedAt: '2026-01-01T00:00:00Z',
+  tour: {
+    tourDate: overrides.tourDate ?? '2026-05-01T00:00:00.000Z',
+    location: 'Hall',
+    group: { name: overrides.groupName ?? 'Group A' },
+    status: 'published',
+  },
+})
+
+const bk1 = booking({ id: 'bk1', groupName: 'Alpha',   tourDate: '2026-05-01T00:00:00.000Z', status: 'confirmed' })
+const bk2 = booking({ id: 'bk2', groupName: 'Bravo',   tourDate: '2026-04-01T00:00:00.000Z', status: 'declined' })
+const bk3 = booking({ id: 'bk3', groupName: 'Charlie', tourDate: '2026-06-01T00:00:00.000Z', status: 'maybe' })
+
+describe('sortBookingHistory', () => {
+  it('sorts by group name asc', () => {
+    const result = sortBookingHistory([bk3, bk1, bk2], 'group', 'asc')
+    expect(result.map((b) => b.tour.group.name)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+  })
+
+  it('sorts by group name desc', () => {
+    const result = sortBookingHistory([bk1, bk3, bk2], 'group', 'desc')
+    expect(result.map((b) => b.tour.group.name)).toEqual(['Charlie', 'Bravo', 'Alpha'])
+  })
+
+  it('sorts by tour date asc (chronological)', () => {
+    const result = sortBookingHistory([bk1, bk3, bk2], 'tourDate', 'asc')
+    expect(result.map((b) => b.id)).toEqual(['bk2', 'bk1', 'bk3'])
+  })
+
+  it('sorts by tour date desc (most recent first)', () => {
+    const result = sortBookingHistory([bk1, bk2, bk3], 'tourDate', 'desc')
+    expect(result.map((b) => b.id)).toEqual(['bk3', 'bk1', 'bk2'])
+  })
+
+  it('sorts by status asc (alphabetical)', () => {
+    const result = sortBookingHistory([bk3, bk1, bk2], 'status', 'asc')
+    expect(result.map((b) => b.status)).toEqual(['confirmed', 'declined', 'maybe'])
+  })
+
+  it('sorts by status desc', () => {
+    const result = sortBookingHistory([bk1, bk2, bk3], 'status', 'desc')
+    expect(result.map((b) => b.status)).toEqual(['maybe', 'declined', 'confirmed'])
+  })
+
+  it('does not mutate the original array', () => {
+    const original = [bk3, bk1, bk2]
+    sortBookingHistory(original, 'tourDate', 'asc')
+    expect(original.map((b) => b.id)).toEqual(['bk3', 'bk1', 'bk2'])
+  })
+
+  it('returns empty array unchanged', () => {
+    expect(sortBookingHistory([], 'tourDate', 'desc')).toEqual([])
+  })
+})
+
+// ── nextBookingSort ────────────────────────────────────────────────────────
+
+describe('nextBookingSort', () => {
+  it('toggles asc → desc when clicking the active field', () => {
+    const result = nextBookingSort({ field: 'tourDate', dir: 'asc' }, 'tourDate')
+    expect(result).toEqual({ field: 'tourDate', dir: 'desc' })
+  })
+
+  it('toggles desc → asc when clicking the active field', () => {
+    const result = nextBookingSort({ field: 'tourDate', dir: 'desc' }, 'tourDate')
+    expect(result).toEqual({ field: 'tourDate', dir: 'asc' })
+  })
+
+  it('switches field and resets dir to asc', () => {
+    const result = nextBookingSort({ field: 'tourDate', dir: 'desc' }, 'group')
+    expect(result).toEqual({ field: 'group', dir: 'asc' })
+  })
+})
+
 // ── fetchBuddies ───────────────────────────────────────────────────────────
 
 const stubBuddies: AdminBuddyResponse[] = [{ id: 'b1' } as AdminBuddyResponse]
@@ -150,7 +235,7 @@ describe('fetchBuddies', () => {
 
 // ── fetchBuddy ─────────────────────────────────────────────────────────────
 
-const stubBuddy: AdminBuddyResponse = { id: 'b1' } as AdminBuddyResponse
+const stubBuddy: AdminBuddyDetailResponse = { id: 'b1', bookings: [] } as unknown as AdminBuddyDetailResponse
 
 describe('fetchBuddy', () => {
   beforeEach(() => vi.resetAllMocks())

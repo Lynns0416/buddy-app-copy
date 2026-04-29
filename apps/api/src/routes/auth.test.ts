@@ -88,6 +88,19 @@ describe('POST /auth/register', () => {
     expect(body.error).toBe('Invalid request body')
   })
 
+  it('returns 400 when languages contains duplicates', async () => {
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
+
+    const res = await routes.request('/auth/register', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${validToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ languages: ['english', 'english'] }),
+    })
+    expect(res.status).toBe(400)
+    const body = await res.json() as { error: string }
+    expect(body.error).toBe('Invalid request body')
+  })
+
   it('returns 201 with the user on success', async () => {
     mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
     mockUpsertUser.mockResolvedValueOnce(userResponse as unknown as UserResponse)

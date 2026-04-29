@@ -1,4 +1,4 @@
-import type { AdminBuddyResponse, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile, AppError } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile, AppError } from '@peace-buddy/types'
 import { AppErrorCodeSchema } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
@@ -66,7 +66,37 @@ export async function updateBuddyStatus(id: string, status: BuddyStatus): Promis
   }
 }
 
-export async function fetchBuddy(id: string): Promise<ActionResult<AdminBuddyResponse>> {
+export type BookingHistorySortField = 'group' | 'tourDate' | 'status'
+
+export function sortBookingHistory(
+  bookings: AdminBuddyBookingEntry[],
+  field: BookingHistorySortField,
+  dir: SortDir,
+): AdminBuddyBookingEntry[] {
+  return [...bookings].sort((a, b) => {
+    let cmp = 0
+    if (field === 'group') {
+      cmp = a.tour.group.name.localeCompare(b.tour.group.name)
+    } else if (field === 'tourDate') {
+      cmp = a.tour.tourDate.localeCompare(b.tour.tourDate)
+    } else if (field === 'status') {
+      cmp = a.status.localeCompare(b.status)
+    }
+    return dir === ASC ? cmp : -cmp
+  })
+}
+
+export function nextBookingSort(
+  current: { field: BookingHistorySortField; dir: SortDir },
+  clicked: BookingHistorySortField,
+): { field: BookingHistorySortField; dir: SortDir } {
+  if (clicked === current.field) {
+    return { field: current.field, dir: current.dir === ASC ? DESC : ASC }
+  }
+  return { field: clicked, dir: ASC }
+}
+
+export async function fetchBuddy(id: string): Promise<ActionResult<AdminBuddyDetailResponse>> {
   try {
     return { ok: true, data: await apiClient.getBuddy(id) }
   } catch (err) {

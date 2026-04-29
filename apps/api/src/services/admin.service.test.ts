@@ -34,6 +34,24 @@ const mockRaw = {
   user: { email: 'buddy@example.com' },
 }
 
+const mockRawWithBookings = {
+  ...mockRaw,
+  bookings: [
+    {
+      id: 'booking-1',
+      tourId: 'tour-1',
+      status: 'confirmed',
+      bookedAt: new Date('2026-03-01'),
+      tour: {
+        tourDate: new Date('2026-05-01'),
+        location: 'Main Hall',
+        status: 'published',
+        group: { name: 'Group A' },
+      },
+    },
+  ],
+}
+
 const mockMapped = {
   id: 'profile-1',
   userId: 'user-1',
@@ -83,10 +101,16 @@ describe('listBuddies', () => {
 describe('getBuddyDetail', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns mapped buddy when found', async () => {
-    mockFindUnique.mockResolvedValueOnce(mockRaw as any)
+  it('returns mapped buddy with bookings when found', async () => {
+    mockFindUnique.mockResolvedValueOnce(mockRawWithBookings as any)
     const result = await getBuddyDetail('profile-1')
-    expect(result).toEqual(mockMapped)
+    expect(result).not.toBeNull()
+    expect(result!.email).toBe('buddy@example.com')
+    expect(result!.bookings).toHaveLength(1)
+    expect(result!.bookings[0].id).toBe('booking-1')
+    expect(result!.bookings[0].bookedAt).toBe(new Date('2026-03-01').toISOString())
+    expect(result!.bookings[0].tour.tourDate).toBe(new Date('2026-05-01').toISOString())
+    expect(result!.bookings[0].tour.group.name).toBe('Group A')
     expect(mockFindUnique).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'profile-1' } })
     )

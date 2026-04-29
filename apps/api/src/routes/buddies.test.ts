@@ -104,6 +104,17 @@ describe('PUT /me/profile', () => {
     expect(body.error).toBe('Invalid request body')
   })
 
+  it('returns 400 when languages contains duplicates', async () => {
+    const res = await buildApp().request('/me/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ languages: ['english', 'japanese', 'english'] }),
+    })
+    expect(res.status).toBe(400)
+    const body = await res.json() as { error: string }
+    expect(body.error).toBe('Invalid request body')
+  })
+
   it('returns 404 when profile does not exist', async () => {
     mockUpdateBuddyProfile.mockResolvedValueOnce(null)
     const res = await buildApp().request('/me/profile', {

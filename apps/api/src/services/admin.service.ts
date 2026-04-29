@@ -1,5 +1,5 @@
 import { db } from '../lib/db'
-import type { AdminBuddyResponse, BuddyStatus, BuddyTier } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
 const adminBuddySelect = {
@@ -42,12 +42,45 @@ export async function listBuddies(status?: BuddyStatus): Promise<AdminBuddyRespo
   return rows.map(mapBuddy)
 }
 
-export async function getBuddyDetail(id: string): Promise<AdminBuddyResponse | null> {
+const adminBuddyDetailSelect = {
+  ...adminBuddySelect,
+  bookings: {
+    select: {
+      id: true,
+      tourId: true,
+      status: true,
+      bookedAt: true,
+      tour: {
+        select: {
+          tourDate: true,
+          location: true,
+          status: true,
+          group: { select: { name: true } },
+        },
+      },
+    },
+    orderBy: { tour: { tourDate: 'desc' as const } },
+  },
+} as const
+
+export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailResponse | null> {
   const raw = await db.buddyProfile.findUnique({
     where: { id },
-    select: adminBuddySelect,
+    select: adminBuddyDetailSelect,
   })
-  return raw ? mapBuddy(raw) : null
+  if (!raw) return null
+  const { bookings, ...rest } = raw
+  return {
+    ...mapBuddy(rest),
+    bookings: bookings.map((b) => ({
+      ...b,
+      bookedAt: b.bookedAt.toISOString(),
+      tour: {
+        ...b.tour,
+        tourDate: b.tour.tourDate.toISOString(),
+      },
+    })),
+  }
 }
 
 export async function updateBuddyStatus(

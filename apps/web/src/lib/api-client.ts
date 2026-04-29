@@ -6,6 +6,7 @@ import type {
   CreateGroup,
   UpdateGroup,
   AdminBuddyResponse,
+  AdminBuddyDetailResponse,
   TourResponse,
   TourDetailResponse,
   AdminTourSummaryResponse,
@@ -49,7 +50,7 @@ export const apiClient = {
     ),
 
   getBuddy: (id: string) =>
-    apiRequest<AdminBuddyResponse>(apiPaths.adminBuddy(id)),
+    apiRequest<AdminBuddyDetailResponse>(apiPaths.adminBuddy(id)),
 
   updateBuddy: (id: string, data: UpdateAdminBuddyProfile) =>
     apiRequest<AdminBuddyResponse>(apiPaths.adminBuddy(id), {

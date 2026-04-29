@@ -6,11 +6,12 @@ import Link from 'next/link'
 import { useLocale } from 'next-intl'
 import { useParams } from 'next/navigation'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
-import type { AdminBuddyResponse } from '@peace-buddy/types'
+import type { AdminBuddyDetailResponse } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { routes } from '@/lib/routes'
 import { fetchBuddy, mapBuddyError } from '../admin.buddy'
 import { BuddyForm } from '../_components/buddy-form'
+import { BuddyBookingHistory } from '../_components/buddy-booking-history'
 
 export default function AdminBuddyDetailPage() {
   const { ready } = useAdminGuard()
@@ -18,7 +19,7 @@ export default function AdminBuddyDetailPage() {
   const params = useParams()
   const id = params.id as string
   const t = useTranslations('adminBuddies')
-  const [buddy, setBuddy] = useState<AdminBuddyResponse | null>(null)
+  const [buddy, setBuddy] = useState<AdminBuddyDetailResponse | null>(null)
   const [fetched, setFetched] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
@@ -82,6 +83,9 @@ export default function AdminBuddyDetailPage() {
 
         <h2 className="mb-4 text-lg font-semibold">{t('editForm')}</h2>
         <BuddyForm buddy={buddy} />
+
+        <h2 className="mt-10 mb-4 text-lg font-semibold">{t('bookingHistoryTitle')}</h2>
+        <BuddyBookingHistory bookings={buddy.bookings} />
       </div>
     </AppShell>
   )

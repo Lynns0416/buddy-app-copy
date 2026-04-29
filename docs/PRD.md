@@ -521,12 +521,22 @@ When a buddy logs in, they see:
 - Tier (trainee / junior / mid / senior / expert / instructor / organizer)
 - Internal notes
 - Created date
-- Full booking history (table of tours + booking status)
+- Full booking history (table of tours + booking status) — see below
 
 **Edit form:**
 - Tier dropdown (nullable; only set when status=active)
 - Internal notes textarea
 - [Save] [Cancel]
+
+**Booking history table:**
+- Columns: Group name (linked to `/admin/tours/:id`), Tour date, Location, Booking status
+- Sortable by: group name, tour date, booking status
+- Default sort: tour date descending (most recent first)
+- Shows all bookings regardless of booking or buddy status — no filter
+- Empty state: "No bookings"
+- API: `GET /admin/buddies/:id` returns `AdminBuddyDetailResponse` (extends `AdminBuddyResponse` with `bookings: AdminBuddyBookingEntry[]`)
+
+**`AdminBuddyBookingEntry` fields:** `id`, `tourId`, `status` (BookingStatus), `bookedAt`, `tour: { tourDate, location, group: { name }, status }`
 
 #### API Endpoints
 
