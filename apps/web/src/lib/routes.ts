@@ -17,4 +17,5 @@ export const routes = {
   adminTourEdit: (locale: string, id: string) => `/${locale}/admin/tours/${id}/edit`,
   dashboardTour: (locale: string, id: string) => `/${locale}/dashboard/tours/${id}`,
   dashboardBookings: (locale: string) => `/${locale}/dashboard/bookings`,
+  dashboardProfile: (locale: string) => `/${locale}/dashboard/profile`,
 }

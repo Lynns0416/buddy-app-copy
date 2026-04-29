@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
-import { useForm } from 'react-hook-form'
 import type { AdminBuddyResponse, BuddyTier, UpdateAdminBuddyProfile } from '@peace-buddy/types'
-import { BuddyTierSchema, UpdateAdminBuddyProfileSchema } from '@peace-buddy/types'
+import { BuddyTierSchema } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,14 +26,8 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
   const [selectedTier, setSelectedTier] = useState<BuddyTier | ''>((buddy.tier as BuddyTier) || '')
   const [notes, setNotes] = useState(buddy.internalNotes || '')
 
-  const { handleSubmit } = useForm({
-    defaultValues: {
-      tier: buddy.tier,
-      internalNotes: buddy.internalNotes,
-    },
-  })
-
-  async function onSubmit() {
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault()
     setError(null)
     setIsSubmitting(true)
 
@@ -57,7 +50,7 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
       {error && (
         <p className="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
           {error}

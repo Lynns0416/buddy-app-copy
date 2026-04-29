@@ -97,12 +97,6 @@ describe('getBuddyDetail', () => {
     const result = await getBuddyDetail('missing')
     expect(result).toBeNull()
   })
-
-  it('returns null on P2025', async () => {
-    mockFindUnique.mockRejectedValueOnce({ code: 'P2025' })
-    const result = await getBuddyDetail('profile-1')
-    expect(result).toBeNull()
-  })
 })
 
 describe('updateBuddyProfile', () => {

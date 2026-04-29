@@ -43,16 +43,11 @@ export async function listBuddies(status?: BuddyStatus): Promise<AdminBuddyRespo
 }
 
 export async function getBuddyDetail(id: string): Promise<AdminBuddyResponse | null> {
-  try {
-    const raw = await db.buddyProfile.findUnique({
-      where: { id },
-      select: adminBuddySelect,
-    })
-    return raw ? mapBuddy(raw) : null
-  } catch (e) {
-    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
-    throw e
-  }
+  const raw = await db.buddyProfile.findUnique({
+    where: { id },
+    select: adminBuddySelect,
+  })
+  return raw ? mapBuddy(raw) : null
 }
 
 export async function updateBuddyStatus(
@@ -83,7 +78,7 @@ export async function updateBuddyProfile(
   internalNotes?: string | null
 ): Promise<AdminBuddyResponse | null> {
   try {
-    const data: Record<string, unknown> = {}
+    const data: { tier?: BuddyTier | null; internalNotes?: string | null } = {}
     if (tier !== undefined) data.tier = tier
     if (internalNotes !== undefined) data.internalNotes = internalNotes
 

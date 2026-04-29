@@ -6,11 +6,10 @@ import Link from 'next/link'
 import { useLocale } from 'next-intl'
 import { useParams } from 'next/navigation'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
-import type { AdminBuddyResponse, AppError } from '@peace-buddy/types'
-import { AppErrorCodeSchema } from '@peace-buddy/types'
+import type { AdminBuddyResponse } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { routes } from '@/lib/routes'
-import { fetchBuddy } from '../admin.buddy'
+import { fetchBuddy, mapBuddyError } from '../admin.buddy'
 import { BuddyForm } from '../_components/buddy-form'
 
 export default function AdminBuddyDetailPage() {
@@ -23,23 +22,13 @@ export default function AdminBuddyDetailPage() {
   const [fetched, setFetched] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
-  function errorMessage(error: AppError): string {
-    switch (error.code) {
-      case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
-      case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
-      case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
-      case AppErrorCodeSchema.enum.network:    return t('error.network')
-      default:                                 return t('error.unknown')
-    }
-  }
-
   useEffect(() => {
     if (!ready) return
     fetchBuddy(id).then((result) => {
       if (result.ok) {
         setBuddy(result.data)
       } else {
-        setFetchError(errorMessage(result.error))
+        setFetchError(mapBuddyError(t, result.error))
       }
       setFetched(true)
     })

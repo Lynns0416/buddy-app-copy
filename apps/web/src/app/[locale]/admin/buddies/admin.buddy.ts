@@ -1,4 +1,5 @@
-import type { AdminBuddyResponse, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile } from '@peace-buddy/types'
+import type { AdminBuddyResponse, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile, AppError } from '@peace-buddy/types'
+import { AppErrorCodeSchema } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -7,6 +8,16 @@ import { classifyApiError } from '../../../../lib/api-error'
 import { ASC, DESC } from '../../../../lib/constants'
 
 export type BuddySortField = 'displayName' | 'email' | 'tier'
+
+export function mapBuddyError(t: (key: string) => string, error: AppError): string {
+  switch (error.code) {
+    case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
+    case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
+    case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
+    case AppErrorCodeSchema.enum.network:    return t('error.network')
+    default:                                 return t('error.unknown')
+  }
+}
 
 export function sortBuddies(
   buddies: AdminBuddyResponse[],

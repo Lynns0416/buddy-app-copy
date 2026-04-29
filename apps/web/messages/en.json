@@ -227,6 +227,7 @@
     "closeMenu": "Close menu",
     "nav": {
       "dashboard": "Dashboard",
+      "profile": "Profile",
       "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
       "groups": "Groups",
@@ -237,5 +238,43 @@
     "title": "Awaiting approval",
     "message": "Your account is pending admin approval. You will be notified once approved.",
     "signOut": "Sign out"
+  },
+  "profile": {
+    "title": "My Profile",
+    "displayName": "Display name",
+    "realName": "Full name",
+    "bio": "Bio",
+    "contactInfo": "Contact info",
+    "skills": "Skills",
+    "skillsHelp": "One skill per line",
+    "availability": "Availability",
+    "languages": "Languages",
+    "photo": "Profile photo",
+    "photoComingSoon": "Photo upload coming soon",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saveSuccess": "Profile saved",
+    "error": {
+      "notFound": "Profile not found.",
+      "forbidden": "You don't have permission to edit this profile.",
+      "network": "Network error. Please check your connection.",
+      "unknown": "An error occurred. Please try again."
+    }
+  },
+  "languages": {
+    "english": "English",
+    "korean": "Korean",
+    "chinese_simplified": "Chinese (Simplified)",
+    "chinese_traditional": "Chinese (Traditional)",
+    "arabic": "Arabic",
+    "french": "French",
+    "german": "German",
+    "italian": "Italian",
+    "japanese": "Japanese",
+    "portuguese": "Portuguese",
+    "russian": "Russian",
+    "spanish": "Spanish",
+    "thai": "Thai",
+    "vietnamese": "Vietnamese"
   }
 }

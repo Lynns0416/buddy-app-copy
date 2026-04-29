@@ -126,14 +126,39 @@ Typical progression: Junior → Mid → Senior → Expert → Instructor → Org
 
 | Field | Type | Notes |
 |---|---|---|
-| Display name / nickname | Text | Chosen by buddy |
-| Real name | Text | For admin reference |
-| Profile photo | Image upload | Stored in GCP Cloud Storage |
+| Display name / nickname | Text | Chosen by buddy; editable in profile settings |
+| Real name | Text | For admin reference; editable in profile settings |
+| Profile photo | Image upload | GCP Cloud Storage — **deferred post-v1** |
 | Bio | Long text | Free description |
 | Contact info | Text / Email | Preferred contact method |
-| Languages spoken | Multi-select enum | e.g. Japanese, English, Korean… |
-| Skills & interests | Multi-select + free text | e.g. history, sports, music… |
+| Languages spoken | Multi-select enum (`LanguageSchema`) | See enum values below |
+| Skills & interests | Free text (one per line) | v1: plain textarea; structured multi-select in future |
 | Availability | Free text | General availability notes (v1); structured input in future |
+
+#### Language Enum (`LanguageSchema`)
+
+Ordered for UI display — priority tier shown first:
+
+| Value (code) | Priority |
+|---|---|
+| `english` | Priority |
+| `korean` | Priority |
+| `chinese_simplified` | Priority |
+| `chinese_traditional` | Priority |
+| `arabic` | Standard |
+| `french` | Standard |
+| `german` | Standard |
+| `italian` | Standard |
+| `japanese` | Standard |
+| `portuguese` | Standard |
+| `russian` | Standard |
+| `spanish` | Standard |
+| `thai` | Standard |
+| `vietnamese` | Standard |
+
+`LanguageSchema.options` preserves this order — UI iterates it directly for consistent display without sorting logic.
+
+`UpdateBuddyProfileSchema.languages` validates against `LanguageSchema` (not raw strings). `BuddyProfileResponse.languages` is typed as `Language[]`.
 
 ### 5.4 Admin-Managed Fields
 
@@ -533,6 +558,66 @@ Note: frontend page routes and API endpoints are separate layers. `/admin/buddie
 - Manage admin accounts and roles
 - Global defaults (cancellation deadline offset, Maybe deadline offset, notification schedule offsets)
 - Notification channel and delivery mode defaults
+
+### 11.6 Buddy Profile Settings
+
+#### Route
+
+`/dashboard/profile` — accessible to all authenticated buddies (any status)
+
+Nav item: "Profile" in buddy shell sidebar (alongside "Dashboard").
+
+#### Page Layout
+
+**Read-only display section** (not editable inline):
+- Account status badge
+- Tier (hidden — not shown to buddy)
+- Member since date
+
+**Edit form** (`PUT /me/profile`):
+
+| Field | Widget | Notes |
+|---|---|---|
+| Display name | Text input | |
+| Real name | Text input | |
+| Bio | Textarea | |
+| Contact info | Text input | |
+| Languages | Checkbox group | Ordered by `LanguageSchema.options`; priority tier (en/ko/zh) shown first |
+| Skills & interests | Textarea | One skill per line; split on `\n` before submit; joined with `\n` for display |
+| Availability | Textarea | Free text |
+| Profile photo | Disabled input | "GCP Cloud Storage — coming soon" placeholder; `photoUrl` not sent in PUT body until upload is wired |
+
+`[Save]` `[Cancel]`
+
+#### API
+
+Uses existing endpoints — no new API work required:
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/me/profile` | Fetch own profile |
+| `PUT` | `/me/profile` | Update self-managed fields |
+
+#### Module Boundaries
+
+```
+apps/web/src/app/[locale]/dashboard/profile/
+  dashboard.profile.ts          ← fetchMyProfile, updateMyProfile (thin functions)
+  dashboard.profile.test.ts     ← unit tests
+  page.tsx                      ← fetch on mount, render <ProfileForm />
+  _components/
+    profile-form.tsx             ← form state + submit handler
+```
+
+New additions:
+- `apiClient.getMyProfile` + `apiClient.updateMyProfile` in `api-client.ts`
+- `routes.dashboardProfile` in `routes.ts`
+- `shell.nav.profile` + `profile.*` + `languages.*` keys in `en.json` and `ja.json`
+
+#### i18n Namespaces
+
+- `profile.*` — all profile page strings (field labels, placeholders, errors, photo coming-soon text)
+- `languages.*` — language display names (separate namespace for reuse in admin buddy detail)
 
 ---
 

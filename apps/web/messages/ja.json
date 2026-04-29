@@ -227,6 +227,7 @@
     "closeMenu": "メニューを閉じる",
     "nav": {
       "dashboard": "ダッシュボード",
+      "profile": "プロフィール",
       "buddiesPending": "承認待ち",
       "buddies": "バディ",
       "groups": "グループ",
@@ -237,5 +238,43 @@
     "title": "承認待ち",
     "message": "アカウントは管理者の承認待ちです。承認され次第、通知いたします。",
     "signOut": "ログアウト"
+  },
+  "profile": {
+    "title": "マイプロフィール",
+    "displayName": "表示名",
+    "realName": "氏名",
+    "bio": "自己紹介",
+    "contactInfo": "連絡先",
+    "skills": "スキル",
+    "skillsHelp": "1行に1つのスキルを入力",
+    "availability": "対応可能時間",
+    "languages": "対応言語",
+    "photo": "プロフィール写真",
+    "photoComingSoon": "写真のアップロードは近日対応予定",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "saveSuccess": "プロフィールを保存しました",
+    "error": {
+      "notFound": "プロフィールが見つかりません。",
+      "forbidden": "このプロフィールを編集する権限がありません。",
+      "network": "ネットワークエラーが発生しました。接続を確認してください。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    }
+  },
+  "languages": {
+    "english": "英語",
+    "korean": "韓国語",
+    "chinese_simplified": "中国語（簡体字）",
+    "chinese_traditional": "中国語（繁体字）",
+    "arabic": "アラビア語",
+    "french": "フランス語",
+    "german": "ドイツ語",
+    "italian": "イタリア語",
+    "japanese": "日本語",
+    "portuguese": "ポルトガル語",
+    "russian": "ロシア語",
+    "spanish": "スペイン語",
+    "thai": "タイ語",
+    "vietnamese": "ベトナム語"
   }
 }

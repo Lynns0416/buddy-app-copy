@@ -72,11 +72,14 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - ci:/app/node_modules
-      - ci:/app/packages/types/node_modules
-      - ci:/app/apps/api/node_modules
-      - ci:/app/apps/web/node_modules
+      - ci_nm_root:/app/node_modules
+      - ci_nm_types:/app/packages/types/node_modules
+      - ci_nm_api:/app/apps/api/node_modules
+      - ci_nm_web:/app/apps/web/node_modules
 
 volumes:
   db_data:
-  ci:
+  ci_nm_root:
+  ci_nm_types:
+  ci_nm_api:
+  ci_nm_web:

@@ -73,7 +73,7 @@ async function main() {
         displayName: account.displayName ?? account.email.split('@')[0],
         realName: account.displayName ?? '',
         status: BuddyStatus.active,
-        languages: ['ja', 'en'],
+        languages: ['japanese', 'english'],
         skills: [],
       },
       create: {
@@ -81,7 +81,7 @@ async function main() {
         status: BuddyStatus.active,
         displayName: account.displayName ?? account.email.split('@')[0],
         realName: account.displayName ?? '',
-        languages: ['ja', 'en'],
+        languages: ['japanese', 'english'],
         skills: [],
       },
     })

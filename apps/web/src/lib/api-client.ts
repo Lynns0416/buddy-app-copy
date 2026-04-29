@@ -17,6 +17,9 @@ import type {
   BuddyStatus,
   TourStatus,
   TourStatusAction,
+  UpdateAdminBuddyProfile,
+  BuddyProfileResponse,
+  UpdateBuddyProfile,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -48,7 +51,7 @@ export const apiClient = {
   getBuddy: (id: string) =>
     apiRequest<AdminBuddyResponse>(apiPaths.adminBuddy(id)),
 
-  updateBuddy: (id: string, data: Record<string, unknown>) =>
+  updateBuddy: (id: string, data: UpdateAdminBuddyProfile) =>
     apiRequest<AdminBuddyResponse>(apiPaths.adminBuddy(id), {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -113,4 +116,13 @@ export const apiClient = {
 
   getMyBookings: () =>
     apiRequest<MyBookingEntry[]>(apiPaths.meBookings),
+
+  // Buddy — Profile
+  getMyProfile: () =>
+    apiRequest<BuddyProfileResponse>(apiPaths.meProfile),
+  updateMyProfile: (data: UpdateBuddyProfile) =>
+    apiRequest<BuddyProfileResponse>(apiPaths.meProfile, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 }

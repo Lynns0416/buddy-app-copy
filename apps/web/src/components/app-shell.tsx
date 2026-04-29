@@ -38,10 +38,20 @@ export function AppShell({ variant, children }: Props) {
           { href: routes.adminGroups(locale), label: t('nav.groups') },
           { href: routes.adminTours(locale), label: t('nav.tours') },
         ]
-      : [{ href: routes.dashboard(locale), label: t('nav.dashboard') }]
+      : [
+          { href: routes.dashboard(locale), label: t('nav.dashboard') },
+          { href: routes.dashboardProfile(locale), label: t('nav.profile') },
+        ]
+
+  const allNavHrefs = navItems.map((item) => item.href)
 
   const navLinks = navItems.map((item) => {
-    const isActive = pathname === item.href || (pathname.startsWith(item.href + '/') && item.href !== routes.adminBuddies(locale))
+    const isActive =
+      pathname === item.href ||
+      (pathname.startsWith(item.href + '/') &&
+        !allNavHrefs.some(
+          (other) => other !== item.href && other.startsWith(item.href + '/') && pathname.startsWith(other)
+        ))
     return (
       <Link
         key={item.href}

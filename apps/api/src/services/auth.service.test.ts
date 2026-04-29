@@ -48,7 +48,7 @@ describe('upsertUser', () => {
     await upsertUser('uid-123', 'test@example.com', {
       displayName: 'Test User',
       realName: 'Real Name',
-      languages: ['ja', 'en'],
+      languages: ['japanese', 'english'],
     })
 
     expect(mockUpsert).toHaveBeenCalledWith(
@@ -63,7 +63,7 @@ describe('upsertUser', () => {
               status: 'pending',
               displayName: 'Test User',
               realName: 'Real Name',
-              languages: ['ja', 'en'],
+              languages: ['japanese', 'english'],
             }),
           },
         }),

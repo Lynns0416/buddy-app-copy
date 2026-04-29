@@ -23,6 +23,24 @@ export type GroupType = z.infer<typeof GroupTypeSchema>
 export const CancellationCategorySchema = z.enum(['health', 'emergency', 'personal', 'work', 'other'])
 export type CancellationCategory = z.infer<typeof CancellationCategorySchema>
 
+export const LanguageSchema = z.enum([
+  'english',
+  'korean',
+  'chinese_simplified',
+  'chinese_traditional',
+  'arabic',
+  'french',
+  'german',
+  'italian',
+  'japanese',
+  'portuguese',
+  'russian',
+  'spanish',
+  'thai',
+  'vietnamese',
+])
+export type Language = z.infer<typeof LanguageSchema>
+
 export const NotifEventTypeSchema = z.enum([
   'new_signup',
   'new_booking',
@@ -47,7 +65,7 @@ export type ApiErrorResponse = { code: AppErrorCode; detail?: string }
 export const RegisterRequestBodySchema = z.object({
   displayName: z.string().optional(),
   realName: z.string().optional(),
-  languages: z.array(z.string()).optional(),
+  languages: z.array(LanguageSchema).optional(),
   photoUrl: z.string().optional(),
   bio: z.string().optional(),
 })
@@ -61,7 +79,7 @@ export const UpdateBuddyProfileSchema = z.object({
   photoUrl: z.string().nullable().optional(),
   bio: z.string().nullable().optional(),
   contactInfo: z.string().nullable().optional(),
-  languages: z.array(z.string()).optional(),
+  languages: z.array(LanguageSchema).optional(),
   skills: z.array(z.string()).optional(),
   availability: z.string().nullable().optional(),
 })
@@ -176,7 +194,7 @@ export type BuddyProfileResponse = {
   photoUrl: string | null
   bio: string | null
   contactInfo: string | null
-  languages: string[]
+  languages: Language[]
   skills: string[]
   availability: string | null
   createdAt: string

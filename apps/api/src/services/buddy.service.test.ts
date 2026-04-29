@@ -26,7 +26,7 @@ const mockProfile = {
   photoUrl: null,
   bio: null,
   contactInfo: null,
-  languages: ['en'],
+  languages: ['english'],
   skills: ['sign language'],
   availability: null,
   createdAt: new Date('2026-01-01'),

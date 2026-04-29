@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
-import type { AdminBuddyResponse, AppError, BuddyStatus } from '@peace-buddy/types'
-import { AppErrorCodeSchema, BuddyStatusSchema } from '@peace-buddy/types'
+import type { AdminBuddyResponse, BuddyStatus } from '@peace-buddy/types'
+import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
-import { fetchBuddies, sortBuddies, nextBuddySort, updateBuddyStatus, type BuddySortField } from '../admin.buddy'
+import { fetchBuddies, sortBuddies, nextBuddySort, updateBuddyStatus, mapBuddyError, type BuddySortField } from '../admin.buddy'
 
 export default function AdminBuddiesPendingPage() {
   const { ready } = useAdminGuard()
@@ -17,24 +17,15 @@ export default function AdminBuddiesPendingPage() {
   const [buddies, setBuddies] = useState<AdminBuddyResponse[]>([])
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [sortField, setSortField] = useState<BuddySortField>('displayName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-
-  function errorMessage(error: AppError): string {
-    switch (error.code) {
-      case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
-      case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
-      case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
-      case AppErrorCodeSchema.enum.network:    return t('error.network')
-      default:                                 return t('error.unknown')
-    }
-  }
 
   useEffect(() => {
     if (!ready) return
     fetchBuddies(BuddyStatusSchema.enum.pending).then((result) => {
       if (result.ok) setBuddies(result.data)
-      else setFetchError(errorMessage(result.error))
+      else setFetchError(mapBuddyError(t, result.error))
     })
   }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -45,12 +36,13 @@ export default function AdminBuddiesPendingPage() {
   }
 
   async function handleStatusChange(id: string, newStatus: BuddyStatus) {
+    setActionError(null)
     setPendingAction(id)
     const result = await updateBuddyStatus(id, newStatus)
     if (result.ok) {
       setBuddies((prev) => prev.filter((b) => b.id !== id))
     } else {
-      // Generic error message, could add specific handling if needed
+      setActionError(mapBuddyError(t, result.error))
     }
     setPendingAction(null)
   }
@@ -66,6 +58,12 @@ export default function AdminBuddiesPendingPage() {
       {fetchError && (
         <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
           {fetchError}
+        </p>
+      )}
+
+      {actionError && (
+        <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {actionError}
         </p>
       )}
 
