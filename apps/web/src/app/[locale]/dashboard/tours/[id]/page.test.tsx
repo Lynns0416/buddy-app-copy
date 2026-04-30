@@ -164,14 +164,14 @@ describe('TourDetailPage', () => {
   })
 
   it.each([
-    ['confirmed', 'statusConfirmed'],
-    ['maybe', 'statusMaybe'],
-    ['waitlist', 'statusWaitlist'],
-    ['declined', 'statusDeclined'],
+    ['confirmed', 'confirmed'],
+    ['maybe', 'maybe'],
+    ['waitlist', 'waitlist'],
+    ['declined', 'declined'],
   ] as const)('shows %s booking status label', async (status, labelKey) => {
     mockGetTour.mockResolvedValue({ ...mockTour, myBookingStatus: status })
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.getByText(labelKey)).toBeInTheDocument())
+    await waitFor(() => expect(screen.queryAllByText(labelKey).length).toBeGreaterThan(0))
   })
 
   it('passes tour id from params to getTour', async () => {

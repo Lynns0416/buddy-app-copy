@@ -8,6 +8,7 @@ import { SortIcon } from '@/components/sort-icon'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { routes } from '@/lib/routes'
 import { sortBookingHistory, nextBookingSort, type BookingHistorySortField } from '../admin.buddy'
+import { getBookingStatusLabel } from '@/lib/status-display'
 
 interface BuddyBookingHistoryProps {
   bookings: AdminBuddyBookingEntry[]
@@ -15,6 +16,7 @@ interface BuddyBookingHistoryProps {
 
 export function BuddyBookingHistory({ bookings }: BuddyBookingHistoryProps) {
   const t = useTranslations('adminBuddies')
+  const tBookingStatus = useTranslations('bookingStatus')
   const locale = useLocale()
   const [sortField, setSortField] = useState<BookingHistorySortField>('tourDate')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -82,7 +84,7 @@ export function BuddyBookingHistory({ bookings }: BuddyBookingHistoryProps) {
               </TableCell>
               <TableCell className="text-muted-foreground">{booking.tour.location}</TableCell>
               <TableCell className="text-muted-foreground">
-                {t(`bookingStatus${booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}`)}
+                {getBookingStatusLabel(tBookingStatus, booking.status)}
               </TableCell>
             </TableRow>
           ))}

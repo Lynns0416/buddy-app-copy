@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
 import { TourStatusSchema, TourActionSchema, AppErrorCodeSchema } from '@peace-buddy/types'
-import type { AdminTourDetailResponse, TourStatus, TourAction, BookingStatus, AppError } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, TourAction, BookingStatus, AppError } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,13 +17,7 @@ import {
   sortBookings, nextBookingSort, fetchTour, transitionTour, toggleTourBooking, deleteTour,
   type BookingSortField,
 } from '../admin.tour'
-
-const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  draft: 'outline',
-  published: 'default',
-  cancelled: 'destructive',
-  completed: 'secondary',
-}
+import { getTourStatusLabel, getBookingStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 
 const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
@@ -37,6 +31,8 @@ export default function AdminTourDetailPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const t = useTranslations('adminTours')
+  const tTourStatus = useTranslations('tourStatus')
+  const tBookingStatus = useTranslations('bookingStatus')
   const [tour, setTour] = useState<AdminTourDetailResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -100,20 +96,6 @@ export default function AdminTourDetailPage() {
     }
   }
 
-  const tourStatusLabel: Record<TourStatus, string> = {
-    draft: t('statusDraft'),
-    published: t('statusPublished'),
-    cancelled: t('statusCancelled'),
-    completed: t('statusCompleted'),
-  }
-
-  const bookingStatusLabel: Record<BookingStatus, string> = {
-    confirmed: t('statusConfirmed'),
-    maybe: t('statusMaybe'),
-    waitlist: t('statusWaitlist'),
-    declined: t('statusDeclined'),
-  }
-
   if (!ready) return null
 
   if (fetchError) {
@@ -146,7 +128,7 @@ export default function AdminTourDetailPage() {
       <div className="mb-6 rounded-lg border bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
           <h1 className="text-xl font-semibold">{tour.group.name}</h1>
-          <Badge variant={STATUS_VARIANT[tour.status]}>{tourStatusLabel[tour.status]}</Badge>
+          <Badge variant={tourStatusBadgeVariant[tour.status]}>{getTourStatusLabel(tTourStatus, tour.status)}</Badge>
         </div>
         <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
@@ -260,7 +242,7 @@ export default function AdminTourDetailPage() {
                 <TableRow key={b.id}>
                   <TableCell className="font-medium">{b.displayName}</TableCell>
                   <TableCell>
-                    <Badge className={BOOKING_STATUS_CLASS[b.status]}>{bookingStatusLabel[b.status]}</Badge>
+                    <Badge className={BOOKING_STATUS_CLASS[b.status]}>{getBookingStatusLabel(tBookingStatus, b.status)}</Badge>
                   </TableCell>
                   <TableCell className="tabular-nums text-sm text-muted-foreground">
                     {new Date(b.bookedAt).toLocaleString()}

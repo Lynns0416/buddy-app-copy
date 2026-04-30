@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import type { AdminBuddyDetailResponse } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
+import { getBuddyStatusLabel } from '@/lib/status-display'
 import { routes } from '@/lib/routes'
 import { fetchBuddy, mapBuddyError } from '../admin.buddy'
 import { BuddyForm } from '../_components/buddy-form'
@@ -19,6 +20,7 @@ export default function AdminBuddyDetailPage() {
   const params = useParams()
   const id = params.id as string
   const t = useTranslations('adminBuddies')
+  const tBuddyStatus = useTranslations('buddyStatus')
   const [buddy, setBuddy] = useState<AdminBuddyDetailResponse | null>(null)
   const [fetched, setFetched] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -72,7 +74,7 @@ export default function AdminBuddyDetailPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">{t('status')}</p>
-              <p>{t(`status${buddy.status.charAt(0).toUpperCase() + buddy.status.slice(1)}`)}</p>
+              <p>{getBuddyStatusLabel(tBuddyStatus, buddy.status)}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">{t('createdAt')}</p>

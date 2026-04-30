@@ -599,6 +599,8 @@ Nav item: "Profile" in buddy shell sidebar (alongside "Dashboard").
 
 `[Save]` `[Cancel]`
 
+After save: stay on page, refetch profile, show inline success message. Cancel navigates to `/dashboard`.
+
 #### API
 
 Uses existing endpoints — no new API work required:

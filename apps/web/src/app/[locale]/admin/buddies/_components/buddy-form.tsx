@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { routes } from '@/lib/routes'
 import { updateBuddy } from '../admin.buddy'
 
+const TIER_NONE = '__none__'
+
 interface BuddyFormProps {
   buddy: AdminBuddyResponse
 }
@@ -59,12 +61,15 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
 
       <div>
         <Label htmlFor="tier">{t('tier')}</Label>
-        <Select value={selectedTier} onValueChange={(val) => setSelectedTier(val as BuddyTier | '')}>
+        <Select
+          value={selectedTier || TIER_NONE}
+          onValueChange={(val) => setSelectedTier(val === TIER_NONE ? '' : val as BuddyTier)}
+        >
           <SelectTrigger id="tier">
             <SelectValue placeholder={t('tierPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">{t('tierNone')}</SelectItem>
+            <SelectItem value={TIER_NONE}>{t('tierNone')}</SelectItem>
             {BuddyTierSchema.options.map((tier) => (
               <SelectItem key={tier} value={tier}>
                 {t(`tier${tier.charAt(0).toUpperCase() + tier.slice(1)}`)}

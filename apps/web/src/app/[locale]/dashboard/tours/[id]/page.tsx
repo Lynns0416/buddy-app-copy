@@ -17,13 +17,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useTourDetail } from '../../hooks/use-tour-detail'
 import { createInitialBooking, updateBookingStatus, mapErrorToI18nKey } from './dashboard.booking'
-import { MY_STATUS_VARIANT, CANCEL_CATEGORIES } from '../../lib/constants'
+import { CANCEL_CATEGORIES } from '../../lib/constants'
 import { isPastDeadline, canSelectMaybeStatus, isBookingAllowed } from '../../lib/deadline'
+import { getBookingStatusLabel, bookingStatusBadgeVariant } from '@/lib/status-display'
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
   const { locale, id } = useParams<{ locale: string; id: string }>()
   const t = useTranslations('tourDetail')
+  const tBookingStatus = useTranslations('bookingStatus')
   const { tour, error: notFound, refetch } = useTourDetail(id, !loading && !!firebaseUser)
   const [acting, setActing] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -88,13 +90,6 @@ export default function TourDetailPage() {
         <p className="text-sm text-muted-foreground">{t('notFound')}</p>
       </AppShell>
     )
-  }
-
-  const bookingStatusLabel: Record<BookingStatus, string> = {
-    [BookingStatusSchema.enum.confirmed]: t('statusConfirmed'),
-    [BookingStatusSchema.enum.maybe]: t('statusMaybe'),
-    [BookingStatusSchema.enum.waitlist]: t('statusWaitlist'),
-    [BookingStatusSchema.enum.declined]: t('statusDeclined'),
   }
 
   const cancelCategoryLabel: Record<CancellationCategory, string> = {
@@ -212,7 +207,7 @@ export default function TourDetailPage() {
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-3 text-base font-semibold">{t('myStatus')}</h2>
           {tour.myBookingStatus ? (
-            <Badge variant={MY_STATUS_VARIANT[tour.myBookingStatus]}>{bookingStatusLabel[tour.myBookingStatus]}</Badge>
+            <Badge variant={bookingStatusBadgeVariant[tour.myBookingStatus]}>{getBookingStatusLabel(tBookingStatus, tour.myBookingStatus)}</Badge>
           ) : (
             <p className="text-sm text-muted-foreground">{t('noBooking')}</p>
           )}

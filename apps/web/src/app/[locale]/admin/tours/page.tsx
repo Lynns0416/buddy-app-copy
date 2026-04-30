@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import type { AdminTourSummaryResponse, TourStatus, AppError } from '@peace-buddy/types'
+import type { AdminTourSummaryResponse, AppError } from '@peace-buddy/types'
 import { AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
@@ -14,18 +14,13 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { fetchTours, sortTours, nextTourListSort, type TourListSortField } from './admin.tour'
-
-const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  draft: 'outline',
-  published: 'default',
-  cancelled: 'destructive',
-  completed: 'secondary',
-}
+import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 
 export default function AdminToursPage() {
   const { ready, locale } = useAdminGuard()
   const router = useRouter()
   const t = useTranslations('adminTours')
+  const tTourStatus = useTranslations('tourStatus')
   const [tours, setTours] = useState<AdminTourSummaryResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [sortField, setSortField] = useState<TourListSortField>('tourDate')
@@ -56,13 +51,6 @@ export default function AdminToursPage() {
   }
 
   const sorted = sortTours(tours, sortField, sortDir)
-
-  const tourStatusLabel: Record<TourStatus, string> = {
-    draft: t('statusDraft'),
-    published: t('statusPublished'),
-    cancelled: t('statusCancelled'),
-    completed: t('statusCompleted'),
-  }
 
   if (!ready) return null
 
@@ -124,8 +112,8 @@ export default function AdminToursPage() {
                   <TableCell className="text-center">{tour.participantCount}</TableCell>
                   <TableCell className="text-center">{tour.confirmedCount}</TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANT[tour.status]}>
-                      {tourStatusLabel[tour.status]}
+                    <Badge variant={tourStatusBadgeVariant[tour.status]}>
+                      {getTourStatusLabel(tTourStatus, tour.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

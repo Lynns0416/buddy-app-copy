@@ -12,12 +12,14 @@ import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
 import { fetchUpcomingTours } from './dashboard.tour'
+import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 
 export default function DashboardPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('dashboard')
+  const tTourStatus = useTranslations('tourStatus')
   const [tours, setTours] = useState<TourResponse[]>([])
 
   useEffect(() => {
@@ -69,8 +71,8 @@ export default function DashboardPage() {
             <Link key={tour.id} href={routes.dashboardTour(locale, tour.id)} className="rounded-lg border bg-card p-4 hover:bg-accent transition-colors">
               <div className="mb-3 flex items-start justify-between gap-2">
                 <p className="font-medium">{tour.group.name}</p>
-                <Badge variant="secondary" className="shrink-0">
-                  {tour.status}
+                <Badge variant={tourStatusBadgeVariant[tour.status]} className="shrink-0">
+                  {getTourStatusLabel(tTourStatus, tour.status)}
                 </Badge>
               </div>
               <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">

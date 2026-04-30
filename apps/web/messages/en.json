@@ -67,10 +67,6 @@
     "tierExpert": "Expert",
     "tierInstructor": "Instructor",
     "tierOrganizer": "Organizer",
-    "statusActive": "Active",
-    "statusPending": "Pending",
-    "statusRejected": "Rejected",
-    "statusSuspended": "Suspended",
     "approve": "Approve",
     "reject": "Reject",
     "save": "Save",
@@ -85,10 +81,6 @@
     "bookingHistoryLocation": "Location",
     "bookingHistoryStatus": "Status",
     "bookingHistoryEmpty": "No bookings",
-    "bookingStatusConfirmed": "Confirmed",
-    "bookingStatusMaybe": "Maybe",
-    "bookingStatusWaitlist": "Waitlist",
-    "bookingStatusDeclined": "Declined",
     "actionError": "Action failed. Please try again.",
     "error": {
       "notFound": "Buddy not found.",
@@ -157,14 +149,6 @@
     "confirmDelete": "Delete this tour? This cannot be undone.",
     "confirmCancel": "Cancel this tour? All confirmed/maybe/waitlist buddies will be notified.",
     "confirmComplete": "Mark this tour as completed?",
-    "statusDraft": "Draft",
-    "statusPublished": "Published",
-    "statusCancelled": "Cancelled",
-    "statusCompleted": "Completed",
-    "statusConfirmed": "Confirmed",
-    "statusMaybe": "Maybe",
-    "statusWaitlist": "Waitlist",
-    "statusDeclined": "Declined",
     "bookingOpen": "Booking Open",
     "bookingOpenDescription": "Allow buddies to book",
     "bookingOpenYes": "Open",
@@ -201,10 +185,6 @@
     "myStatus": "My Status",
     "noBooking": "Not booked",
     "notFound": "Tour not found.",
-    "statusConfirmed": "Confirmed",
-    "statusMaybe": "Maybe",
-    "statusWaitlist": "Waitlist",
-    "statusDeclined": "Declined",
     "join": "Join",
     "respondMaybe": "Maybe",
     "decline": "Decline",
@@ -261,6 +241,8 @@
     "languages": "Languages",
     "photo": "Profile photo",
     "photoComingSoon": "Photo upload coming soon",
+    "statusLabel": "Account status",
+    "memberSince": "Member since",
     "save": "Save",
     "cancel": "Cancel",
     "saveSuccess": "Profile saved",
@@ -286,5 +268,23 @@
     "spanish": "Spanish",
     "thai": "Thai",
     "vietnamese": "Vietnamese"
+  },
+  "buddyStatus": {
+    "pending": "Pending",
+    "active": "Active",
+    "rejected": "Rejected",
+    "suspended": "Suspended"
+  },
+  "tourStatus": {
+    "draft": "Draft",
+    "published": "Published",
+    "cancelled": "Cancelled",
+    "completed": "Completed"
+  },
+  "bookingStatus": {
+    "confirmed": "Confirmed",
+    "maybe": "Maybe",
+    "waitlist": "Waitlist",
+    "declined": "Declined"
   }
 }

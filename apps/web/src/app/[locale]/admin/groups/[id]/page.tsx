@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import type { GroupDetailResponse, GroupType, TourStatus, AppError } from '@peace-buddy/types'
+import type { GroupDetailResponse, GroupType, AppError } from '@peace-buddy/types'
 import { AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
@@ -15,13 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { fetchGroup, sortGroupTours, nextGroupTourSort, type GroupTourSortField } from '../admin.group'
-
-const STATUS_VARIANT: Record<TourStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  draft: 'outline',
-  published: 'default',
-  cancelled: 'destructive',
-  completed: 'secondary',
-}
+import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 
 const GROUP_TYPE_CLASS: Record<GroupType, string> = {
   school: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -35,7 +29,7 @@ export default function AdminGroupDetailPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const t = useTranslations('adminGroups')
-  const tTour = useTranslations('adminTours')
+  const tTourStatus = useTranslations('tourStatus')
   const [group, setGroup] = useState<GroupDetailResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [tourSortField, setTourSortField] = useState<GroupTourSortField>('tourDate')
@@ -76,13 +70,6 @@ export default function AdminGroupDetailPage() {
   }
 
   if (!group) return null
-
-  const tourStatusLabel: Record<TourStatus, string> = {
-    draft: tTour('statusDraft'),
-    published: tTour('statusPublished'),
-    cancelled: tTour('statusCancelled'),
-    completed: tTour('statusCompleted'),
-  }
 
   const sortedTours = sortGroupTours(group.tours, tourSortField, tourSortDir)
 
@@ -145,8 +132,8 @@ export default function AdminGroupDetailPage() {
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="tabular-nums text-sm font-medium">{tour.tourDate.slice(0, 10)}</span>
-                  <Badge variant={STATUS_VARIANT[tour.status]}>
-                    {tourStatusLabel[tour.status]}
+                  <Badge variant={tourStatusBadgeVariant[tour.status]}>
+                    {getTourStatusLabel(tTourStatus, tour.status)}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{tour.location}</p>
@@ -187,8 +174,8 @@ export default function AdminGroupDetailPage() {
                   >
                     <TableCell className="tabular-nums">{tour.tourDate.slice(0, 10)}</TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANT[tour.status]}>
-                        {tourStatusLabel[tour.status]}
+                      <Badge variant={tourStatusBadgeVariant[tour.status]}>
+                        {getTourStatusLabel(tTourStatus, tour.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>{tour.location}</TableCell>

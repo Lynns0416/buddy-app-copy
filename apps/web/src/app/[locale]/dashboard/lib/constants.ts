@@ -1,12 +1,5 @@
-import type { BookingStatus, CancellationCategory } from '@peace-buddy/types'
-import { BookingStatusSchema, CancellationCategorySchema } from '@peace-buddy/types'
-
-export const MY_STATUS_VARIANT: Record<BookingStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  [BookingStatusSchema.enum.confirmed]: 'default',
-  [BookingStatusSchema.enum.maybe]: 'secondary',
-  [BookingStatusSchema.enum.waitlist]: 'outline',
-  [BookingStatusSchema.enum.declined]: 'destructive',
-}
+import type { CancellationCategory } from '@peace-buddy/types'
+import { CancellationCategorySchema } from '@peace-buddy/types'
 
 export const CANCEL_CATEGORIES: CancellationCategory[] = [
   CancellationCategorySchema.enum.health,

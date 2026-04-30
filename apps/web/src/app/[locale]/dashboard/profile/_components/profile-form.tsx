@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
 import type { BuddyProfileResponse } from '@peace-buddy/types'
 import { LanguageSchema, type Language } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
@@ -15,15 +14,17 @@ import { updateMyProfile } from '../dashboard.profile'
 
 interface ProfileFormProps {
   profile: BuddyProfileResponse
+  onSaved: () => void
 }
 
-export function ProfileForm({ profile }: ProfileFormProps) {
+export function ProfileForm({ profile, onSaved }: ProfileFormProps) {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('profile')
   const tLang = useTranslations('languages')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [displayName, setDisplayName] = useState(profile.displayName)
   const [realName, setRealName] = useState(profile.realName)
   const [bio, setBio] = useState(profile.bio ?? '')
@@ -35,6 +36,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   )
 
   function toggleLanguage(lang: Language) {
+    setSuccess(false)
     setSelectedLanguages((prev) => {
       const next = new Set(prev)
       if (next.has(lang)) next.delete(lang)
@@ -46,6 +48,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setSuccess(false)
     setIsSubmitting(true)
 
     const skills = skillsText
@@ -66,7 +69,8 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     setIsSubmitting(false)
 
     if (result.ok) {
-      router.push(routes.dashboard(locale))
+      setSuccess(true)
+      onSaved()
     } else {
       const code = result.error.code
       if (code === 'not_found') setError(t('error.notFound'))
@@ -78,6 +82,11 @@ export function ProfileForm({ profile }: ProfileFormProps) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {success && (
+        <p className="rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+          {t('saveSuccess')}
+        </p>
+      )}
       {error && (
         <p className="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
           {error}
@@ -95,7 +104,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <Input
           id="displayName"
           value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
+          onChange={(e) => { setSuccess(false); setDisplayName(e.target.value) }}
           className="mt-1"
         />
       </div>
@@ -105,7 +114,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <Input
           id="realName"
           value={realName}
-          onChange={(e) => setRealName(e.target.value)}
+          onChange={(e) => { setSuccess(false); setRealName(e.target.value) }}
           className="mt-1"
         />
       </div>
@@ -115,7 +124,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <Textarea
           id="bio"
           value={bio}
-          onChange={(e) => setBio(e.target.value)}
+          onChange={(e) => { setSuccess(false); setBio(e.target.value) }}
           rows={4}
           className="mt-1"
         />
@@ -126,7 +135,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <Input
           id="contactInfo"
           value={contactInfo}
-          onChange={(e) => setContactInfo(e.target.value)}
+          onChange={(e) => { setSuccess(false); setContactInfo(e.target.value) }}
           className="mt-1"
         />
       </div>
@@ -136,7 +145,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <Input
           id="availability"
           value={availability}
-          onChange={(e) => setAvailability(e.target.value)}
+          onChange={(e) => { setSuccess(false); setAvailability(e.target.value) }}
           className="mt-1"
         />
       </div>
@@ -163,7 +172,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         <Textarea
           id="skills"
           value={skillsText}
-          onChange={(e) => setSkillsText(e.target.value)}
+          onChange={(e) => { setSuccess(false); setSkillsText(e.target.value) }}
           rows={4}
           className="mt-1"
           placeholder={t('skillsHelp')}
