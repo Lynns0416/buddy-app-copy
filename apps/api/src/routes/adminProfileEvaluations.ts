@@ -1,0 +1,42 @@
+import { Hono } from 'hono'
+import { UpsertAdminProfileEvaluationSchema } from '@peace-buddy/types'
+import {
+  upsertProfileEvaluation,
+  getProfileEvaluation,
+  BuddyNotFoundError,
+} from '../services/adminProfileEvaluation.service'
+import { apiError } from '../lib/api-error'
+import type { AuthEnv } from '../types'
+
+const adminProfileEvaluationRoutes = new Hono<AuthEnv>()
+
+adminProfileEvaluationRoutes.put('/:buddyId', async (c) => {
+  const buddyId = c.req.param('buddyId')
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json(apiError('invalid_request'), 400)
+  }
+
+  const parsed = UpsertAdminProfileEvaluationSchema.safeParse(body)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+
+  const { id } = c.get('user')
+  try {
+    return c.json(await upsertProfileEvaluation(buddyId, parsed.data, id))
+  } catch (e) {
+    if (e instanceof BuddyNotFoundError) return c.json(apiError('not_found'), 404)
+    throw e
+  }
+})
+
+adminProfileEvaluationRoutes.get('/:buddyId', async (c) => {
+  const buddyId = c.req.param('buddyId')
+  const evaluation = await getProfileEvaluation(buddyId)
+  if (!evaluation) return c.json(apiError('not_found'), 404)
+  return c.json(evaluation)
+})
+
+export { adminProfileEvaluationRoutes }

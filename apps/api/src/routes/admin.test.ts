@@ -4,6 +4,7 @@ import { routes } from './index'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
 import type { AuthEnv } from '../types'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from '../services/admin.service'
 import type { AdminBuddyResponse, AdminBuddyDetailResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
@@ -21,7 +22,48 @@ vi.mock('../services/admin.service', () => ({
   updateBuddyProfile: vi.fn(),
 }))
 
-import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from '../services/admin.service'
+vi.mock('../services/group.service', () => ({
+  listGroups: vi.fn(),
+  createGroup: vi.fn(),
+  updateGroup: vi.fn(),
+  getGroup: vi.fn(),
+}))
+
+vi.mock('../services/adminTour.service', () => ({
+  listAdminTours: vi.fn(),
+  createTour: vi.fn(),
+  getAdminTourDetail: vi.fn(),
+  updateTour: vi.fn(),
+  transitionTourStatus: vi.fn(),
+  deleteTour: vi.fn(),
+  TourNotFoundError: class extends Error {},
+  TourTransitionError: class extends Error {},
+  TourImmutableError: class extends Error {},
+  TourNotDraftError: class extends Error {},
+}))
+
+vi.mock('../services/adminEvaluation.service', () => ({
+  createAdminEvaluation: vi.fn(),
+  listAdminEvaluations: vi.fn(),
+  getAdminEvaluation: vi.fn(),
+  updateAdminEvaluation: vi.fn(),
+  deleteAdminEvaluation: vi.fn(),
+  EvalNotFoundError: class extends Error {},
+  EvalAlreadyExistsError: class extends Error {},
+  BuddyNotFoundError: class extends Error {},
+  TourNotFoundError: class extends Error {},
+}))
+
+vi.mock('../services/adminProfileEvaluation.service', () => ({
+  upsertProfileEvaluation: vi.fn(),
+  getProfileEvaluation: vi.fn(),
+  BuddyNotFoundError: class extends Error {},
+}))
+
+vi.mock('../services/selfEvaluation.service', () => ({
+  listSelfEvaluations: vi.fn(),
+  getSelfEvaluation: vi.fn(),
+}))
 
 const mockListBuddies = vi.mocked(listBuddies)
 const mockUpdateBuddyStatus = vi.mocked(updateBuddyStatus)

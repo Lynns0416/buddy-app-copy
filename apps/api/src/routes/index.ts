@@ -6,6 +6,7 @@ import { registerHandler, authRoutes } from './auth'
 import { buddyRoutes } from './buddies'
 import { tourRoutes } from './tours'
 import { adminRoutes } from './admin'
+import { selfEvaluationRoutes } from './selfEvaluations'
 import type { FirebaseEnv, AuthEnv } from '../types'
 
 // TODO: import route modules as they are implemented
@@ -25,6 +26,7 @@ const protectedApp = new Hono<AuthEnv>()
 protectedApp.use('*', authMiddleware)
 protectedApp.route('/auth', authRoutes)
 protectedApp.route('/me', buddyRoutes)
+protectedApp.route('/me/evaluations', selfEvaluationRoutes)
 protectedApp.route('/tours', tourRoutes)
 protectedApp.use('/admin/*', adminAuthMiddleware)
 protectedApp.route('/admin', adminRoutes)

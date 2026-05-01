@@ -25,6 +25,29 @@ vi.mock('../services/group.service', () => ({
   getGroup: vi.fn(),
 }))
 
+vi.mock('../services/adminEvaluation.service', () => ({
+  createAdminEvaluation: vi.fn(),
+  listAdminEvaluations: vi.fn(),
+  getAdminEvaluation: vi.fn(),
+  updateAdminEvaluation: vi.fn(),
+  deleteAdminEvaluation: vi.fn(),
+  EvalNotFoundError: class extends Error {},
+  EvalAlreadyExistsError: class extends Error {},
+  BuddyNotFoundError: class extends Error {},
+  TourNotFoundError: class extends Error {},
+}))
+
+vi.mock('../services/adminProfileEvaluation.service', () => ({
+  upsertProfileEvaluation: vi.fn(),
+  getProfileEvaluation: vi.fn(),
+  BuddyNotFoundError: class extends Error {},
+}))
+
+vi.mock('../services/selfEvaluation.service', () => ({
+  listSelfEvaluations: vi.fn(),
+  getSelfEvaluation: vi.fn(),
+}))
+
 vi.mock('../services/adminTour.service', () => ({
   listAdminTours: vi.fn(),
   createTour: vi.fn(),

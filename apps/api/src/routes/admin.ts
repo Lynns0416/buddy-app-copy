@@ -3,12 +3,18 @@ import { BuddyStatusSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSche
 import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from '../services/admin.service'
 import { adminGroupRoutes } from './adminGroups'
 import { adminTourRoutes } from './adminTours'
+import { adminEvaluationRoutes } from './adminEvaluations'
+import { adminProfileEvaluationRoutes } from './adminProfileEvaluations'
+import { adminSelfEvaluationRoutes } from './adminSelfEvaluations'
 import type { AuthEnv } from '../types'
 
 const adminRoutes = new Hono<AuthEnv>()
 
 adminRoutes.route('/groups', adminGroupRoutes)
 adminRoutes.route('/tours', adminTourRoutes)
+adminRoutes.route('/evaluations', adminEvaluationRoutes)
+adminRoutes.route('/profile-evaluations', adminProfileEvaluationRoutes)
+adminRoutes.route('/self-evaluations', adminSelfEvaluationRoutes)
 
 adminRoutes.get('/buddies', async (c) => {
   const statusParam = c.req.query('status')

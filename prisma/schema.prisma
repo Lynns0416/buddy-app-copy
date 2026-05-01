@@ -79,7 +79,8 @@ model User {
   role                        UserRole
   createdAt                   DateTime                            @default(now())
   buddyProfile                BuddyProfile?
-  evaluationsGiven            AdminEvaluation[]                   @relation("Evaluator")
+  adminEvaluationsCreated     AdminEvaluation[]                   @relation("AdminEvalCreator")
+  profileEvaluationsCreated   AdminProfileEvaluation[]            @relation("ProfileEvalCreator")
   notificationPrefs           NotificationPreference[]
   notifications               Notification[]
   digestQueue                 DigestQueue[]
@@ -105,8 +106,9 @@ model BuddyProfile {
   updatedAt        DateTime                            @updatedAt
   user             User                                @relation(fields: [userId], references: [id])
   bookings         Booking[]
-  selfEvaluations  SelfEvaluation[]
-  adminEvaluations AdminEvaluation[]
+  selfEvaluations    SelfEvaluation[]
+  adminEvaluations   AdminEvaluation[]
+  profileEvaluation  AdminProfileEvaluation?
   deadlineOverrides BuddyCancellationDeadlineOverride[]
 }
 
@@ -182,8 +184,8 @@ model CancellationReason {
 model AdminEvaluation {
   id                  String       @id @default(uuid())
   buddyId             String
-  tourId              String?
-  evaluatorId         String
+  tourId              String
+  createdBy           String
   overallRating       Int?
   overallRatingNote   String?
   reliability         Int?
@@ -206,9 +208,43 @@ model AdminEvaluation {
   confidence          Int?
   confidenceNote      String?
   createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
   buddy               BuddyProfile @relation(fields: [buddyId], references: [id])
-  tour                Tour?        @relation(fields: [tourId], references: [id])
-  evaluator           User         @relation("Evaluator", fields: [evaluatorId], references: [id])
+  tour                Tour         @relation(fields: [tourId], references: [id])
+  creator             User         @relation("AdminEvalCreator", fields: [createdBy], references: [id])
+
+  @@unique([buddyId, tourId])
+}
+
+model AdminProfileEvaluation {
+  id                  String       @id @default(uuid())
+  buddyId             String       @unique
+  createdBy           String
+  overallRating       Int?
+  overallRatingNote   String?
+  reliability         Int?
+  reliabilityNote     String?
+  communication       Int?
+  communicationNote   String?
+  groupEngagement     Int?
+  groupEngagementNote String?
+  memory              Int?
+  memoryNote          String?
+  knowledge           Int?
+  knowledgeNote       String?
+  dedication          Int?
+  dedicationNote      String?
+  dialogue            Int?
+  dialogueNote        String?
+  adaptability        Int?
+  adaptabilityNote    String?
+  emotionNote         String?
+  confidence          Int?
+  confidenceNote      String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  buddy               BuddyProfile @relation(fields: [buddyId], references: [id])
+  creator             User         @relation("ProfileEvalCreator", fields: [createdBy], references: [id])
 }
 
 model SelfEvaluation {
@@ -235,6 +271,7 @@ model SelfEvaluation {
   confidence          Int?
   confidenceNote      String?
   createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
   buddy               BuddyProfile @relation(fields: [buddyId], references: [id])
   tour                Tour         @relation(fields: [tourId], references: [id])
 

@@ -390,3 +390,145 @@ export type MyBookingEntry = {
     status: TourStatus
   }
 }
+
+// Evaluations
+
+export const EvaluationScoreSchema = z.number().int().min(1).max(5)
+
+const adminEvalScoreFields = {
+  overallRating: EvaluationScoreSchema.optional(),
+  overallRatingNote: z.string().optional(),
+  reliability: EvaluationScoreSchema.optional(),
+  reliabilityNote: z.string().optional(),
+  communication: EvaluationScoreSchema.optional(),
+  communicationNote: z.string().optional(),
+  groupEngagement: EvaluationScoreSchema.optional(),
+  groupEngagementNote: z.string().optional(),
+  memory: EvaluationScoreSchema.optional(),
+  memoryNote: z.string().optional(),
+  knowledge: EvaluationScoreSchema.optional(),
+  knowledgeNote: z.string().optional(),
+  dedication: EvaluationScoreSchema.optional(),
+  dedicationNote: z.string().optional(),
+  dialogue: EvaluationScoreSchema.optional(),
+  dialogueNote: z.string().optional(),
+  adaptability: EvaluationScoreSchema.optional(),
+  adaptabilityNote: z.string().optional(),
+  emotionNote: z.string().optional(),
+  confidence: EvaluationScoreSchema.optional(),
+  confidenceNote: z.string().optional(),
+}
+
+const selfEvalScoreFields = {
+  overallRating: adminEvalScoreFields.overallRating,
+  overallRatingNote: adminEvalScoreFields.overallRatingNote,
+  communication: adminEvalScoreFields.communication,
+  communicationNote: adminEvalScoreFields.communicationNote,
+  groupEngagement: adminEvalScoreFields.groupEngagement,
+  groupEngagementNote: adminEvalScoreFields.groupEngagementNote,
+  memory: adminEvalScoreFields.memory,
+  memoryNote: adminEvalScoreFields.memoryNote,
+  knowledge: adminEvalScoreFields.knowledge,
+  knowledgeNote: adminEvalScoreFields.knowledgeNote,
+  dedication: adminEvalScoreFields.dedication,
+  dedicationNote: adminEvalScoreFields.dedicationNote,
+  dialogue: adminEvalScoreFields.dialogue,
+  dialogueNote: adminEvalScoreFields.dialogueNote,
+  adaptability: adminEvalScoreFields.adaptability,
+  adaptabilityNote: adminEvalScoreFields.adaptabilityNote,
+  emotionNote: adminEvalScoreFields.emotionNote,
+  confidence: adminEvalScoreFields.confidence,
+  confidenceNote: adminEvalScoreFields.confidenceNote,
+}
+
+// Admin per-tour evaluation
+
+export const CreateAdminEvaluationSchema = z.object({
+  buddyId: z.string().uuid(),
+  tourId: z.string().uuid(),
+  ...adminEvalScoreFields,
+})
+export type CreateAdminEvaluation = z.infer<typeof CreateAdminEvaluationSchema>
+
+export const UpdateAdminEvaluationSchema = z.object(adminEvalScoreFields)
+export type UpdateAdminEvaluation = z.infer<typeof UpdateAdminEvaluationSchema>
+
+// Admin profile evaluation (overall)
+
+export const UpsertAdminProfileEvaluationSchema = z.object(adminEvalScoreFields)
+export type UpsertAdminProfileEvaluation = z.infer<typeof UpsertAdminProfileEvaluationSchema>
+
+// Buddy self-evaluation
+
+export const CreateSelfEvaluationSchema = z.object({
+  tourId: z.string().uuid(),
+  ...selfEvalScoreFields,
+})
+export type CreateSelfEvaluation = z.infer<typeof CreateSelfEvaluationSchema>
+
+export const UpdateSelfEvaluationSchema = z.object(selfEvalScoreFields)
+export type UpdateSelfEvaluation = z.infer<typeof UpdateSelfEvaluationSchema>
+
+// Evaluation response types
+
+type AdminEvalScores = {
+  overallRating: number | null
+  overallRatingNote: string | null
+  reliability: number | null
+  reliabilityNote: string | null
+  communication: number | null
+  communicationNote: string | null
+  groupEngagement: number | null
+  groupEngagementNote: string | null
+  memory: number | null
+  memoryNote: string | null
+  knowledge: number | null
+  knowledgeNote: string | null
+  dedication: number | null
+  dedicationNote: string | null
+  dialogue: number | null
+  dialogueNote: string | null
+  adaptability: number | null
+  adaptabilityNote: string | null
+  emotionNote: string | null
+  confidence: number | null
+  confidenceNote: string | null
+}
+
+type SelfEvalScores = Omit<AdminEvalScores, 'reliability' | 'reliabilityNote'>
+
+export type AdminEvaluationResponse = AdminEvalScores & {
+  id: string
+  buddyId: string
+  buddyDisplayName: string
+  tourId: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type AdminProfileEvaluationResponse = AdminEvalScores & {
+  id: string
+  buddyId: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type SelfEvaluationResponse = SelfEvalScores & {
+  id: string
+  buddyId: string
+  tourId: string
+  createdAt: string
+  updatedAt: string
+  locked: boolean
+}
+
+export type AdminSelfEvaluationResponse = SelfEvalScores & {
+  id: string
+  buddyId: string
+  buddyDisplayName: string
+  tourId: string
+  createdAt: string
+  updatedAt: string
+}
