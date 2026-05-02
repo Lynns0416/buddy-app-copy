@@ -269,6 +269,90 @@
     "thai": "タイ語",
     "vietnamese": "ベトナム語"
   },
+  "adminEvaluations": {
+    "sections": {
+      "profileEvaluation": "プロフィール評価",
+      "perTourEvaluations": "ツアー別評価",
+      "selfEvaluations": "自己評価"
+    },
+    "fields": {
+      "overallRating": "総合評価",
+      "overallRatingNote": "メモ",
+      "reliability": "信頼性",
+      "reliabilityNote": "メモ",
+      "communication": "コミュニケーション",
+      "communicationNote": "メモ",
+      "groupEngagement": "グループへの関与",
+      "groupEngagementNote": "メモ",
+      "memory": "記憶力",
+      "memoryNote": "メモ",
+      "knowledge": "知識",
+      "knowledgeNote": "メモ",
+      "dedication": "献身性",
+      "dedicationNote": "メモ",
+      "dialogue": "対話力",
+      "dialogueNote": "メモ",
+      "adaptability": "適応力",
+      "adaptabilityNote": "メモ",
+      "emotionNote": "感情メモ",
+      "confidence": "自信",
+      "confidenceNote": "メモ"
+    },
+    "scores": {
+      "1": "1 – 不十分",
+      "2": "2 – やや不十分",
+      "3": "3 – 普通",
+      "4": "4 – 良い",
+      "5": "5 – 優秀"
+    },
+    "actions": {
+      "save": "保存",
+      "edit": "編集",
+      "delete": "削除",
+      "addEvaluation": "評価を追加",
+      "cancel": "キャンセル",
+      "confirmDelete": "この評価を削除しますか？この操作は元に戻せません。",
+      "view": "表示"
+    },
+    "empty": {
+      "noEvaluations": "評価はありません",
+      "noSelfEvaluations": "自己評価はありません"
+    },
+    "table": {
+      "tourDate": "ツアー日",
+      "overallRating": "総合評価",
+      "updatedAt": "最終更新",
+      "submittedAt": "提出日時",
+      "locked": "ロック済み",
+      "actions": "操作"
+    },
+    "tourPicker": "ツアーを選択",
+    "scoreLegend": "1 = 不十分 · 2 = やや不十分 · 3 = 普通 · 4 = 良い · 5 = 優秀",
+    "notePlaceholder": "メモ（任意）",
+    "messages": {
+      "saved": "保存しました"
+    },
+    "error": {
+      "notFound": "評価が見つかりません。",
+      "forbidden": "この操作を行う権限がありません。",
+      "conflict": "このバディとツアーの組み合わせの評価はすでに存在します。",
+      "invalid_request": "入力内容に誤りがあります。確認してもう一度お試しください。",
+      "network": "接続エラーです。ネットワークを確認してください。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    },
+    "detail": {
+      "buddy": "バディ",
+      "tour": "ツアー",
+      "back": "戻る",
+      "profileEvalTitle": "プロフィール評価",
+      "perTourEvalTitle": "ツアー別評価",
+      "noEval": "まだ評価がありません。",
+      "addLink": "評価を追加 →",
+      "editLink": "評価を編集 →"
+    },
+    "scoreMin": "不十分",
+    "scoreMax": "優秀"
+  },
   "buddyStatus": {
     "pending": "承認待ち",
     "active": "アクティブ",

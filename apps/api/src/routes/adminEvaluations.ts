@@ -25,7 +25,10 @@ adminEvaluationRoutes.post('/', async (c) => {
   }
 
   const parsed = CreateAdminEvaluationSchema.safeParse(body)
-  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+  if (!parsed.success) {
+    console.error('[adminEvaluations POST] Zod error:', JSON.stringify(parsed.error.flatten()))
+    return c.json(apiError('invalid_request'), 400)
+  }
 
   const { id } = c.get('user')
   try {
@@ -62,7 +65,10 @@ adminEvaluationRoutes.put('/:id', async (c) => {
   }
 
   const parsed = UpdateAdminEvaluationSchema.safeParse(body)
-  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+  if (!parsed.success) {
+    console.error('[adminEvaluations PUT] Zod error:', JSON.stringify(parsed.error.flatten()))
+    return c.json(apiError('invalid_request'), 400)
+  }
 
   try {
     return c.json(await updateAdminEvaluation(id, parsed.data))

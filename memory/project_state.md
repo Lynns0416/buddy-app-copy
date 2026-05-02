@@ -4,132 +4,167 @@ description: Current build status, blockers, and next steps
 type: project
 originSessionId: fc506377-5348-44f6-8a36-6390a05db19f
 ---
-## Next (priority order)
+## Current branch — feat/admin/evaluation-ui
 
-Phase 2 — `trainee` BuddyStatus alignment (§5.1):
+Admin-side evaluation UI only. No buddy-side UI in this branch.
 
-| File | Change |
+### Decisions
+
+- **Per-tour eval entry points**: both buddy detail page and tour detail page (inline forms, no modal, no separate eval page)
+- **Score field UX**: radio buttons (1–5) + optional note textarea per field
+- **Profile eval form**: always rendered directly — empty if no data, pre-filled if data exists. No CTA or modal.
+- **Tour detail page**: must be built in this branch (new — `/admin/tours/[id]` page does not yet exist)
+
+---
+
+### Plan
+
+#### Step 1 — API client wiring
+
+`apps/web/src/lib/api-client.ts` — add functions:
+- `listAdminEvaluations({ buddyId?, tourId? })` → `AdminEvaluationResponse[]`
+- `createAdminEvaluation(data: CreateAdminEvaluation)` → `AdminEvaluationResponse`
+- `updateAdminEvaluation(id, data: UpdateAdminEvaluation)` → `AdminEvaluationResponse`
+- `deleteAdminEvaluation(id)` → `void`
+- `upsertAdminProfileEvaluation(buddyId, data: UpsertAdminProfileEvaluation)` → `AdminProfileEvaluationResponse`
+- `getAdminProfileEvaluation(buddyId)` → `AdminProfileEvaluationResponse | null`
+- `listAdminSelfEvaluations({ buddyId? })` → `AdminSelfEvaluationResponse[]`
+- `getAdminSelfEvaluation(id)` → `AdminSelfEvaluationResponse`
+
+`apps/web/src/lib/api-paths.ts` — add constants:
+- `adminEvaluations`, `adminEvaluation(id)`
+- `adminProfileEvaluation(buddyId)`
+- `adminSelfEvaluations`, `adminSelfEvaluation(id)`
+
+#### Step 2 — Shared primitive
+
+`apps/web/src/app/[locale]/admin/_components/evaluation-score-field.tsx`
+- Props: `name`, `label`, `value: number | null`, `noteValue: string | null`, `onChange`, `noteOnChange`, `disabled?`
+- Renders: radio group (1–5, labelled) + optional note textarea below
+- Reused by all evaluation forms
+- i18n: score labels in `adminEvaluations.scores.*`
+
+#### Step 3 — Buddy detail page additions
+
+Entry: `apps/web/src/app/[locale]/admin/buddies/[id]/page.tsx`
+
+Three new sections, rendered below existing BuddyBookingHistory:
+
+**3a. Profile Evaluation** — `admin-profile-evaluation-form.tsx`
+- On mount: fetch `getAdminProfileEvaluation(buddyId)` — pre-fills or shows empty form
+- All 11 score fields (including reliability) via `evaluation-score-field.tsx`
+- Single "Save" button → `upsertAdminProfileEvaluation`
+- No delete action (upsert only)
+
+**3b. Per-Tour Evaluations** — `buddy-per-tour-evaluations.tsx` (container) + `buddy-per-tour-evaluation-form.tsx` (form)
+- On mount: fetch `listAdminEvaluations({ buddyId })`
+- Table: tour date, overall rating, last updated, "Edit" / "Delete"
+- "Add Evaluation" button → inline form (tourId required; shows tour picker from buddy's confirmed bookings)
+- Edit: inline form pre-filled with existing data
+- Delete: confirm + `deleteAdminEvaluation`
+- Tour picker source: `AdminBuddyDetailResponse.bookings` (already fetched) — filter to confirmed only
+
+**3c. Self-Evaluations (read-only)** — `admin-self-evaluations.tsx`
+- On mount: fetch `listAdminSelfEvaluations({ buddyId })`
+- Read-only table: tour date, overall rating, locked status, submitted at
+- Row expand: shows all field values read-only (or inline detail)
+
+#### Step 4 — Tour detail page (new)
+
+`apps/web/src/app/[locale]/admin/tours/[id]/page.tsx`
+
+- Fetches `getAdminTour(id)` (already in api-client) → `AdminTourDetailResponse`
+- Shows tour header: date, location, status, capacity, group name
+- Shows buddy list from `bookings` (`AdminTourBookingEntry[]`): displayName, bookingStatus
+- For each confirmed-booking buddy: "Evaluate" → inline `tour-per-buddy-evaluation-form.tsx`
+  - Pre-checks if eval exists via `listAdminEvaluations({ tourId })` fetched on mount
+  - "Edit" if eval exists, "Add" if not
+
+No tour editing in this branch (that's `adminTourEdit`).
+
+#### Step 5 — i18n
+
+New namespace `adminEvaluations` in both `en.json` and `ja.json`:
+- `adminEvaluations.sections.profileEvaluation`
+- `adminEvaluations.sections.perTourEvaluations`
+- `adminEvaluations.sections.selfEvaluations`
+- `adminEvaluations.fields.*` — one key per field (overallRating, reliability, communication, …)
+- `adminEvaluations.fields.*.note` — note field label per dimension
+- `adminEvaluations.scores.1` through `adminEvaluations.scores.5` — radio labels
+- `adminEvaluations.actions.*` — save, edit, delete, addEvaluation
+- `adminEvaluations.empty.*` — empty state strings
+
+---
+
+### Component file map
+
+| File | Location |
 |---|---|
-| `packages/types/src/index.ts` | Add `'trainee'` to `BuddyStatusSchema`; add `trainee` variant to `UpdateBuddyStatusSchema` |
-| `apps/api/src/services/admin.service.ts` | Handle `trainee` in status transitions |
-| `apps/web/src/lib/status-display.ts` | Add `trainee` entry to `buddyStatusBadgeVariant` |
-| `apps/web/messages/{en,ja}.json` | Add `buddyStatus.trainee` key |
-| `apps/web/src/app/[locale]/dashboard/page.tsx` | Revisit auth-gate: `trainee` buddies can view but not book |
-| Prisma migration | `ALTER TYPE BuddyStatus ADD VALUE 'trainee'` |
+| `evaluation-score-field.tsx` | `admin/_components/` — atomic UI primitive only |
+| `admin-profile-evaluation-form.tsx` | `admin/buddies/[id]/_components/` |
+| `buddy-per-tour-evaluations.tsx` | `admin/buddies/[id]/_components/` |
+| `buddy-per-tour-evaluation-form.tsx` | `admin/buddies/[id]/_components/` |
+| `admin-self-evaluations.tsx` | `admin/buddies/[id]/_components/` |
+| `tour-buddy-list.tsx` | `admin/tours/[id]/_components/` |
+| `tour-per-buddy-evaluation-form.tsx` | `admin/tours/[id]/_components/` |
 
-## Decisions
+---
+
+## Built — feat/evaluation-base (merged)
+
+| What | Files |
+|---|---|
+| Prisma models | `AdminEvaluation`, `SelfEvaluation`, `AdminProfileEvaluation` |
+| Zod schemas + response types | `packages/types/src/index.ts` |
+| Admin per-tour eval CRUD | `services/adminEvaluation.service.ts`, `routes/adminEvaluations.ts` |
+| Admin profile eval upsert/get | `services/adminProfileEvaluation.service.ts`, `routes/adminProfileEvaluations.ts` |
+| Buddy self-eval create/list/update | `services/selfEvaluation.service.ts`, `routes/selfEvaluations.ts` |
+| Admin read of self-evals | `routes/adminSelfEvaluations.ts` |
+
+## Decisions (stable)
+
+### Evaluation system
+- Admin per-tour eval: one per buddy per tour, `@@unique([buddyId, tourId])`; any admin can edit; no deadline
+- Self-eval: editable until `createdAt + 7 days` (`SELF_EVAL_EDIT_WINDOW_DAYS = 7`), computed at service layer
+- Profile eval: one per buddy (upsert); no tour link; no deadline; `createdBy` = original creator only
+- `overallRating`: stored, manually set — not computed from dimension scores
+- Future: Slack notification, quarterly term evaluations — deferred
 
 ### Admin buddy pages
 - Flat navigation: pending + buddies as separate top-level menu items
-- API uses query params (`?status=pending`, `?status=active`); `/admin/buddies/pending` is a Next.js page URL only
+- API uses query params (`?status=pending`, `?status=active`)
 
 ### Admin buddy detail — booking history
-- `GET /admin/buddies/:id` returns `AdminBuddyDetailResponse` (additive — list endpoints keep returning `AdminBuddyResponse`)
-- Show all bookings, no status filter
-- Group name cell links to `/admin/tours/:id`
-- Default sort: tour date descending
+- `GET /admin/buddies/:id` returns `AdminBuddyDetailResponse`
+- Show all bookings, no status filter; group name links to tour detail; default sort: tour date desc
 
 ### Buddy profile settings (§11.6)
-- Language enum (`LanguageSchema`) ordered for UI — priority tier first
-- Skills: free text textarea (one per line, split on `\n` before submit)
-- Photo (`photoUrl`): disabled field with "coming soon" text; not sent in PUT body
-- Both `displayName` and `realName` editable by buddy
-- After save: stay on page, refetch profile, show inline success message
+- Language enum ordered for UI — priority tier first
+- Skills: free text textarea (one per line)
+- Photo: disabled, "coming soon"
+- Both `displayName` and `realName` editable
+- After save: stay on page, refetch, inline success message
 - Cancel: navigate to `/dashboard`
-- `languages.*` i18n namespace kept separate from `profile.*` for reuse in admin views
+- `languages.*` i18n namespace separate from `profile.*`
 
-### Status display (shared, all pages)
-- `apps/web/src/lib/status-display.ts` — pure functions `getBuddyStatusLabel(t, s)`, `getTourStatusLabel(t, s)`, `getBookingStatusLabel(t, s)` and badge variant maps
-- Caller adds `const tXxxStatus = useTranslations('xxxStatus')` and passes it to the helper
-- Shared i18n namespaces: `buddyStatus.*`, `tourStatus.*`, `bookingStatus.*` (top-level in en.json/ja.json)
-- Old inline `Record<TourStatus, string>` maps removed from all page files
-- `trainee` BuddyStatus deferred to phase 2 — see Next table above
+### Status display (shared)
+- `apps/web/src/lib/status-display.ts` — `getBuddyStatusLabel`, `getTourStatusLabel`, `getBookingStatusLabel`
+- Shared i18n namespaces: `buddyStatus.*`, `tourStatus.*`, `bookingStatus.*`
 
-### Buddy profile header (read-only display)
-- Shows account status badge + "Member since" date
+### Buddy profile header
+- Status badge + "Member since" date
 - `Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' })`
-- Tier hidden from buddy per §5.2
+- Tier hidden from buddy (§5.2)
 
-## 9. Evaluation System
+## Deferred — Phase 2
 
-### 9.1 Overview
+`trainee` BuddyStatus alignment (§5.1):
 
-Two evaluation types: **admin evaluations** (internal, hidden from buddies) and **buddy self-evaluations** (visible to admins and the buddy themselves).
-
-Both types are **per-tour** and **editable until a deadline** (after which they become read-only).
-
-Future scope (not in base): Slack notification on tour completion, quarterly term evaluations.
-
-### 9.2 Admin Evaluations
-
-#### Design decisions
-- Always linked to a specific tour (`tourId` required, not nullable)
-- **One record per buddy per tour** — unique constraint `[buddyId, tourId]`; any admin can create or update
-- No modal prompt after tour completion — admins evaluate async, when they have time
-- `createdBy` tracks who created the record (audit); any admin can subsequently edit
-- Editable until an edit deadline (mechanism TBD — see open questions)
-- Buddies have no visibility
-
-#### Fields
-
-All score fields: **1 = Needs Improvement / 2 = Developing / 3 = Proficient / 4 = Advanced / 5 = Exceptional**. All text fields optional.
-
-| Field | Score | Text | Notes |
-|---|---|---|---|
-| Overall rating | 1–5 | ✅ | |
-| Reliability | 1–5 | ✅ | Admin eval only |
-| Communication | 1–5 | ✅ | |
-| Group engagement | 1–5 | ✅ | |
-| Memory | 1–5 | ✅ | Remembering names, details, preferences |
-| Knowledge | 1–5 | ✅ | Content accuracy and depth |
-| Dedication | 1–5 | ✅ | Effort and commitment |
-| Dialogue | 1–5 | ✅ | Core differentiating skill |
-| Adaptability | 1–5 | ✅ | Handling unexpected situations |
-| Emotion | — | ✅ | Cannot be meaningfully scored |
-| Confidence | 1–5 | ✅ | |
-
-### 9.3 Buddy Self-Evaluations
-
-#### Design decisions
-- Always linked to a tour (`tourId` required)
-- One per buddy per tour — unique constraint `[buddyId, tourId]`
-- Buddy can only submit if they had a `confirmed` booking on the tour
-- Editable until an edit deadline (same mechanism as admin eval)
-- Admins can read all; buddies can only read their own
-
-#### Fields
-
-| Field | Score | Text |
-|---|---|---|
-| Overall rating | 1–5 | ✅ |
-| Communication | 1–5 | ✅ |
-| Group engagement | 1–5 | ✅ |
-| Memory | 1–5 | ✅ |
-| Knowledge | 1–5 | ✅ |
-| Dedication | 1–5 | ✅ |
-| Dialogue | 1–5 | ✅ |
-| Adaptability | 1–5 | ✅ |
-| Emotion | — | ✅ |
-| Confidence | 1–5 | ✅ |
-
-### 9.4 Admin Profile Evaluation (Overall)
-
-A separate model from per-tour evaluations. One record per buddy (upsert semantics). Not tour-linked. Same fields as admin per-tour eval (including reliability). Any admin can create or update. No edit deadline.
-
-This is the buddy's "standing overall profile" as maintained by admins. UI may show a calculated average from per-tour history alongside this manually-set overall.
-
-### 9.5 Self-Eval Edit Lock
-
-- Before submission: always open
-- After submission: editable until `createdAt + N_DAYS` (constant, TBD)
-- No DB field — service computes lock state from `createdAt`
-- Admin evals: no deadline, always editable
-
-### 9.6 `overallRating` field
-
-Stored, human-set. Not computed from other fields. UI will separately calculate and display an average from individual dimension scores. No DB aggregate needed.
-
-### 9.7 Open Questions (must resolve before implementation)
-1. **N_DAYS for self-eval lock**: how many days after submission should the edit window close? (e.g., 7, 14, 30?)
-2. **Quarterly / term evaluation**: deferred — design TBD. Not in base scope.
-3. **`PUT /admin/profile-evaluations/:buddyId` tracking**: should `createdBy` be updated to `lastEditedBy` on each update, or kept as original creator? (Currently planned as original creator only.)
+| File | Change |
+|---|---|
+| `packages/types/src/index.ts` | Add `'trainee'` to `BuddyStatusSchema` |
+| `apps/api/src/services/admin.service.ts` | Handle `trainee` in status transitions |
+| `apps/web/src/lib/status-display.ts` | Add `trainee` to `buddyStatusBadgeVariant` |
+| `apps/web/messages/{en,ja}.json` | Add `buddyStatus.trainee` key |
+| `apps/web/src/app/[locale]/dashboard/page.tsx` | `trainee` buddies can view but not book |
+| Prisma migration | `ALTER TYPE BuddyStatus ADD VALUE 'trainee'` |

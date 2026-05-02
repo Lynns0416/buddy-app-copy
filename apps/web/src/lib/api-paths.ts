@@ -20,4 +20,10 @@ export const apiPaths = {
   adminTours: '/admin/tours',
   adminTour: (id: string) => `/admin/tours/${id}`,
   adminTourStatus: (id: string) => `/admin/tours/${id}/status`,
+
+  adminEvaluations: '/admin/evaluations',
+  adminEvaluation: (id: string) => `/admin/evaluations/${id}`,
+  adminProfileEvaluation: (buddyId: string) => `/admin/profile-evaluations/${buddyId}`,
+  adminSelfEvaluations: '/admin/self-evaluations',
+  adminSelfEvaluation: (id: string) => `/admin/self-evaluations/${id}`,
 } as const

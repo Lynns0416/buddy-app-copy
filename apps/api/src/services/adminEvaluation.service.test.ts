@@ -50,6 +50,7 @@ const evalRow = {
   buddyId: 'buddy-1',
   buddy: { displayName: 'Test Buddy' },
   tourId: 'tour-1',
+  tour: { tourDate: new Date('2026-01-15'), group: { name: 'Test Group' } },
   createdBy: 'user-1',
   overallRating: 4,
   overallRatingNote: null,

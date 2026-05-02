@@ -21,6 +21,12 @@ import type {
   UpdateAdminBuddyProfile,
   BuddyProfileResponse,
   UpdateBuddyProfile,
+  AdminEvaluationResponse,
+  CreateAdminEvaluation,
+  UpdateAdminEvaluation,
+  AdminProfileEvaluationResponse,
+  UpsertAdminProfileEvaluation,
+  AdminSelfEvaluationResponse,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -93,6 +99,41 @@ export const apiClient = {
 
   deleteAdminTour: (id: string) =>
     apiRequest<void>(apiPaths.adminTour(id), { method: 'DELETE' }),
+
+  // Admin — Evaluations
+  listAdminEvaluations: (params: { buddyId?: string; tourId?: string }) => {
+    const qs = new URLSearchParams()
+    if (params.buddyId) qs.set('buddyId', params.buddyId)
+    if (params.tourId) qs.set('tourId', params.tourId)
+    const query = qs.toString()
+    return apiRequest<AdminEvaluationResponse[]>(query ? `${apiPaths.adminEvaluations}?${query}` : apiPaths.adminEvaluations)
+  },
+
+  getAdminEvaluation: (id: string) =>
+    apiRequest<AdminEvaluationResponse>(apiPaths.adminEvaluation(id)),
+
+  createAdminEvaluation: (data: CreateAdminEvaluation) =>
+    apiRequest<AdminEvaluationResponse>(apiPaths.adminEvaluations, { method: 'POST', body: JSON.stringify(data) }),
+
+  updateAdminEvaluation: (id: string, data: UpdateAdminEvaluation) =>
+    apiRequest<AdminEvaluationResponse>(apiPaths.adminEvaluation(id), { method: 'PUT', body: JSON.stringify(data) }),
+
+  deleteAdminEvaluation: (id: string) =>
+    apiRequest<void>(apiPaths.adminEvaluation(id), { method: 'DELETE' }),
+
+  getAdminProfileEvaluation: (buddyId: string) =>
+    apiRequest<AdminProfileEvaluationResponse>(apiPaths.adminProfileEvaluation(buddyId)),
+
+  upsertAdminProfileEvaluation: (buddyId: string, data: UpsertAdminProfileEvaluation) =>
+    apiRequest<AdminProfileEvaluationResponse>(apiPaths.adminProfileEvaluation(buddyId), { method: 'PUT', body: JSON.stringify(data) }),
+
+  listAdminSelfEvaluations: (params: { buddyId?: string }) =>
+    apiRequest<AdminSelfEvaluationResponse[]>(
+      params.buddyId ? `${apiPaths.adminSelfEvaluations}?buddyId=${params.buddyId}` : apiPaths.adminSelfEvaluations,
+    ),
+
+  getAdminSelfEvaluation: (id: string) =>
+    apiRequest<AdminSelfEvaluationResponse>(apiPaths.adminSelfEvaluation(id)),
 
   // Buddy — Tours
   listTours: (from?: string) =>

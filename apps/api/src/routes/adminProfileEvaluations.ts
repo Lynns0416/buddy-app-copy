@@ -21,7 +21,10 @@ adminProfileEvaluationRoutes.put('/:buddyId', async (c) => {
   }
 
   const parsed = UpsertAdminProfileEvaluationSchema.safeParse(body)
-  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+  if (!parsed.success) {
+    console.error('[adminProfileEvaluations PUT] Zod error:', JSON.stringify(parsed.error.flatten()))
+    return c.json(apiError('invalid_request'), 400)
+  }
 
   const { id } = c.get('user')
   try {

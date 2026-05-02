@@ -31,6 +31,7 @@ const adminEvalSelect = {
   buddyId: true,
   buddy: { select: { displayName: true } },
   tourId: true,
+  tour: { select: { tourDate: true, group: { select: { name: true } } } },
   createdBy: true,
   overallRating: true,
   overallRatingNote: true,
@@ -62,6 +63,7 @@ function mapResponse(row: {
   buddyId: string
   buddy: { displayName: string }
   tourId: string
+  tour: { tourDate: Date; group: { name: string } }
   createdBy: string
   overallRating: number | null
   overallRatingNote: string | null
@@ -92,6 +94,8 @@ function mapResponse(row: {
     buddyId: row.buddyId,
     buddyDisplayName: row.buddy.displayName,
     tourId: row.tourId,
+    tourDate: row.tour.tourDate.toISOString(),
+    tourGroupName: row.tour.group.name,
     createdBy: row.createdBy,
     overallRating: row.overallRating,
     overallRatingNote: row.overallRatingNote,

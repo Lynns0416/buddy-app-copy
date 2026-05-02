@@ -104,6 +104,8 @@ const mockEval: AdminEvaluationResponse = {
   buddyId: 'buddy-1',
   buddyDisplayName: 'Test Buddy',
   tourId: 'tour-1',
+  tourDate: '2026-01-15T00:00:00.000Z',
+  tourGroupName: 'Test Group',
   createdBy: 'user-1',
   overallRating: 4,
   overallRatingNote: null,

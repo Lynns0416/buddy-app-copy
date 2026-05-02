@@ -72,7 +72,7 @@ All commands use the modern `docker-compose` syntax. Run all one-off commands wi
 | Task | Command |
 |------|---------|
 | Start dev servers | `docker-compose up --build` |
-| Seed database | `docker-compose run --rm api sh -c "cd /app && pnpm exec prisma db seed"` |
+| Seed database | `docker-compose exec api npx tsx prisma/seed.ts` |
 | Reset database | `docker-compose down -v && docker compose up --build` |
 | Stop all services | `docker-compose down` |
 
@@ -117,7 +117,7 @@ Migrations run automatically on API container start.
 To seed the database with dummy data for local development:
 
 ```bash
-docker-compose run --rm api sh -c "cd /app && pnpm exec prisma db seed"
+docker-compose exec api npx tsx prisma/seed.ts
 ```
 
 To reset the database:

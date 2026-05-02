@@ -269,6 +269,90 @@
     "thai": "Thai",
     "vietnamese": "Vietnamese"
   },
+  "adminEvaluations": {
+    "sections": {
+      "profileEvaluation": "Profile Evaluation",
+      "perTourEvaluations": "Per-Tour Evaluations",
+      "selfEvaluations": "Self-Evaluations"
+    },
+    "fields": {
+      "overallRating": "Overall Rating",
+      "overallRatingNote": "Note",
+      "reliability": "Reliability",
+      "reliabilityNote": "Note",
+      "communication": "Communication",
+      "communicationNote": "Note",
+      "groupEngagement": "Group Engagement",
+      "groupEngagementNote": "Note",
+      "memory": "Memory",
+      "memoryNote": "Note",
+      "knowledge": "Knowledge",
+      "knowledgeNote": "Note",
+      "dedication": "Dedication",
+      "dedicationNote": "Note",
+      "dialogue": "Dialogue",
+      "dialogueNote": "Note",
+      "adaptability": "Adaptability",
+      "adaptabilityNote": "Note",
+      "emotionNote": "Emotional Note",
+      "confidence": "Confidence",
+      "confidenceNote": "Note"
+    },
+    "scores": {
+      "1": "1 – Poor",
+      "2": "2 – Below Average",
+      "3": "3 – Average",
+      "4": "4 – Good",
+      "5": "5 – Excellent"
+    },
+    "actions": {
+      "save": "Save",
+      "edit": "Edit",
+      "delete": "Delete",
+      "addEvaluation": "Add Evaluation",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete this evaluation? This cannot be undone.",
+      "view": "View"
+    },
+    "empty": {
+      "noEvaluations": "No evaluations yet",
+      "noSelfEvaluations": "No self-evaluations yet"
+    },
+    "table": {
+      "tourDate": "Tour Date",
+      "overallRating": "Overall Rating",
+      "updatedAt": "Last Updated",
+      "submittedAt": "Submitted At",
+      "locked": "Locked",
+      "actions": "Actions"
+    },
+    "tourPicker": "Select Tour",
+    "scoreLegend": "1 = Poor · 2 = Below average · 3 = Average · 4 = Good · 5 = Excellent",
+    "notePlaceholder": "Note (optional)",
+    "messages": {
+      "saved": "Saved"
+    },
+    "error": {
+      "notFound": "Evaluation not found.",
+      "forbidden": "You don't have permission to perform this action.",
+      "conflict": "An evaluation for this buddy/tour combination already exists.",
+      "invalid_request": "Invalid data. Please check your input and try again.",
+      "network": "Network error. Please check your connection.",
+      "unknown": "An error occurred. Please try again."
+    },
+    "detail": {
+      "buddy": "Buddy",
+      "tour": "Tour",
+      "back": "Back",
+      "profileEvalTitle": "Profile Evaluation",
+      "perTourEvalTitle": "Per-Tour Evaluation",
+      "noEval": "No evaluation yet.",
+      "addLink": "Add evaluation →",
+      "editLink": "Edit evaluation →"
+    },
+    "scoreMin": "Poor",
+    "scoreMax": "Excellent"
+  },
   "buddyStatus": {
     "pending": "Pending",
     "active": "Active",

@@ -21,22 +21,22 @@ const FIREBASE_UIDS = authExport.users.map((u: any) => u.localId)
 
 // Fixed IDs for groups, tours (never auto-created via login)
 const ID = {
-  school:        'seed-group-001',
-  company:       'seed-group-002',
-  hs1:           'seed-group-hs-001',
-  hs2:           'seed-group-hs-002',
-  jhs1:          'seed-group-jhs-001',
-  jhs2:          'seed-group-jhs-002',
-  tourUrgent:    'seed-tour-001',
-  tourMidterm:   'seed-tour-002',
-  tourOpen:      'seed-tour-003',
-  tourPast:      'seed-tour-004',
-  tourDraft:     'seed-tour-005',
-  tourCancelled: 'seed-tour-006',
-  tourPeace1:    'seed-tour-peace-001',
-  tourPeace2:    'seed-tour-peace-002',
-  tourPeace3:    'seed-tour-peace-003',
-  tourPeace4:    'seed-tour-peace-004',
+  school:        '00000000-0000-0000-0000-000000000001',
+  company:       '00000000-0000-0000-0000-000000000002',
+  hs1:           '00000000-0000-0000-0000-000000000003',
+  hs2:           '00000000-0000-0000-0000-000000000004',
+  jhs1:          '00000000-0000-0000-0000-000000000005',
+  jhs2:          '00000000-0000-0000-0000-000000000006',
+  tourUrgent:    '00000000-0000-0000-0001-000000000001',
+  tourMidterm:   '00000000-0000-0000-0001-000000000002',
+  tourOpen:      '00000000-0000-0000-0001-000000000003',
+  tourPast:      '00000000-0000-0000-0001-000000000004',
+  tourDraft:     '00000000-0000-0000-0001-000000000005',
+  tourCancelled: '00000000-0000-0000-0001-000000000006',
+  tourPeace1:    '00000000-0000-0000-0001-000000000007',
+  tourPeace2:    '00000000-0000-0000-0001-000000000008',
+  tourPeace3:    '00000000-0000-0000-0001-000000000009',
+  tourPeace4:    '00000000-0000-0000-0001-000000000010',
 }
 
 function daysFromNow(days: number): Date {
@@ -411,6 +411,108 @@ async function main() {
         create: booking,
       })
     }
+  }
+
+  // ── Evaluations (skip if no buddies) ────────────────────────
+  if (buddies.length > 0) {
+    // Ensure b(1) also has a confirmed booking on tourPast so TourBuddyEvalSection shows 2 buddies
+    if (buddies.length > 1) {
+      await prisma.booking.upsert({
+        where: { buddyId_tourId: { buddyId: b(1)!, tourId: ID.tourPast } },
+        update: {},
+        create: { buddyId: b(1)!, tourId: ID.tourPast, status: BookingStatus.confirmed },
+      })
+    }
+
+    // Admin per-tour evaluations for tourPast
+    await prisma.adminEvaluation.upsert({
+      where: { buddyId_tourId: { buddyId: b(0)!, tourId: ID.tourPast } },
+      update: {},
+      create: {
+        buddyId: b(0)!,
+        tourId: ID.tourPast,
+        createdBy: adminUser.id,
+        overallRating: 4,
+        overallRatingNote: '安定したパフォーマンスを発揮してくれました。',
+        reliability: 5,
+        communication: 4,
+        groupEngagement: 4,
+        memory: 3,
+        memoryNote: '一部の歴史的事実に不正確な点がありました。',
+        knowledge: 4,
+        dedication: 5,
+        dialogue: 4,
+        adaptability: 3,
+        confidence: 4,
+        emotionNote: '訪問者の感情に寄り添う対応が印象的でした。',
+      },
+    })
+
+    if (buddies.length > 1) {
+      await prisma.adminEvaluation.upsert({
+        where: { buddyId_tourId: { buddyId: b(1)!, tourId: ID.tourPast } },
+        update: {},
+        create: {
+          buddyId: b(1)!,
+          tourId: ID.tourPast,
+          createdBy: adminUser.id,
+          overallRating: 3,
+          reliability: 3,
+          communication: 3,
+          groupEngagement: 4,
+          knowledge: 3,
+          dedication: 3,
+          dialogue: 2,
+          dialogueNote: '対話の深みが不足していました。',
+          adaptability: 4,
+          confidence: 3,
+        },
+      })
+    }
+
+    // Admin profile evaluations
+    await prisma.adminProfileEvaluation.upsert({
+      where: { buddyId: b(0)! },
+      update: {},
+      create: {
+        buddyId: b(0)!,
+        createdBy: adminUser.id,
+        overallRating: 4,
+        overallRatingNote: '全体的に信頼できるバディです。',
+        reliability: 5,
+        communication: 4,
+        groupEngagement: 4,
+        memory: 4,
+        knowledge: 4,
+        dedication: 5,
+        dialogue: 4,
+        adaptability: 3,
+        confidence: 4,
+        emotionNote: '共感力が高く、訪問者から好評です。',
+      },
+    })
+
+    // Buddy self-evaluation for tourPast
+    await prisma.selfEvaluation.upsert({
+      where: { buddyId_tourId: { buddyId: b(0)!, tourId: ID.tourPast } },
+      update: {},
+      create: {
+        buddyId: b(0)!,
+        tourId: ID.tourPast,
+        overallRating: 3,
+        overallRatingNote: '知識の整理ができていなかった部分があります。',
+        communication: 4,
+        groupEngagement: 4,
+        memory: 3,
+        memoryNote: '資料の復習が必要だと感じました。',
+        knowledge: 3,
+        dedication: 4,
+        dialogue: 3,
+        adaptability: 4,
+        confidence: 3,
+        confidenceNote: '緊張してしまった場面がありました。',
+      },
+    })
   }
 
   // ── Dynamic "me" ────────────────────────────────────────────

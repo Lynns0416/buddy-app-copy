@@ -396,27 +396,27 @@ export type MyBookingEntry = {
 export const EvaluationScoreSchema = z.number().int().min(1).max(5)
 
 const adminEvalScoreFields = {
-  overallRating: EvaluationScoreSchema.optional(),
-  overallRatingNote: z.string().optional(),
-  reliability: EvaluationScoreSchema.optional(),
-  reliabilityNote: z.string().optional(),
-  communication: EvaluationScoreSchema.optional(),
-  communicationNote: z.string().optional(),
-  groupEngagement: EvaluationScoreSchema.optional(),
-  groupEngagementNote: z.string().optional(),
-  memory: EvaluationScoreSchema.optional(),
-  memoryNote: z.string().optional(),
-  knowledge: EvaluationScoreSchema.optional(),
-  knowledgeNote: z.string().optional(),
-  dedication: EvaluationScoreSchema.optional(),
-  dedicationNote: z.string().optional(),
-  dialogue: EvaluationScoreSchema.optional(),
-  dialogueNote: z.string().optional(),
-  adaptability: EvaluationScoreSchema.optional(),
-  adaptabilityNote: z.string().optional(),
-  emotionNote: z.string().optional(),
-  confidence: EvaluationScoreSchema.optional(),
-  confidenceNote: z.string().optional(),
+  overallRating: EvaluationScoreSchema.nullish(),
+  overallRatingNote: z.string().nullish(),
+  reliability: EvaluationScoreSchema.nullish(),
+  reliabilityNote: z.string().nullish(),
+  communication: EvaluationScoreSchema.nullish(),
+  communicationNote: z.string().nullish(),
+  groupEngagement: EvaluationScoreSchema.nullish(),
+  groupEngagementNote: z.string().nullish(),
+  memory: EvaluationScoreSchema.nullish(),
+  memoryNote: z.string().nullish(),
+  knowledge: EvaluationScoreSchema.nullish(),
+  knowledgeNote: z.string().nullish(),
+  dedication: EvaluationScoreSchema.nullish(),
+  dedicationNote: z.string().nullish(),
+  dialogue: EvaluationScoreSchema.nullish(),
+  dialogueNote: z.string().nullish(),
+  adaptability: EvaluationScoreSchema.nullish(),
+  adaptabilityNote: z.string().nullish(),
+  emotionNote: z.string().nullish(),
+  confidence: EvaluationScoreSchema.nullish(),
+  confidenceNote: z.string().nullish(),
 }
 
 const selfEvalScoreFields = {
@@ -502,6 +502,8 @@ export type AdminEvaluationResponse = AdminEvalScores & {
   buddyId: string
   buddyDisplayName: string
   tourId: string
+  tourDate: string
+  tourGroupName: string
   createdBy: string
   createdAt: string
   updatedAt: string

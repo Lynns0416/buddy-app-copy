@@ -18,6 +18,7 @@ import {
   type BookingSortField,
 } from '../admin.tour'
 import { getTourStatusLabel, getBookingStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
+import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
 
 const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
@@ -33,6 +34,7 @@ export default function AdminTourDetailPage() {
   const t = useTranslations('adminTours')
   const tTourStatus = useTranslations('tourStatus')
   const tBookingStatus = useTranslations('bookingStatus')
+  const tEval = useTranslations('adminEvaluations')
   const [tour, setTour] = useState<AdminTourDetailResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -252,6 +254,13 @@ export default function AdminTourDetailPage() {
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {tour.status === TourStatusSchema.enum.completed && (
+        <>
+          <h2 className="mt-8 mb-3 text-base font-semibold">{tEval('sections.perTourEvaluations')}</h2>
+          <TourBuddyEvalSection tourId={tour.id} bookings={tour.bookings} />
+        </>
       )}
     </AppShell>
   )

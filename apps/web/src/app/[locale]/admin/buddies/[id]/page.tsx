@@ -13,6 +13,9 @@ import { routes } from '@/lib/routes'
 import { fetchBuddy, mapBuddyError } from '../admin.buddy'
 import { BuddyForm } from '../_components/buddy-form'
 import { BuddyBookingHistory } from '../_components/buddy-booking-history'
+import { BuddyPerTourEvaluations } from '../_components/buddy-per-tour-evaluations'
+import { BuddySelfEvaluations } from '../_components/buddy-self-evaluations'
+import { AdminProfileEvaluationSummary } from '../_components/admin-profile-evaluation-summary'
 
 export default function AdminBuddyDetailPage() {
   const { ready } = useAdminGuard()
@@ -21,6 +24,7 @@ export default function AdminBuddyDetailPage() {
   const id = params.id as string
   const t = useTranslations('adminBuddies')
   const tBuddyStatus = useTranslations('buddyStatus')
+  const tEval = useTranslations('adminEvaluations')
   const [buddy, setBuddy] = useState<AdminBuddyDetailResponse | null>(null)
   const [fetched, setFetched] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -88,6 +92,15 @@ export default function AdminBuddyDetailPage() {
 
         <h2 className="mt-10 mb-4 text-lg font-semibold">{t('bookingHistoryTitle')}</h2>
         <BuddyBookingHistory bookings={buddy.bookings} />
+
+        <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.profileEvaluation')}</h2>
+        <AdminProfileEvaluationSummary buddyId={buddy.id} />
+
+        <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.perTourEvaluations')}</h2>
+        <BuddyPerTourEvaluations buddyId={buddy.id} bookings={buddy.bookings} />
+
+        <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.selfEvaluations')}</h2>
+        <BuddySelfEvaluations buddyId={buddy.id} />
       </div>
     </AppShell>
   )

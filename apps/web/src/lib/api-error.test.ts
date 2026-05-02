@@ -35,6 +35,12 @@ describe('classifyApiError', () => {
     expect(result).toEqual({ code: 'conflict' })
   })
 
+  it('returns invalid_request for 400', () => {
+    const err = new ApiError('Bad request', 400)
+    const result = classifyApiError(err)
+    expect(result).toEqual({ code: 'invalid_request' })
+  })
+
   it('returns unknown for unmapped ApiError status', () => {
     const err = new ApiError('Server error', 500)
     const result = classifyApiError(err)
