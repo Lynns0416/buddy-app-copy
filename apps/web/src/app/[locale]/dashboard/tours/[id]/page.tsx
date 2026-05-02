@@ -20,6 +20,7 @@ import { createInitialBooking, updateBookingStatus, mapErrorToI18nKey } from './
 import { CANCEL_CATEGORIES } from '../../lib/constants'
 import { isPastDeadline, canSelectMaybeStatus, isBookingAllowed } from '../../lib/deadline'
 import { getBookingStatusLabel, bookingStatusBadgeVariant } from '@/lib/status-display'
+import { TourSelfEvalSection } from '../../self-evaluations/_components/tour-self-eval-section'
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -321,6 +322,14 @@ export default function TourDetailPage() {
             </div>
           )}
           {actionError && <p className="mt-2 text-sm text-destructive">{actionError}</p>}
+        </div>
+      )}
+
+      {tour.status === TourStatusSchema.enum.completed &&
+        tour.myBookingStatus === BookingStatusSchema.enum.confirmed && (
+        <div className="mt-6 rounded-lg border bg-card p-6">
+          <h2 className="mb-4 text-base font-semibold">{t('selfEvalTitle')}</h2>
+          <TourSelfEvalSection tourId={id} />
         </div>
       )}
     </AppShell>

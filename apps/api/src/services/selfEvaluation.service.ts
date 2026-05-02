@@ -198,12 +198,15 @@ export async function createSelfEvaluation(
   }
 }
 
-export async function listMySelfEvaluations(userId: string): Promise<SelfEvaluationResponse[]> {
+export async function listMySelfEvaluations(
+  userId: string,
+  filters: { tourId?: string } = {},
+): Promise<SelfEvaluationResponse[]> {
   const buddy = await db.buddyProfile.findUnique({ where: { userId }, select: { id: true } })
   if (!buddy) throw new BuddyNotFoundError()
 
   const rows = await db.selfEvaluation.findMany({
-    where: { buddyId: buddy.id },
+    where: { buddyId: buddy.id, ...(filters.tourId ? { tourId: filters.tourId } : {}) },
     select: selfEvalSelect,
     orderBy: { createdAt: 'desc' },
   })

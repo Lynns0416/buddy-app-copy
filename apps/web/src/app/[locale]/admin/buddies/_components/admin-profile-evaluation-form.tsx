@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
-import { EvaluationScoreField } from '../../_components/evaluation-score-field'
+import { EvaluationScoreField } from '@/components/evaluation-score-field'
 import { getAdminProfileEvaluation, upsertAdminProfileEvaluation } from '../../evaluations/admin.evaluation'
 import {
   type ScoreState,

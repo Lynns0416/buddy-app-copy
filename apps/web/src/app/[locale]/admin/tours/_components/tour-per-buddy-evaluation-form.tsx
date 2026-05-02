@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import type { AdminEvaluationResponse } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
-import { EvaluationScoreField } from '../../_components/evaluation-score-field'
+import { EvaluationScoreField } from '@/components/evaluation-score-field'
 import { createAdminEvaluation } from '../../evaluations/admin.evaluation'
 import {
   type ScoreState,

@@ -1,5 +1,8 @@
 'use client'
 
+// Shared by admin evaluation forms and buddy self-evaluation form.
+// Uses adminEvaluations namespace (scoreMin, scoreMax, notePlaceholder).
+
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 

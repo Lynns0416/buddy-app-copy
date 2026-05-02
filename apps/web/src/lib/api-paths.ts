@@ -26,4 +26,7 @@ export const apiPaths = {
   adminProfileEvaluation: (buddyId: string) => `/admin/profile-evaluations/${buddyId}`,
   adminSelfEvaluations: '/admin/self-evaluations',
   adminSelfEvaluation: (id: string) => `/admin/self-evaluations/${id}`,
+
+  selfEvaluations: '/me/self-evaluations',
+  selfEvaluation: (id: string) => `/me/self-evaluations/${id}`,
 } as const

@@ -58,7 +58,7 @@ function buildApp() {
     c.set('user', { id: 'user-2', firebaseUid: 'uid-123', email: 'buddy@example.com', role: 'buddy' })
     return next()
   })
-  app.route('/me/evaluations', selfEvaluationRoutes)
+  app.route('/me/self-evaluations', selfEvaluationRoutes)
   return app
 }
 
@@ -95,12 +95,12 @@ const validCreateBody = {
   overallRating: 3,
 }
 
-describe('POST /me/evaluations', () => {
+describe('POST /me/self-evaluations', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('creates self-evaluation and returns 201', async () => {
     mockCreate.mockResolvedValueOnce(mockSelfEval)
-    const res = await buildApp().request('/me/evaluations', {
+    const res = await buildApp().request('/me/self-evaluations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(validCreateBody),
@@ -110,7 +110,7 @@ describe('POST /me/evaluations', () => {
   })
 
   it('returns 400 for missing tourId', async () => {
-    const res = await buildApp().request('/me/evaluations', {
+    const res = await buildApp().request('/me/self-evaluations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ overallRating: 3 }),
@@ -120,7 +120,7 @@ describe('POST /me/evaluations', () => {
 
   it('returns 409 when already submitted', async () => {
     mockCreate.mockRejectedValueOnce(new EvalAlreadyExistsError())
-    const res = await buildApp().request('/me/evaluations', {
+    const res = await buildApp().request('/me/self-evaluations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(validCreateBody),
@@ -130,7 +130,7 @@ describe('POST /me/evaluations', () => {
 
   it('returns 403 when not eligible', async () => {
     mockCreate.mockRejectedValueOnce(new NotEligibleError())
-    const res = await buildApp().request('/me/evaluations', {
+    const res = await buildApp().request('/me/self-evaluations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(validCreateBody),
@@ -140,7 +140,7 @@ describe('POST /me/evaluations', () => {
 
   it('returns 404 when buddy profile not found', async () => {
     mockCreate.mockRejectedValueOnce(new BuddyNotFoundError())
-    const res = await buildApp().request('/me/evaluations', {
+    const res = await buildApp().request('/me/self-evaluations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(validCreateBody),
@@ -149,7 +149,7 @@ describe('POST /me/evaluations', () => {
   })
 
   it('returns 400 for non-JSON body', async () => {
-    const res = await buildApp().request('/me/evaluations', {
+    const res = await buildApp().request('/me/self-evaluations', {
       method: 'POST',
       body: 'not json',
     })
@@ -157,31 +157,38 @@ describe('POST /me/evaluations', () => {
   })
 })
 
-describe('GET /me/evaluations', () => {
+describe('GET /me/self-evaluations', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns own evaluations', async () => {
     mockList.mockResolvedValueOnce([mockSelfEval])
-    const res = await buildApp().request('/me/evaluations')
+    const res = await buildApp().request('/me/self-evaluations')
     expect(res.status).toBe(200)
     const body = await res.json() as SelfEvaluationResponse[]
     expect(body).toHaveLength(1)
-    expect(mockList).toHaveBeenCalledWith('user-2')
+    expect(mockList).toHaveBeenCalledWith('user-2', { tourId: undefined })
+  })
+
+  it('passes tourId filter', async () => {
+    mockList.mockResolvedValueOnce([mockSelfEval])
+    const res = await buildApp().request('/me/self-evaluations?tourId=tour-1')
+    expect(res.status).toBe(200)
+    expect(mockList).toHaveBeenCalledWith('user-2', { tourId: 'tour-1' })
   })
 
   it('returns 404 when buddy profile not found', async () => {
     mockList.mockRejectedValueOnce(new BuddyNotFoundError())
-    const res = await buildApp().request('/me/evaluations')
+    const res = await buildApp().request('/me/self-evaluations')
     expect(res.status).toBe(404)
   })
 })
 
-describe('PUT /me/evaluations/:id', () => {
+describe('PUT /me/self-evaluations/:id', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('updates self-evaluation', async () => {
     mockUpdate.mockResolvedValueOnce({ ...mockSelfEval, overallRating: 4 })
-    const res = await buildApp().request('/me/evaluations/seval-1', {
+    const res = await buildApp().request('/me/self-evaluations/seval-1', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ overallRating: 4 }),
@@ -192,7 +199,7 @@ describe('PUT /me/evaluations/:id', () => {
 
   it('returns 404 when not found', async () => {
     mockUpdate.mockRejectedValueOnce(new EvalNotFoundError())
-    const res = await buildApp().request('/me/evaluations/missing', {
+    const res = await buildApp().request('/me/self-evaluations/missing', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ overallRating: 4 }),
@@ -202,7 +209,7 @@ describe('PUT /me/evaluations/:id', () => {
 
   it('returns 409 when edit window has closed', async () => {
     mockUpdate.mockRejectedValueOnce(new EvalLockedError())
-    const res = await buildApp().request('/me/evaluations/seval-1', {
+    const res = await buildApp().request('/me/self-evaluations/seval-1', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ overallRating: 4 }),
@@ -213,7 +220,7 @@ describe('PUT /me/evaluations/:id', () => {
   })
 
   it('returns 400 for non-JSON body', async () => {
-    const res = await buildApp().request('/me/evaluations/seval-1', {
+    const res = await buildApp().request('/me/self-evaluations/seval-1', {
       method: 'PUT',
       body: 'not json',
     })

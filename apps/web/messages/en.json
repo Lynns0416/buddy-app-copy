@@ -208,7 +208,8 @@
     "cancelReasonFreeText": "Additional details (optional)",
     "cancelReasonUnavoidable": "This cancellation was unavoidable",
     "cancelReasonSubmit": "Confirm cancellation",
-    "cancelReasonBack": "Go back"
+    "cancelReasonBack": "Go back",
+    "selfEvalTitle": "Self-Evaluation"
   },
   "shell": {
     "appName": "Peace Buddy",
@@ -352,6 +353,33 @@
     },
     "scoreMin": "Poor",
     "scoreMax": "Excellent"
+  },
+  "selfEvaluations": {
+    "fields": {
+      "overallRating": "Overall Rating",
+      "communication": "Communication",
+      "groupEngagement": "Group Engagement",
+      "memory": "Memory",
+      "knowledge": "Knowledge",
+      "dedication": "Dedication",
+      "dialogue": "Dialogue",
+      "adaptability": "Adaptability",
+      "confidence": "Confidence",
+      "emotionNote": "Emotional Note"
+    },
+    "scoreLegend": "1 = Poor · 2 = Below average · 3 = Average · 4 = Good · 5 = Excellent",
+    "actions": {
+      "save": "Submit"
+    },
+    "lockedNote": "Submitted on {date} · no longer editable",
+    "error": {
+      "notFound": "Evaluation not found.",
+      "notEligible": "You are not eligible to submit a self-evaluation for this tour.",
+      "locked": "The edit window for this evaluation has closed.",
+      "invalidRequest": "Invalid data. Please check your input and try again.",
+      "network": "Network error. Please check your connection.",
+      "unknown": "An error occurred. Please try again."
+    }
   },
   "buddyStatus": {
     "pending": "Pending",

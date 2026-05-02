@@ -39,8 +39,9 @@ selfEvaluationRoutes.post('/', async (c) => {
 
 selfEvaluationRoutes.get('/', async (c) => {
   const { id } = c.get('user')
+  const tourId = c.req.query('tourId')
   try {
-    return c.json(await listMySelfEvaluations(id))
+    return c.json(await listMySelfEvaluations(id, { tourId }))
   } catch (e) {
     if (e instanceof BuddyNotFoundError) return c.json(apiError('not_found'), 404)
     throw e

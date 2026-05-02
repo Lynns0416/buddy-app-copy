@@ -9,7 +9,7 @@ import { routes } from '@/lib/routes'
 import type { AdminEvaluationResponse } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
-import { EvaluationScoreField } from '../../_components/evaluation-score-field'
+import { EvaluationScoreField } from '@/components/evaluation-score-field'
 import {
   getAdminEvaluation,
   updateAdminEvaluation,

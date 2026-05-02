@@ -27,6 +27,9 @@ import type {
   AdminProfileEvaluationResponse,
   UpsertAdminProfileEvaluation,
   AdminSelfEvaluationResponse,
+  SelfEvaluationResponse,
+  CreateSelfEvaluation,
+  UpdateSelfEvaluation,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -158,6 +161,18 @@ export const apiClient = {
 
   getMyBookings: () =>
     apiRequest<MyBookingEntry[]>(apiPaths.meBookings),
+
+  // Buddy — Self-evaluations
+  listMySelfEvaluations: (params: { tourId?: string } = {}) =>
+    apiRequest<SelfEvaluationResponse[]>(
+      params.tourId ? `${apiPaths.selfEvaluations}?tourId=${params.tourId}` : apiPaths.selfEvaluations,
+    ),
+
+  createSelfEvaluation: (data: CreateSelfEvaluation) =>
+    apiRequest<SelfEvaluationResponse>(apiPaths.selfEvaluations, { method: 'POST', body: JSON.stringify(data) }),
+
+  updateSelfEvaluation: (id: string, data: UpdateSelfEvaluation) =>
+    apiRequest<SelfEvaluationResponse>(apiPaths.selfEvaluation(id), { method: 'PUT', body: JSON.stringify(data) }),
 
   // Buddy — Profile
   getMyProfile: () =>

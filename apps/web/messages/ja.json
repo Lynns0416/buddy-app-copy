@@ -208,7 +208,8 @@
     "cancelReasonFreeText": "詳細（任意）",
     "cancelReasonUnavoidable": "やむを得ない事情によるキャンセル",
     "cancelReasonSubmit": "キャンセルを確定する",
-    "cancelReasonBack": "戻る"
+    "cancelReasonBack": "戻る",
+    "selfEvalTitle": "自己評価"
   },
   "shell": {
     "appName": "Peace Buddy",
@@ -352,6 +353,33 @@
     },
     "scoreMin": "不十分",
     "scoreMax": "優秀"
+  },
+  "selfEvaluations": {
+    "fields": {
+      "overallRating": "総合評価",
+      "communication": "コミュニケーション",
+      "groupEngagement": "グループ参加",
+      "memory": "記憶力",
+      "knowledge": "知識",
+      "dedication": "献身性",
+      "dialogue": "対話力",
+      "adaptability": "適応力",
+      "confidence": "自信",
+      "emotionNote": "感情メモ"
+    },
+    "scoreLegend": "1 = 不十分 · 2 = 平均以下 · 3 = 平均 · 4 = 良好 · 5 = 優秀",
+    "actions": {
+      "save": "提出する"
+    },
+    "lockedNote": "{date} に提出済み · 編集期間が終了しました",
+    "error": {
+      "notFound": "評価が見つかりませんでした。",
+      "notEligible": "このツアーの自己評価を提出する資格がありません。",
+      "locked": "この評価の編集期間が終了しました。",
+      "invalidRequest": "入力内容に誤りがあります。確認してもう一度お試しください。",
+      "network": "接続エラーです。ネットワークを確認してください。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    }
   },
   "buddyStatus": {
     "pending": "承認待ち",

@@ -525,6 +525,7 @@ async function main() {
   if (dynamicUser?.buddyProfile) {
     const myBuddyId = dynamicUser.buddyProfile.id
     const myBookings = [
+      { buddyId: myBuddyId, tourId: ID.tourPast,    status: BookingStatus.confirmed },
       { buddyId: myBuddyId, tourId: ID.tourPeace1,  status: BookingStatus.confirmed },
       { buddyId: myBuddyId, tourId: ID.tourPeace2,  status: BookingStatus.confirmed },
       { buddyId: myBuddyId, tourId: ID.tourMidterm, status: BookingStatus.confirmed },

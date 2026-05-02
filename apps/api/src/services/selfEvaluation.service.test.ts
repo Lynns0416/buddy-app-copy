@@ -158,6 +158,24 @@ describe('listMySelfEvaluations', () => {
     expect(typeof result[0].locked).toBe('boolean')
   })
 
+  it('passes tourId filter to Prisma where clause', async () => {
+    mockBuddyFind.mockResolvedValueOnce({ id: 'buddy-1' } as never)
+    mockFindMany.mockResolvedValueOnce([] as never)
+    await listMySelfEvaluations('user-1', { tourId: 'tour-1' })
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { buddyId: 'buddy-1', tourId: 'tour-1' } }),
+    )
+  })
+
+  it('omits tourId from Prisma where when not provided', async () => {
+    mockBuddyFind.mockResolvedValueOnce({ id: 'buddy-1' } as never)
+    mockFindMany.mockResolvedValueOnce([] as never)
+    await listMySelfEvaluations('user-1')
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { buddyId: 'buddy-1' } }),
+    )
+  })
+
   it('throws BuddyNotFoundError when no profile', async () => {
     mockBuddyFind.mockResolvedValueOnce(null)
     await expect(listMySelfEvaluations('user-1')).rejects.toBeInstanceOf(BuddyNotFoundError)
