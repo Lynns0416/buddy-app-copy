@@ -21,7 +21,7 @@ export function AppShell({ variant, children }: Props) {
   const { locale } = useParams<{ locale: string }>()
   const pathname = usePathname()
   const router = useRouter()
-  const { signOut } = useAuth()
+  const { signOut, dbUser } = useAuth()
   const t = useTranslations('shell')
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -30,14 +30,18 @@ export function AppShell({ variant, children }: Props) {
     router.push(routes.login(locale))
   }
 
+  const adminNavItems: NavItem[] = [
+    { href: routes.adminBuddiesPending(locale), label: t('nav.buddiesPending') },
+    { href: routes.adminBuddies(locale), label: t('nav.buddies') },
+    { href: routes.adminGroups(locale), label: t('nav.groups') },
+    { href: routes.adminTours(locale), label: t('nav.tours') },
+    { href: routes.adminProfile(locale), label: t('nav.adminProfile') },
+    ...(dbUser?.role === 'super_admin' ? [{ href: routes.adminProfiles(locale), label: t('nav.adminRoster') }] : []),
+  ]
+
   const navItems: NavItem[] =
     variant === 'admin'
-      ? [
-          { href: routes.adminBuddiesPending(locale), label: t('nav.buddiesPending') },
-          { href: routes.adminBuddies(locale), label: t('nav.buddies') },
-          { href: routes.adminGroups(locale), label: t('nav.groups') },
-          { href: routes.adminTours(locale), label: t('nav.tours') },
-        ]
+      ? adminNavItems
       : [
           { href: routes.dashboard(locale), label: t('nav.dashboard') },
           { href: routes.dashboardProfile(locale), label: t('nav.profile') },

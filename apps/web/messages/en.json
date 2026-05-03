@@ -229,7 +229,9 @@
       "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
       "groups": "Groups",
-      "tours": "Tours"
+      "tours": "Tours",
+      "adminProfile": "My Profile",
+      "adminRoster": "Admin Roster"
     }
   },
   "pending": {
@@ -413,5 +415,37 @@
     "maybe": "Maybe",
     "waitlist": "Waitlist",
     "declined": "Declined"
+  },
+  "adminProfile": {
+    "title": "My Profile",
+    "name": "Display Name",
+    "namePlaceholder": "Your name",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saveSuccess": "Profile saved",
+    "back": "Back",
+    "error": {
+      "notFound": "Profile not found.",
+      "invalid_request": "Invalid data. Please check your input.",
+      "network": "Network error. Please check your connection.",
+      "unknown": "An error occurred. Please try again."
+    }
+  },
+  "adminProfiles": {
+    "title": "Admin Roster",
+    "name": "Name",
+    "createdAt": "Created",
+    "noResults": "No admins yet",
+    "you": "(you)",
+    "delete": "Remove",
+    "confirmDelete": "Remove this admin? This cannot be undone.",
+    "cancelDelete": "Cancel",
+    "actionError": "Action failed. Please try again.",
+    "error": {
+      "forbidden": "You don't have permission to perform this action.",
+      "network": "Network error. Please check your connection.",
+      "unknown": "An error occurred. Please try again."
+    }
   }
 }

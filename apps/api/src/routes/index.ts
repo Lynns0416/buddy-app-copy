@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { firebaseAuthMiddleware } from '../middleware/firebaseAuth'
 import { authMiddleware } from '../middleware/auth'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
+import { ensureAdminProfile } from '../middleware/ensureAdminProfile'
 import { registerHandler, authRoutes } from './auth'
 import { buddyRoutes } from './buddies'
 import { tourRoutes } from './tours'
@@ -29,6 +30,7 @@ protectedApp.route('/me', buddyRoutes)
 protectedApp.route('/me/self-evaluations', selfEvaluationRoutes)
 protectedApp.route('/tours', tourRoutes)
 protectedApp.use('/admin/*', adminAuthMiddleware)
+protectedApp.use('/admin/*', ensureAdminProfile)
 protectedApp.route('/admin', adminRoutes)
 // protectedApp.route('/bookings', bookingRoutes)
 // protectedApp.route('/evaluations', evaluationRoutes)

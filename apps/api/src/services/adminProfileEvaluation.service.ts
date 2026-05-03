@@ -11,6 +11,7 @@ const profileEvalSelect = {
   id: true,
   buddyId: true,
   createdBy: true,
+  creator: { select: { email: true, adminProfile: { select: { name: true } } } },
   overallRating: true,
   overallRatingNote: true,
   reliability: true,
@@ -40,6 +41,7 @@ function mapResponse(row: {
   id: string
   buddyId: string
   createdBy: string
+  creator: { email: string; adminProfile: { name: string } | null }
   overallRating: number | null
   overallRatingNote: string | null
   reliability: number | null
@@ -68,6 +70,7 @@ function mapResponse(row: {
     id: row.id,
     buddyId: row.buddyId,
     createdBy: row.createdBy,
+    createdByName: row.creator.adminProfile?.name ?? row.creator.email.split('@')[0],
     overallRating: row.overallRating,
     overallRatingNote: row.overallRatingNote,
     reliability: row.reliability,
@@ -94,6 +97,33 @@ function mapResponse(row: {
   }
 }
 
+const ALL_SCORE_KEYS = [
+  'overallRating', 'overallRatingNote',
+  'reliability', 'reliabilityNote',
+  'communication', 'communicationNote',
+  'groupEngagement', 'groupEngagementNote',
+  'memory', 'memoryNote',
+  'knowledge', 'knowledgeNote',
+  'dedication', 'dedicationNote',
+  'dialogue', 'dialogueNote',
+  'adaptability', 'adaptabilityNote',
+  'emotionNote',
+  'confidence', 'confidenceNote',
+] as const
+
+
+function createScoreData(data: UpsertAdminProfileEvaluation): Record<string, number | string | null> {
+  return Object.fromEntries(ALL_SCORE_KEYS.map((k) => [k, data[k] ?? null]))
+}
+
+function updateScoreData(data: UpsertAdminProfileEvaluation): Record<string, number | string | null> {
+  return Object.fromEntries(
+    ALL_SCORE_KEYS
+      .filter((k) => data[k] !== undefined)
+      .map((k) => [k, data[k] ?? null]),
+  )
+}
+
 export async function upsertProfileEvaluation(
   buddyId: string,
   data: UpsertAdminProfileEvaluation,
@@ -102,70 +132,34 @@ export async function upsertProfileEvaluation(
   const buddy = await db.buddyProfile.findUnique({ where: { id: buddyId }, select: { id: true } })
   if (!buddy) throw new BuddyNotFoundError()
 
-  const createData = {
-    overallRating: data.overallRating ?? null,
-    overallRatingNote: data.overallRatingNote ?? null,
-    reliability: data.reliability ?? null,
-    reliabilityNote: data.reliabilityNote ?? null,
-    communication: data.communication ?? null,
-    communicationNote: data.communicationNote ?? null,
-    groupEngagement: data.groupEngagement ?? null,
-    groupEngagementNote: data.groupEngagementNote ?? null,
-    memory: data.memory ?? null,
-    memoryNote: data.memoryNote ?? null,
-    knowledge: data.knowledge ?? null,
-    knowledgeNote: data.knowledgeNote ?? null,
-    dedication: data.dedication ?? null,
-    dedicationNote: data.dedicationNote ?? null,
-    dialogue: data.dialogue ?? null,
-    dialogueNote: data.dialogueNote ?? null,
-    adaptability: data.adaptability ?? null,
-    adaptabilityNote: data.adaptabilityNote ?? null,
-    emotionNote: data.emotionNote ?? null,
-    confidence: data.confidence ?? null,
-    confidenceNote: data.confidenceNote ?? null,
-  }
-
-  const updateData = {
-    ...(data.overallRating !== undefined ? { overallRating: data.overallRating ?? null } : {}),
-    ...(data.overallRatingNote !== undefined ? { overallRatingNote: data.overallRatingNote ?? null } : {}),
-    ...(data.reliability !== undefined ? { reliability: data.reliability ?? null } : {}),
-    ...(data.reliabilityNote !== undefined ? { reliabilityNote: data.reliabilityNote ?? null } : {}),
-    ...(data.communication !== undefined ? { communication: data.communication ?? null } : {}),
-    ...(data.communicationNote !== undefined ? { communicationNote: data.communicationNote ?? null } : {}),
-    ...(data.groupEngagement !== undefined ? { groupEngagement: data.groupEngagement ?? null } : {}),
-    ...(data.groupEngagementNote !== undefined ? { groupEngagementNote: data.groupEngagementNote ?? null } : {}),
-    ...(data.memory !== undefined ? { memory: data.memory ?? null } : {}),
-    ...(data.memoryNote !== undefined ? { memoryNote: data.memoryNote ?? null } : {}),
-    ...(data.knowledge !== undefined ? { knowledge: data.knowledge ?? null } : {}),
-    ...(data.knowledgeNote !== undefined ? { knowledgeNote: data.knowledgeNote ?? null } : {}),
-    ...(data.dedication !== undefined ? { dedication: data.dedication ?? null } : {}),
-    ...(data.dedicationNote !== undefined ? { dedicationNote: data.dedicationNote ?? null } : {}),
-    ...(data.dialogue !== undefined ? { dialogue: data.dialogue ?? null } : {}),
-    ...(data.dialogueNote !== undefined ? { dialogueNote: data.dialogueNote ?? null } : {}),
-    ...(data.adaptability !== undefined ? { adaptability: data.adaptability ?? null } : {}),
-    ...(data.adaptabilityNote !== undefined ? { adaptabilityNote: data.adaptabilityNote ?? null } : {}),
-    ...(data.emotionNote !== undefined ? { emotionNote: data.emotionNote ?? null } : {}),
-    ...(data.confidence !== undefined ? { confidence: data.confidence ?? null } : {}),
-    ...(data.confidenceNote !== undefined ? { confidenceNote: data.confidenceNote ?? null } : {}),
-  }
-
   const row = await db.adminProfileEvaluation.upsert({
-    where: { buddyId },
-    create: { buddyId, createdBy, ...createData },
-    update: updateData,
+    where: { buddyId_createdBy: { buddyId, createdBy } },
+    create: { buddyId, createdBy, ...createScoreData(data) },
+    update: updateScoreData(data),
     select: profileEvalSelect,
   })
   return mapResponse(row)
 }
 
-export async function getProfileEvaluation(
+export async function getMyProfileEvaluation(
   buddyId: string,
+  adminId: string,
 ): Promise<AdminProfileEvaluationResponse | null> {
   const row = await db.adminProfileEvaluation.findUnique({
-    where: { buddyId },
+    where: { buddyId_createdBy: { buddyId, createdBy: adminId } },
     select: profileEvalSelect,
   })
   if (!row) return null
   return mapResponse(row)
+}
+
+export async function listProfileEvaluations(
+  buddyId: string,
+): Promise<AdminProfileEvaluationResponse[]> {
+  const rows = await db.adminProfileEvaluation.findMany({
+    where: { buddyId },
+    orderBy: { createdAt: 'asc' },
+    select: profileEvalSelect,
+  })
+  return rows.map(mapResponse)
 }

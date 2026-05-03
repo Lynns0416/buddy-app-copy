@@ -7,6 +7,7 @@ import {
   updateAdminProfile,
   softDeleteAdminProfile,
 } from '../services/adminProfile.service'
+import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
 
 export const adminProfileRoutes = new Hono<AuthEnv>()
@@ -15,11 +16,11 @@ adminProfileRoutes.get('/profile', async (c) => {
   const user = c.get('user')
 
   if (user.role !== 'admin' && user.role !== 'super_admin') {
-    return c.json({ error: 'Forbidden' }, 403)
+    return c.json(apiError('forbidden'), 403)
   }
 
   const profile = await getAdminProfile(user.id)
-  if (!profile) return c.json({ error: 'Profile not found' }, 404)
+  if (!profile) return c.json(apiError('not_found'), 404)
   return c.json(profile)
 })
 
@@ -27,7 +28,7 @@ adminProfileRoutes.get('/profiles', async (c) => {
   const user = c.get('user')
 
   if (user.role !== 'admin' && user.role !== 'super_admin') {
-    return c.json({ error: 'Forbidden' }, 403)
+    return c.json(apiError('forbidden'), 403)
   }
 
   const profiles = await listAdminProfiles()
@@ -38,52 +39,47 @@ adminProfileRoutes.patch('/profile', async (c) => {
   const user = c.get('user')
 
   if (user.role !== 'admin' && user.role !== 'super_admin') {
-    return c.json({ error: 'Forbidden' }, 403)
+    return c.json(apiError('forbidden'), 403)
   }
 
   let body: unknown
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return c.json(apiError('invalid_request'), 400)
   }
 
-  let data
-  try {
-    data = UpdateAdminProfileSchema.parse(body)
-  } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+  const parsed = UpdateAdminProfileSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json(apiError('invalid_request'), 400)
   }
 
-  const profile = await updateAdminProfile(user.id, data.name)
-  if (!profile) return c.json({ error: 'Profile not found' }, 404)
+  const profile = await updateAdminProfile(user.id, parsed.data.name)
+  if (!profile) return c.json(apiError('not_found'), 404)
   return c.json(profile)
 })
 
 adminProfileRoutes.post('/profiles', async (c) => {
   const user = c.get('user')
 
-  // Only super_admin can create new admin profiles
   if (user.role !== 'super_admin') {
-    return c.json({ error: 'Forbidden' }, 403)
+    return c.json(apiError('forbidden'), 403)
   }
 
   let body: unknown
   try {
     body = await c.req.json()
   } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+    return c.json(apiError('invalid_request'), 400)
   }
 
-  let data
-  try {
-    data = CreateAdminProfileSchema.parse(body)
-  } catch {
-    return c.json({ error: 'Invalid request body' }, 400)
+  const parsed = CreateAdminProfileSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json(apiError('invalid_request'), 400)
   }
 
-  const profile = await createAdminProfile(data.userId, data.name)
-  if (!profile) return c.json({ error: 'Admin already exists for this user' }, 409)
+  const profile = await createAdminProfile(parsed.data.userId, parsed.data.name)
+  if (!profile) return c.json(apiError('conflict'), 409)
   return c.json(profile, 201)
 })
 
@@ -91,17 +87,15 @@ adminProfileRoutes.delete('/profiles/:userId', async (c) => {
   const user = c.get('user')
   const userId = c.req.param('userId')
 
-  // Only super_admin can soft delete admin profiles
   if (user.role !== 'super_admin') {
-    return c.json({ error: 'Forbidden' }, 403)
+    return c.json(apiError('forbidden'), 403)
   }
 
-  // Prevent self-deletion
   if (user.id === userId) {
-    return c.json({ error: 'Cannot delete your own profile' }, 400)
+    return c.json(apiError('invalid_request'), 400)
   }
 
   const profile = await softDeleteAdminProfile(userId)
-  if (!profile) return c.json({ error: 'Profile not found' }, 404)
+  if (!profile) return c.json(apiError('not_found'), 404)
   return c.json(profile)
 })

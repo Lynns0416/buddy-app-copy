@@ -86,6 +86,16 @@ export async function upsertAdminProfileEvaluation(
   }
 }
 
+export async function listAdminProfileEvaluations(
+  buddyId: string,
+): Promise<ActionResult<AdminProfileEvaluationResponse[]>> {
+  try {
+    return { ok: true, data: await apiClient.listAdminProfileEvaluations(buddyId) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
 export async function listAdminSelfEvaluations(
   params: { buddyId?: string },
 ): Promise<ActionResult<AdminSelfEvaluationResponse[]>> {

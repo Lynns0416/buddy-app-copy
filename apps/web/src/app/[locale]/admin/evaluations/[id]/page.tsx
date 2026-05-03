@@ -134,7 +134,7 @@ export default function AdminEvaluationDetailPage() {
             {ev.tourDate.slice(0, 10)} — {ev.tourGroupName}
           </Link>
           {' · '}
-          {t('table.evaluator')}: {ev.createdByEmail}
+          {t('table.evaluator')}: {ev.createdByName}
         </p>
       </div>
 

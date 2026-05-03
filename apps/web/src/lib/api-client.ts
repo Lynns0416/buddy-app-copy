@@ -26,6 +26,7 @@ import type {
   UpdateAdminEvaluation,
   AdminProfileEvaluationResponse,
   UpsertAdminProfileEvaluation,
+  AdminProfileResponse,
   AdminSelfEvaluationResponse,
   SelfEvaluationResponse,
   CreateSelfEvaluation,
@@ -33,6 +34,22 @@ import type {
 } from '@peace-buddy/types'
 
 export const apiClient = {
+  // Admin — Profile
+  getAdminProfile: () =>
+    apiRequest<AdminProfileResponse>(apiPaths.adminProfile),
+
+  updateAdminProfile: (name: string) =>
+    apiRequest<AdminProfileResponse>(apiPaths.adminProfile, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+
+  listAdminProfiles: () =>
+    apiRequest<AdminProfileResponse[]>(apiPaths.adminProfiles),
+
+  softDeleteAdminProfile: (userId: string) =>
+    apiRequest<AdminProfileResponse>(apiPaths.adminProfileById(userId), { method: 'DELETE' }),
+
   // Admin — Groups
   listGroups: () =>
     apiRequest<GroupResponse[]>(apiPaths.adminGroups),
@@ -125,7 +142,10 @@ export const apiClient = {
     apiRequest<void>(apiPaths.adminEvaluation(id), { method: 'DELETE' }),
 
   getAdminProfileEvaluation: (buddyId: string) =>
-    apiRequest<AdminProfileEvaluationResponse>(apiPaths.adminProfileEvaluation(buddyId)),
+    apiRequest<AdminProfileEvaluationResponse>(apiPaths.adminProfileEvaluationMine(buddyId)),
+
+  listAdminProfileEvaluations: (buddyId: string) =>
+    apiRequest<AdminProfileEvaluationResponse[]>(apiPaths.adminProfileEvaluation(buddyId)),
 
   upsertAdminProfileEvaluation: (buddyId: string, data: UpsertAdminProfileEvaluation) =>
     apiRequest<AdminProfileEvaluationResponse>(apiPaths.adminProfileEvaluation(buddyId), { method: 'PUT', body: JSON.stringify(data) }),

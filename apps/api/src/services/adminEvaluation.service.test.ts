@@ -53,7 +53,7 @@ const evalRow = {
   tourId: 'tour-1',
   tour: { tourDate: new Date('2026-01-15'), group: { name: 'Test Group' } },
   createdBy: 'user-1',
-  creator: { email: 'admin@test.com' },
+  creator: { email: 'admin@test.com', adminProfile: { name: 'Test Admin' } },
   overallRating: 4,
   overallRatingNote: null,
   reliability: null,

@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockBuddyFind, mockUpsert, mockFindUnique } = vi.hoisted(() => ({
+const { mockBuddyFind, mockUpsert, mockFindUnique, mockFindMany } = vi.hoisted(() => ({
   mockBuddyFind: vi.fn(),
   mockUpsert: vi.fn(),
   mockFindUnique: vi.fn(),
+  mockFindMany: vi.fn(),
 }))
 
 vi.mock('../lib/db', () => ({
@@ -12,13 +13,15 @@ vi.mock('../lib/db', () => ({
     adminProfileEvaluation: {
       upsert: mockUpsert,
       findUnique: mockFindUnique,
+      findMany: mockFindMany,
     },
   },
 }))
 
 import {
   upsertProfileEvaluation,
-  getProfileEvaluation,
+  getMyProfileEvaluation,
+  listProfileEvaluations,
   BuddyNotFoundError,
 } from './adminProfileEvaluation.service'
 
@@ -26,6 +29,7 @@ const profileRow = {
   id: 'peval-1',
   buddyId: 'buddy-1',
   createdBy: 'user-1',
+  creator: { email: 'admin@test.com', adminProfile: { name: 'Test Admin' } },
   overallRating: 4,
   overallRatingNote: null,
   reliability: null,
@@ -60,6 +64,7 @@ describe('upsertProfileEvaluation', () => {
 
     const result = await upsertProfileEvaluation('buddy-1', { overallRating: 4, communication: 3 }, 'user-1')
     expect(result.id).toBe('peval-1')
+    expect(result.createdByName).toBe('Test Admin')
     expect(result.createdAt).toBe('2026-01-01T00:00:00.000Z')
   })
 
@@ -81,19 +86,47 @@ describe('upsertProfileEvaluation', () => {
     expect(upsertCall.update).not.toHaveProperty('overallRating')
     expect(upsertCall.update).not.toHaveProperty('reliability')
   })
+
+  it('falls back to email prefix when adminProfile is null', async () => {
+    mockBuddyFind.mockResolvedValueOnce({ id: 'buddy-1' } as never)
+    const rowWithoutProfile = { ...profileRow, creator: { email: 'admin@test.com', adminProfile: null } }
+    mockUpsert.mockResolvedValueOnce(rowWithoutProfile as never)
+
+    const result = await upsertProfileEvaluation('buddy-1', {}, 'user-1')
+    expect(result.createdByName).toBe('admin')
+  })
 })
 
-describe('getProfileEvaluation', () => {
+describe('getMyProfileEvaluation', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns null when not found', async () => {
     mockFindUnique.mockResolvedValueOnce(null)
-    expect(await getProfileEvaluation('missing')).toBeNull()
+    expect(await getMyProfileEvaluation('missing', 'user-1')).toBeNull()
   })
 
   it('returns mapped response', async () => {
     mockFindUnique.mockResolvedValueOnce(profileRow as never)
-    const result = await getProfileEvaluation('buddy-1')
+    const result = await getMyProfileEvaluation('buddy-1', 'user-1')
     expect(result?.buddyId).toBe('buddy-1')
+    expect(result?.createdByName).toBe('Test Admin')
+  })
+})
+
+describe('listProfileEvaluations', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns empty array when no evals', async () => {
+    mockFindMany.mockResolvedValueOnce([])
+    const result = await listProfileEvaluations('buddy-1')
+    expect(result).toEqual([])
+  })
+
+  it('returns mapped array', async () => {
+    mockFindMany.mockResolvedValueOnce([profileRow] as never)
+    const result = await listProfileEvaluations('buddy-1')
+    expect(result).toHaveLength(1)
+    expect(result[0].buddyId).toBe('buddy-1')
+    expect(result[0].createdByName).toBe('Test Admin')
   })
 })

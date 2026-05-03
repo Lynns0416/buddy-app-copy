@@ -109,7 +109,7 @@ model BuddyProfile {
   bookings         Booking[]
   selfEvaluations    SelfEvaluation[]
   adminEvaluations   AdminEvaluation[]
-  profileEvaluation  AdminProfileEvaluation?
+  profileEvaluations AdminProfileEvaluation[]
   deadlineOverrides BuddyCancellationDeadlineOverride[]
 }
 
@@ -230,7 +230,7 @@ model AdminEvaluation {
 
 model AdminProfileEvaluation {
   id                  String       @id @default(uuid())
-  buddyId             String       @unique
+  buddyId             String
   createdBy           String
   overallRating       Int?
   overallRatingNote   String?
@@ -257,6 +257,8 @@ model AdminProfileEvaluation {
   updatedAt           DateTime     @updatedAt
   buddy               BuddyProfile @relation(fields: [buddyId], references: [id])
   creator             User         @relation("ProfileEvalCreator", fields: [createdBy], references: [id])
+
+  @@unique([buddyId, createdBy])
 }
 
 model SelfEvaluation {

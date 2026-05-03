@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import type { AdminEvaluationResponse, AdminTourBookingEntry } from '@peace-buddy/types'
 import { BookingStatusSchema } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
+import { EvaluationScoreGrid } from '@/components/evaluation-score-grid'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
@@ -78,18 +79,19 @@ export function TourBuddyEvalSection({ tourId, bookings }: TourBuddyEvalSectionP
             </div>
 
             {!isAdding && evals.length > 0 && (
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {evals.map((ev) => (
-                  <div key={ev.id} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {ev.createdByEmail} · {t('table.overallRating')}: {ev.overallRating ?? '—'}
-                    </span>
-                    <Link
-                      href={routes.adminEvaluationDetail(locale, ev.id)}
-                      className="text-blue-600 hover:underline whitespace-nowrap"
-                    >
-                      {ev.createdBy === dbUser?.id ? t('actions.edit') : t('actions.view')} →
-                    </Link>
+                  <div key={ev.id} className="rounded-md border bg-muted/30 px-3 py-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{ev.createdByName}</span>
+                      <Link
+                        href={routes.adminEvaluationDetail(locale, ev.id)}
+                        className="text-blue-600 hover:underline whitespace-nowrap"
+                      >
+                        {ev.createdBy === dbUser?.id ? t('actions.edit') : t('actions.view')} →
+                      </Link>
+                    </div>
+                    <EvaluationScoreGrid scores={ev} />
                   </div>
                 ))}
               </div>

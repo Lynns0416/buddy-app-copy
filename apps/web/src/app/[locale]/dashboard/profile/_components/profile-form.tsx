@@ -153,7 +153,7 @@ export function ProfileForm({ profile, onSaved }: ProfileFormProps) {
       <div>
         <p className="mb-2 text-sm font-medium leading-none">{t('languages')}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {LanguageSchema.options.map((lang) => (
+          {LanguageSchema.options.map((lang: Language) => (
             <label key={lang} className="flex cursor-pointer items-center gap-2 text-sm">
               <input
                 type="checkbox"

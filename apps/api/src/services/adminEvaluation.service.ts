@@ -39,7 +39,7 @@ const adminEvalSelect = {
   tourId: true,
   tour: { select: { tourDate: true, group: { select: { name: true } } } },
   createdBy: true,
-  creator: { select: { email: true } },
+  creator: { select: { email: true, adminProfile: { select: { name: true } } } },
   overallRating: true,
   overallRatingNote: true,
   reliability: true,
@@ -72,7 +72,7 @@ function mapResponse(row: {
   tourId: string
   tour: { tourDate: Date; group: { name: string } }
   createdBy: string
-  creator: { email: string }
+  creator: { email: string; adminProfile: { name: string } | null }
   overallRating: number | null
   overallRatingNote: string | null
   reliability: number | null
@@ -105,7 +105,7 @@ function mapResponse(row: {
     tourDate: row.tour.tourDate.toISOString(),
     tourGroupName: row.tour.group.name,
     createdBy: row.createdBy,
-    createdByEmail: row.creator.email,
+    createdByName: row.creator.adminProfile?.name ?? row.creator.email.split('@')[0],
     overallRating: row.overallRating,
     overallRatingNote: row.overallRatingNote,
     reliability: row.reliability,

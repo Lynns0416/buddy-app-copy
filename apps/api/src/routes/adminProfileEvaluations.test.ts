@@ -52,7 +52,8 @@ vi.mock('../services/adminEvaluation.service', () => ({
 
 vi.mock('../services/adminProfileEvaluation.service', () => ({
   upsertProfileEvaluation: vi.fn(),
-  getProfileEvaluation: vi.fn(),
+  getMyProfileEvaluation: vi.fn(),
+  listProfileEvaluations: vi.fn(),
   BuddyNotFoundError: class BuddyNotFoundError extends Error {
     constructor() { super('Buddy not found') }
   },
@@ -65,12 +66,14 @@ vi.mock('../services/selfEvaluation.service', () => ({
 
 import {
   upsertProfileEvaluation,
-  getProfileEvaluation,
+  getMyProfileEvaluation,
+  listProfileEvaluations,
   BuddyNotFoundError,
 } from '../services/adminProfileEvaluation.service'
 
 const mockUpsert = vi.mocked(upsertProfileEvaluation)
-const mockGet = vi.mocked(getProfileEvaluation)
+const mockGetMine = vi.mocked(getMyProfileEvaluation)
+const mockList = vi.mocked(listProfileEvaluations)
 
 function buildApp() {
   const app = new Hono<AuthEnv>()
@@ -88,6 +91,7 @@ const mockProfileEval: AdminProfileEvaluationResponse = {
   id: 'peval-1',
   buddyId: 'buddy-1',
   createdBy: 'user-1',
+  createdByName: 'Test Admin',
   overallRating: 4,
   overallRatingNote: null,
   reliability: null,
@@ -159,20 +163,43 @@ describe('PUT /admin/profile-evaluations/:buddyId', () => {
   })
 })
 
-describe('GET /admin/profile-evaluations/:buddyId', () => {
+describe('GET /admin/profile-evaluations/:buddyId/mine', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns profile evaluation', async () => {
-    mockGet.mockResolvedValueOnce(mockProfileEval)
-    const res = await buildApp().request('/admin/profile-evaluations/buddy-1')
+  it('returns my profile evaluation', async () => {
+    mockGetMine.mockResolvedValueOnce(mockProfileEval)
+    const res = await buildApp().request('/admin/profile-evaluations/buddy-1/mine')
     expect(res.status).toBe(200)
     const body = await res.json() as AdminProfileEvaluationResponse
     expect(body.buddyId).toBe('buddy-1')
+    expect(body.createdByName).toBe('Test Admin')
+    expect(mockGetMine).toHaveBeenCalledWith('buddy-1', 'user-1')
   })
 
   it('returns 404 when not found', async () => {
-    mockGet.mockResolvedValueOnce(null)
-    const res = await buildApp().request('/admin/profile-evaluations/missing')
+    mockGetMine.mockResolvedValueOnce(null)
+    const res = await buildApp().request('/admin/profile-evaluations/missing/mine')
     expect(res.status).toBe(404)
+  })
+})
+
+describe('GET /admin/profile-evaluations/:buddyId', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns list of profile evaluations', async () => {
+    mockList.mockResolvedValueOnce([mockProfileEval])
+    const res = await buildApp().request('/admin/profile-evaluations/buddy-1')
+    expect(res.status).toBe(200)
+    const body = await res.json() as AdminProfileEvaluationResponse[]
+    expect(body).toHaveLength(1)
+    expect(body[0].buddyId).toBe('buddy-1')
+  })
+
+  it('returns empty array when none exist', async () => {
+    mockList.mockResolvedValueOnce([])
+    const res = await buildApp().request('/admin/profile-evaluations/buddy-1')
+    expect(res.status).toBe(200)
+    const body = await res.json() as AdminProfileEvaluationResponse[]
+    expect(body).toEqual([])
   })
 })

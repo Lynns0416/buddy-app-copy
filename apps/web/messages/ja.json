@@ -229,7 +229,9 @@
       "buddiesPending": "承認待ち",
       "buddies": "バディ",
       "groups": "グループ",
-      "tours": "ツアー"
+      "tours": "ツアー",
+      "adminProfile": "マイプロフィール",
+      "adminRoster": "管理者一覧"
     }
   },
   "pending": {
@@ -413,5 +415,37 @@
     "maybe": "未確定",
     "waitlist": "キャンセル待ち",
     "declined": "辞退"
+  },
+  "adminProfile": {
+    "title": "マイプロフィール",
+    "name": "表示名",
+    "namePlaceholder": "お名前",
+    "edit": "編集",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "saveSuccess": "保存しました",
+    "back": "戻る",
+    "error": {
+      "notFound": "プロフィールが見つかりません。",
+      "invalid_request": "入力内容を確認してください。",
+      "network": "通信エラーが発生しました。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    }
+  },
+  "adminProfiles": {
+    "title": "管理者一覧",
+    "name": "名前",
+    "createdAt": "作成日",
+    "noResults": "管理者がいません",
+    "you": "（あなた）",
+    "delete": "削除",
+    "confirmDelete": "この管理者を削除しますか？この操作は取り消せません。",
+    "cancelDelete": "キャンセル",
+    "actionError": "操作に失敗しました。もう一度お試しください。",
+    "error": {
+      "forbidden": "この操作を行う権限がありません。",
+      "network": "通信エラーが発生しました。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    }
   }
 }

@@ -491,7 +491,7 @@ export type UpdateSelfEvaluation = z.infer<typeof UpdateSelfEvaluationSchema>
 
 // Evaluation response types
 
-type AdminEvalScores = {
+export type AdminEvalScores = {
   overallRating: number | null
   overallRatingNote: string | null
   reliability: number | null
@@ -525,7 +525,7 @@ export type AdminEvaluationResponse = AdminEvalScores & {
   tourDate: string
   tourGroupName: string
   createdBy: string
-  createdByEmail: string
+  createdByName: string
   createdAt: string
   updatedAt: string
 }
@@ -534,6 +534,7 @@ export type AdminProfileEvaluationResponse = AdminEvalScores & {
   id: string
   buddyId: string
   createdBy: string
+  createdByName: string
   createdAt: string
   updatedAt: string
 }

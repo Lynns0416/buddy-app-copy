@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { UpsertAdminProfileEvaluationSchema } from '@peace-buddy/types'
 import {
   upsertProfileEvaluation,
-  getProfileEvaluation,
+  getMyProfileEvaluation,
+  listProfileEvaluations,
   BuddyNotFoundError,
 } from '../services/adminProfileEvaluation.service'
 import { apiError } from '../lib/api-error'
@@ -35,11 +36,17 @@ adminProfileEvaluationRoutes.put('/:buddyId', async (c) => {
   }
 })
 
-adminProfileEvaluationRoutes.get('/:buddyId', async (c) => {
+adminProfileEvaluationRoutes.get('/:buddyId/mine', async (c) => {
   const buddyId = c.req.param('buddyId')
-  const evaluation = await getProfileEvaluation(buddyId)
+  const { id } = c.get('user')
+  const evaluation = await getMyProfileEvaluation(buddyId, id)
   if (!evaluation) return c.json(apiError('not_found'), 404)
   return c.json(evaluation)
+})
+
+adminProfileEvaluationRoutes.get('/:buddyId', async (c) => {
+  const buddyId = c.req.param('buddyId')
+  return c.json(await listProfileEvaluations(buddyId))
 })
 
 export { adminProfileEvaluationRoutes }

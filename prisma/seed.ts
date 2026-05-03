@@ -13,11 +13,14 @@ const prisma = new PrismaClient()
 
 // Load all Firebase accounts from emulator export
 const authExport = require('../.firebase/emulators/auth_export/accounts.json')
-const adminAccount = authExport.users.find((u: any) =>
+const adminAccounts = authExport.users.filter((u: any) =>
   u.email.toLowerCase().includes('admin') || u.displayName.toLowerCase().includes('admin')
 )
-const buddyAccounts = authExport.users.filter((u: any) => u !== adminAccount)
-const FIREBASE_UIDS = authExport.users.map((u: any) => u.localId)
+const adminAccount = adminAccounts[0]
+const buddyAccounts = authExport.users.filter((u: any) => !adminAccounts.includes(u))
+// Synthetic second admin (always seeded, cannot log in — display only for multi-admin eval demo)
+const SEED_ADMIN2_UID = 'seed-admin2-00000000000000000000000'
+const FIREBASE_UIDS = [...authExport.users.map((u: any) => u.localId), SEED_ADMIN2_UID]
 
 // Fixed IDs for groups, tours (never auto-created via login)
 const ID = {
@@ -66,6 +69,18 @@ async function main() {
       userId: adminUser.id,
       name: adminAccount.displayName ?? adminAccount.email.split('@')[0],
     },
+  })
+
+  // ── Synthetic second admin (display-only, cannot log in) ─────
+  const admin2User = await prisma.user.upsert({
+    where: { firebaseUid: SEED_ADMIN2_UID },
+    update: {},
+    create: { firebaseUid: SEED_ADMIN2_UID, email: 'admin2@seed.local', role: UserRole.admin },
+  })
+  await prisma.adminProfile.upsert({
+    where: { userId: admin2User.id },
+    update: {},
+    create: { userId: admin2User.id, name: 'Seed Admin 2' },
   })
 
   // ── Buddy users and profiles (dynamic from accounts.json) ─────
@@ -480,9 +495,9 @@ async function main() {
       })
     }
 
-    // Admin profile evaluations
+    // Admin profile evaluations (admin 1)
     await prisma.adminProfileEvaluation.upsert({
-      where: { buddyId: b(0)! },
+      where: { buddyId_createdBy: { buddyId: b(0)!, createdBy: adminUser.id } },
       update: {},
       create: {
         buddyId: b(0)!,
@@ -499,6 +514,48 @@ async function main() {
         adaptability: 3,
         confidence: 4,
         emotionNote: '共感力が高く、訪問者から好評です。',
+      },
+    })
+
+    // Admin profile evaluations (admin 2 — synthetic, for multi-admin demo)
+    await prisma.adminProfileEvaluation.upsert({
+      where: { buddyId_createdBy: { buddyId: b(0)!, createdBy: admin2User.id } },
+      update: {},
+      create: {
+        buddyId: b(0)!,
+        createdBy: admin2User.id,
+        overallRating: 3,
+        overallRatingNote: 'まだ成長の余地があります。',
+        reliability: 4,
+        communication: 3,
+        groupEngagement: 3,
+        memory: 3,
+        knowledge: 3,
+        dedication: 4,
+        dialogue: 3,
+        adaptability: 3,
+        confidence: 3,
+      },
+    })
+
+    // Per-tour evaluation for tourPast from admin 2 (multi-admin demo)
+    await prisma.adminEvaluation.upsert({
+      where: { buddyId_tourId_createdBy: { buddyId: b(0)!, tourId: ID.tourPast, createdBy: admin2User.id } },
+      update: {},
+      create: {
+        buddyId: b(0)!,
+        tourId: ID.tourPast,
+        createdBy: admin2User.id,
+        overallRating: 3,
+        reliability: 4,
+        communication: 3,
+        groupEngagement: 3,
+        knowledge: 3,
+        dedication: 4,
+        dialogue: 3,
+        adaptability: 3,
+        confidence: 3,
+        emotionNote: '訪問者への配慮はあるが、より積極的に。',
       },
     })
 
@@ -552,6 +609,7 @@ async function main() {
 
   console.log('シード完了')
   console.log(`  ログイン: ${adminAccount.email}${buddyAccounts.length > 0 ? ' / ' + buddyAccounts.map((u: any) => u.email).join(' / ') : ''}`)
+  console.log('  合成admin2: admin2@seed.local (ログイン不可 — マルチ管理者評価デモ用)')
   console.log('  ツアー: 平和公園 4件（締切済み・中期・遠日程・下書き）')
   console.log('  peace-001: 参加中(buddy0) + キャンセル済み+理由あり(buddy1)')
 }

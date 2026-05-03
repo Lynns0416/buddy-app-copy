@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
 import type { AdminProfileResponse } from '@peace-buddy/types'
 
@@ -54,7 +55,7 @@ export async function createAdminProfile(
     })
     return mapAdminProfile(raw)
   } catch (e) {
-    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2002') return null
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') return null
     throw e
   }
 }
@@ -68,7 +69,7 @@ export async function updateAdminProfile(userId: string, name: string): Promise<
     })
     return mapAdminProfile(raw)
   } catch (e) {
-    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') return null
     throw e
   }
 }
@@ -82,7 +83,7 @@ export async function softDeleteAdminProfile(userId: string): Promise<AdminProfi
     })
     return mapAdminProfile(raw)
   } catch (e) {
-    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') return null
     throw e
   }
 }

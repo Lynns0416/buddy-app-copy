@@ -7,6 +7,7 @@ import type { AdminEvaluationResponse, AdminBuddyBookingEntry } from '@peace-bud
 import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { SortIcon } from '@/components/sort-icon'
+import { EvaluationScoreGrid } from '@/components/evaluation-score-grid'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
@@ -122,24 +123,23 @@ export function BuddyPerTourEvaluations({ buddyId, bookings }: BuddyPerTourEvalu
           {sorted.map((ev) => (
             <div
               key={ev.id}
-              className="flex flex-col gap-1 rounded-lg border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              className="rounded-lg border bg-card px-4 py-3"
             >
-              <div>
-                <p className="text-sm font-medium">{tourLabel(bookings, ev.tourId)}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t('table.overallRating')}: {ev.overallRating ?? '—'}
-                  {' · '}
-                  {t('table.evaluator')}: {ev.createdByEmail}
-                  {' · '}
-                  {new Date(ev.updatedAt).toLocaleDateString()}
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">{tourLabel(bookings, ev.tourId)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ev.createdByName} · {new Date(ev.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <Link
+                  href={routes.adminEvaluationDetail(locale, ev.id)}
+                  className="text-sm text-blue-600 hover:underline whitespace-nowrap"
+                >
+                  {ev.createdBy === dbUser?.id ? t('actions.edit') : t('actions.view')} →
+                </Link>
               </div>
-              <Link
-                href={routes.adminEvaluationDetail(locale, ev.id)}
-                className="text-sm text-blue-600 hover:underline whitespace-nowrap"
-              >
-                {ev.createdBy === dbUser?.id ? t('actions.edit') : t('actions.view')} →
-              </Link>
+              <EvaluationScoreGrid scores={ev} />
             </div>
           ))}
         </div>

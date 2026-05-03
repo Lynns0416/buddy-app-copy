@@ -70,7 +70,7 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={TIER_NONE}>{t('tierNone')}</SelectItem>
-            {BuddyTierSchema.options.map((tier) => (
+            {BuddyTierSchema.options.map((tier: BuddyTier) => (
               <SelectItem key={tier} value={tier}>
                 {t(`tier${tier.charAt(0).toUpperCase() + tier.slice(1)}`)}
               </SelectItem>

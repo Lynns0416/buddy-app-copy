@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { Prisma } from '@prisma/client'
 
 vi.mock('../lib/db', () => ({
   db: {
@@ -126,8 +127,10 @@ describe('adminProfile.service', () => {
     })
 
     it('returns null on duplicate userId (P2002)', async () => {
-      const error = new Error('Unique constraint failed') as Error & { code: string }
-      error.code = 'P2002'
+      const error = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '5.0.0',
+      })
       getDb().adminProfile.create.mockRejectedValue(error)
       const result: unknown = await createAdminProfile('u1', 'John Admin')
       expect(result).toBeNull()
@@ -152,8 +155,10 @@ describe('adminProfile.service', () => {
     })
 
     it('returns null if profile not found (P2025)', async () => {
-      const error = new Error('Record not found') as Error & { code: string }
-      error.code = 'P2025'
+      const error = new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: '5.0.0',
+      })
       getDb().adminProfile.update.mockRejectedValue(error)
       const result: unknown = await updateAdminProfile('u1', 'John Admin')
       expect(result).toBeNull()
@@ -174,8 +179,10 @@ describe('adminProfile.service', () => {
     })
 
     it('returns null if profile not found (P2025)', async () => {
-      const error = new Error('Record not found') as Error & { code: string }
-      error.code = 'P2025'
+      const error = new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: '5.0.0',
+      })
       getDb().adminProfile.update.mockRejectedValue(error)
       const result: unknown = await softDeleteAdminProfile('u1')
       expect(result).toBeNull()
