@@ -84,6 +84,52 @@ See PRD §13 for the full tech stack rationale.
 
 See PRD §4 for the signup approval business rules.
 
+## Admin Profile System
+
+### Identity Model
+Admins are users with `role = 'admin' | 'super_admin'`. Each admin has a corresponding `AdminProfile` record storing:
+- `name`: Human-readable name (required, used for evaluation attribution)
+- `deletedAt`: Soft-delete timestamp (null = active)
+
+Admin creation flow:
+1. Super-admin creates User via admin API (`role = 'admin'`)
+2. Admin logs in via Google/Apple (Firebase OAuth)
+3. System detects `role = 'admin'`, auto-creates AdminProfile with name from Firebase displayName
+4. Name fallback: if Firebase provides no displayName, use email prefix (e.g., "john" from "john@example.com")
+
+### Soft-Delete Visibility
+Soft-deleted admins (`deletedAt IS NOT NULL`) are **completely invisible**:
+- `GET /admin/profiles` excludes deleted admins
+- `GET /admin/profile` (for a deleted admin) returns 404
+- Evaluations created by deleted admins still reference them (immutable audit trail), but admin's name won't appear in current roster
+
+Only non-deleted admins and system operations can see the roster.
+
+### Auth Enforcement
+Admin-only endpoints enforce role checks explicitly in route handlers:
+```
+if (user.role !== 'admin' && user.role !== 'super_admin') {
+  return c.json({ error: 'Forbidden' }, 403)
+}
+```
+
+This applies to: `GET /admin/profile`, `PATCH /admin/profile`, `GET /admin/profiles`.
+
+Super-admin-only endpoints check:
+```
+if (user.role !== 'super_admin') {
+  return c.json({ error: 'Forbidden' }, 403)
+}
+```
+
+This applies to: `POST /admin/profiles` (create), `DELETE /admin/profiles/:userId` (soft-delete).
+
+### API Conventions
+- **Create**: `POST /admin/profiles` — requires super_admin
+- **Read**: `GET /admin/profile` (own), `GET /admin/profiles` (roster) — requires admin
+- **Update**: `PATCH /admin/profile` — update own name, requires admin
+- **Delete**: `DELETE /admin/profiles/:userId` — soft-delete (set `deletedAt`), super_admin only, prevents self-deletion
+
 ## File Upload Flow
 
 ```

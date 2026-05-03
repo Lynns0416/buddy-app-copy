@@ -79,6 +79,7 @@ model User {
   role                        UserRole
   createdAt                   DateTime                            @default(now())
   buddyProfile                BuddyProfile?
+  adminProfile                AdminProfile?
   adminEvaluationsCreated     AdminEvaluation[]                   @relation("AdminEvalCreator")
   profileEvaluationsCreated   AdminProfileEvaluation[]            @relation("ProfileEvalCreator")
   notificationPrefs           NotificationPreference[]
@@ -110,6 +111,17 @@ model BuddyProfile {
   adminEvaluations   AdminEvaluation[]
   profileEvaluation  AdminProfileEvaluation?
   deadlineOverrides BuddyCancellationDeadlineOverride[]
+}
+
+model AdminProfile {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  name      String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([deletedAt])
 }
 
 model Group {

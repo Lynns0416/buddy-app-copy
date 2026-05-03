@@ -194,6 +194,26 @@ export const UpdateAdminBuddyProfileSchema = z.object({
 })
 export type UpdateAdminBuddyProfile = z.infer<typeof UpdateAdminBuddyProfileSchema>
 
+// Admin Profile
+
+export const CreateAdminProfileSchema = z.object({
+  userId: z.string().uuid(),
+  name: z.string().min(1),
+})
+export type CreateAdminProfile = z.infer<typeof CreateAdminProfileSchema>
+
+export const UpdateAdminProfileSchema = z.object({
+  name: z.string().min(1),
+})
+export type UpdateAdminProfile = z.infer<typeof UpdateAdminProfileSchema>
+
+export type AdminProfileResponse = {
+  id: string
+  userId: string
+  name: string
+  createdAt: string
+}
+
 // Response types (HTTP wire format — dates serialized as ISO strings)
 
 export type BuddyProfileResponse = {

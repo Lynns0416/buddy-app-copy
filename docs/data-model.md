@@ -14,6 +14,8 @@ User (role: buddy / admin / super_admin)
  │     ├── SelfEvaluation ───────────────┘
  │     └── AdminEvaluation (subject)
  │
+ ├── AdminProfile [1:1, admin only]
+ │
  ├── AdminEvaluation (evaluatorId) [admin only]
  ├── NotificationPreference       [admin only]
  ├── Notification
@@ -32,6 +34,19 @@ Not in PRD. Core identity record shared by buddies and admins.
 | email | String | |
 | role | Enum | `buddy` / `admin` / `super_admin` |
 | createdAt | Timestamp | |
+
+### AdminProfile
+Internal profile for admin users. Stores admin name for evaluation attribution and future expansion.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| userId | UUID | FK → User, Unique |
+| name | String | |
+| deletedAt | Timestamp? | Soft delete (NULL = active) |
+| createdAt | Timestamp | |
+
+**Index:** `deletedAt` — for filtering active admins
 
 ### BuddyProfile
 
@@ -247,6 +262,7 @@ Not in PRD. Pending items for admin daily digest emails.
 
 | Entity | Policy |
 |---|---|
+| AdminProfile | Soft delete only — set `deletedAt` to hide from listings |
 | BuddyProfile | Never hard-deleted — use `status = suspended` |
 | Booking | Never hard-deleted |
 | Tour | Draft → hard delete allowed; Published/Cancelled/Completed → never deleted |

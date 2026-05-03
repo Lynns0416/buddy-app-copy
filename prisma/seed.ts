@@ -58,6 +58,16 @@ async function main() {
     create: { firebaseUid: adminAccount.localId, email: adminAccount.email, role: UserRole.admin },
   })
 
+  // ── Admin profile ────────────────────────────────────────────
+  await prisma.adminProfile.upsert({
+    where: { userId: adminUser.id },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      name: adminAccount.displayName ?? adminAccount.email.split('@')[0],
+    },
+  })
+
   // ── Buddy users and profiles (dynamic from accounts.json) ─────
   const buddies: string[] = []
   for (const account of buddyAccounts) {

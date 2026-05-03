@@ -1,6 +1,37 @@
 {
   "permissions": {
-    "defaultMode": "auto",
+    "allow": [
+      "Read(*)",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Bash(git *)",
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(docker build *)",
+      "Bash(docker run *)",
+      "Bash(docker ps *)",
+      "Bash(docker logs *)",
+      "Bash(docker exec *)",
+      "Bash(docker stop *)",
+      "Bash(docker rm *)",
+      "Bash(docker rmi *)",
+      "Bash(docker compose *)",
+      "Bash(docker-compose *)",
+      "Bash(docker network *)",
+      "Bash(docker volume ls*)",
+      "Bash(docker volume inspect*)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(echo *)",
+      "Bash(gh *)",
+      "Glob",
+      "Grep",
+      "LS",
+      "Edit",
+      "MultiEdit",
+      "Task",
+      "Bash(npm run *)"
+    ],
     "deny": [
       "Bash(rm -rf:*)",
       "Bash(rmdir:*)",
@@ -34,6 +65,7 @@
       "Bash(npm publish:*)",
       "Bash(brew uninstall:*)",
       "Bash(sudo:*)"
-    ]
+    ],
+    "defaultMode": "auto"
   }
 }

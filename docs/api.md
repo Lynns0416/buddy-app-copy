@@ -1043,6 +1043,92 @@ Removes an admin account. Cannot delete own account.
 
 ---
 
+## Admin Profile
+
+### `GET /admin/profile`
+Returns the current admin's profile.
+
+**Auth:** `admin`
+
+**Response `200`**
+```json
+{
+  "id": "uuid",
+  "userId": "uuid",
+  "name": "string",
+  "createdAt": "ISO8601"
+}
+```
+
+---
+
+### `PATCH /admin/profile`
+Updates the current admin's name.
+
+**Auth:** `admin`
+
+**Request**
+```json
+{
+  "name": "string"
+}
+```
+
+**Response `200`** — updated profile
+
+---
+
+### `GET /admin/profiles`
+Lists all active (non-deleted) admin profiles. Used for displaying who evaluated a buddy.
+
+**Auth:** `admin`
+
+**Response `200`**
+```json
+[
+  {
+    "id": "uuid",
+    "userId": "uuid",
+    "name": "string",
+    "createdAt": "ISO8601"
+  }
+]
+```
+
+---
+
+### `POST /admin/profiles`
+Creates a new admin profile.
+
+**Auth:** `super_admin`
+
+**Request**
+```json
+{
+  "userId": "uuid",
+  "name": "string"
+}
+```
+
+**Response `201`** — created profile
+
+**Errors**
+- `409` — Admin already exists for this user
+
+---
+
+### `DELETE /admin/profiles/:userId`
+Soft-deletes an admin profile (sets `deletedAt`). Cannot delete own profile.
+
+**Auth:** `super_admin`
+
+**Response `200`** — deleted profile (with `deletedAt` timestamp)
+
+**Errors**
+- `400` — Cannot delete own profile
+
+---
+
 ## Scheduled Job Endpoints *(internal)*
 
 Called by GCP Cloud Scheduler. Protected by a shared secret in the `X-Scheduler-Secret` header, not Firebase tokens.
