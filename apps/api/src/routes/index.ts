@@ -6,6 +6,7 @@ import { ensureAdminProfile } from '../middleware/ensureAdminProfile'
 import { registerHandler, authRoutes } from './auth'
 import { buddyRoutes } from './buddies'
 import { tourRoutes } from './tours'
+import { applicationsRoutes } from './applications'
 import { adminRoutes } from './admin'
 import { selfEvaluationRoutes } from './selfEvaluations'
 import type { FirebaseEnv, AuthEnv } from '../types'
@@ -28,6 +29,7 @@ protectedApp.use('*', authMiddleware)
 protectedApp.route('/auth', authRoutes)
 protectedApp.route('/me', buddyRoutes)
 protectedApp.route('/me/self-evaluations', selfEvaluationRoutes)
+protectedApp.route('/applications', applicationsRoutes)
 protectedApp.route('/tours', tourRoutes)
 protectedApp.use('/admin/*', adminAuthMiddleware)
 protectedApp.use('/admin/*', ensureAdminProfile)

@@ -53,6 +53,9 @@ export type NotifEventType = z.infer<typeof NotifEventTypeSchema>
 export const EmailModeSchema = z.enum(['immediate', 'digest'])
 export type EmailMode = z.infer<typeof EmailModeSchema>
 
+export const ApplicationStatusSchema = z.enum(['pending', 'approved', 'rejected', 'waitlisted'])
+export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
+
 // `network` is client-only and is never emitted by the server
 export const AppErrorCodeSchema = z.enum(['not_found', 'forbidden', 'conflict', 'invalid_request', 'network', 'unknown'])
 export type AppErrorCode = z.infer<typeof AppErrorCodeSchema>
