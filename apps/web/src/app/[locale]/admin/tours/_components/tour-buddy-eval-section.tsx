@@ -7,6 +7,7 @@ import type { AdminEvaluationResponse, AdminTourBookingEntry } from '@peace-budd
 import { BookingStatusSchema } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
+import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
 import { listAdminEvaluations } from '../../evaluations/admin.evaluation'
 import { TourPerBuddyEvaluationForm } from './tour-per-buddy-evaluation-form'
@@ -18,8 +19,9 @@ interface TourBuddyEvalSectionProps {
 
 export function TourBuddyEvalSection({ tourId, bookings }: TourBuddyEvalSectionProps) {
   const { locale } = useAdminGuard()
+  const { dbUser } = useAuth()
   const t = useTranslations('adminEvaluations')
-  const [evalsByBuddy, setEvalsByBuddy] = useState<Map<string, AdminEvaluationResponse>>(new Map())
+  const [evalsByBuddy, setEvalsByBuddy] = useState<Map<string, AdminEvaluationResponse[]>>(new Map())
   const [loading, setLoading] = useState(true)
   const [addingFor, setAddingFor] = useState<string | null>(null)
 
@@ -30,8 +32,12 @@ export function TourBuddyEvalSection({ tourId, bookings }: TourBuddyEvalSectionP
   useEffect(() => {
     listAdminEvaluations({ tourId }).then((result) => {
       if (result.ok) {
-        const map = new Map<string, AdminEvaluationResponse>()
-        for (const ev of result.data) map.set(ev.buddyId, ev)
+        const map = new Map<string, AdminEvaluationResponse[]>()
+        for (const ev of result.data) {
+          const list = map.get(ev.buddyId) ?? []
+          list.push(ev)
+          map.set(ev.buddyId, list)
+        }
         setEvalsByBuddy(map)
       }
       setLoading(false)
@@ -39,7 +45,11 @@ export function TourBuddyEvalSection({ tourId, bookings }: TourBuddyEvalSectionP
   }, [tourId])
 
   function handleSaved(buddyId: string, saved: AdminEvaluationResponse) {
-    setEvalsByBuddy((prev) => new Map(prev).set(buddyId, saved))
+    setEvalsByBuddy((prev) => {
+      const next = new Map(prev)
+      next.set(buddyId, [...(next.get(buddyId) ?? []), saved])
+      return next
+    })
     setAddingFor(null)
   }
 
@@ -52,33 +62,37 @@ export function TourBuddyEvalSection({ tourId, bookings }: TourBuddyEvalSectionP
   return (
     <div className="space-y-3">
       {confirmedBookings.map((booking) => {
-        const existing = evalsByBuddy.get(booking.buddyId)
+        const evals = evalsByBuddy.get(booking.buddyId) ?? []
+        const myEval = evals.find((ev) => ev.createdBy === dbUser?.id)
         const isAdding = addingFor === booking.buddyId
 
         return (
           <div key={booking.buddyId} className="rounded-lg border bg-card p-4">
             <div className="mb-2 flex items-center justify-between">
               <p className="font-medium">{booking.displayName}</p>
-              {!isAdding && (
-                existing ? (
-                  <Link
-                    href={routes.adminEvaluationDetail(locale, existing.id)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {t('actions.view')} →
-                  </Link>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={() => setAddingFor(booking.buddyId)}>
-                    {t('actions.addEvaluation')}
-                  </Button>
-                )
+              {!isAdding && !myEval && (
+                <Button size="sm" variant="outline" onClick={() => setAddingFor(booking.buddyId)}>
+                  {t('actions.addEvaluation')}
+                </Button>
               )}
             </div>
 
-            {!isAdding && existing && (
-              <p className="text-sm text-muted-foreground">
-                {t('table.overallRating')}: {existing.overallRating ?? '—'}
-              </p>
+            {!isAdding && evals.length > 0 && (
+              <div className="space-y-1">
+                {evals.map((ev) => (
+                  <div key={ev.id} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {ev.createdByEmail} · {t('table.overallRating')}: {ev.overallRating ?? '—'}
+                    </span>
+                    <Link
+                      href={routes.adminEvaluationDetail(locale, ev.id)}
+                      className="text-blue-600 hover:underline whitespace-nowrap"
+                    >
+                      {ev.createdBy === dbUser?.id ? t('actions.edit') : t('actions.view')} →
+                    </Link>
+                  </div>
+                ))}
+              </div>
             )}
 
             {isAdding && (

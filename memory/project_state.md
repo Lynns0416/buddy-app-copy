@@ -4,18 +4,23 @@ description: Current build status, blockers, and next steps
 type: project
 ---
 
-## Current branch — feat/admin/evaluation-ui (cleanup PR pending)
+## Current branch — fix/evaluation-missing-features (PR pending)
 
-3 commits ahead of origin/main, not yet PR'd:
-- `feat: extend AdminEvaluationResponse with tourDate and tourGroupName`
-- `refactor: extract shared evaluation form helpers to evaluation-form.ts`
-- `fix: surface load errors and fix add/edit link label in evaluation components`
+4 commits ahead of origin/main, not yet PR'd:
+- `docs: document multi-admin eval ownership, post-completion UX, and admin profile roadmap`
+- `feat: support multi-admin evaluations per buddy/tour`
+- `feat: replace window.confirm with CompleteTourModal for tour completion`
+- `fix: update seed adminEvaluation upsert to new unique constraint`
 
-**Action**: push and open a follow-up PR against main, then start `feat/buddy/self-evaluation-ui`.
+**Action**: push and open a PR against main.
 
 ---
 
-## Next branch — feat/buddy/self-evaluation-ui
+## Next — push fix/evaluation-missing-features PR, then nothing planned
+
+---
+
+## Completed (but not yet needed) — feat/buddy/self-evaluation-ui
 
 ### Scope
 
@@ -98,6 +103,19 @@ New namespace `selfEvaluations` in `en.json` + `ja.json`:
 ---
 
 ## Built
+
+### fix/evaluation-missing-features (4 commits, PR pending)
+
+| What | Files |
+|---|---|
+| PRD: multi-admin eval spec, post-completion UX, admin profile roadmap | `docs/PRD.md` |
+| Schema: `@@unique([buddyId, tourId, createdBy])` | `prisma/schema.prisma` |
+| Service: `EvalOwnershipError`, ownership check on update/delete | `adminEvaluation.service.ts` |
+| Routes: 403 on ownership violation | `adminEvaluations.ts` |
+| Types: `createdByEmail` on `AdminEvaluationResponse` | `packages/types/src/index.ts` |
+| UI: multi-eval per buddy in tour section; evaluator email in rows; read-only detail for non-owners | `tour-buddy-eval-section.tsx`, `buddy-per-tour-evaluations.tsx`, `evaluations/[id]/page.tsx` |
+| `CompleteTourModal` replacing `window.confirm` | `complete-tour-modal.tsx`, tours `[id]/page.tsx` |
+| Seed fix for new unique constraint name | `prisma/seed.ts` |
 
 ### feat/admin/evaluation-ui (PR #61 merged + 3 cleanup commits, PR pending)
 

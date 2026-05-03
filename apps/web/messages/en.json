@@ -149,6 +149,13 @@
     "confirmDelete": "Delete this tour? This cannot be undone.",
     "confirmCancel": "Cancel this tour? All confirmed/maybe/waitlist buddies will be notified.",
     "confirmComplete": "Mark this tour as completed?",
+    "completeTourModal": {
+      "title": "Complete Tour",
+      "message": "The following confirmed buddies will be affected:",
+      "noBuddies": "No confirmed buddies for this tour.",
+      "confirm": "Mark Complete",
+      "cancel": "Cancel"
+    },
     "bookingOpen": "Booking Open",
     "bookingOpenDescription": "Allow buddies to book",
     "bookingOpenYes": "Open",
@@ -325,7 +332,8 @@
       "updatedAt": "Last Updated",
       "submittedAt": "Submitted At",
       "locked": "Locked",
-      "actions": "Actions"
+      "actions": "Actions",
+      "evaluator": "Evaluator"
     },
     "tourPicker": "Select Tour",
     "scoreLegend": "1 = Poor · 2 = Below average · 3 = Average · 4 = Good · 5 = Excellent",
@@ -355,6 +363,12 @@
     "scoreMax": "Excellent"
   },
   "selfEvaluations": {
+    "summary": {
+      "edit": "Edit",
+      "saved": "Saved",
+      "locked": "no longer editable",
+      "submittedAt": "Submitted on {date}"
+    },
     "fields": {
       "overallRating": "Overall Rating",
       "communication": "Communication",
@@ -369,7 +383,8 @@
     },
     "scoreLegend": "1 = Poor · 2 = Below average · 3 = Average · 4 = Good · 5 = Excellent",
     "actions": {
-      "save": "Submit"
+      "save": "Submit",
+      "cancel": "Cancel"
     },
     "lockedNote": "Submitted on {date} · no longer editable",
     "error": {

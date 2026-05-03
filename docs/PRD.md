@@ -377,18 +377,22 @@ All score fields use the scale: **1 = Needs Improvement / 2 = Developing / 3 = P
 | Adaptability | 1–5 | ✅ | Handling unexpected situations |
 | Emotion | — | ✅ | Warmth, empathy, expressiveness — cannot be meaningfully scored |
 | Confidence | 1–5 | ✅ | |
-| Evaluator | — | — | Admin ref, auto-filled |
+| Evaluator | — | — | Auto-filled from submitting admin's email (`createdByEmail`). Display name deferred — see §15. |
 | Date | — | — | Auto-filled |
 
 #### Access
 - Only admins can create, read, or edit admin evaluations
 - Buddies have no visibility into admin evaluations
 
-#### Evaluation Prompt
-- When admin marks a tour **Completed**, they are prompted with a list of buddies who had **Confirmed** status
-- Admin selects which buddies to evaluate (can skip any or all)
-- Prompt is optional — admin can dismiss entirely
-- Multiple admins can each submit their own evaluation for the same buddy on the same tour
+#### Multi-admin ownership
+- Each admin submits their own independent evaluation; uniqueness is `(buddyId, tourId, createdBy)`
+- An admin can only edit or delete their own evaluations; other admins see them as read-only
+- Display name for evaluator is deferred until admin profile is built (§15); `createdByEmail` is shown in the meantime
+
+#### Post-completion prompt (UX)
+- When an admin clicks **Mark Complete**, a single confirmation modal appears showing the list of confirmed buddies
+- Admin confirms in that modal; the tour is marked completed and the page refreshes
+- The existing evaluation section on the tour detail page serves as the natural prompt to add evaluations — no second modal is shown
 
 ### 9.3 Buddy Self-Evaluations
 
@@ -720,6 +724,7 @@ When GCP nonprofit credits run low:
 | v2+ | Reporting / export for admins |
 | v2+ | Advanced evaluation analytics |
 | v2+ | Structured availability input for buddy profiles |
+| v2+ | Admin profile page (display name, avatar) — enables showing evaluator name instead of email in evaluation records |
 
 ---
 

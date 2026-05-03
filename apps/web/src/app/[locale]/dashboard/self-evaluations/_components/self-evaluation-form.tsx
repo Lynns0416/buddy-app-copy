@@ -20,9 +20,10 @@ interface SelfEvaluationFormProps {
   tourId: string
   existing: SelfEvaluationResponse | null
   onSaved: (eval_: SelfEvaluationResponse) => void
+  onCancel?: () => void
 }
 
-export function SelfEvaluationForm({ tourId, existing, onSaved }: SelfEvaluationFormProps) {
+export function SelfEvaluationForm({ tourId, existing, onSaved, onCancel }: SelfEvaluationFormProps) {
   const t = useTranslations('selfEvaluations')
 
   const init = existing ? fromSelfResponse(existing) : { scores: emptySelfScores(), notes: emptySelfNotes() }
@@ -85,7 +86,14 @@ export function SelfEvaluationForm({ tourId, existing, onSaved }: SelfEvaluation
         />
       </div>
 
-      <Button type="submit" disabled={saving}>{t('actions.save')}</Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={saving}>{t('actions.save')}</Button>
+        {onCancel && existing && (
+          <Button type="button" variant="outline" disabled={saving} onClick={onCancel}>
+            {t('actions.cancel')}
+          </Button>
+        )}
+      </div>
     </form>
   )
 }

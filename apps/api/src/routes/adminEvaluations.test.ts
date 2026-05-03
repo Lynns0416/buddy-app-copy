@@ -50,6 +50,9 @@ vi.mock('../services/adminEvaluation.service', () => ({
   EvalAlreadyExistsError: class EvalAlreadyExistsError extends Error {
     constructor() { super('Already exists') }
   },
+  EvalOwnershipError: class EvalOwnershipError extends Error {
+    constructor() { super('Forbidden') }
+  },
   BuddyNotFoundError: class BuddyNotFoundError extends Error {
     constructor() { super('Buddy not found') }
   },
@@ -77,6 +80,7 @@ import {
   deleteAdminEvaluation,
   EvalNotFoundError,
   EvalAlreadyExistsError,
+  EvalOwnershipError,
   BuddyNotFoundError,
   TourNotFoundError,
 } from '../services/adminEvaluation.service'
@@ -107,6 +111,7 @@ const mockEval: AdminEvaluationResponse = {
   tourDate: '2026-01-15T00:00:00.000Z',
   tourGroupName: 'Test Group',
   createdBy: 'user-1',
+  createdByEmail: 'admin@example.com',
   overallRating: 4,
   overallRatingNote: null,
   reliability: null,
@@ -257,7 +262,7 @@ describe('PUT /admin/evaluations/:id', () => {
       body: JSON.stringify({ overallRating: 5 }),
     })
     expect(res.status).toBe(200)
-    expect(mockUpdate).toHaveBeenCalledWith('eval-1', expect.objectContaining({ overallRating: 5 }))
+    expect(mockUpdate).toHaveBeenCalledWith('eval-1', expect.objectContaining({ overallRating: 5 }), 'user-1')
   })
 
   it('returns 404 when not found', async () => {
@@ -268,6 +273,16 @@ describe('PUT /admin/evaluations/:id', () => {
       body: JSON.stringify({ overallRating: 5 }),
     })
     expect(res.status).toBe(404)
+  })
+
+  it('returns 403 when not the owner', async () => {
+    mockUpdate.mockRejectedValueOnce(new EvalOwnershipError())
+    const res = await buildApp().request('/admin/evaluations/eval-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ overallRating: 5 }),
+    })
+    expect(res.status).toBe(403)
   })
 
   it('returns 400 for non-JSON body', async () => {
@@ -286,12 +301,18 @@ describe('DELETE /admin/evaluations/:id', () => {
     mockDelete.mockResolvedValueOnce(undefined)
     const res = await buildApp().request('/admin/evaluations/eval-1', { method: 'DELETE' })
     expect(res.status).toBe(204)
-    expect(mockDelete).toHaveBeenCalledWith('eval-1')
+    expect(mockDelete).toHaveBeenCalledWith('eval-1', 'user-1')
   })
 
   it('returns 404 when not found', async () => {
     mockDelete.mockRejectedValueOnce(new EvalNotFoundError())
     const res = await buildApp().request('/admin/evaluations/missing', { method: 'DELETE' })
     expect(res.status).toBe(404)
+  })
+
+  it('returns 403 when not the owner', async () => {
+    mockDelete.mockRejectedValueOnce(new EvalOwnershipError())
+    const res = await buildApp().request('/admin/evaluations/eval-1', { method: 'DELETE' })
+    expect(res.status).toBe(403)
   })
 })

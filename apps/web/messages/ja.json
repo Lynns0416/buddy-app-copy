@@ -149,6 +149,13 @@
     "confirmDelete": "このツアーを削除しますか？この操作は元に戻せません。",
     "confirmCancel": "このツアーをキャンセルしますか？参加希望・仮・キャンセル待ちの全バディに通知されます。",
     "confirmComplete": "このツアーを完了にしますか？",
+    "completeTourModal": {
+      "title": "ツアーを完了にする",
+      "message": "以下の確定済みバディが対象となります：",
+      "noBuddies": "確定済みバディはいません。",
+      "confirm": "完了にする",
+      "cancel": "キャンセル"
+    },
     "bookingOpen": "バディ予約受付",
     "bookingOpenDescription": "バディが予約できるようにする",
     "bookingOpenYes": "受付中",
@@ -325,7 +332,8 @@
       "updatedAt": "最終更新",
       "submittedAt": "提出日時",
       "locked": "ロック済み",
-      "actions": "操作"
+      "actions": "操作",
+      "evaluator": "評価者"
     },
     "tourPicker": "ツアーを選択",
     "scoreLegend": "1 = 不十分 · 2 = やや不十分 · 3 = 普通 · 4 = 良い · 5 = 優秀",
@@ -355,6 +363,12 @@
     "scoreMax": "優秀"
   },
   "selfEvaluations": {
+    "summary": {
+      "edit": "編集",
+      "saved": "保存しました",
+      "locked": "編集期間終了",
+      "submittedAt": "{date} に提出済み"
+    },
     "fields": {
       "overallRating": "総合評価",
       "communication": "コミュニケーション",
@@ -369,7 +383,8 @@
     },
     "scoreLegend": "1 = 不十分 · 2 = 平均以下 · 3 = 平均 · 4 = 良好 · 5 = 優秀",
     "actions": {
-      "save": "提出する"
+      "save": "提出する",
+      "cancel": "キャンセル"
     },
     "lockedNote": "{date} に提出済み · 編集期間が終了しました",
     "error": {

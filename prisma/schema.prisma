@@ -225,7 +225,7 @@ model AdminEvaluation {
   tour                Tour         @relation(fields: [tourId], references: [id])
   creator             User         @relation("AdminEvalCreator", fields: [createdBy], references: [id])
 
-  @@unique([buddyId, tourId])
+  @@unique([buddyId, tourId, createdBy])
 }
 
 model AdminProfileEvaluation {

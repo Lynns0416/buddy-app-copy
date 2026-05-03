@@ -8,6 +8,7 @@ import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { SortIcon } from '@/components/sort-icon'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
+import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
 import { listAdminEvaluations } from '../../evaluations/admin.evaluation'
 import { BuddyPerTourEvaluationForm } from './buddy-per-tour-evaluation-form'
@@ -48,6 +49,7 @@ interface BuddyPerTourEvaluationsProps {
 
 export function BuddyPerTourEvaluations({ buddyId, bookings }: BuddyPerTourEvaluationsProps) {
   const { locale } = useAdminGuard()
+  const { dbUser } = useAuth()
   const t = useTranslations('adminEvaluations')
   const [evals, setEvals] = useState<AdminEvaluationResponse[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,6 +129,8 @@ export function BuddyPerTourEvaluations({ buddyId, bookings }: BuddyPerTourEvalu
                 <p className="text-xs text-muted-foreground">
                   {t('table.overallRating')}: {ev.overallRating ?? '—'}
                   {' · '}
+                  {t('table.evaluator')}: {ev.createdByEmail}
+                  {' · '}
                   {new Date(ev.updatedAt).toLocaleDateString()}
                 </p>
               </div>
@@ -134,7 +138,7 @@ export function BuddyPerTourEvaluations({ buddyId, bookings }: BuddyPerTourEvalu
                 href={routes.adminEvaluationDetail(locale, ev.id)}
                 className="text-sm text-blue-600 hover:underline whitespace-nowrap"
               >
-                {t('actions.view')} →
+                {ev.createdBy === dbUser?.id ? t('actions.edit') : t('actions.view')} →
               </Link>
             </div>
           ))}
@@ -148,7 +152,9 @@ export function BuddyPerTourEvaluations({ buddyId, bookings }: BuddyPerTourEvalu
       {adding ? (
         <BuddyPerTourEvaluationForm
           buddyId={buddyId}
-          completedBookings={completedBookings}
+          completedBookings={completedBookings.filter(
+            (b) => !evals.some((ev) => ev.tourId === b.tourId && ev.createdBy === dbUser?.id),
+          )}
           onSaved={handleSaved}
           onCancel={() => setAdding(false)}
         />
@@ -156,7 +162,9 @@ export function BuddyPerTourEvaluations({ buddyId, bookings }: BuddyPerTourEvalu
         <Button
           size="sm"
           variant="outline"
-          disabled={completedBookings.length === 0}
+          disabled={completedBookings.every(
+            (b) => evals.some((ev) => ev.tourId === b.tourId && ev.createdBy === dbUser?.id),
+          )}
           onClick={() => setAdding(true)}
         >
           {t('actions.addEvaluation')}

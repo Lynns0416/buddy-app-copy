@@ -436,7 +436,7 @@ async function main() {
 
     // Admin per-tour evaluations for tourPast
     await prisma.adminEvaluation.upsert({
-      where: { buddyId_tourId: { buddyId: b(0)!, tourId: ID.tourPast } },
+      where: { buddyId_tourId_createdBy: { buddyId: b(0)!, tourId: ID.tourPast, createdBy: adminUser.id } },
       update: {},
       create: {
         buddyId: b(0)!,
@@ -460,7 +460,7 @@ async function main() {
 
     if (buddies.length > 1) {
       await prisma.adminEvaluation.upsert({
-        where: { buddyId_tourId: { buddyId: b(1)!, tourId: ID.tourPast } },
+        where: { buddyId_tourId_createdBy: { buddyId: b(1)!, tourId: ID.tourPast, createdBy: adminUser.id } },
         update: {},
         create: {
           buddyId: b(1)!,

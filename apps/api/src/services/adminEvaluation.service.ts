@@ -14,6 +14,12 @@ export class EvalAlreadyExistsError extends Error {
   }
 }
 
+export class EvalOwnershipError extends Error {
+  constructor() {
+    super('You do not own this evaluation')
+  }
+}
+
 export class BuddyNotFoundError extends Error {
   constructor() {
     super('Buddy not found')
@@ -33,6 +39,7 @@ const adminEvalSelect = {
   tourId: true,
   tour: { select: { tourDate: true, group: { select: { name: true } } } },
   createdBy: true,
+  creator: { select: { email: true } },
   overallRating: true,
   overallRatingNote: true,
   reliability: true,
@@ -65,6 +72,7 @@ function mapResponse(row: {
   tourId: string
   tour: { tourDate: Date; group: { name: string } }
   createdBy: string
+  creator: { email: string }
   overallRating: number | null
   overallRatingNote: string | null
   reliability: number | null
@@ -97,6 +105,7 @@ function mapResponse(row: {
     tourDate: row.tour.tourDate.toISOString(),
     tourGroupName: row.tour.group.name,
     createdBy: row.createdBy,
+    createdByEmail: row.creator.email,
     overallRating: row.overallRating,
     overallRatingNote: row.overallRatingNote,
     reliability: row.reliability,
@@ -201,7 +210,12 @@ export async function getAdminEvaluation(id: string): Promise<AdminEvaluationRes
 export async function updateAdminEvaluation(
   id: string,
   data: UpdateAdminEvaluation,
+  requesterId: string,
 ): Promise<AdminEvaluationResponse> {
+  const existing = await db.adminEvaluation.findUnique({ where: { id }, select: { createdBy: true } })
+  if (!existing) throw new EvalNotFoundError()
+  if (existing.createdBy !== requesterId) throw new EvalOwnershipError()
+
   try {
     const row = await db.adminEvaluation.update({
       where: { id },
@@ -239,7 +253,11 @@ export async function updateAdminEvaluation(
   }
 }
 
-export async function deleteAdminEvaluation(id: string): Promise<void> {
+export async function deleteAdminEvaluation(id: string, requesterId: string): Promise<void> {
+  const existing = await db.adminEvaluation.findUnique({ where: { id }, select: { createdBy: true } })
+  if (!existing) throw new EvalNotFoundError()
+  if (existing.createdBy !== requesterId) throw new EvalOwnershipError()
+
   try {
     await db.adminEvaluation.delete({ where: { id } })
   } catch (e) {

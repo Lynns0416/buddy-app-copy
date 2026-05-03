@@ -41,6 +41,7 @@ import {
   deleteAdminEvaluation,
   EvalNotFoundError,
   EvalAlreadyExistsError,
+  EvalOwnershipError,
   BuddyNotFoundError,
   TourNotFoundError,
 } from './adminEvaluation.service'
@@ -52,6 +53,7 @@ const evalRow = {
   tourId: 'tour-1',
   tour: { tourDate: new Date('2026-01-15'), group: { name: 'Test Group' } },
   createdBy: 'user-1',
+  creator: { email: 'admin@test.com' },
   overallRating: 4,
   overallRatingNote: null,
   reliability: null,
@@ -165,18 +167,30 @@ describe('updateAdminEvaluation', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns updated response', async () => {
+    mockFindUnique.mockResolvedValueOnce({ createdBy: 'user-1' } as never)
     mockUpdate.mockResolvedValueOnce({ ...evalRow, overallRating: 5 } as never)
-    const result = await updateAdminEvaluation('eval-1', { overallRating: 5 })
+    const result = await updateAdminEvaluation('eval-1', { overallRating: 5 }, 'user-1')
     expect(result.overallRating).toBe(5)
   })
 
-  it('throws EvalNotFoundError on P2025', async () => {
+  it('throws EvalNotFoundError when record does not exist', async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    await expect(updateAdminEvaluation('missing', {}, 'user-1')).rejects.toBeInstanceOf(EvalNotFoundError)
+  })
+
+  it('throws EvalOwnershipError when requester is not the creator', async () => {
+    mockFindUnique.mockResolvedValueOnce({ createdBy: 'user-1' } as never)
+    await expect(updateAdminEvaluation('eval-1', {}, 'other-user')).rejects.toBeInstanceOf(EvalOwnershipError)
+  })
+
+  it('throws EvalNotFoundError on P2025 during update', async () => {
+    mockFindUnique.mockResolvedValueOnce({ createdBy: 'user-1' } as never)
     const prismaError = new Prisma.PrismaClientKnownRequestError('Not found', {
       code: 'P2025',
       clientVersion: '5.0.0',
     })
     mockUpdate.mockRejectedValueOnce(prismaError)
-    await expect(updateAdminEvaluation('missing', {})).rejects.toBeInstanceOf(EvalNotFoundError)
+    await expect(updateAdminEvaluation('eval-1', {}, 'user-1')).rejects.toBeInstanceOf(EvalNotFoundError)
   })
 })
 
@@ -184,16 +198,28 @@ describe('deleteAdminEvaluation', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('deletes without error', async () => {
+    mockFindUnique.mockResolvedValueOnce({ createdBy: 'user-1' } as never)
     mockDelete.mockResolvedValueOnce(undefined as never)
-    await expect(deleteAdminEvaluation('eval-1')).resolves.toBeUndefined()
+    await expect(deleteAdminEvaluation('eval-1', 'user-1')).resolves.toBeUndefined()
   })
 
-  it('throws EvalNotFoundError on P2025', async () => {
+  it('throws EvalNotFoundError when record does not exist', async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    await expect(deleteAdminEvaluation('missing', 'user-1')).rejects.toBeInstanceOf(EvalNotFoundError)
+  })
+
+  it('throws EvalOwnershipError when requester is not the creator', async () => {
+    mockFindUnique.mockResolvedValueOnce({ createdBy: 'user-1' } as never)
+    await expect(deleteAdminEvaluation('eval-1', 'other-user')).rejects.toBeInstanceOf(EvalOwnershipError)
+  })
+
+  it('throws EvalNotFoundError on P2025 during delete', async () => {
+    mockFindUnique.mockResolvedValueOnce({ createdBy: 'user-1' } as never)
     const prismaError = new Prisma.PrismaClientKnownRequestError('Not found', {
       code: 'P2025',
       clientVersion: '5.0.0',
     })
     mockDelete.mockRejectedValueOnce(prismaError)
-    await expect(deleteAdminEvaluation('missing')).rejects.toBeInstanceOf(EvalNotFoundError)
+    await expect(deleteAdminEvaluation('eval-1', 'user-1')).rejects.toBeInstanceOf(EvalNotFoundError)
   })
 })

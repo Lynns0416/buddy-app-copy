@@ -525,6 +525,7 @@ export type AdminEvaluationResponse = AdminEvalScores & {
   tourDate: string
   tourGroupName: string
   createdBy: string
+  createdByEmail: string
   createdAt: string
   updatedAt: string
 }

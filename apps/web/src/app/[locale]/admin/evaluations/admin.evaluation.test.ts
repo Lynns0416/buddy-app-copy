@@ -66,6 +66,7 @@ const mockEval: AdminEvaluationResponse = {
   tourDate: '2026-01-15T00:00:00.000Z',
   tourGroupName: 'Test Group',
   createdBy: 'user-1',
+  createdByEmail: 'admin@example.com',
   overallRating: 4,
   overallRatingNote: null,
   reliability: null,

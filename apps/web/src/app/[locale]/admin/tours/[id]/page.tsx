@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import { TourStatusSchema, TourActionSchema, AppErrorCodeSchema } from '@peace-buddy/types'
+import { TourStatusSchema, TourActionSchema, AppErrorCodeSchema, BookingStatusSchema } from '@peace-buddy/types'
 import type { AdminTourDetailResponse, TourAction, BookingStatus, AppError } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ import {
 } from '../admin.tour'
 import { getTourStatusLabel, getBookingStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
+import { CompleteTourModal } from '../_components/complete-tour-modal'
 
 const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
@@ -39,6 +40,7 @@ export default function AdminTourDetailPage() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [acting, setActing] = useState(false)
+  const [completeModalOpen, setCompleteModalOpen] = useState(false)
   const [bookingSortField, setBookingSortField] = useState<BookingSortField>('bookedAt')
   const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -71,6 +73,16 @@ export default function AdminTourDetailPage() {
     setActing(true)
     setActionError(null)
     const result = await transitionTour(id, action)
+    if (result.ok) setTour(result.data)
+    else setActionError(errorMessage(result.error))
+    setActing(false)
+  }
+
+  async function handleComplete() {
+    setCompleteModalOpen(false)
+    setActing(true)
+    setActionError(null)
+    const result = await transitionTour(id, TourActionSchema.enum.complete)
     if (result.ok) setTour(result.data)
     else setActionError(errorMessage(result.error))
     setActing(false)
@@ -204,7 +216,7 @@ export default function AdminTourDetailPage() {
         )}
         {tour.status === TourStatusSchema.enum.published && (
           <>
-            <Button size="sm" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.complete, t('confirmComplete'))}>
+            <Button size="sm" disabled={acting} onClick={() => setCompleteModalOpen(true)}>
               {t('completeTour')}
             </Button>
             <Button size="sm" variant="outline" disabled={acting} onClick={() => handleTransition(TourActionSchema.enum.cancel, t('confirmCancel'))}>
@@ -262,6 +274,16 @@ export default function AdminTourDetailPage() {
           <TourBuddyEvalSection tourId={tour.id} bookings={tour.bookings} />
         </>
       )}
+
+      <CompleteTourModal
+        open={completeModalOpen}
+        confirmedBuddies={tour.bookings
+          .filter((b) => b.status === BookingStatusSchema.enum.confirmed)
+          .map((b) => b.displayName)}
+        loading={acting}
+        onConfirm={() => void handleComplete()}
+        onCancel={() => setCompleteModalOpen(false)}
+      />
     </AppShell>
   )
 }

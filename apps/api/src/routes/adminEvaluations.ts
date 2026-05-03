@@ -8,6 +8,7 @@ import {
   deleteAdminEvaluation,
   EvalNotFoundError,
   EvalAlreadyExistsError,
+  EvalOwnershipError,
   BuddyNotFoundError,
   TourNotFoundError,
 } from '../services/adminEvaluation.service'
@@ -70,21 +71,25 @@ adminEvaluationRoutes.put('/:id', async (c) => {
     return c.json(apiError('invalid_request'), 400)
   }
 
+  const { id: userId } = c.get('user')
   try {
-    return c.json(await updateAdminEvaluation(id, parsed.data))
+    return c.json(await updateAdminEvaluation(id, parsed.data, userId))
   } catch (e) {
     if (e instanceof EvalNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof EvalOwnershipError) return c.json(apiError('forbidden'), 403)
     throw e
   }
 })
 
 adminEvaluationRoutes.delete('/:id', async (c) => {
   const id = c.req.param('id')
+  const { id: userId } = c.get('user')
   try {
-    await deleteAdminEvaluation(id)
+    await deleteAdminEvaluation(id, userId)
     return c.body(null, 204)
   } catch (e) {
     if (e instanceof EvalNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof EvalOwnershipError) return c.json(apiError('forbidden'), 403)
     throw e
   }
 })
