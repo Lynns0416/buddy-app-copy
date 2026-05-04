@@ -7,6 +7,8 @@ import {
   TourStatus,
   BookingStatus,
   CancellationCategory,
+  ApplicationPool,
+  ApplicationStatus,
 } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -84,8 +86,13 @@ async function main() {
   })
 
   // ── Buddy users and profiles (dynamic from accounts.json) ─────
+  // Assign tiers so the application system works: b(0)=junior, b(1)=senior, b(2+)=mid
+  const BUDDY_TIER_CYCLE: BuddyTier[] = [BuddyTier.junior, BuddyTier.senior, BuddyTier.mid]
   const buddies: string[] = []
-  for (const account of buddyAccounts) {
+  for (let i = 0; i < buddyAccounts.length; i++) {
+    const account = buddyAccounts[i]
+    const tier = BUDDY_TIER_CYCLE[i % BUDDY_TIER_CYCLE.length]
+
     const user = await prisma.user.upsert({
       where: { firebaseUid: account.localId },
       update: { email: account.email, role: UserRole.buddy },
@@ -98,12 +105,14 @@ async function main() {
         displayName: account.displayName ?? account.email.split('@')[0],
         realName: account.displayName ?? '',
         status: BuddyStatus.active,
+        tier,
         languages: ['japanese', 'english'],
         skills: [],
       },
       create: {
         userId: user.id,
         status: BuddyStatus.active,
+        tier,
         displayName: account.displayName ?? account.email.split('@')[0],
         realName: account.displayName ?? '',
         languages: ['japanese', 'english'],
@@ -423,19 +432,19 @@ async function main() {
       },
     })
 
-    // peace-002, peace-003
-    const newTourBookings = [
+    // peace-002 (direct/legacy bookings — no application)
+    const peace2Bookings = [
       { buddyId: b(0)!, tourId: ID.tourPeace2, status: BookingStatus.confirmed },
       { buddyId: b(1)!, tourId: ID.tourPeace2, status: BookingStatus.maybe },
-      { buddyId: b(1)!, tourId: ID.tourPeace3, status: BookingStatus.confirmed },
     ]
-    for (const booking of newTourBookings) {
+    for (const booking of peace2Bookings) {
       await prisma.booking.upsert({
         where: { buddyId_tourId: { buddyId: booking.buddyId, tourId: booking.tourId } },
         update: {},
         create: booking,
       })
     }
+    // peace-003 bookings are seeded via Application records below (not direct)
   }
 
   // ── Evaluations (skip if no buddies) ────────────────────────
@@ -582,6 +591,65 @@ async function main() {
     })
   }
 
+  // ── TierCapacity (tourPeace3: custom split to demo the feature) ─
+  // Default is 20/30/50 — tourPeace3 uses 25/35/40 as an example override
+  if (buddies.length > 0) {
+    const customPools: { pool: ApplicationPool; percent: number }[] = [
+      { pool: ApplicationPool.junior,     percent: 25 },
+      { pool: ApplicationPool.non_junior, percent: 35 },
+      { pool: ApplicationPool.anyone,     percent: 40 },
+    ]
+    for (const { pool, percent } of customPools) {
+      await prisma.tierCapacity.upsert({
+        where: { tourId_pool: { tourId: ID.tourPeace3, pool } },
+        update: { percent },
+        create: { tourId: ID.tourPeace3, pool, percent },
+      })
+    }
+  }
+
+  // ── Applications (tourPeace3: show approved + waitlisted states) ─
+  // b(0)=junior approved → booking created; b(1)=senior waitlisted
+  // tourPeace3 capacity=12, custom pools: junior=floor(12*0.25)=3, non_junior=floor(12*0.35)=4, anyone=floor(12*0.40)=4
+  if (buddies.length > 0) {
+    // b(0) approved application + booking
+    const app0 = await prisma.application.upsert({
+      where: { tourId_buddyId: { tourId: ID.tourPeace3, buddyId: b(0)! } },
+      update: {},
+      create: {
+        tourId: ID.tourPeace3,
+        buddyId: b(0)!,
+        buddyTier: BuddyTier.junior,
+        status: ApplicationStatus.approved,
+        approvedAt: new Date(),
+      },
+    })
+    await prisma.booking.upsert({
+      where: { buddyId_tourId: { buddyId: b(0)!, tourId: ID.tourPeace3 } },
+      update: {},
+      create: {
+        applicationId: app0.id,
+        buddyId: b(0)!,
+        tourId: ID.tourPeace3,
+        status: BookingStatus.confirmed,
+      },
+    })
+
+    if (buddies.length > 1) {
+      // b(1) waitlisted application (no booking)
+      await prisma.application.upsert({
+        where: { tourId_buddyId: { tourId: ID.tourPeace3, buddyId: b(1)! } },
+        update: {},
+        create: {
+          tourId: ID.tourPeace3,
+          buddyId: b(1)!,
+          buddyTier: BuddyTier.senior,
+          status: ApplicationStatus.waitlisted,
+        },
+      })
+    }
+  }
+
   // ── Dynamic "me" ────────────────────────────────────────────
   // Finds any non-seed user who logged in. Login once, then re-run seed.
   const dynamicUser = await prisma.user.findFirst({
@@ -591,6 +659,11 @@ async function main() {
 
   if (dynamicUser?.buddyProfile) {
     const myBuddyId = dynamicUser.buddyProfile.id
+    // Set tier so the application system works (junior by default)
+    await prisma.buddyProfile.update({
+      where: { id: myBuddyId },
+      data: { tier: BuddyTier.junior },
+    })
     const myBookings = [
       { buddyId: myBuddyId, tourId: ID.tourPast,    status: BookingStatus.confirmed },
       { buddyId: myBuddyId, tourId: ID.tourPeace1,  status: BookingStatus.confirmed },
@@ -604,7 +677,8 @@ async function main() {
         create: booking,
       })
     }
-    console.log(`  動的バディ: ${dynamicUser.email} → ブッキング追加済み`)
+    // tourPeace3 and tourOpen have no booking → Apply button shows on those tours
+    console.log(`  動的バディ: ${dynamicUser.email} → ブッキング追加済み、tier=junior`)
   }
 
   console.log('シード完了')
@@ -612,6 +686,8 @@ async function main() {
   console.log('  合成admin2: admin2@seed.local (ログイン不可 — マルチ管理者評価デモ用)')
   console.log('  ツアー: 平和公園 4件（締切済み・中期・遠日程・下書き）')
   console.log('  peace-001: 参加中(buddy0) + キャンセル済み+理由あり(buddy1)')
+  console.log('  peace-003: 応募済み承認(buddy0=junior) + キャンセル待ち(buddy1=senior) — applicationテスト用')
+  console.log('  tourOpen / tourPeace3: 動的バディ(me)が応募ボタンを確認できるツアー')
 }
 
 main()

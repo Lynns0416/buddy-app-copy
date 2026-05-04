@@ -8,7 +8,7 @@ export type UserRole = z.infer<typeof UserRoleSchema>
 export const BuddyStatusSchema = z.enum(['pending', 'active', 'rejected', 'suspended'])
 export type BuddyStatus = z.infer<typeof BuddyStatusSchema>
 
-export const BuddyTierSchema = z.enum(['trainee', 'junior', 'mid', 'senior', 'expert', 'instructor', 'organizer'])
+export const BuddyTierSchema = z.enum(['trainee', 'junior', 'mid', 'senior', 'expert', 'instructor', 'organizer'] as const)
 export type BuddyTier = z.infer<typeof BuddyTierSchema>
 
 export const BookingStatusSchema = z.enum(['confirmed', 'maybe', 'waitlist', 'declined'])
@@ -38,7 +38,7 @@ export const LanguageSchema = z.enum([
   'spanish',
   'thai',
   'vietnamese',
-])
+] as const)
 export type Language = z.infer<typeof LanguageSchema>
 
 export const NotifEventTypeSchema = z.enum([
@@ -55,6 +55,14 @@ export type EmailMode = z.infer<typeof EmailModeSchema>
 
 export const ApplicationStatusSchema = z.enum(['pending', 'approved', 'rejected', 'waitlisted'])
 export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
+
+export type ApplicationResponse = {
+  id: string
+  tourId: string
+  status: ApplicationStatus
+  createdAt: string
+  approvedAt: string | null
+}
 
 // `network` is client-only and is never emitted by the server
 export const AppErrorCodeSchema = z.enum(['not_found', 'forbidden', 'conflict', 'invalid_request', 'network', 'unknown'])

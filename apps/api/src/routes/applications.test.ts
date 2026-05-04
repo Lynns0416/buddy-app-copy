@@ -84,16 +84,14 @@ describe('applications routes', () => {
         id: '00000000-0000-0000-0000-000000000100',
         status: 'published',
       })
-      getDb().application.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: '00000000-0000-0000-0000-000000001000',
-          tourId: '00000000-0000-0000-0000-000000000100',
-          status: 'approved',
-          createdAt: new Date('2026-05-03T00:00:00Z'),
-          approvedAt: new Date('2026-05-03T00:01:00Z'),
-        })
-      mockCreateApplication.mockResolvedValue('00000000-0000-0000-0000-000000001000')
+      getDb().application.findUnique.mockResolvedValueOnce({
+        id: '00000000-0000-0000-0000-000000001000',
+        tourId: '00000000-0000-0000-0000-000000000100',
+        status: 'approved',
+        createdAt: new Date('2026-05-03T00:00:00Z'),
+        approvedAt: new Date('2026-05-03T00:01:00Z'),
+      })
+      mockCreateApplication.mockResolvedValue({ ok: true, data: '00000000-0000-0000-0000-000000001000' })
 
       const app = buildApp()
       const res = await app.request('/', {
@@ -165,18 +163,10 @@ describe('applications routes', () => {
       expect(res.status).toBe(404)
     })
 
-    it('returns 409 if application already exists', async () => {
+    it('returns 403 if buddy is trainee', async () => {
       getDb().buddyProfile.findUnique.mockResolvedValue({
         id: '00000000-0000-0000-0000-000000000010',
-        tier: 'junior',
-      })
-      getDb().tour.findUnique.mockResolvedValue({
-        id: '00000000-0000-0000-0000-000000000100',
-        status: 'published',
-      })
-      getDb().application.findUnique.mockResolvedValue({
-        id: '00000000-0000-0000-0000-000000001000',
-        status: 'pending',
+        tier: 'trainee',
       })
 
       const app = buildApp()
@@ -186,7 +176,56 @@ describe('applications routes', () => {
         body: JSON.stringify({ tourId: '00000000-0000-0000-0000-000000000100' }),
       })
 
+      expect(res.status).toBe(403)
+    })
+
+    it('returns 409 if application already exists and is not rejected', async () => {
+      getDb().buddyProfile.findUnique.mockResolvedValue({
+        id: '00000000-0000-0000-0000-000000000010',
+        tier: 'junior',
+      })
+      getDb().tour.findUnique.mockResolvedValue({
+        id: '00000000-0000-0000-0000-000000000100',
+        status: 'published',
+      })
+      mockCreateApplication.mockResolvedValue({ ok: false, code: 'conflict' })
+
+      const app = buildApp()
+      const res = await app.request('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tourId: '00000000-0000-0000-0000-000000000100' }),
+      })
+
       expect(res.status).toBe(409)
+    })
+
+    it('allows re-apply when existing application is rejected', async () => {
+      getDb().buddyProfile.findUnique.mockResolvedValue({
+        id: '00000000-0000-0000-0000-000000000010',
+        tier: 'junior',
+      })
+      getDb().tour.findUnique.mockResolvedValue({
+        id: '00000000-0000-0000-0000-000000000100',
+        status: 'published',
+      })
+      getDb().application.findUnique.mockResolvedValueOnce({
+        id: '00000000-0000-0000-0000-000000001000',
+        tourId: '00000000-0000-0000-0000-000000000100',
+        status: 'approved',
+        createdAt: new Date('2026-05-03T00:00:00Z'),
+        approvedAt: new Date('2026-05-03T00:01:00Z'),
+      })
+      mockCreateApplication.mockResolvedValue({ ok: true, data: '00000000-0000-0000-0000-000000001000' })
+
+      const app = buildApp()
+      const res = await app.request('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tourId: '00000000-0000-0000-0000-000000000100' }),
+      })
+
+      expect(res.status).toBe(201)
     })
 
     it('returns 400 for invalid request body', async () => {

@@ -58,7 +58,7 @@ vi.mock('@/lib/auth', () => ({
 }))
 
 vi.mock('@/lib/api-client', () => ({
-  apiClient: { getTour: vi.fn(), createBooking: vi.fn(), updateBooking: vi.fn() },
+  apiClient: { getTour: vi.fn(), createBooking: vi.fn(), updateBooking: vi.fn(), getApplicationStatus: vi.fn(), createApplication: vi.fn() },
 }))
 
 import { useAuth } from '@/lib/auth'
@@ -68,6 +68,8 @@ const mockUseAuth = vi.mocked(useAuth)
 const mockGetTour = vi.mocked(apiClient.getTour)
 const mockCreateBooking = vi.mocked(apiClient.createBooking)
 const mockUpdateBooking = vi.mocked(apiClient.updateBooking)
+const mockGetApplicationStatus = vi.mocked(apiClient.getApplicationStatus)
+const mockCreateApplication = vi.mocked(apiClient.createApplication)
 
 const mockDbUser = {
   id: 'user-1',
@@ -180,30 +182,32 @@ describe('TourDetailPage', () => {
     await waitFor(() => expect(mockGetTour).toHaveBeenCalledWith('tour-1'))
   })
 
-  it('shows join button when tour is bookable and not booked', async () => {
+  it('shows apply button when tour is bookable and not booked', async () => {
     const bookableTour = { ...mockTour, myBookingStatus: null, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
     mockGetTour.mockResolvedValue(bookableTour)
+    mockGetApplicationStatus.mockResolvedValue(null)
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.getByText('join')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('actions.apply')).toBeInTheDocument())
   })
 
-  it('does not show join button when already booked', async () => {
+  it('does not show apply button when already booked', async () => {
     const bookedTour = { ...mockTour, myBookingStatus: 'confirmed' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
     mockGetTour.mockResolvedValue(bookedTour)
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.queryByText('join')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('actions.apply')).not.toBeInTheDocument())
   })
 
-  it('calls createBooking and refreshes tour on join', async () => {
+  it('calls createApplication and refreshes tour on apply', async () => {
     const bookableTour = { ...mockTour, myBookingStatus: null, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
     const bookedTour = { ...bookableTour, myBookingStatus: 'confirmed' as const }
     mockGetTour.mockResolvedValueOnce(bookableTour).mockResolvedValueOnce(bookedTour)
-    mockCreateBooking.mockResolvedValueOnce({ id: 'b1', tourId: 'tour-1', status: 'confirmed', bookedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' })
+    mockGetApplicationStatus.mockResolvedValue(null)
+    mockCreateApplication.mockResolvedValueOnce({ id: 'app1', tourId: 'tour-1', status: 'approved', createdAt: '2026-01-01T00:00:00.000Z', approvedAt: '2026-01-01T00:00:00.000Z' })
 
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.getByText('join')).toBeInTheDocument())
-    screen.getByText('join').click()
-    await waitFor(() => expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', 'confirmed'))
+    await waitFor(() => expect(screen.getByText('actions.apply')).toBeInTheDocument())
+    screen.getByText('actions.apply').click()
+    await waitFor(() => expect(mockCreateApplication).toHaveBeenCalledWith('tour-1'))
   })
 
   it('shows cancel button when booking is confirmed', async () => {

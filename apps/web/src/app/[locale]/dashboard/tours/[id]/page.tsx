@@ -21,6 +21,7 @@ import { CANCEL_CATEGORIES } from '../../lib/constants'
 import { isPastDeadline, canSelectMaybeStatus, isBookingAllowed } from '../../lib/deadline'
 import { getBookingStatusLabel, bookingStatusBadgeVariant } from '@/lib/status-display'
 import { TourSelfEvalSection } from '../../self-evaluations/_components/tour-self-eval-section'
+import { TourApplicationSection } from '../../applications/_components/tour-application-section'
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -265,20 +266,8 @@ export default function TourDetailPage() {
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {tour.myBookingStatus === null && isBookable && (
-                    <>
-                      <Button onClick={() => void handleInitialResponse(BookingStatusSchema.enum.confirmed)} disabled={acting}>
-                        {t('join')}
-                      </Button>
-                      {canSelectMaybe && (
-                        <Button variant="secondary" onClick={() => handleInitialResponse(BookingStatusSchema.enum.maybe)} disabled={acting}>
-                          {t('respondMaybe')}
-                        </Button>
-                      )}
-                      <Button variant="outline" onClick={() => handleInitialResponse(BookingStatusSchema.enum.declined)} disabled={acting}>
-                        {t('decline')}
-                      </Button>
-                    </>
+                  {tour.myBookingStatus === null && tour.status === TourStatusSchema.enum.published && tour.bookingOpen && (
+                    <TourApplicationSection tourId={id} onBooked={() => void refetch()} />
                   )}
                   {tour.myBookingStatus === BookingStatusSchema.enum.declined && isBookable && tour.remainingSeats > 0 && (
                     <Button variant="outline" onClick={() => void handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>

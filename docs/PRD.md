@@ -343,6 +343,76 @@ All transitions allowed before cancellation deadline. After deadline, buddies ca
 - Admins view full booking history for any buddy
 - Buddies view their own history only
 
+### 8.9 Tour Application System
+
+Buddies apply to tours rather than booking directly. The system auto-assigns a spot or puts the buddy on a waitlist based on tier-based seat pools.
+
+#### Eligibility
+
+- Only **Active** buddies with a tier assigned can apply
+- **Trainee** tier cannot apply (they cannot book tours yet)
+- Only when tour is **Published** and `bookingOpen = true`
+
+#### Seat Pools
+
+Total tour capacity is split into three pools:
+
+| Pool | Who fills it | Default % |
+|---|---|---|
+| **Junior** | `junior` tier only | 20% |
+| **Non-junior** | `mid`, `senior`, `expert`, `instructor`, `organizer` | 30% |
+| **Anyone** | Any eligible tier (overflow from either pool) | 50% |
+
+Percentages default to 20/30/50 for all tours. Per-tour overrides are supported via the `TierCapacity` table (`pool: ApplicationPool, percent: Int`). Override rules:
+
+- Either use all defaults (no `TierCapacity` rows for the tour), or provide all three pools explicitly
+- All three percentages must sum to 100% — partial overrides are not allowed
+- The `anyone` pool is the shared overflow — both junior and non-junior buddies can fill from it once their respective pools are full
+
+#### Assignment Logic
+
+When a buddy applies, the system immediately attempts to assign them:
+
+1. **Junior buddy**: check junior pool → if full, check anyone pool → if full, waitlist
+2. **Non-junior buddy**: check non-junior pool → if full, check anyone pool → if full, waitlist
+
+No manual admin approval step. "Approved" in the DB means the buddy got a spot and a Booking (confirmed) was created automatically.
+
+#### Application Statuses
+
+| Status | Meaning |
+|---|---|
+| `pending` | Transient — set at row creation, immediately overwritten by assignment logic. Never stable. |
+| `approved` | Got a spot; a confirmed Booking has been created. Shown to buddy as booking confirmed. |
+| `waitlisted` | All relevant pools were full. Buddy waits. |
+| `rejected` | Cancelled by buddy (or system). |
+
+From the **buddy's perspective** only two states matter: booked (approved → booking confirmed shown in tour detail) or waitlisted.
+
+#### Cancellation
+
+- Buddy can cancel (withdraw application) at any time while `waitlisted`
+- Cancelling an `approved` application also deletes the associated Booking and triggers promotion
+- After cancel, re-apply is allowed if any vacancy exists in the buddy's pool or the anyone pool
+- Status is set to `rejected` on cancel; the application row is reused on re-apply (upsert)
+
+#### Promotion
+
+When an `approved` application is cancelled:
+
+1. The freed pool slot is identified
+2. The earliest `waitlisted` application from the same pool is promoted (auto-assigned a booking)
+3. If no waitlisted buddy exists in that pool, the anyone pool is checked
+
+
+#### UI Entry Point
+
+- `/dashboard/tours/[id]` — the tour detail page
+- When `myBookingStatus === null` and tour is published and `bookingOpen`: show Apply button
+- When `waitlisted`: show waitlist status badge and cancel option
+- When `approved`: the existing booking section shows confirmed status (no separate application UI)
+- No separate application history page — buddy reaches history via booking history
+
 ---
 
 ## 9. Evaluation System
@@ -755,3 +825,7 @@ When GCP nonprofit credits run low:
 | 7 | Group type enum values — School / Company / Community / Other sufficient? | Team | **Resolved** — confirmed as-is |
 | 8 | Internal tier names | Team | **Resolved** — `junior` / `mid` / `senior` / `expert` / `instructor` / `organizer` |
 | 9 | When no admins are assigned to a tour, should post-deadline "I can't go" reports notify all admins as a fallback? | Team | **Resolved** — no fallback; notification only goes to assigned admins. Tours without assigned admins flagged visually in UI as unresolved. |
+| 10 | Tour application pool split percentages | Team | **Resolved** — junior 20%, non-junior 30%, anyone 50%. See §8.9. |
+| 11 | Can a buddy re-apply after cancelling their application? | Team | **Resolved** — yes, if a vacancy exists in their pool or the anyone pool. See §8.9. |
+| 12 | What happens when `mentorshipBalanced = false` and a buddy applies? | Team | **Resolved** — `mentorshipBalanced` flag removed entirely. All tours always use the 3-pool system. Default percentages (20/30/50) apply when no `TierCapacity` rows exist for the tour. |
+| 13 | Should per-tour pool percentage overrides be partial or all-or-nothing? | Team | **Resolved** — all-or-nothing. A tour either uses all defaults (no rows) or provides all 3 pools summing to 100%. |

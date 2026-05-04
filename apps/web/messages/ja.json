@@ -447,5 +447,30 @@
       "network": "通信エラーが発生しました。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
+  },
+  "tourApplication": {
+    "status": {
+      "pending": "処理中…",
+      "waitlisted": "キャンセル待ち"
+    },
+    "actions": {
+      "apply": "応募する",
+      "cancel": "応募を取り消す"
+    },
+    "cancelModal": {
+      "title": "応募の取り消し",
+      "body": "本当に応募を取り消しますか？空きがあれば再度応募できます。",
+      "confirm": "取り消す",
+      "cancel": "応募を続ける"
+    },
+    "messages": {
+      "rejected": "応募を取り消しました。"
+    },
+    "error": {
+      "alreadyApplied": "すでにこのツアーに応募しています。",
+      "tourNotFound": "ツアーが見つかりませんでした。",
+      "network": "ネットワークエラーが発生しました。もう一度お試しください。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    }
   }
 }

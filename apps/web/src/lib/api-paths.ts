@@ -34,4 +34,8 @@ export const apiPaths = {
 
   selfEvaluations: '/me/self-evaluations',
   selfEvaluation: (id: string) => `/me/self-evaluations/${id}`,
+
+  applications: '/applications',
+  application: (id: string) => `/applications/${id}`,
+  applicationStatus: (tourId: string) => `/applications/${tourId}/status`,
 } as const

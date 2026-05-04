@@ -1,224 +1,239 @@
 import { db } from '../lib/db'
-import type { BuddyTier } from '@peace-buddy/types'
+import type { BuddyTier, AppErrorCode } from '@peace-buddy/types'
 
-const ApplicationStatusValues = {
-  pending: 'pending' as const,
-  approved: 'approved' as const,
-  rejected: 'rejected' as const,
-  waitlisted: 'waitlisted' as const,
+// Default pool percentages (used when no TierCapacity rows exist for a tour)
+const DEFAULT_JUNIOR_PCT = 20
+const DEFAULT_NON_JUNIOR_PCT = 30
+const DEFAULT_ANYONE_PCT = 50
+
+const NON_JUNIOR_TIERS: BuddyTier[] = ['mid', 'senior', 'expert', 'instructor', 'organizer']
+
+type Pool = 'junior' | 'non_junior' | 'anyone'
+
+function poolForTier(tier: BuddyTier): 'junior' | 'non_junior' {
+  return tier === 'junior' ? 'junior' : 'non_junior'
 }
 
-type ApplicationStatus = typeof ApplicationStatusValues[keyof typeof ApplicationStatusValues]
-
-const BookingStatus = {
-  confirmed: 'confirmed' as const,
+interface PoolCapacities {
+  junior: number
+  non_junior: number
+  anyone: number
 }
 
-export type TierCapacityMap = Record<BuddyTier, number>
-
-export async function getTierCapacities(tourId: string): Promise<TierCapacityMap> {
+async function getPoolCapacities(tourId: string): Promise<PoolCapacities> {
   const tour = await db.tour.findUnique({
     where: { id: tourId },
-    select: { capacity: true, mentorshipBalanced: true },
+    select: { capacity: true },
   })
 
   if (!tour) {
     throw new Error(`Tour ${tourId} not found`)
   }
 
-  if (!tour.mentorshipBalanced) {
+  const rows = await db.tierCapacity.findMany({
+    where: { tourId },
+    select: { pool: true, percent: true },
+  })
+
+  if (rows.length === 0) {
     return {
-      trainee: 0,
-      junior: 0,
-      mid: 0,
-      senior: 0,
-      expert: 0,
-      instructor: 0,
-      organizer: 0,
+      junior: Math.floor(tour.capacity * DEFAULT_JUNIOR_PCT / 100),
+      non_junior: Math.floor(tour.capacity * DEFAULT_NON_JUNIOR_PCT / 100),
+      anyone: Math.floor(tour.capacity * DEFAULT_ANYONE_PCT / 100),
     }
   }
 
-  const tierCapacities = await db.tierCapacity.findMany({
-    where: { tourId },
-    select: { tier: true, percent: true },
+  const pctMap: Record<Pool, number> = { junior: 0, non_junior: 0, anyone: 0 }
+  for (const row of rows) {
+    pctMap[row.pool as Pool] = row.percent
+  }
+
+  return {
+    junior: Math.floor(tour.capacity * pctMap.junior / 100),
+    non_junior: Math.floor(tour.capacity * pctMap.non_junior / 100),
+    anyone: Math.floor(tour.capacity * pctMap.anyone / 100),
+  }
+}
+
+async function getApprovedCountByPool(tourId: string, pool: Pool): Promise<number> {
+  if (pool === 'junior') {
+    return db.application.count({
+      where: { tourId, status: 'approved', buddyTier: 'junior' },
+    })
+  }
+  if (pool === 'non_junior') {
+    return db.application.count({
+      where: { tourId, status: 'approved', buddyTier: { in: NON_JUNIOR_TIERS } },
+    })
+  }
+  // anyone pool: count all approved
+  return db.application.count({
+    where: { tourId, status: 'approved' },
+  })
+}
+
+async function tryAssignToPool(
+  applicationId: string,
+  tourId: string,
+  pool: Pool,
+  capacities: PoolCapacities,
+): Promise<boolean> {
+  const approved = await getApprovedCountByPool(tourId, pool)
+  if (approved >= capacities[pool]) return false
+
+  await db.application.update({
+    where: { id: applicationId },
+    data: { status: 'approved', approvedAt: new Date() },
   })
 
-  const capacityMap: TierCapacityMap = {
-    trainee: 0,
-    junior: 0,
-    mid: 0,
-    senior: 0,
-    expert: 0,
-    instructor: 0,
-    organizer: 0,
-  }
-
-  for (const tc of tierCapacities) {
-    capacityMap[tc.tier] = Math.floor(tour.capacity * (tc.percent / 100))
-  }
-
-  return capacityMap
-}
-
-export async function getApprovedCount(
-  tourId: string,
-  tier?: BuddyTier,
-): Promise<number> {
-  const where: { tourId: string; status: ApplicationStatus; buddyTier?: BuddyTier } = {
-    tourId,
-    status: ApplicationStatusValues.approved,
-  }
-
-  if (tier) {
-    where.buddyTier = tier
-  }
-
-  const count = await db.application.count({ where })
-  return count
-}
-
-export async function assignApplication(applicationId: string): Promise<void> {
   const application = await db.application.findUnique({
     where: { id: applicationId },
-    select: {
-      id: true,
-      tourId: true,
-      buddyId: true,
-      buddyTier: true,
-    },
+    select: { buddyId: true },
+  })
+
+  if (application) {
+    await db.booking.create({
+      data: {
+        applicationId,
+        buddyId: application.buddyId,
+        tourId,
+        status: 'confirmed',
+      },
+    })
+  }
+
+  return true
+}
+
+async function assignApplication(applicationId: string): Promise<void> {
+  const application = await db.application.findUnique({
+    where: { id: applicationId },
+    select: { id: true, tourId: true, buddyTier: true },
   })
 
   if (!application) {
     throw new Error(`Application ${applicationId} not found`)
   }
 
-  const capacities = await getTierCapacities(application.tourId)
-  const tierCapacity = capacities[application.buddyTier]
-  const tierApprovedCount = await getApprovedCount(application.tourId, application.buddyTier)
+  const capacities = await getPoolCapacities(application.tourId)
+  const primaryPool = poolForTier(application.buddyTier)
 
-  const shouldApprove = tierApprovedCount < tierCapacity
+  // Try primary pool first, then anyone pool
+  const assigned =
+    await tryAssignToPool(applicationId, application.tourId, primaryPool, capacities) ||
+    await tryAssignToPool(applicationId, application.tourId, 'anyone', capacities)
 
-  if (shouldApprove) {
+  if (!assigned) {
     await db.application.update({
       where: { id: applicationId },
-      data: {
-        status: ApplicationStatusValues.approved,
-        approvedAt: new Date(),
-      },
-    })
-
-    await db.booking.create({
-      data: {
-        applicationId: application.id,
-        buddyId: application.buddyId,
-        tourId: application.tourId,
-        status: BookingStatus.confirmed,
-      },
-    })
-  } else {
-    await db.application.update({
-      where: { id: applicationId },
-      data: {
-        status: ApplicationStatusValues.waitlisted,
-      },
+      data: { status: 'waitlisted' },
     })
   }
-}
-
-export async function promoteFromWaitlist(tourId: string, tier: BuddyTier): Promise<boolean> {
-  const capacities = await getTierCapacities(tourId)
-  const tierCapacity = capacities[tier]
-  const tierApprovedCount = await getApprovedCount(tourId, tier)
-
-  if (tierApprovedCount >= tierCapacity) {
-    return false
-  }
-
-  const nextWaitlisted = await db.application.findFirst({
-    where: {
-      tourId,
-      status: ApplicationStatusValues.waitlisted,
-      buddyTier: tier,
-    },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true },
-  })
-
-  if (!nextWaitlisted) {
-    return false
-  }
-
-  await assignApplication(nextWaitlisted.id)
-  return true
 }
 
 export async function getApplicationStatus(tourId: string, buddyId: string) {
-  const application = await db.application.findUnique({
-    where: {
-      tourId_buddyId: { tourId, buddyId },
-    },
-    select: {
-      id: true,
-      status: true,
-      createdAt: true,
-      approvedAt: true,
-    },
+  return db.application.findUnique({
+    where: { tourId_buddyId: { tourId, buddyId } },
+    select: { id: true, status: true, createdAt: true, approvedAt: true },
   })
-
-  return application
 }
+
+type ApplicationResult = { ok: true; data: string } | { ok: false; code: AppErrorCode }
 
 export async function createApplication(
   tourId: string,
   buddyId: string,
   buddyTier: BuddyTier,
-): Promise<string> {
-  const application = await db.application.create({
-    data: {
-      tourId,
-      buddyId,
-      buddyTier,
-      status: ApplicationStatusValues.pending,
-    },
-    select: { id: true },
+): Promise<ApplicationResult> {
+  // Allow re-apply if existing application is rejected (cancelled)
+  const existing = await db.application.findUnique({
+    where: { tourId_buddyId: { tourId, buddyId } },
+    select: { id: true, status: true },
   })
 
-  await assignApplication(application.id)
+  let applicationId: string
 
-  return application.id
+  if (existing && existing.status !== 'rejected') {
+    return { ok: false, code: 'conflict' }
+  }
+
+  if (existing && existing.status === 'rejected') {
+    // Reuse the rejected row
+    await db.application.update({
+      where: { id: existing.id },
+      data: { status: 'pending', approvedAt: null, buddyTier },
+    })
+    applicationId = existing.id
+  } else {
+    const created = await db.application.create({
+      data: { tourId, buddyId, buddyTier, status: 'pending' },
+      select: { id: true },
+    })
+    applicationId = created.id
+  }
+
+  await assignApplication(applicationId)
+  return { ok: true, data: applicationId }
 }
 
 export async function cancelApplication(applicationId: string): Promise<void> {
   const application = await db.application.findUnique({
     where: { id: applicationId },
-    select: {
-      status: true,
-      tourId: true,
-      buddyId: true,
-      buddyTier: true,
-    },
+    select: { status: true, tourId: true, buddyTier: true },
   })
 
   if (!application) {
     throw new Error(`Application ${applicationId} not found`)
   }
 
-  const wasApproved = application.status === ApplicationStatusValues.approved
+  const wasApproved = application.status === 'approved'
 
   await db.application.update({
     where: { id: applicationId },
-    data: {
-      status: ApplicationStatusValues.rejected,
-    },
+    data: { status: 'rejected' },
   })
 
   if (wasApproved) {
-    await db.booking.deleteMany({
-      where: {
-        applicationId,
-      },
-    })
-
+    await db.booking.deleteMany({ where: { applicationId } })
     await promoteFromWaitlist(application.tourId, application.buddyTier)
   }
 }
+
+async function promoteFromWaitlist(tourId: string, tier: BuddyTier): Promise<void> {
+  const primaryPool = poolForTier(tier)
+
+  // Find earliest waitlisted buddy that can fill primary pool or anyone pool
+  const candidate = await db.application.findFirst({
+    where: {
+      tourId,
+      status: 'waitlisted',
+      buddyTier: primaryPool === 'junior' ? 'junior' : { in: NON_JUNIOR_TIERS },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  })
+
+  if (candidate) {
+    await assignApplication(candidate.id)
+    return
+  }
+
+  // Also check anyone pool — find any waitlisted buddy regardless of tier
+  const anyCandidate = await db.application.findFirst({
+    where: {
+      tourId,
+      status: 'waitlisted',
+      buddyTier: { notIn: ['trainee'] },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  })
+
+  if (anyCandidate) {
+    await assignApplication(anyCandidate.id)
+  }
+}
+
+// Exported for testing
+export { getPoolCapacities, assignApplication, promoteFromWaitlist }
+export type { PoolCapacities }

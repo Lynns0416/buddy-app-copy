@@ -447,5 +447,30 @@
       "network": "Network error. Please check your connection.",
       "unknown": "An error occurred. Please try again."
     }
+  },
+  "tourApplication": {
+    "status": {
+      "pending": "Processing…",
+      "waitlisted": "Waitlisted"
+    },
+    "actions": {
+      "apply": "Apply",
+      "cancel": "Withdraw application"
+    },
+    "cancelModal": {
+      "title": "Withdraw application",
+      "body": "Are you sure you want to withdraw your application? You may re-apply if spots are still available.",
+      "confirm": "Withdraw",
+      "cancel": "Keep application"
+    },
+    "messages": {
+      "rejected": "Your application was withdrawn."
+    },
+    "error": {
+      "alreadyApplied": "You already have an application for this tour.",
+      "tourNotFound": "This tour could not be found.",
+      "network": "Network error. Please try again.",
+      "unknown": "Something went wrong. Please try again."
+    }
   }
 }

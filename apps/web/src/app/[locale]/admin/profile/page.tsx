@@ -27,7 +27,7 @@ export default function AdminProfilePage() {
         setName(result.data.name)
       }
     })
-  }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()

@@ -79,6 +79,12 @@ enum ApplicationStatus {
   waitlisted
 }
 
+enum ApplicationPool {
+  junior
+  non_junior
+  anyone
+}
+
 model User {
   id                          String                              @id @default(uuid())
   firebaseUid                 String                              @unique
@@ -162,7 +168,6 @@ model Tour {
   cancellationDeadline DateTime                            @db.Date
   maybeDeadline        DateTime?                           @db.Date
   notificationOffsets  Int[]
-  mentorshipBalanced   Boolean                             @default(false)
   createdAt            DateTime                            @default(now())
   updatedAt            DateTime                            @updatedAt
   group                Group                               @relation(fields: [groupId], references: [id])
@@ -177,15 +182,15 @@ model Tour {
 }
 
 model TierCapacity {
-  id        String    @id @default(uuid())
+  id        String          @id @default(uuid())
   tourId    String
-  tier      BuddyTier
+  pool      ApplicationPool
   percent   Int
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  tour      Tour      @relation(fields: [tourId], references: [id])
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  tour      Tour            @relation(fields: [tourId], references: [id])
 
-  @@unique([tourId, tier])
+  @@unique([tourId, pool])
 }
 
 model Application {

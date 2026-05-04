@@ -31,6 +31,7 @@ import type {
   SelfEvaluationResponse,
   CreateSelfEvaluation,
   UpdateSelfEvaluation,
+  ApplicationResponse,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -193,6 +194,19 @@ export const apiClient = {
 
   updateSelfEvaluation: (id: string, data: UpdateSelfEvaluation) =>
     apiRequest<SelfEvaluationResponse>(apiPaths.selfEvaluation(id), { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Buddy — Applications
+  getApplicationStatus: (tourId: string) =>
+    apiRequest<ApplicationResponse | null>(apiPaths.applicationStatus(tourId)),
+
+  createApplication: (tourId: string) =>
+    apiRequest<ApplicationResponse>(apiPaths.applications, {
+      method: 'POST',
+      body: JSON.stringify({ tourId }),
+    }),
+
+  cancelApplication: (id: string) =>
+    apiRequest<void>(apiPaths.application(id), { method: 'DELETE' }),
 
   // Buddy — Profile
   getMyProfile: () =>

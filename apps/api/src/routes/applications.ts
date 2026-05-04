@@ -1,10 +1,15 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import type { AuthEnv } from '../types'
+import { BuddyTierSchema } from '@peace-buddy/types'
 import { createApplication, cancelApplication, getApplicationStatus } from '../services/tourApplication.service'
 import { db } from '../lib/db'
 
 const CreateApplicationSchema = z.object({
+  tourId: z.string().uuid(),
+})
+
+const TourIdParamSchema = z.object({
   tourId: z.string().uuid(),
 })
 
@@ -41,6 +46,10 @@ applicationsRoutes.post('/', async (c) => {
       return c.json({ code: 'invalid_request', detail: 'Buddy tier is not set' }, 400)
     }
 
+    if (buddyProfile.tier === BuddyTierSchema.enum.trainee) {
+      return c.json({ code: 'forbidden', detail: 'Trainee buddies cannot apply to tours' }, 403)
+    }
+
     const tour = await db.tour.findUnique({
       where: { id: tourId },
       select: { id: true, status: true },
@@ -50,16 +59,20 @@ applicationsRoutes.post('/', async (c) => {
       return c.json({ code: 'not_found', detail: 'Tour not found' }, 404)
     }
 
-    const existingApplication = await db.application.findUnique({
-      where: { tourId_buddyId: { tourId, buddyId: buddyProfile.id } },
-      select: { id: true, status: true },
-    })
-
-    if (existingApplication) {
-      return c.json({ code: 'conflict', detail: 'Application already exists for this tour' }, 409)
+    if (tour.status !== 'published') {
+      return c.json({ code: 'invalid_request', detail: 'Tour is not open for applications' }, 400)
     }
 
-    const applicationId = await createApplication(tourId, buddyProfile.id, buddyProfile.tier)
+    const createResult = await createApplication(tourId, buddyProfile.id, buddyProfile.tier)
+
+    if (!createResult.ok) {
+      if (createResult.code === 'conflict') {
+        return c.json({ code: 'conflict', detail: 'Application already exists for this tour' }, 409)
+      }
+      return c.json({ code: 'unknown' }, 500)
+    }
+
+    const applicationId = createResult.data
 
     const application = await db.application.findUnique({
       where: { id: applicationId },
@@ -134,7 +147,11 @@ applicationsRoutes.get('/:tourId/status', async (c) => {
   }
 
   try {
-    const tourId = c.req.param('tourId')
+    const paramResult = TourIdParamSchema.safeParse({ tourId: c.req.param('tourId') })
+    if (!paramResult.success) {
+      return c.json({ code: 'invalid_request', detail: 'Invalid tour ID' }, 400)
+    }
+    const tourId = paramResult.data.tourId
 
     const buddyProfile = await db.buddyProfile.findUnique({
       where: { userId: user.id },
