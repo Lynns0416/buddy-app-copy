@@ -67,7 +67,13 @@ function mapTour(row: {
   }
 }
 
-export async function listTours(filters?: ToursQuery): Promise<TourResponse[]> {
+export async function listTours(userId: string, filters?: ToursQuery): Promise<TourResponse[]> {
+  const buddyProfile = await db.buddyProfile.findFirst({
+    where: { userId },
+    select: { tier: true },
+  })
+  if (buddyProfile?.tier === PrismaBuddyTier.trainee) return []
+
   const rows = await db.tour.findMany({
     where: {
       status: (filters?.status as TourStatus | undefined) ?? TourStatus.published,
@@ -105,6 +111,7 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
   ])
 
   if (!row) return null
+  if (buddyProfile?.tier === PrismaBuddyTier.trainee) return null
 
   const seatCounts: TourSeatCounts = { confirmed: 0, maybe: 0, waitlist: 0, declined: 0 }
   for (const r of countRows) {

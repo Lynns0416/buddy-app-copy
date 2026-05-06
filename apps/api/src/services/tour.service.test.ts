@@ -46,11 +46,21 @@ const mockRow = {
 }
 
 describe('listTours', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mdb.buddyProfile.findFirst.mockResolvedValue({ tier: 'junior' })
+  })
+
+  it('returns empty array for trainee buddy', async () => {
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ tier: 'trainee' })
+    const result = await listTours('user-1')
+    expect(result).toEqual([])
+    expect(mdb.tour.findMany).not.toHaveBeenCalled()
+  })
 
   it('maps all date fields to ISO strings', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([mockRow])
-    const result = await listTours()
+    const result = await listTours('user-1')
     expect(result).toHaveLength(1)
     const t = result[0]
     expect(typeof t.tourDate).toBe('string')
@@ -62,7 +72,7 @@ describe('listTours', () => {
 
   it('passes through startTime, endTime, and bookingOpen', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([mockRow])
-    const result = await listTours()
+    const result = await listTours('user-1')
     expect(result[0].startTime).toBeNull()
     expect(result[0].endTime).toBeNull()
     expect(result[0].bookingOpen).toBe(true)
@@ -75,21 +85,21 @@ describe('listTours', () => {
       endTime: new Date('1970-01-01T11:00:00.000Z'),
     }
     mdb.tour.findMany.mockResolvedValueOnce([rowWithTimes])
-    const result = await listTours()
+    const result = await listTours('user-1')
     expect(typeof result[0].startTime).toBe('string')
     expect(typeof result[0].endTime).toBe('string')
   })
 
   it('defaults to published status when no filters given', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([])
-    await listTours()
+    await listTours('user-1')
     const call = mdb.tour.findMany.mock.calls[0][0] as { where: { status: string } }
     expect(call.where.status).toBe('published')
   })
 
   it('uses provided status filter', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([])
-    await listTours({ status: 'completed' })
+    await listTours('user-1', { status: 'completed' })
     const call = mdb.tour.findMany.mock.calls[0][0] as { where: { status: string } }
     expect(call.where.status).toBe('completed')
   })
@@ -98,7 +108,7 @@ describe('listTours', () => {
     mdb.tour.findMany.mockResolvedValueOnce([])
     const from = new Date('2026-05-01')
     const to = new Date('2026-05-31')
-    await listTours({ from, to })
+    await listTours('user-1', { from, to })
     const call = mdb.tour.findMany.mock.calls[0][0] as { where: { tourDate: unknown } }
     expect(call.where.tourDate).toEqual({ gte: from, lte: to })
   })
@@ -106,21 +116,21 @@ describe('listTours', () => {
   it('applies only from when to is not provided', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([])
     const from = new Date('2026-05-01')
-    await listTours({ from })
+    await listTours('user-1', { from })
     const call = mdb.tour.findMany.mock.calls[0][0] as { where: { tourDate: unknown } }
     expect(call.where.tourDate).toEqual({ gte: from })
   })
 
   it('orders by tourDate ascending', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([])
-    await listTours()
+    await listTours('user-1')
     const call = mdb.tour.findMany.mock.calls[0][0] as { orderBy: unknown }
     expect(call.orderBy).toEqual({ tourDate: 'asc' })
   })
 
   it('does not include adminMemo in the select', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([])
-    await listTours()
+    await listTours('user-1')
     const call = mdb.tour.findMany.mock.calls[0][0] as { select: Record<string, unknown> }
     expect(call.select.adminMemo).toBeUndefined()
   })
@@ -135,6 +145,15 @@ describe('getTour', () => {
     mdb.booking.findFirst.mockResolvedValueOnce(null)
     mdb.buddyProfile.findFirst.mockResolvedValueOnce(null)
     const result = await getTour('nonexistent', 'user-1')
+    expect(result).toBeNull()
+  })
+
+  it('returns null for trainee buddy even when tour exists', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce(mockRow)
+    mdb.booking.groupBy.mockResolvedValueOnce([])
+    mdb.booking.findFirst.mockResolvedValueOnce(null)
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ tier: 'trainee' })
+    const result = await getTour('tour-1', 'user-1')
     expect(result).toBeNull()
   })
 

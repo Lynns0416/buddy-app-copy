@@ -18,10 +18,16 @@ const adminAccounts = authExport.users.filter((u: any) =>
   u.email.toLowerCase().includes('admin') || u.displayName.toLowerCase().includes('admin')
 )
 const adminAccount = adminAccounts[0]
-const buddyAccounts = authExport.users.filter((u: any) => !adminAccounts.includes(u))
+const traineeAccounts = authExport.users.filter((u: any) =>
+  u.email?.toLowerCase().includes('trainee') || u.displayName?.toLowerCase().includes('trainee')
+)
+const buddyAccounts = authExport.users.filter(
+  (u: any) => !adminAccounts.includes(u) && !traineeAccounts.includes(u)
+)
 // Synthetic second admin (always seeded, cannot log in — display only for multi-admin eval demo)
 const SEED_ADMIN2_UID = 'seed-admin2-00000000000000000000000'
 const FIREBASE_UIDS = [...authExport.users.map((u: any) => u.localId), SEED_ADMIN2_UID]
+// ↑ includes trainee UIDs — excludes them from dynamic "me" detection
 
 // Fixed IDs for groups, tours (never auto-created via login)
 const ID = {
@@ -120,6 +126,35 @@ async function main() {
     })
 
     buddies.push(profile.id)
+  }
+
+  // ── Trainee users and profiles ───────────────────────────────
+  for (const account of traineeAccounts) {
+    const user = await prisma.user.upsert({
+      where: { firebaseUid: account.localId },
+      update: { email: account.email, role: UserRole.buddy },
+      create: { firebaseUid: account.localId, email: account.email, role: UserRole.buddy },
+    })
+    await prisma.buddyProfile.upsert({
+      where: { userId: user.id },
+      update: {
+        displayName: account.displayName ?? account.email.split('@')[0],
+        realName: account.displayName ?? '',
+        status: BuddyStatus.active,
+        tier: BuddyTier.trainee,
+        languages: ['japanese'],
+        skills: [],
+      },
+      create: {
+        userId: user.id,
+        status: BuddyStatus.active,
+        tier: BuddyTier.trainee,
+        displayName: account.displayName ?? account.email.split('@')[0],
+        realName: account.displayName ?? '',
+        languages: ['japanese'],
+        skills: [],
+      },
+    })
   }
 
   // Helper: cycle through buddy IDs for booking distribution
@@ -655,7 +690,7 @@ async function main() {
   }
 
   console.log('シード完了')
-  console.log(`  ログイン: ${adminAccount.email}${buddyAccounts.length > 0 ? ' / ' + buddyAccounts.map((u: any) => u.email).join(' / ') : ''}`)
+  console.log(`  ログイン: ${adminAccount.email}${buddyAccounts.length > 0 ? ' / ' + buddyAccounts.map((u: any) => u.email).join(' / ') : ''}${traineeAccounts.length > 0 ? ' / ' + traineeAccounts.map((u: any) => u.email).join(' / ') + ' (trainee)' : ''}`)
   console.log('  合成admin2: admin2@seed.local (ログイン不可 — マルチ管理者評価デモ用)')
   console.log('  ツアー: 平和公園 4件（締切済み・中期・遠日程・下書き）')
   console.log('  peace-001: 参加中(buddy0) + キャンセル済み+理由あり(buddy1)')

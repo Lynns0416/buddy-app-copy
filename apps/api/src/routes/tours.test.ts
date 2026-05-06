@@ -109,6 +109,7 @@ describe('GET /tours', () => {
     mockListTours.mockResolvedValueOnce([])
     await buildApp().request('/tours?status=completed')
     expect(mockListTours).toHaveBeenCalledWith(
+      'user-1',
       expect.objectContaining({ status: 'completed' })
     )
   })
@@ -117,6 +118,7 @@ describe('GET /tours', () => {
     mockListTours.mockResolvedValueOnce([])
     await buildApp().request('/tours?from=2026-05-01&to=2026-05-31')
     expect(mockListTours).toHaveBeenCalledWith(
+      'user-1',
       expect.objectContaining({
         from: new Date('2026-05-01'),
         to: new Date('2026-05-31'),

@@ -14,6 +14,7 @@ const ToursQuerySchema = z.object({
 const tourRoutes = new Hono<AuthEnv>()
 
 tourRoutes.get('/', async (c) => {
+  const userId = c.get('user').id
   let params
   try {
     params = ToursQuerySchema.parse(c.req.query())
@@ -21,7 +22,7 @@ tourRoutes.get('/', async (c) => {
     return c.json({ error: 'Invalid query params' }, 400)
   }
 
-  const tours = await listTours(params)
+  const tours = await listTours(userId, params)
   return c.json(tours)
 })
 
