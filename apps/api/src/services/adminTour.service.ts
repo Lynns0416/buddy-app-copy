@@ -13,6 +13,7 @@ import type {
   TourAction,
   GroupType,
   BookingStatus,
+  TierCapacities,
 } from '@peace-buddy/types'
 
 export class TourNotFoundError extends Error {
@@ -363,4 +364,34 @@ export async function deleteTour(id: string): Promise<void> {
   if (existing.status !== TourStatusSchema.enum.draft) throw new TourNotDraftError()
 
   await db.tour.delete({ where: { id } })
+}
+
+export async function getTierCapacities(tourId: string): Promise<TierCapacities> {
+  const rows = await db.tierCapacity.findMany({
+    where: { tourId },
+    select: { pool: true, percent: true },
+  })
+  const result: TierCapacities = { junior: 20, non_junior: 30, anyone: 50 }
+  for (const row of rows) {
+    result[row.pool as keyof TierCapacities] = row.percent
+  }
+  return result
+}
+
+export async function upsertTierCapacities(tourId: string, data: TierCapacities): Promise<TierCapacities> {
+  const existing = await db.tour.findUnique({ where: { id: tourId }, select: { id: true } })
+  if (!existing) throw new TourNotFoundError()
+
+  const pools: Array<keyof TierCapacities> = ['junior', 'non_junior', 'anyone']
+  await db.$transaction(
+    pools.map((pool) =>
+      db.tierCapacity.upsert({
+        where: { tourId_pool: { tourId, pool } },
+        create: { tourId, pool, percent: data[pool] },
+        update: { percent: data[pool] },
+      })
+    )
+  )
+
+  return getTierCapacities(tourId)
 }

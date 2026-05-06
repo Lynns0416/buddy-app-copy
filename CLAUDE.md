@@ -36,3 +36,4 @@ After a PR merges: update **Built** and **Next** in `memory/project_state.md`.
 - Run commands outside Docker
 - Hold decisions in memory only — update relevant docs (PRD.md, architecture.md, data-model.md, etc.) immediately when a decision is made
 - Forget to update `memory/project_state.md` after a PR merges or branch work completes
+- Make excuse or correct silently without apologies. When you make a mistake and the message from user is valid, apologise. You can argue if it's not your fault, though.

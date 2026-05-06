@@ -31,7 +31,7 @@ import type {
   SelfEvaluationResponse,
   CreateSelfEvaluation,
   UpdateSelfEvaluation,
-  ApplicationResponse,
+  TierCapacities,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -121,6 +121,15 @@ export const apiClient = {
   deleteAdminTour: (id: string) =>
     apiRequest<void>(apiPaths.adminTour(id), { method: 'DELETE' }),
 
+  getAdminTourTierCapacities: (id: string) =>
+    apiRequest<TierCapacities>(apiPaths.adminTourTierCapacities(id)),
+
+  saveAdminTourTierCapacities: (id: string, data: TierCapacities) =>
+    apiRequest<TierCapacities>(apiPaths.adminTourTierCapacities(id), {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
   // Admin — Evaluations
   listAdminEvaluations: (params: { buddyId?: string; tourId?: string }) => {
     const qs = new URLSearchParams()
@@ -168,11 +177,8 @@ export const apiClient = {
   getTour: (id: string) =>
     apiRequest<TourDetailResponse>(apiPaths.tour(id)),
 
-  createBooking: (tourId: string, initialStatus?: 'confirmed' | 'maybe' | 'declined') =>
-    apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), {
-      method: 'POST',
-      ...(initialStatus !== undefined && { body: JSON.stringify({ initialStatus }) }),
-    }),
+  createBooking: (tourId: string) =>
+    apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), { method: 'POST' }),
 
   updateBooking: (tourId: string, status: UpdateBookingBody['status'], reason?: CancellationReasonBody) =>
     apiRequest<BookingResponse>(apiPaths.tourBookingMe(tourId), {
@@ -194,19 +200,6 @@ export const apiClient = {
 
   updateSelfEvaluation: (id: string, data: UpdateSelfEvaluation) =>
     apiRequest<SelfEvaluationResponse>(apiPaths.selfEvaluation(id), { method: 'PUT', body: JSON.stringify(data) }),
-
-  // Buddy — Applications
-  getApplicationStatus: (tourId: string) =>
-    apiRequest<ApplicationResponse | null>(apiPaths.applicationStatus(tourId)),
-
-  createApplication: (tourId: string) =>
-    apiRequest<ApplicationResponse>(apiPaths.applications, {
-      method: 'POST',
-      body: JSON.stringify({ tourId }),
-    }),
-
-  cancelApplication: (id: string) =>
-    apiRequest<void>(apiPaths.application(id), { method: 'DELETE' }),
 
   // Buddy — Profile
   getMyProfile: () =>

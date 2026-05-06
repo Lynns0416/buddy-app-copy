@@ -1,5 +1,6 @@
-import { TourStatus } from '@prisma/client'
+import { TourStatus, BuddyTier as PrismaBuddyTier } from '@prisma/client'
 import { db } from '../lib/db'
+import { getPoolCapacities, NON_JUNIOR_TIERS } from '../lib/pool'
 import type { TourResponse, TourDetailResponse, TourSeatCounts, GroupType, BookingStatus } from '@peace-buddy/types'
 import type { ToursQuery } from '../types'
 
@@ -86,7 +87,7 @@ export async function listTours(filters?: ToursQuery): Promise<TourResponse[]> {
 }
 
 export async function getTour(id: string, userId: string): Promise<TourDetailResponse | null> {
-  const [row, countRows, myBooking] = await Promise.all([
+  const [row, countRows, myBooking, buddyProfile] = await Promise.all([
     db.tour.findUnique({ where: { id }, select: tourSelect }),
     db.booking.groupBy({
       by: ['status'],
@@ -97,6 +98,10 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
       where: { tourId: id, buddy: { userId } },
       select: { status: true },
     }),
+    db.buddyProfile.findFirst({
+      where: { userId },
+      select: { tier: true },
+    }),
   ])
 
   if (!row) return null
@@ -106,10 +111,49 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
     seatCounts[r.status as BookingStatus] = r._count.status
   }
 
+  let myCapacity: number | null = null
+  let myRemaining: number | null = null
+  if (buddyProfile?.tier) {
+    const capacities = await getPoolCapacities(id, row.capacity)
+    const isJunior = buddyProfile.tier === PrismaBuddyTier.junior
+    const primaryPool = isJunior ? 'junior' : 'non_junior'
+    myCapacity = capacities[primaryPool] + capacities.anyone
+    const otherPool = isJunior ? 'non_junior' : 'junior'
+    const [primaryConfirmed, otherConfirmed, totalConfirmed] = await Promise.all([
+      db.booking.count({
+        where: {
+          tourId: id,
+          status: 'confirmed',
+          buddyTier: isJunior
+            ? PrismaBuddyTier.junior
+            : { in: NON_JUNIOR_TIERS as unknown as PrismaBuddyTier[] },
+        },
+      }),
+      db.booking.count({
+        where: {
+          tourId: id,
+          status: 'confirmed',
+          buddyTier: isJunior
+            ? { in: NON_JUNIOR_TIERS as unknown as PrismaBuddyTier[] }
+            : PrismaBuddyTier.junior,
+        },
+      }),
+      db.booking.count({ where: { tourId: id, status: 'confirmed' } }),
+    ])
+    const anyoneConfirmed = Math.max(
+      0,
+      totalConfirmed - Math.min(primaryConfirmed, capacities[primaryPool]) - Math.min(otherConfirmed, capacities[otherPool]),
+    )
+    myRemaining = Math.max(0, capacities[primaryPool] - primaryConfirmed)
+      + Math.max(0, capacities.anyone - anyoneConfirmed)
+  }
+
   return {
     ...mapTour(row),
     seatCounts,
-    remainingSeats: row.capacity - seatCounts.confirmed,
+    remaining: row.capacity - seatCounts.confirmed,
+    myCapacity,
+    myRemaining,
     myBookingStatus: (myBooking?.status ?? null) as BookingStatus | null,
   }
 }

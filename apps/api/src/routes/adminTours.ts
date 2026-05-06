@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { TourStatusSchema, CreateTourSchema, UpdateTourSchema, TourStatusActionSchema } from '@peace-buddy/types'
+import { TourStatusSchema, CreateTourSchema, UpdateTourSchema, TourStatusActionSchema, TierCapacitiesSchema } from '@peace-buddy/types'
 import {
   listAdminTours,
   createTour,
@@ -7,6 +7,8 @@ import {
   updateTour,
   transitionTourStatus,
   deleteTour,
+  getTierCapacities,
+  upsertTierCapacities,
   TourNotFoundError,
   TourTransitionError,
   TourImmutableError,
@@ -101,6 +103,34 @@ adminTourRoutes.delete('/:id', async (c) => {
   } catch (e) {
     if (e instanceof TourNotFoundError) return c.json(apiError('not_found'), 404)
     if (e instanceof TourNotDraftError) return c.json(apiError('conflict'), 409)
+    throw e
+  }
+})
+
+adminTourRoutes.get('/:id/tier-capacities', async (c) => {
+  const id = c.req.param('id')
+  const existing = await getAdminTourDetail(id)
+  if (!existing) return c.json(apiError('not_found'), 404)
+  return c.json(await getTierCapacities(id))
+})
+
+adminTourRoutes.patch('/:id/tier-capacities', async (c) => {
+  const id = c.req.param('id')
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json(apiError('invalid_request'), 400)
+  }
+
+  const parsed = TierCapacitiesSchema.safeParse(body)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+
+  try {
+    return c.json(await upsertTierCapacities(id, parsed.data))
+  } catch (e) {
+    if (e instanceof TourNotFoundError) return c.json(apiError('not_found'), 404)
     throw e
   }
 })

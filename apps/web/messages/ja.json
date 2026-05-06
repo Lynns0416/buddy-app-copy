@@ -165,6 +165,15 @@
     "actionError": "操作に失敗しました。もう一度お試しください。",
     "validationError": "入力内容を確認してください。",
     "maybeDeadlineError": "仮参加確定期限はキャンセル期限より前の日付にしてください。",
+    "tierCapacity": {
+      "title": "ティア別配分",
+      "junior": "ジュニア",
+      "non_junior": "非ジュニア",
+      "anyone": "全体枠",
+      "total": "合計: {total}%",
+      "sumError": "合計が100%になるよう設定してください",
+      "saved": "保存しました"
+    },
     "error": {
       "notFound": "このツアーは存在しません。",
       "forbidden": "この操作を行う権限がありません。",
@@ -188,7 +197,7 @@
     "maybe": "未定",
     "waitlist": "キャンセル待ち",
     "declined": "辞退",
-    "remainingSeats": "残席",
+    "remaining": "残り",
     "myStatus": "自分のステータス",
     "noBooking": "未予約",
     "notFound": "ツアーが見つかりません。",
@@ -216,7 +225,9 @@
     "cancelReasonUnavoidable": "やむを得ない事情によるキャンセル",
     "cancelReasonSubmit": "キャンセルを確定する",
     "cancelReasonBack": "戻る",
-    "selfEvalTitle": "自己評価"
+    "selfEvalTitle": "自己評価",
+    "book": "予約する",
+    "notEligible": "このツアーには参加できません。"
   },
   "shell": {
     "appName": "Peace Buddy",
@@ -445,31 +456,6 @@
     "error": {
       "forbidden": "この操作を行う権限がありません。",
       "network": "通信エラーが発生しました。",
-      "unknown": "エラーが発生しました。もう一度お試しください。"
-    }
-  },
-  "tourApplication": {
-    "status": {
-      "pending": "処理中…",
-      "waitlisted": "キャンセル待ち"
-    },
-    "actions": {
-      "apply": "応募する",
-      "cancel": "応募を取り消す"
-    },
-    "cancelModal": {
-      "title": "応募の取り消し",
-      "body": "本当に応募を取り消しますか？空きがあれば再度応募できます。",
-      "confirm": "取り消す",
-      "cancel": "応募を続ける"
-    },
-    "messages": {
-      "rejected": "応募を取り消しました。"
-    },
-    "error": {
-      "alreadyApplied": "すでにこのツアーに応募しています。",
-      "tourNotFound": "ツアーが見つかりませんでした。",
-      "network": "ネットワークエラーが発生しました。もう一度お試しください。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
   }

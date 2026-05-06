@@ -165,6 +165,15 @@
     "actionError": "Action failed. Please try again.",
     "validationError": "Please fix the errors below.",
     "maybeDeadlineError": "Maybe deadline must be before cancellation deadline.",
+    "tierCapacity": {
+      "title": "Tier Capacity",
+      "junior": "Junior",
+      "non_junior": "Non-Junior",
+      "anyone": "Anyone",
+      "total": "Total: {total}%",
+      "sumError": "Must sum to 100%",
+      "saved": "Saved"
+    },
     "error": {
       "notFound": "This tour no longer exists.",
       "forbidden": "You don't have permission to perform this action.",
@@ -188,7 +197,7 @@
     "maybe": "Maybe",
     "waitlist": "Waitlist",
     "declined": "Declined",
-    "remainingSeats": "Remaining Seats",
+    "remaining": "Remaining",
     "myStatus": "My Status",
     "noBooking": "Not booked",
     "notFound": "Tour not found.",
@@ -216,7 +225,9 @@
     "cancelReasonUnavoidable": "This cancellation was unavoidable",
     "cancelReasonSubmit": "Confirm cancellation",
     "cancelReasonBack": "Go back",
-    "selfEvalTitle": "Self-Evaluation"
+    "selfEvalTitle": "Self-Evaluation",
+    "book": "Book",
+    "notEligible": "You are not currently eligible to book this tour."
   },
   "shell": {
     "appName": "Peace Buddy",
@@ -446,31 +457,6 @@
       "forbidden": "You don't have permission to perform this action.",
       "network": "Network error. Please check your connection.",
       "unknown": "An error occurred. Please try again."
-    }
-  },
-  "tourApplication": {
-    "status": {
-      "pending": "Processing…",
-      "waitlisted": "Waitlisted"
-    },
-    "actions": {
-      "apply": "Apply",
-      "cancel": "Withdraw application"
-    },
-    "cancelModal": {
-      "title": "Withdraw application",
-      "body": "Are you sure you want to withdraw your application? You may re-apply if spots are still available.",
-      "confirm": "Withdraw",
-      "cancel": "Keep application"
-    },
-    "messages": {
-      "rejected": "Your application was withdrawn."
-    },
-    "error": {
-      "alreadyApplied": "You already have an application for this tour.",
-      "tourNotFound": "This tour could not be found.",
-      "network": "Network error. Please try again.",
-      "unknown": "Something went wrong. Please try again."
     }
   }
 }

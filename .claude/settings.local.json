@@ -30,7 +30,12 @@
       "Edit",
       "MultiEdit",
       "Task",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(awk '/prisma\\\\.booking\\\\.upsert/,/\\\\}\\\\\\)/' /Users/lynnsakashita/dev/plab/peace-buddy/prisma/seed.ts)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)",
+      "Bash(grep -A60 *)",
+      "Bash(grep -n *)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

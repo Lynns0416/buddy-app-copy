@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
 import type { AuthEnv } from '../types'
-import type { AdminTourSummaryResponse, AdminTourDetailResponse } from '@peace-buddy/types'
+import type { AdminTourSummaryResponse, AdminTourDetailResponse, TierCapacities } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -55,6 +55,8 @@ vi.mock('../services/adminTour.service', () => ({
   updateTour: vi.fn(),
   transitionTourStatus: vi.fn(),
   deleteTour: vi.fn(),
+  getTierCapacities: vi.fn(),
+  upsertTierCapacities: vi.fn(),
   TourNotFoundError: class TourNotFoundError extends Error {
     constructor() { super('Tour not found') }
   },
@@ -74,6 +76,8 @@ import {
   updateTour,
   transitionTourStatus,
   deleteTour,
+  getTierCapacities,
+  upsertTierCapacities,
   TourNotFoundError,
   TourTransitionError,
   TourImmutableError,
@@ -86,6 +90,8 @@ const mockGetAdminTourDetail = vi.mocked(getAdminTourDetail)
 const mockUpdateTour = vi.mocked(updateTour)
 const mockTransitionTourStatus = vi.mocked(transitionTourStatus)
 const mockDeleteTour = vi.mocked(deleteTour)
+const mockGetTierCapacities = vi.mocked(getTierCapacities)
+const mockUpsertTierCapacities = vi.mocked(upsertTierCapacities)
 
 function buildApp() {
   const app = new Hono<AuthEnv>()
@@ -367,5 +373,74 @@ describe('DELETE /admin/tours/:id', () => {
     const res = await buildApp().request('/admin/tours/tour-1', { method: 'DELETE' })
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+})
+
+const stubCapacities: TierCapacities = { junior: 20, non_junior: 30, anyone: 50 }
+
+describe('GET /admin/tours/:id/tier-capacities', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 200 with tier capacities', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce({ id: 'tour-1' } as AdminTourDetailResponse)
+    mockGetTierCapacities.mockResolvedValueOnce(stubCapacities)
+    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual(stubCapacities)
+    expect(mockGetTierCapacities).toHaveBeenCalledWith('tour-1')
+  })
+
+  it('returns 404 when tour not found', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(null)
+    const res = await buildApp().request('/admin/tours/missing/tier-capacities')
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+})
+
+describe('PATCH /admin/tours/:id/tier-capacities', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 200 with updated capacities on success', async () => {
+    mockUpsertTierCapacities.mockResolvedValueOnce(stubCapacities)
+    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(stubCapacities),
+    })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual(stubCapacities)
+    expect(mockUpsertTierCapacities).toHaveBeenCalledWith('tour-1', stubCapacities)
+  })
+
+  it('returns 400 for invalid body', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ junior: 50, non_junior: 50 }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 400 when percents do not sum to 100', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ junior: 10, non_junior: 10, anyone: 10 }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 404 when tour not found', async () => {
+    mockUpsertTierCapacities.mockRejectedValueOnce(new TourNotFoundError())
+    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(stubCapacities),
+    })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
   })
 })

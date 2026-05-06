@@ -21,7 +21,6 @@ import { CANCEL_CATEGORIES } from '../../lib/constants'
 import { isPastDeadline, canSelectMaybeStatus, isBookingAllowed } from '../../lib/deadline'
 import { getBookingStatusLabel, bookingStatusBadgeVariant } from '@/lib/status-display'
 import { TourSelfEvalSection } from '../../self-evaluations/_components/tour-self-eval-section'
-import { TourApplicationSection } from '../../applications/_components/tour-application-section'
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -38,10 +37,10 @@ export default function TourDetailPage() {
   const [cancelFreeText, setCancelFreeText] = useState('')
   const [cancelUnavoidable, setCancelUnavoidable] = useState(false)
 
-  const handleInitialResponse = async (intent: 'confirmed' | 'maybe' | 'declined') => {
+  const handleBook = async () => {
     setActing(true)
     setActionError(null)
-    const result = await createInitialBooking(id, intent)
+    const result = await createInitialBooking(id)
     if (result.ok) {
       await refetch()
     } else {
@@ -147,7 +146,14 @@ export default function TourDetailPage() {
             <dt className="text-muted-foreground">{t('capacity')}</dt>
             <dd className="flex items-center gap-1.5 font-medium">
               <Users size={14} className="text-muted-foreground" />
-              {tour.capacity}
+              {tour.myCapacity ?? tour.capacity}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t('remaining')}</dt>
+            <dd className="flex items-center gap-1.5 font-medium tabular-nums">
+              <Users size={14} className="text-muted-foreground" />
+              {tour.myRemaining ?? tour.remaining}
             </dd>
           </div>
           <div>
@@ -184,7 +190,9 @@ export default function TourDetailPage() {
         <h2 className="mb-4 text-base font-semibold">{t('seatCounts')}</h2>
         <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <div className="rounded-md border p-3 text-center">
-            <p className="text-2xl font-bold tabular-nums">{tour.seatCounts.confirmed}</p>
+            <p className="text-2xl font-bold tabular-nums">
+              {(tour.myCapacity ?? tour.capacity) - (tour.myRemaining ?? tour.remaining)}
+            </p>
             <p className="text-muted-foreground">{t('confirmed')}</p>
           </div>
           <div className="rounded-md border p-3 text-center">
@@ -200,9 +208,6 @@ export default function TourDetailPage() {
             <p className="text-muted-foreground">{t('declined')}</p>
           </div>
         </div>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {t('remainingSeats')}: <span className="font-semibold text-foreground tabular-nums">{tour.remainingSeats}</span>
-        </p>
       </div>
 
       {dbUser && (
@@ -267,9 +272,11 @@ export default function TourDetailPage() {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {tour.myBookingStatus === null && tour.status === TourStatusSchema.enum.published && tour.bookingOpen && (
-                    <TourApplicationSection tourId={id} onBooked={() => void refetch()} />
+                    <Button onClick={() => void handleBook()} disabled={acting}>
+                      {t('book')}
+                    </Button>
                   )}
-                  {tour.myBookingStatus === BookingStatusSchema.enum.declined && isBookable && tour.remainingSeats > 0 && (
+                  {tour.myBookingStatus === BookingStatusSchema.enum.declined && isBookable && (tour.myRemaining ?? tour.remaining) > 0 && (
                     <Button variant="outline" onClick={() => void handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>
                       {t('revert')}
                     </Button>

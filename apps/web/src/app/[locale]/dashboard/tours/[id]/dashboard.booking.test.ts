@@ -39,6 +39,7 @@ const mockUpdateBooking = vi.mocked(apiClient.updateBooking)
 const stubBooking: BookingResponse = {
   id: 'bk1',
   tourId: 't1',
+  buddyTier: 'junior',
   status: BookingStatusSchema.enum.confirmed,
   bookedAt: '2025-04-15T10:00:00Z',
   updatedAt: '2025-04-15T10:00:00Z',
@@ -49,14 +50,14 @@ describe('createInitialBooking', () => {
 
   it('returns ok on success', async () => {
     mockCreateBooking.mockResolvedValue(stubBooking)
-    const result = await createInitialBooking('t1', BookingStatusSchema.enum.confirmed)
+    const result = await createInitialBooking('t1')
     expect(result).toEqual({ ok: true, data: undefined })
-    expect(mockCreateBooking).toHaveBeenCalledWith('t1', 'confirmed')
+    expect(mockCreateBooking).toHaveBeenCalledWith('t1')
   })
 
   it('returns error on tour full (409)', async () => {
     mockCreateBooking.mockRejectedValue(new Error('409'))
-    const result = await createInitialBooking('t1', BookingStatusSchema.enum.confirmed)
+    const result = await createInitialBooking('t1')
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.error.code).toBe('conflict')
@@ -65,7 +66,7 @@ describe('createInitialBooking', () => {
 
   it('returns network error on request failure', async () => {
     mockCreateBooking.mockRejectedValue(new Error('network'))
-    const result = await createInitialBooking('t1', BookingStatusSchema.enum.confirmed)
+    const result = await createInitialBooking('t1')
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.error.code).toBe('network')

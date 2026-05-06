@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { TourStatusSchema, UpdateBookingBodySchema, CreateBookingBodySchema } from '@peace-buddy/types'
+import { TourStatusSchema, UpdateBookingBodySchema } from '@peace-buddy/types'
 import { listTours, getTour } from '../services/tour.service'
 import { createBooking, updateBooking } from '../services/booking.service'
 import type { AuthEnv } from '../types'
@@ -37,18 +37,12 @@ tourRoutes.post('/:id/bookings', async (c) => {
   const tourId = c.req.param('id')
   const userId = c.get('user').id
 
-  let initialStatus: 'confirmed' | 'maybe' | 'declined' | undefined
-  try {
-    const body = CreateBookingBodySchema.parse(await c.req.json())
-    initialStatus = body.initialStatus
-  } catch {
-    // no body or invalid JSON — use default auto-assign
-  }
-
-  const result = await createBooking(tourId, userId, initialStatus)
+  const result = await createBooking(tourId, userId)
   if (!result.ok) {
     if (result.code === 'TOUR_NOT_FOUND') return c.json({ error: 'Tour not found' }, 404)
     if (result.code === 'ALREADY_BOOKED') return c.json({ error: 'Already booked' }, 409)
+    if (result.code === 'NOT_ELIGIBLE') return c.json({ error: 'Not eligible to book' }, 403)
+    if (result.code === 'BUDDY_NOT_FOUND') return c.json({ error: 'Buddy profile not found' }, 404)
     return c.json({ error: 'Tour is not open for booking' }, 422)
   }
   return c.json(result.booking, 201)

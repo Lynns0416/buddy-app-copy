@@ -20,6 +20,7 @@ import {
 import { getTourStatusLabel, getBookingStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
 import { CompleteTourModal } from '../_components/complete-tour-modal'
+import { TierCapacityForm } from '../_components/tier-capacity-form'
 
 const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
@@ -224,6 +225,10 @@ export default function AdminTourDetailPage() {
             </Button>
           </>
         )}
+      </div>
+
+      <div className="mb-6">
+        <TierCapacityForm tourId={tour.id} capacity={tour.capacity} />
       </div>
 
       <h2 className="mb-3 text-base font-semibold">{t('bookings')}</h2>

@@ -2,6 +2,8 @@
 
 ## Project
 - [project_state.md](project_state.md) — Build status, blockers, next steps
+- [project_prerelease.md](project_prerelease.md) — Pre-release: no migration needed. **DELETE on first prod deploy.**
+- [project_followup_trainee_capacity.md](project_followup_trainee_capacity.md) — Follow-up: getTour should return null myCapacity/myRemaining for trainee buddies
 
 ## User
 - [user_profile.md](user_profile.md) — Org context (Google Workspace for Nonprofits, Apple sign-in deferred)

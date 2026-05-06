@@ -1,4 +1,4 @@
-import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -131,6 +131,22 @@ export async function deleteTour(id: string): Promise<ActionResult> {
   try {
     await apiClient.deleteAdminTour(id)
     return { ok: true, data: undefined }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function fetchTierCapacities(tourId: string): Promise<ActionResult<TierCapacities>> {
+  try {
+    return { ok: true, data: await apiClient.getAdminTourTierCapacities(tourId) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function saveTierCapacities(tourId: string, data: TierCapacities): Promise<ActionResult<TierCapacities>> {
+  try {
+    return { ok: true, data: await apiClient.saveAdminTourTierCapacities(tourId, data) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }

@@ -6,12 +6,9 @@ import { classifyApiError } from '../../../../../lib/api-error'
 
 export type BookingActionResult = ActionResult<void> & { specialMessage?: string }
 
-export async function createInitialBooking(
-  tourId: string,
-  intent: 'confirmed' | 'maybe' | 'declined',
-): Promise<BookingActionResult> {
+export async function createInitialBooking(tourId: string): Promise<BookingActionResult> {
   try {
-    await apiClient.createBooking(tourId, intent)
+    await apiClient.createBooking(tourId)
     return { ok: true, data: undefined }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
@@ -45,6 +42,8 @@ export function mapErrorToI18nKey(code: AppErrorCode): string {
       return 'tourFull'
     case 'invalid_request':
       return 'deadlinePassed'
+    case 'forbidden':
+      return 'notEligible'
     default:
       return 'bookingError'
   }

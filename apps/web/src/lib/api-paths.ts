@@ -20,6 +20,7 @@ export const apiPaths = {
   adminTours: '/admin/tours',
   adminTour: (id: string) => `/admin/tours/${id}`,
   adminTourStatus: (id: string) => `/admin/tours/${id}/status`,
+  adminTourTierCapacities: (id: string) => `/admin/tours/${id}/tier-capacities`,
 
   adminEvaluations: '/admin/evaluations',
   adminEvaluation: (id: string) => `/admin/evaluations/${id}`,
@@ -35,7 +36,4 @@ export const apiPaths = {
   selfEvaluations: '/me/self-evaluations',
   selfEvaluation: (id: string) => `/me/self-evaluations/${id}`,
 
-  applications: '/applications',
-  application: (id: string) => `/applications/${id}`,
-  applicationStatus: (tourId: string) => `/applications/${tourId}/status`,
 } as const

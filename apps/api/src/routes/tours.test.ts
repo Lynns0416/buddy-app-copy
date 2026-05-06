@@ -33,6 +33,7 @@ const dbUser = { id: 'user-1', firebaseUid: 'uid-123', email: 'test@example.com'
 const mockBooking: BookingResponse = {
   id: 'booking-1',
   tourId: 'tour-1',
+  buddyTier: 'junior',
   status: BookingStatusSchema.enum.confirmed,
   bookedAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -62,7 +63,9 @@ const mockTour: TourResponse = {
 const mockTourDetail: TourDetailResponse = {
   ...mockTour,
   seatCounts: { confirmed: 2, maybe: 1, waitlist: 0, declined: 0 },
-  remainingSeats: 8,
+  remaining: 8,
+  myCapacity: 7,
+  myRemaining: 6,
   myBookingStatus: 'confirmed',
 }
 
@@ -144,7 +147,7 @@ describe('GET /tours/:id', () => {
     const body = await res.json() as TourDetailResponse
     expect(body.id).toBe('tour-1')
     expect(body.seatCounts).toEqual({ confirmed: 2, maybe: 1, waitlist: 0, declined: 0 })
-    expect(body.remainingSeats).toBe(8)
+    expect(body.remaining).toBe(8)
     expect(body.myBookingStatus).toBe('confirmed')
   })
 
@@ -205,20 +208,16 @@ describe('POST /tours/:id/bookings', () => {
     expect(res.status).toBe(422)
   })
 
-  it('passes tourId, userId, and undefined initialStatus to createBooking when no body', async () => {
-    mockCreateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
-    await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
-    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', dbUser.id, undefined)
+  it('returns 403 when buddy is not eligible', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: false, code: 'NOT_ELIGIBLE' })
+    const res = await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
+    expect(res.status).toBe(403)
   })
 
-  it('passes initialStatus to createBooking when provided', async () => {
+  it('passes tourId and userId to createBooking', async () => {
     mockCreateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
-    await buildApp().request('/tours/tour-1/bookings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initialStatus: 'maybe' }),
-    })
-    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', dbUser.id, 'maybe')
+    await buildApp().request('/tours/tour-1/bookings', { method: 'POST' })
+    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', dbUser.id)
   })
 })
 

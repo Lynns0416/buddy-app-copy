@@ -53,16 +53,15 @@ export type NotifEventType = z.infer<typeof NotifEventTypeSchema>
 export const EmailModeSchema = z.enum(['immediate', 'digest'])
 export type EmailMode = z.infer<typeof EmailModeSchema>
 
-export const ApplicationStatusSchema = z.enum(['pending', 'approved', 'rejected', 'waitlisted'])
-export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
+export const BookingPoolSchema = z.enum(['junior', 'non_junior', 'anyone'])
+export type BookingPool = z.infer<typeof BookingPoolSchema>
 
-export type ApplicationResponse = {
-  id: string
-  tourId: string
-  status: ApplicationStatus
-  createdAt: string
-  approvedAt: string | null
-}
+export const TierCapacitiesSchema = z.object({
+  junior: z.number().int().min(0).max(100),
+  non_junior: z.number().int().min(0).max(100),
+  anyone: z.number().int().min(0).max(100),
+}).refine((v) => v.junior + v.non_junior + v.anyone === 100, { message: 'Percentages must sum to 100' })
+export type TierCapacities = z.infer<typeof TierCapacitiesSchema>
 
 // `network` is client-only and is never emitted by the server
 export const AppErrorCodeSchema = z.enum(['not_found', 'forbidden', 'conflict', 'invalid_request', 'network', 'unknown'])
@@ -343,7 +342,9 @@ export type TourSeatCounts = {
 
 export type TourDetailResponse = TourResponse & {
   seatCounts: TourSeatCounts
-  remainingSeats: number
+  remaining: number
+  myCapacity: number | null
+  myRemaining: number | null
   myBookingStatus: BookingStatus | null
 }
 
@@ -354,10 +355,6 @@ export const CancellationReasonBodySchema = z.object({
 })
 export type CancellationReasonBody = z.infer<typeof CancellationReasonBodySchema>
 
-export const CreateBookingBodySchema = z.object({
-  initialStatus: z.enum(['confirmed', 'maybe', 'declined']).optional(),
-})
-export type CreateBookingBody = z.infer<typeof CreateBookingBodySchema>
 
 export const UpdateBookingBodySchema = z.object({
   status: z.enum(['confirmed', 'maybe', 'waitlist', 'declined']),
@@ -368,6 +365,7 @@ export type UpdateBookingBody = z.infer<typeof UpdateBookingBodySchema>
 export type BookingResponse = {
   id: string
   tourId: string
+  buddyTier: BuddyTier
   status: BookingStatus
   bookedAt: string
   updatedAt: string
