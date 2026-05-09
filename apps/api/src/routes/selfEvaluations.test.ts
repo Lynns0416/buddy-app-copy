@@ -16,8 +16,6 @@ vi.mock('../services/selfEvaluation.service', () => ({
   createSelfEvaluation: vi.fn(),
   listMySelfEvaluations: vi.fn(),
   updateSelfEvaluation: vi.fn(),
-  listSelfEvaluations: vi.fn(),
-  getSelfEvaluation: vi.fn(),
   EvalNotFoundError: class EvalNotFoundError extends Error {
     constructor() { super('Not found') }
   },

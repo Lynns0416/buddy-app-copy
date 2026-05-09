@@ -38,6 +38,18 @@ vi.mock('../services/adminTour.service', () => ({
   TourNotDraftError: class extends Error {},
 }))
 
+vi.mock('../services/adminSession.service', () => ({
+  addSession: vi.fn(),
+  updateSession: vi.fn(),
+  deleteSession: vi.fn(),
+  getSessionTierCapacities: vi.fn(),
+  upsertSessionTierCapacities: vi.fn(),
+  SessionNotFoundError: class extends Error {},
+  SessionHasBookingsError: class extends Error {},
+  LastSessionError: class extends Error {},
+  TooManySessionsError: class extends Error {},
+}))
+
 vi.mock('../services/adminEvaluation.service', () => ({
   createAdminEvaluation: vi.fn(),
   listAdminEvaluations: vi.fn(),
@@ -57,8 +69,6 @@ vi.mock('../services/adminProfileEvaluation.service', () => ({
 }))
 
 vi.mock('../services/selfEvaluation.service', () => ({
-  listSelfEvaluations: vi.fn(),
-  getSelfEvaluation: vi.fn(),
   createSelfEvaluation: vi.fn(),
   listMySelfEvaluations: vi.fn(),
   updateSelfEvaluation: vi.fn(),
@@ -70,10 +80,15 @@ vi.mock('../services/selfEvaluation.service', () => ({
   SELF_EVAL_EDIT_WINDOW_DAYS: 7,
 }))
 
+vi.mock('../services/adminSelfEvaluation.service', () => ({
+  listSelfEvaluations: vi.fn(),
+  getSelfEvaluation: vi.fn(),
+}))
+
 import {
   listSelfEvaluations,
   getSelfEvaluation,
-} from '../services/selfEvaluation.service'
+} from '../services/adminSelfEvaluation.service'
 
 const mockList = vi.mocked(listSelfEvaluations)
 const mockGet = vi.mocked(getSelfEvaluation)

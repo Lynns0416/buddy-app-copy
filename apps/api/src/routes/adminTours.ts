@@ -7,20 +7,22 @@ import {
   updateTour,
   transitionTourStatus,
   deleteTour,
+  TourNotFoundError,
+  TourTransitionError,
+  TourImmutableError,
+  TourNotDraftError,
+} from '../services/adminTour.service'
+import {
   addSession,
   updateSession,
   deleteSession,
   getSessionTierCapacities,
   upsertSessionTierCapacities,
-  TourNotFoundError,
-  TourTransitionError,
-  TourImmutableError,
-  TourNotDraftError,
   SessionNotFoundError,
   SessionHasBookingsError,
   LastSessionError,
   TooManySessionsError,
-} from '../services/adminTour.service'
+} from '../services/adminSession.service'
 import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
 

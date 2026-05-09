@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { listSelfEvaluations, getSelfEvaluation } from '../services/selfEvaluation.service'
+import { listSelfEvaluations, getSelfEvaluation } from '../services/adminSelfEvaluation.service'
 import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
 

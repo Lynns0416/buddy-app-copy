@@ -34,8 +34,6 @@ import {
   createSelfEvaluation,
   listMySelfEvaluations,
   updateSelfEvaluation,
-  listSelfEvaluations,
-  getSelfEvaluation,
   EvalNotFoundError,
   EvalAlreadyExistsError,
   EvalLockedError,
@@ -210,43 +208,5 @@ describe('updateSelfEvaluation', () => {
     await expect(
       updateSelfEvaluation('seval-1', {}, 'user-1'),
     ).rejects.toBeInstanceOf(EvalLockedError)
-  })
-})
-
-describe('listSelfEvaluations (admin)', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('returns mapped admin response with buddyDisplayName', async () => {
-    mockFindMany.mockResolvedValueOnce([
-      { ...selfEvalRow, buddy: { displayName: 'Test Buddy' } },
-    ] as never)
-    const result = await listSelfEvaluations({})
-    expect(result).toHaveLength(1)
-    expect(result[0].buddyDisplayName).toBe('Test Buddy')
-  })
-
-  it('passes buddyId filter', async () => {
-    mockFindMany.mockResolvedValueOnce([] as never)
-    await listSelfEvaluations({ buddyId: 'buddy-1' })
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { buddyId: 'buddy-1' } }),
-    )
-  })
-})
-
-describe('getSelfEvaluation (admin)', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('returns null when not found', async () => {
-    mockFindUnique.mockResolvedValueOnce(null)
-    expect(await getSelfEvaluation('missing')).toBeNull()
-  })
-
-  it('returns admin response with buddyDisplayName', async () => {
-    mockFindUnique.mockResolvedValueOnce(
-      { ...selfEvalRow, buddy: { displayName: 'Test Buddy' } } as never,
-    )
-    const result = await getSelfEvaluation('seval-1')
-    expect(result?.buddyDisplayName).toBe('Test Buddy')
   })
 })

@@ -5,7 +5,6 @@ import type {
   CreateSelfEvaluation,
   UpdateSelfEvaluation,
   SelfEvaluationResponse,
-  AdminSelfEvaluationResponse,
 } from '@peace-buddy/types'
 
 export const SELF_EVAL_EDIT_WINDOW_DAYS = 7
@@ -72,10 +71,6 @@ const selfEvalSelect = {
   updatedAt: true,
 } as const
 
-const adminSelfEvalSelect = {
-  ...selfEvalSelect,
-  buddy: { select: { displayName: true } },
-} as const
 
 type SelfEvalRow = {
   id: string
@@ -140,12 +135,6 @@ function mapResponse(row: SelfEvalRow): SelfEvaluationResponse {
   }
 }
 
-function mapAdminResponse(row: SelfEvalRow & { buddy: { displayName: string } }): AdminSelfEvaluationResponse {
-  return {
-    ...mapScores(row),
-    buddyDisplayName: row.buddy.displayName,
-  }
-}
 
 export async function createSelfEvaluation(
   data: CreateSelfEvaluation,
@@ -256,24 +245,3 @@ export async function updateSelfEvaluation(
   return mapResponse(row)
 }
 
-// Admin read-only access
-
-export async function listSelfEvaluations(filters: {
-  buddyId?: string
-}): Promise<AdminSelfEvaluationResponse[]> {
-  const rows = await db.selfEvaluation.findMany({
-    where: filters.buddyId ? { buddyId: filters.buddyId } : undefined,
-    select: adminSelfEvalSelect,
-    orderBy: { createdAt: 'desc' },
-  })
-  return rows.map(mapAdminResponse)
-}
-
-export async function getSelfEvaluation(id: string): Promise<AdminSelfEvaluationResponse | null> {
-  const row = await db.selfEvaluation.findUnique({
-    where: { id },
-    select: adminSelfEvalSelect,
-  })
-  if (!row) return null
-  return mapAdminResponse(row)
-}

@@ -67,9 +67,23 @@ vi.mock('../services/adminProfileEvaluation.service', () => ({
   BuddyNotFoundError: class extends Error {},
 }))
 
-vi.mock('../services/selfEvaluation.service', () => ({
+vi.mock('../services/selfEvaluation.service', () => ({}))
+
+vi.mock('../services/adminSelfEvaluation.service', () => ({
   listSelfEvaluations: vi.fn(),
   getSelfEvaluation: vi.fn(),
+}))
+
+vi.mock('../services/adminSession.service', () => ({
+  addSession: vi.fn(),
+  updateSession: vi.fn(),
+  deleteSession: vi.fn(),
+  getSessionTierCapacities: vi.fn(),
+  upsertSessionTierCapacities: vi.fn(),
+  SessionNotFoundError: class extends Error {},
+  SessionHasBookingsError: class extends Error {},
+  LastSessionError: class extends Error {},
+  TooManySessionsError: class extends Error {},
 }))
 
 import {

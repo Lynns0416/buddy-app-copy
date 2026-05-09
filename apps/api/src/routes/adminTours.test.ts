@@ -43,7 +43,14 @@ vi.mock('../services/adminProfileEvaluation.service', () => ({
   BuddyNotFoundError: class extends Error {},
 }))
 
-vi.mock('../services/selfEvaluation.service', () => ({
+vi.mock('../services/selfEvaluation.service', () => ({}))
+
+vi.mock('../services/adminSelfEvaluation.service', () => ({
+  listSelfEvaluations: vi.fn(),
+  getSelfEvaluation: vi.fn(),
+}))
+
+vi.mock('../services/adminSelfEvaluation.service', () => ({
   listSelfEvaluations: vi.fn(),
   getSelfEvaluation: vi.fn(),
 }))
@@ -55,11 +62,6 @@ vi.mock('../services/adminTour.service', () => ({
   updateTour: vi.fn(),
   transitionTourStatus: vi.fn(),
   deleteTour: vi.fn(),
-  addSession: vi.fn(),
-  updateSession: vi.fn(),
-  deleteSession: vi.fn(),
-  getSessionTierCapacities: vi.fn(),
-  upsertSessionTierCapacities: vi.fn(),
   TourNotFoundError: class TourNotFoundError extends Error {
     constructor() { super('Tour not found') }
   },
@@ -70,6 +72,14 @@ vi.mock('../services/adminTour.service', () => ({
   TourNotDraftError: class TourNotDraftError extends Error {
     constructor() { super('Only draft tours can be deleted') }
   },
+}))
+
+vi.mock('../services/adminSession.service', () => ({
+  addSession: vi.fn(),
+  updateSession: vi.fn(),
+  deleteSession: vi.fn(),
+  getSessionTierCapacities: vi.fn(),
+  upsertSessionTierCapacities: vi.fn(),
   SessionNotFoundError: class SessionNotFoundError extends Error {
     constructor() { super('Session not found') }
   },
@@ -91,20 +101,22 @@ import {
   updateTour,
   transitionTourStatus,
   deleteTour,
+  TourNotFoundError,
+  TourTransitionError,
+  TourImmutableError,
+  TourNotDraftError,
+} from '../services/adminTour.service'
+import {
   addSession,
   updateSession,
   deleteSession,
   getSessionTierCapacities,
   upsertSessionTierCapacities,
-  TourNotFoundError,
-  TourTransitionError,
-  TourImmutableError,
-  TourNotDraftError,
   SessionNotFoundError,
   SessionHasBookingsError,
   LastSessionError,
   TooManySessionsError,
-} from '../services/adminTour.service'
+} from '../services/adminSession.service'
 
 const mockListAdminTours = vi.mocked(listAdminTours)
 const mockCreateTour = vi.mocked(createTour)
