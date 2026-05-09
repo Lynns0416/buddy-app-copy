@@ -3,7 +3,6 @@ import type { BuddyStatus, TourStatus, BookingStatus } from '@peace-buddy/types'
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline'
 type TFn = (key: string) => string
 
-// Each function takes a t from useTranslations('buddyStatus'/'tourStatus'/'bookingStatus')
 export function getBuddyStatusLabel(t: TFn, status: BuddyStatus): string {
   return t(status)
 }
@@ -17,10 +16,11 @@ export function getBookingStatusLabel(t: TFn, status: BookingStatus): string {
 }
 
 export const buddyStatusBadgeVariant: Record<BuddyStatus, BadgeVariant> = {
-  active: 'default',
   pending: 'secondary',
-  suspended: 'outline',
+  trainee: 'secondary',
+  active: 'default',
   rejected: 'destructive',
+  suspended: 'outline',
 }
 
 export const tourStatusBadgeVariant: Record<TourStatus, BadgeVariant> = {
@@ -37,4 +37,3 @@ export const bookingStatusBadgeVariant: Record<BookingStatus, BadgeVariant> = {
   declined: 'destructive',
 }
 
-// TODO §5.1: add 'trainee' BuddyStatus — schema + admin transitions + dashboard gating (phase 2)

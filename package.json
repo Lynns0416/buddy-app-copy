@@ -13,6 +13,17 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "protobufjs",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
-import type { AdminBuddyResponse, BuddyStatus } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AppError, BuddyStatus } from '@peace-buddy/types'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ export default function AdminBuddiesPendingPage() {
   const t = useTranslations('adminBuddies')
   const [buddies, setBuddies] = useState<AdminBuddyResponse[]>([])
   const [pendingAction, setPendingAction] = useState<string | null>(null)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<AppError | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [sortField, setSortField] = useState<BuddySortField>('displayName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -25,9 +25,9 @@ export default function AdminBuddiesPendingPage() {
     if (!ready) return
     fetchBuddies(BuddyStatusSchema.enum.pending).then((result) => {
       if (result.ok) setBuddies(result.data)
-      else setFetchError(mapBuddyError(t, result.error))
+      else setFetchError(result.error)
     })
-  }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready])
 
   function handleSort(field: BuddySortField) {
     const next = nextBuddySort({ field: sortField, dir: sortDir }, field)
@@ -57,7 +57,7 @@ export default function AdminBuddiesPendingPage() {
 
       {fetchError && (
         <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
-          {fetchError}
+          {mapBuddyError(t, fetchError)}
         </p>
       )}
 
@@ -104,7 +104,7 @@ export default function AdminBuddiesPendingPage() {
                     <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
-                        onClick={() => handleStatusChange(buddy.id, BuddyStatusSchema.enum.active)}
+                        onClick={() => handleStatusChange(buddy.id, BuddyStatusSchema.enum.trainee)}
                         disabled={pendingAction !== null}
                       >
                         {t('approve')}

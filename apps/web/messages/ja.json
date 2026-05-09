@@ -60,7 +60,6 @@
     "internalNotesPlaceholder": "内部参照用のメモを追加",
     "tierPlaceholder": "レベルを選択",
     "tierNone": "未設定",
-    "tierTrainee": "研修中",
     "tierJunior": "ジュニア",
     "tierMid": "ミドル",
     "tierSenior": "シニア",
@@ -75,6 +74,14 @@
     "view": "詳細",
     "editForm": "プロフィール編集",
     "noResults": "バディが見つかりません",
+    "viewTrainees": "研修中バディを見る →",
+    "promoteButton": "ジュニアに昇格する",
+    "promoteTierModal": {
+      "title": "昇格の確認",
+      "message": "{name}をジュニアに昇格しますか？バディ一覧に移動します。",
+      "confirm": "昇格する",
+      "cancel": "キャンセル"
+    },
     "bookingHistoryTitle": "予約履歴",
     "bookingHistoryGroup": "グループ",
     "bookingHistoryTourDate": "ツアー日",
@@ -87,6 +94,17 @@
       "forbidden": "この操作を行う権限がありません。",
       "conflict": "この操作はすでに実行できない状態です。",
       "network": "接続エラーです。ネットワークを確認してください。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    }
+  },
+  "adminTrainees": {
+    "title": "研修中バディ",
+    "name": "名前",
+    "email": "メール",
+    "joinedAt": "登録日",
+    "view": "詳細",
+    "noResults": "研修中のバディはいません",
+    "error": {
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
   },
@@ -239,6 +257,7 @@
       "profile": "プロフィール",
       "buddiesPending": "承認待ち",
       "buddies": "バディ",
+      "trainees": "研修中",
       "groups": "グループ",
       "tours": "ツアー",
       "adminProfile": "マイプロフィール",
@@ -411,6 +430,7 @@
   },
   "buddyStatus": {
     "pending": "承認待ち",
+    "trainee": "研修中",
     "active": "アクティブ",
     "rejected": "却下",
     "suspended": "停止中"

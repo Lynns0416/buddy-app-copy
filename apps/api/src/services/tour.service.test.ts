@@ -52,7 +52,7 @@ describe('listTours', () => {
   })
 
   it('returns empty array for trainee buddy', async () => {
-    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ tier: 'trainee' })
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ status: 'trainee' })
     const result = await listTours('user-1')
     expect(result).toEqual([])
     expect(mdb.tour.findMany).not.toHaveBeenCalled()
@@ -152,7 +152,7 @@ describe('getTour', () => {
     mdb.tour.findUnique.mockResolvedValueOnce(mockRow)
     mdb.booking.groupBy.mockResolvedValueOnce([])
     mdb.booking.findFirst.mockResolvedValueOnce(null)
-    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ tier: 'trainee' })
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ status: 'trainee' })
     const result = await getTour('tour-1', 'user-1')
     expect(result).toBeNull()
   })

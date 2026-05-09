@@ -78,8 +78,7 @@ export async function createBooking(
     return { ok: false, code: 'NOT_BOOKABLE' }
   }
 
-  // Only active buddies with a non-trainee tier can book
-  if (buddy.status !== 'active' || !buddy.tier || buddy.tier === BuddyTierSchema.enum.trainee) {
+  if (buddy.status !== 'active' || !buddy.tier) {
     return { ok: false, code: 'NOT_ELIGIBLE' }
   }
 

@@ -1,5 +1,5 @@
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile, AppError } from '@peace-buddy/types'
-import { AppErrorCodeSchema } from '@peace-buddy/types'
+import { AppErrorCodeSchema, BuddyStatusSchema } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -49,12 +49,16 @@ export function nextBuddySort(
   return { field: clicked, dir: ASC }
 }
 
-export async function fetchBuddies(status: BuddyStatus): Promise<ActionResult<AdminBuddyResponse[]>> {
+export async function fetchBuddies(status: BuddyStatus, tier?: BuddyTier): Promise<ActionResult<AdminBuddyResponse[]>> {
   try {
-    return { ok: true, data: await apiClient.listBuddies(status) }
+    return { ok: true, data: await apiClient.listBuddies(status, tier) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }
+}
+
+export async function fetchTrainees(): Promise<ActionResult<AdminBuddyResponse[]>> {
+  return fetchBuddies(BuddyStatusSchema.enum.trainee)
 }
 
 export async function updateBuddyStatus(id: string, status: BuddyStatus): Promise<ActionResult<void>> {

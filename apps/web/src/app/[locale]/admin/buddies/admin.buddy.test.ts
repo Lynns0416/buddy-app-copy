@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortBuddies, nextBuddySort, fetchBuddies, updateBuddyStatus, fetchBuddy, updateBuddy, sortBookingHistory, nextBookingSort } from './admin.buddy'
+import { sortBuddies, nextBuddySort, fetchBuddies, fetchTrainees, updateBuddyStatus, fetchBuddy, updateBuddy, sortBookingHistory, nextBookingSort } from './admin.buddy'
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry } from '@peace-buddy/types'
-import { BuddyStatusSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
+
+vi.mock('@/i18n/routing', () => ({
+  routing: { defaultLocale: 'en' },
+}))
 
 vi.mock('@/lib/api-client', () => ({
   apiClient: {
@@ -38,7 +42,7 @@ const buddy = (overrides: Partial<AdminBuddyResponse> = {}): AdminBuddyResponse 
   userId: 'u1',
   displayName: 'Alice',
   email: 'alice@example.com',
-  tier: 'trainee',
+  tier: null,
   status: 'pending',
   createdAt: '2025-01-01T00:00:00Z',
   ...overrides,
@@ -217,7 +221,13 @@ describe('fetchBuddies', () => {
     mockListBuddies.mockResolvedValue(stubBuddies)
     const result = await fetchBuddies(BuddyStatusSchema.enum.pending)
     expect(result).toEqual({ ok: true, data: stubBuddies })
-    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.pending)
+    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.pending, undefined)
+  })
+
+  it('passes tier when provided', async () => {
+    mockListBuddies.mockResolvedValue(stubBuddies)
+    await fetchBuddies(BuddyStatusSchema.enum.active, BuddyTierSchema.enum.junior)
+    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.active, BuddyTierSchema.enum.junior)
   })
 
   it('returns not_found for 404', async () => {
@@ -230,6 +240,17 @@ describe('fetchBuddies', () => {
     mockListBuddies.mockRejectedValue(new TypeError('Failed to fetch'))
     const result = await fetchBuddies(BuddyStatusSchema.enum.pending)
     expect(result).toEqual({ ok: false, error: { code: 'network' } })
+  })
+})
+
+describe('fetchTrainees', () => {
+  beforeEach(() => vi.resetAllMocks())
+
+  it('calls listBuddies with status=trainee', async () => {
+    mockListBuddies.mockResolvedValue(stubBuddies)
+    const result = await fetchTrainees()
+    expect(result).toEqual({ ok: true, data: stubBuddies })
+    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.trainee, undefined)
   })
 })
 

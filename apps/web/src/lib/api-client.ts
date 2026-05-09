@@ -16,6 +16,7 @@ import type {
   CancellationReasonBody,
   MyBookingEntry,
   BuddyStatus,
+  BuddyTier,
   TourStatus,
   TourStatusAction,
   UpdateAdminBuddyProfile,
@@ -71,10 +72,13 @@ export const apiClient = {
     }),
 
   // Admin — Buddies
-  listBuddies: (status?: BuddyStatus) =>
-    apiRequest<AdminBuddyResponse[]>(
-      status ? `${apiPaths.adminBuddies}?status=${status}` : apiPaths.adminBuddies,
-    ),
+  listBuddies: (status?: BuddyStatus, tier?: BuddyTier) => {
+    const params: string[] = []
+    if (status) params.push(`status=${status}`)
+    if (tier) params.push(`tier=${tier}`)
+    const url = params.length ? `${apiPaths.adminBuddies}?${params.join('&')}` : apiPaths.adminBuddies
+    return apiRequest<AdminBuddyResponse[]>(url)
+  },
 
   getBuddy: (id: string) =>
     apiRequest<AdminBuddyDetailResponse>(apiPaths.adminBuddy(id)),

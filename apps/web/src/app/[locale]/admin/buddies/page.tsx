@@ -1,44 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useLocale } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
-import type { AdminBuddyResponse, AppError, BuddyStatus } from '@peace-buddy/types'
-import { AppErrorCodeSchema, BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { routes } from '@/lib/routes'
-import { fetchBuddies, sortBuddies, nextBuddySort, type BuddySortField } from './admin.buddy'
+import { sortBuddies, nextBuddySort, mapBuddyError, type BuddySortField } from './admin.buddy'
+import { useBuddies } from './use-buddies'
 
 export default function AdminBuddiesPage() {
   const { ready } = useAdminGuard()
   const locale = useLocale()
   const t = useTranslations('adminBuddies')
-  const [buddies, setBuddies] = useState<AdminBuddyResponse[]>([])
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const { buddies, fetchError } = useBuddies(ready)
   const [sortField, setSortField] = useState<BuddySortField>('displayName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
-
-  function errorMessage(error: AppError): string {
-    switch (error.code) {
-      case AppErrorCodeSchema.enum.not_found:  return t('error.notFound')
-      case AppErrorCodeSchema.enum.forbidden:  return t('error.forbidden')
-      case AppErrorCodeSchema.enum.conflict:   return t('error.conflict')
-      case AppErrorCodeSchema.enum.network:    return t('error.network')
-      default:                                 return t('error.unknown')
-    }
-  }
-
-  useEffect(() => {
-    if (!ready) return
-    fetchBuddies(BuddyStatusSchema.enum.active).then((result) => {
-      if (result.ok) setBuddies(result.data)
-      else setFetchError(errorMessage(result.error))
-    })
-  }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSort(field: BuddySortField) {
     const next = nextBuddySort({ field: sortField, dir: sortDir }, field)
@@ -56,9 +36,15 @@ export default function AdminBuddiesPage() {
 
       {fetchError && (
         <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
-          {fetchError}
+          {mapBuddyError(t, fetchError)}
         </p>
       )}
+
+      <p className="mb-4 text-sm text-muted-foreground">
+        <Link href={routes.adminTrainees(locale)} className="text-blue-600 hover:underline">
+          {t('viewTrainees')}
+        </Link>
+      </p>
 
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('noResults')}</p>

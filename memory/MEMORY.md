@@ -14,3 +14,4 @@
 - [feedback_commits.md](feedback_commits.md) — No co-author, one concern per commit, feature branches, typecheck first
 - [feedback_token_efficiency.md](feedback_token_efficiency.md) — grep first, targeted reads only, skip typecheck for mechanical changes, user handles tasks manually
 - **Never eslint-disable** — Fix code pattern instead. Suppressing rules masks real bugs and creates tech debt.
+- [feedback_mock_pattern.md](feedback_mock_pattern.md) — Prisma mock pattern: use `as unknown as MockDb` cast, never `vi.mocked(db.model.method)` standalone

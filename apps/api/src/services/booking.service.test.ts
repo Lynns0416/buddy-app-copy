@@ -107,9 +107,9 @@ describe('createBooking', () => {
     expect(result).toEqual({ ok: false, code: 'NOT_ELIGIBLE' })
   })
 
-  it('returns NOT_ELIGIBLE when buddy tier is trainee', async () => {
+  it('returns NOT_ELIGIBLE when buddy status is trainee', async () => {
     mdb.tour.findUnique.mockResolvedValueOnce(futureTour)
-    mdb.buddyProfile.findUnique.mockResolvedValueOnce({ ...mockBuddy, tier: 'trainee' })
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce({ ...mockBuddy, status: 'trainee', tier: null })
     const result = await createBooking('tour-1', 'user-1')
     expect(result).toEqual({ ok: false, code: 'NOT_ELIGIBLE' })
   })

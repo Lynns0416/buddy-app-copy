@@ -94,16 +94,15 @@ A web-first internal booking application for managing group tour assignments. Th
 | Status | Description |
 |---|---|
 | **Pending** | Signed up, awaiting admin approval |
-| **Trainee** | Approved, currently in training — not yet eligible to book or lead tours |
-| **Active** | Cleared to book and lead tours |
+| **Active** | Cleared to log in; tier determines booking eligibility (see §5.2) |
 | **Rejected** | Signup rejected by admin — account is closed |
 | **Suspended** | Temporarily or permanently deactivated after being active |
 
-Status is set manually by admin. Typical progression: Pending → Trainee → Active. Pending → Rejected is a terminal state for denied signups. Rejected and Suspended are distinct: Rejected means the signup was never approved; Suspended means an active buddy was deactivated.
+Status is set manually by admin. Typical progression: Pending → Active (with tier=trainee). Pending → Rejected is a terminal state for denied signups. Rejected and Suspended are distinct: Rejected means the signup was never approved; Suspended means an active buddy was deactivated.
 
 Buddies are never deleted from the database. Suspended accounts remain in the DB with all history intact.
 
-**Trainee access:** Trainees can log in and view the tour list and full tour detail pages (including status counts, remaining seats, description, location, etc.) but cannot make bookings.
+**Trainee access:** Trainees (status=active, tier=trainee) can log in but cannot see tours or make bookings. A dedicated training schedules section is planned for a future release. Admins manage trainees via `/admin/trainees`; promotion to junior is done through the buddy detail page (tier dropdown), which requires confirmation.
 
 ### 5.2 Internal Tier (admin-managed, hidden from buddies)
 

@@ -140,7 +140,18 @@ describe('GET /admin/buddies', () => {
   it('filters by status query param', async () => {
     mockListBuddies.mockResolvedValueOnce([mockBuddy] as unknown as AdminBuddyResponse[])
     await buildApp('admin').request('/admin/buddies?status=pending')
-    expect(mockListBuddies).toHaveBeenCalledWith('pending')
+    expect(mockListBuddies).toHaveBeenCalledWith('pending', undefined)
+  })
+
+  it('filters by tier query param', async () => {
+    mockListBuddies.mockResolvedValueOnce([])
+    await buildApp('admin').request('/admin/buddies?status=active&tier=junior')
+    expect(mockListBuddies).toHaveBeenCalledWith('active', 'junior')
+  })
+
+  it('returns 400 for tier=trainee (trainee is a status, not a tier)', async () => {
+    const res = await buildApp('admin').request('/admin/buddies?tier=trainee')
+    expect(res.status).toBe(400)
   })
 
   it('returns 400 for invalid status', async () => {
@@ -148,10 +159,15 @@ describe('GET /admin/buddies', () => {
     expect(res.status).toBe(400)
   })
 
-  it('calls listBuddies with no args when status omitted', async () => {
+  it('returns 400 for invalid tier', async () => {
+    const res = await buildApp('admin').request('/admin/buddies?tier=invalid')
+    expect(res.status).toBe(400)
+  })
+
+  it('calls listBuddies with undefined args when params omitted', async () => {
     mockListBuddies.mockResolvedValueOnce([])
     await buildApp('admin').request('/admin/buddies')
-    expect(mockListBuddies).toHaveBeenCalledWith()
+    expect(mockListBuddies).toHaveBeenCalledWith(undefined, undefined)
   })
 })
 
@@ -219,15 +235,26 @@ describe('PUT /admin/buddies/:id', () => {
 describe('PUT /admin/buddies/:id/status', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('approves a buddy', async () => {
-    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'active', tier: 'trainee' } as unknown as AdminBuddyResponse)
+  it('approves a buddy as trainee', async () => {
+    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'trainee', tier: null } as unknown as AdminBuddyResponse)
+    const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'trainee' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateBuddyStatus).toHaveBeenCalledWith('profile-1', 'trainee')
+  })
+
+  it('promotes a trainee to active', async () => {
+    mockUpdateBuddyStatus.mockResolvedValueOnce({ ...mockBuddy, status: 'active', tier: 'junior' } as unknown as AdminBuddyResponse)
     const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'active' }),
     })
     expect(res.status).toBe(200)
-    expect(mockUpdateBuddyStatus).toHaveBeenCalledWith('profile-1', 'active', undefined)
+    expect(mockUpdateBuddyStatus).toHaveBeenCalledWith('profile-1', 'active')
   })
 
   it('rejects a buddy', async () => {
@@ -238,7 +265,7 @@ describe('PUT /admin/buddies/:id/status', () => {
       body: JSON.stringify({ status: 'rejected' }),
     })
     expect(res.status).toBe(200)
-    expect(mockUpdateBuddyStatus).toHaveBeenCalledWith('profile-1', 'rejected', undefined)
+    expect(mockUpdateBuddyStatus).toHaveBeenCalledWith('profile-1', 'rejected')
   })
 
   it('returns 404 when buddy not found', async () => {

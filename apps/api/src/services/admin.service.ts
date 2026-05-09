@@ -33,9 +33,11 @@ function mapBuddy(raw: {
   return { ...rest, email: user.email } as unknown as AdminBuddyResponse
 }
 
-export async function listBuddies(status?: BuddyStatus): Promise<AdminBuddyResponse[]> {
+export async function listBuddies(status?: BuddyStatus, tier?: BuddyTier): Promise<AdminBuddyResponse[]> {
   const rows = await db.buddyProfile.findMany({
-    where: status ? { status } : undefined,
+    where: status || tier
+      ? { ...(status ? { status } : {}), ...(tier ? { tier } : {}) }
+      : undefined,
     select: adminBuddySelect,
     orderBy: { createdAt: 'asc' },
   })
@@ -85,13 +87,12 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
 
 export async function updateBuddyStatus(
   id: string,
-  status: BuddyStatus,
-  tier?: BuddyTier
+  status: BuddyStatus
 ): Promise<AdminBuddyResponse | null> {
   try {
     const data: { status: BuddyStatus; tier?: BuddyTier } = { status }
     if (status === BuddyStatusSchema.enum.active) {
-      data.tier = tier ?? BuddyTierSchema.enum.trainee
+      data.tier = BuddyTierSchema.enum.junior
     }
     const raw = await db.buddyProfile.update({
       where: { id },

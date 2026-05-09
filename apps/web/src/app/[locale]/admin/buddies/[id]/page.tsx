@@ -7,6 +7,7 @@ import { useLocale } from 'next-intl'
 import { useParams } from 'next/navigation'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import type { AdminBuddyDetailResponse } from '@peace-buddy/types'
+import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { getBuddyStatusLabel } from '@/lib/status-display'
 import { routes } from '@/lib/routes'
@@ -39,15 +40,19 @@ export default function AdminBuddyDetailPage() {
       }
       setFetched(true)
     })
-  }, [ready, id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, id, t])
 
   if (!ready || !fetched) return null
+
+  const backRoute = buddy?.status === BuddyStatusSchema.enum.trainee
+    ? routes.adminTrainees(locale)
+    : routes.adminBuddies(locale)
 
   if (fetchError || !buddy) {
     return (
       <AppShell variant="admin">
         <div className="flex items-center gap-4 mb-6">
-          <Link href={routes.adminBuddies(locale)} className="text-sm text-blue-600 hover:underline">
+          <Link href={backRoute} className="text-sm text-blue-600 hover:underline">
             ← {t('back')}
           </Link>
         </div>
@@ -61,7 +66,7 @@ export default function AdminBuddyDetailPage() {
   return (
     <AppShell variant="admin">
       <div className="flex items-center gap-4 mb-6">
-        <Link href={routes.adminBuddies(locale)} className="text-sm text-blue-600 hover:underline">
+        <Link href={backRoute} className="text-sm text-blue-600 hover:underline">
           ← {t('back')}
         </Link>
       </div>

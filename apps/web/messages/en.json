@@ -60,7 +60,6 @@
     "internalNotesPlaceholder": "Add notes for internal reference",
     "tierPlaceholder": "Select tier",
     "tierNone": "None (not set)",
-    "tierTrainee": "Trainee",
     "tierJunior": "Junior",
     "tierMid": "Mid",
     "tierSenior": "Senior",
@@ -75,6 +74,14 @@
     "view": "View",
     "editForm": "Edit Profile",
     "noResults": "No buddies found",
+    "viewTrainees": "View trainees →",
+    "promoteButton": "Promote to Junior",
+    "promoteTierModal": {
+      "title": "Confirm promotion",
+      "message": "Promote {name} to Junior? They will be moved to the active buddy roster.",
+      "confirm": "Promote",
+      "cancel": "Cancel"
+    },
     "bookingHistoryTitle": "Booking History",
     "bookingHistoryGroup": "Group",
     "bookingHistoryTourDate": "Tour Date",
@@ -87,6 +94,17 @@
       "forbidden": "You don't have permission to perform this action.",
       "conflict": "This action cannot be performed in the current state.",
       "network": "Network error. Please check your connection.",
+      "unknown": "An error occurred. Please try again."
+    }
+  },
+  "adminTrainees": {
+    "title": "Trainees",
+    "name": "Name",
+    "email": "Email",
+    "joinedAt": "Joined",
+    "view": "View",
+    "noResults": "No trainees found",
+    "error": {
       "unknown": "An error occurred. Please try again."
     }
   },
@@ -239,6 +257,7 @@
       "profile": "Profile",
       "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
+      "trainees": "Trainees",
       "groups": "Groups",
       "tours": "Tours",
       "adminProfile": "My Profile",
@@ -411,6 +430,7 @@
   },
   "buddyStatus": {
     "pending": "Pending",
+    "trainee": "In Training",
     "active": "Active",
     "rejected": "Rejected",
     "suspended": "Suspended"

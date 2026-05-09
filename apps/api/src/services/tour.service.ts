@@ -1,4 +1,4 @@
-import { TourStatus, BuddyTier as PrismaBuddyTier } from '@prisma/client'
+import { TourStatus, BuddyTier as PrismaBuddyTier, BuddyStatus as PrismaBuddyStatus } from '@prisma/client'
 import { db } from '../lib/db'
 import { getPoolCapacities, NON_JUNIOR_TIERS } from '../lib/pool'
 import type { TourResponse, TourDetailResponse, TourSeatCounts, GroupType, BookingStatus } from '@peace-buddy/types'
@@ -70,9 +70,9 @@ function mapTour(row: {
 export async function listTours(userId: string, filters?: ToursQuery): Promise<TourResponse[]> {
   const buddyProfile = await db.buddyProfile.findFirst({
     where: { userId },
-    select: { tier: true },
+    select: { status: true },
   })
-  if (buddyProfile?.tier === PrismaBuddyTier.trainee) return []
+  if (buddyProfile?.status === PrismaBuddyStatus.trainee) return []
 
   const rows = await db.tour.findMany({
     where: {
@@ -106,12 +106,12 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
     }),
     db.buddyProfile.findFirst({
       where: { userId },
-      select: { tier: true },
+      select: { status: true, tier: true },
     }),
   ])
 
   if (!row) return null
-  if (buddyProfile?.tier === PrismaBuddyTier.trainee) return null
+  if (buddyProfile?.status === PrismaBuddyStatus.trainee) return null
 
   const seatCounts: TourSeatCounts = { confirmed: 0, maybe: 0, waitlist: 0, declined: 0 }
   for (const r of countRows) {

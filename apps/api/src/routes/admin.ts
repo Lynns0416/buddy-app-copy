@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { BuddyStatusSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, BuddyTierSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema } from '@peace-buddy/types'
 import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from '../services/admin.service'
 import { adminGroupRoutes } from './adminGroups'
 import { adminTourRoutes } from './adminTours'
@@ -20,14 +20,23 @@ adminRoutes.route('', adminProfileRoutes)
 
 adminRoutes.get('/buddies', async (c) => {
   const statusParam = c.req.query('status')
+  const tierParam = c.req.query('tier')
 
+  let status
   if (statusParam !== undefined) {
     const parsed = BuddyStatusSchema.safeParse(statusParam)
     if (!parsed.success) return c.json({ error: 'Invalid status' }, 400)
-    return c.json(await listBuddies(parsed.data))
+    status = parsed.data
   }
 
-  return c.json(await listBuddies())
+  let tier
+  if (tierParam !== undefined) {
+    const parsed = BuddyTierSchema.safeParse(tierParam)
+    if (!parsed.success) return c.json({ error: 'Invalid tier' }, 400)
+    tier = parsed.data
+  }
+
+  return c.json(await listBuddies(status, tier))
 })
 
 adminRoutes.get('/buddies/:id', async (c) => {
@@ -77,8 +86,7 @@ adminRoutes.put('/buddies/:id/status', async (c) => {
     return c.json({ error: 'Invalid request body' }, 400)
   }
 
-  const tier = 'tier' in data ? (data.tier) : undefined
-  const buddy = await updateBuddyStatus(id, data.status, tier)
+  const buddy = await updateBuddyStatus(id, data.status)
   if (!buddy) return c.json({ error: 'Buddy not found' }, 404)
 
   return c.json(buddy)

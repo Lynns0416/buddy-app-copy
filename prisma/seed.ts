@@ -140,15 +140,14 @@ async function main() {
       update: {
         displayName: account.displayName ?? account.email.split('@')[0],
         realName: account.displayName ?? '',
-        status: BuddyStatus.active,
-        tier: BuddyTier.trainee,
+        status: BuddyStatus.trainee,
+        tier: null,
         languages: ['japanese'],
         skills: [],
       },
       create: {
         userId: user.id,
-        status: BuddyStatus.active,
-        tier: BuddyTier.trainee,
+        status: BuddyStatus.trainee,
         displayName: account.displayName ?? account.email.split('@')[0],
         realName: account.displayName ?? '',
         languages: ['japanese'],
