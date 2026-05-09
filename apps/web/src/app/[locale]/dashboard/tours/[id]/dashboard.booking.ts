@@ -6,9 +6,9 @@ import { classifyApiError } from '../../../../../lib/api-error'
 
 export type BookingActionResult = ActionResult<void> & { specialMessage?: string }
 
-export async function createInitialBooking(tourId: string): Promise<BookingActionResult> {
+export async function createInitialBooking(tourId: string, sessionId: string): Promise<BookingActionResult> {
   try {
-    await apiClient.createBooking(tourId)
+    await apiClient.createBooking(tourId, sessionId)
     return { ok: true, data: undefined }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
@@ -17,6 +17,7 @@ export async function createInitialBooking(tourId: string): Promise<BookingActio
 
 export async function updateBookingStatus(
   tourId: string,
+  sessionId: string,
   status: string,
   reason?: CancellationReasonBody,
 ): Promise<BookingActionResult> {
@@ -25,7 +26,7 @@ export async function updateBookingStatus(
     if (reason) {
       body.reason = reason
     }
-    await apiClient.updateBooking(tourId, body.status, body.reason)
+    await apiClient.updateBooking(tourId, sessionId, body.status, body.reason)
     return { ok: true, data: undefined }
   } catch (err) {
     const result: BookingActionResult = { ok: false, error: classifyApiError(err) }

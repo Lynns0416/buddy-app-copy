@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import TourDetailPage from './page'
-import type { TourDetailResponse } from '@peace-buddy/types'
+import type { TourDetailResponse, TourSessionDetailResponse } from '@peace-buddy/types'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -79,18 +79,30 @@ const mockDbUser = {
 
 const mockFirebaseUser = { uid: 'uid-123' } as never
 
+const mockSession: TourSessionDetailResponse = {
+  id: 'session-1',
+  order: 1,
+  label: null,
+  meetingTime: '1970-01-01T09:00:00.000Z',
+  startTime: null,
+  endTime: null,
+  capacity: 10,
+  participantCount: 0,
+  seatCounts: { confirmed: 3, maybe: 1, waitlist: 2, declined: 0 },
+  remaining: 7,
+  myCapacity: 7,
+  myRemaining: 5,
+  myBookingStatus: null,
+}
+
 const mockTour: TourDetailResponse = {
   id: 'tour-1',
   groupId: 'group-1',
   group: { id: 'group-1', name: 'Test School', type: 'school' },
   status: 'published',
   tourDate: '2026-05-01T00:00:00.000Z',
-  meetingTime: '1970-01-01T09:00:00.000Z',
-  startTime: null,
-  endTime: null,
   bookingOpen: true,
   location: 'Tokyo Station',
-  capacity: 10,
   participantCount: 0,
   description: 'A guided tour',
   cancellationDeadline: '2099-01-01T00:00:00.000Z',
@@ -98,11 +110,7 @@ const mockTour: TourDetailResponse = {
   notificationOffsets: [3, 1],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
-  seatCounts: { confirmed: 3, maybe: 1, waitlist: 2, declined: 0 },
-  remaining: 7,
-  myCapacity: 7,
-  myRemaining: 5,
-  myBookingStatus: null,
+  sessions: [mockSession],
 }
 
 describe('TourDetailPage', () => {
@@ -144,21 +152,21 @@ describe('TourDetailPage', () => {
     await waitFor(() => expect(screen.getByText('A guided tour')).toBeInTheDocument())
   })
 
-  it('renders seat counts section with seatCounts title', async () => {
+  it('renders seat counts section', async () => {
     mockGetTour.mockResolvedValue(mockTour)
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.getByText('seatCounts')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('confirmed')).toBeInTheDocument())
   })
 
   it('renders pool-scoped confirmed as myCapacity minus myRemaining', async () => {
-    mockGetTour.mockResolvedValue({ ...mockTour, myCapacity: 7, myRemaining: 3 })
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, myCapacity: 7, myRemaining: 3 }] })
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('confirmed')).toBeInTheDocument())
     expect(screen.getByText('4')).toBeInTheDocument()
   })
 
   it('renders maybe, waitlist, declined from seatCounts', async () => {
-    mockGetTour.mockResolvedValue({ ...mockTour, seatCounts: { confirmed: 0, maybe: 6, waitlist: 8, declined: 9 } })
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, seatCounts: { confirmed: 0, maybe: 6, waitlist: 8, declined: 9 } }] })
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('maybe')).toBeInTheDocument())
     expect(screen.getByText('6')).toBeInTheDocument()
@@ -169,33 +177,29 @@ describe('TourDetailPage', () => {
   it('renders myCapacity in info section when set', async () => {
     mockGetTour.mockResolvedValue(mockTour)
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.getByText('capacity')).toBeInTheDocument())
-    expect(screen.getByText('7')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('capacity: 7')).toBeInTheDocument())
   })
 
   it('renders total capacity in info section when myCapacity is null', async () => {
-    mockGetTour.mockResolvedValue({ ...mockTour, myCapacity: null })
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, myCapacity: null }] })
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.getByText('capacity')).toBeInTheDocument())
-    expect(screen.getByText('10')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('capacity: 10')).toBeInTheDocument())
   })
 
   it('renders myRemaining in info section when set', async () => {
     mockGetTour.mockResolvedValue(mockTour)
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.getByText('remaining')).toBeInTheDocument())
-    expect(screen.getByText('5')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('remaining: 5')).toBeInTheDocument())
   })
 
   it('renders remaining fallback in info section when myRemaining is null', async () => {
-    mockGetTour.mockResolvedValue({ ...mockTour, myRemaining: null, remaining: 4 })
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, myRemaining: null, remaining: 4 }] })
     render(<TourDetailPage />)
-    await waitFor(() => expect(screen.getByText('remaining')).toBeInTheDocument())
-    expect(screen.getByText('4')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('remaining: 4')).toBeInTheDocument())
   })
 
   it('shows noBooking when myBookingStatus is null', async () => {
-    mockGetTour.mockResolvedValue({ ...mockTour, myBookingStatus: null })
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, myBookingStatus: null }] })
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('noBooking')).toBeInTheDocument())
   })
@@ -206,7 +210,7 @@ describe('TourDetailPage', () => {
     ['waitlist', 'waitlist'],
     ['declined', 'declined'],
   ] as const)('shows %s booking status label', async (status, labelKey) => {
-    mockGetTour.mockResolvedValue({ ...mockTour, myBookingStatus: status })
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, myBookingStatus: status }] })
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.queryAllByText(labelKey).length).toBeGreaterThan(0))
   })
@@ -218,14 +222,14 @@ describe('TourDetailPage', () => {
   })
 
   it('shows revert button when booking is declined and myRemaining > 0', async () => {
-    const declinedTour = { ...mockTour, myBookingStatus: 'declined' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', myRemaining: 3 }
+    const declinedTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: 'declined' as const, myRemaining: 3 }] }
     mockGetTour.mockResolvedValue(declinedTour)
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('revert')).toBeInTheDocument())
   })
 
   it('hides revert button when myRemaining is 0', async () => {
-    const declinedTour = { ...mockTour, myBookingStatus: 'declined' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', myRemaining: 0 }
+    const declinedTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: 'declined' as const, myRemaining: 0 }] }
     mockGetTour.mockResolvedValue(declinedTour)
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.queryByText('noBooking')).not.toBeInTheDocument())
@@ -233,47 +237,47 @@ describe('TourDetailPage', () => {
   })
 
   it('shows book button when tour is bookable and not booked', async () => {
-    const bookableTour = { ...mockTour, myBookingStatus: null, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
+    const bookableTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: null }] }
     mockGetTour.mockResolvedValue(bookableTour)
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('book')).toBeInTheDocument())
   })
 
   it('does not show book button when already booked', async () => {
-    const bookedTour = { ...mockTour, myBookingStatus: 'confirmed' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
+    const bookedTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }] }
     mockGetTour.mockResolvedValue(bookedTour)
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.queryByText('book')).not.toBeInTheDocument())
   })
 
   it('calls createBooking and refreshes tour on book', async () => {
-    const bookableTour = { ...mockTour, myBookingStatus: null, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
-    const bookedTour = { ...bookableTour, myBookingStatus: 'confirmed' as const }
+    const bookableTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: null }] }
+    const bookedTour = { ...bookableTour, sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }] }
     mockGetTour.mockResolvedValueOnce(bookableTour).mockResolvedValueOnce(bookedTour)
-    mockCreateBooking.mockResolvedValueOnce({ id: 'bk1', tourId: 'tour-1', buddyTier: 'junior', status: 'confirmed', bookedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' })
+    mockCreateBooking.mockResolvedValueOnce({ id: 'bk1', tourId: 'tour-1', sessionId: 'session-1', buddyTier: 'junior', status: 'confirmed', bookedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' })
 
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('book')).toBeInTheDocument())
     screen.getByText('book').click()
-    await waitFor(() => expect(mockCreateBooking).toHaveBeenCalledWith('tour-1'))
+    await waitFor(() => expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', 'session-1'))
   })
 
   it('shows cancel button when booking is confirmed', async () => {
-    const confirmedTour = { ...mockTour, myBookingStatus: 'confirmed' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
+    const confirmedTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }] }
     mockGetTour.mockResolvedValue(confirmedTour)
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('cancelBooking')).toBeInTheDocument())
   })
 
   it('shows setMaybe button when booking is confirmed', async () => {
-    const confirmedTour = { ...mockTour, myBookingStatus: 'confirmed' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
+    const confirmedTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }] }
     mockGetTour.mockResolvedValue(confirmedTour)
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('setMaybe')).toBeInTheDocument())
   })
 
   it('shows cancellation reason form when cancel button is clicked (confirmed)', async () => {
-    const confirmedTour = { ...mockTour, myBookingStatus: 'confirmed' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
+    const confirmedTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }] }
     mockGetTour.mockResolvedValue(confirmedTour)
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('cancelBooking')).toBeInTheDocument())
@@ -283,10 +287,10 @@ describe('TourDetailPage', () => {
   })
 
   it('calls updateBooking with reason on cancel (confirmed → declined)', async () => {
-    const confirmedTour = { ...mockTour, myBookingStatus: 'confirmed' as const, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z' }
-    const cancelledTour = { ...confirmedTour, myBookingStatus: 'declined' as const }
+    const confirmedTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }] }
+    const cancelledTour = { ...confirmedTour, sessions: [{ ...mockSession, myBookingStatus: 'declined' as const }] }
     mockGetTour.mockResolvedValueOnce(confirmedTour).mockResolvedValueOnce(cancelledTour)
-    mockUpdateBooking.mockResolvedValueOnce({ id: 'b1', tourId: 'tour-1', buddyTier: 'junior', status: 'declined', bookedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' })
+    mockUpdateBooking.mockResolvedValueOnce({ id: 'b1', tourId: 'tour-1', sessionId: 'session-1', buddyTier: 'junior', status: 'declined', bookedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' })
 
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByText('cancelBooking')).toBeInTheDocument())
@@ -299,6 +303,7 @@ describe('TourDetailPage', () => {
     await waitFor(() =>
       expect(mockUpdateBooking).toHaveBeenCalledWith(
         'tour-1',
+        'session-1',
         'declined',
         expect.objectContaining({ category: 'health', unavoidable: false }),
       )

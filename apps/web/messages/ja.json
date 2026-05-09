@@ -192,6 +192,20 @@
       "sumError": "合計が100%になるよう設定してください",
       "saved": "保存しました"
     },
+    "session": {
+      "defaultLabel": {
+        "1": "前半",
+        "2": "後半"
+      },
+      "label": "ラベル（任意）",
+      "add": "第2回目を追加",
+      "remove": "削除",
+      "confirmRemove": "このセッションを削除しますか？この操作は取り消せません。",
+      "error": {
+        "maxSessions": "ツアーには最大2セッションまでしか追加できません。"
+      }
+    },
+    "bookingSession": "セッション",
     "error": {
       "notFound": "このツアーは存在しません。",
       "forbidden": "この操作を行う権限がありません。",
@@ -245,7 +259,14 @@
     "cancelReasonBack": "戻る",
     "selfEvalTitle": "自己評価",
     "book": "予約する",
-    "notEligible": "このツアーには参加できません。"
+    "notEligible": "このツアーには参加できません。",
+    "sessions": "セッション",
+    "session": {
+      "defaultLabel": {
+        "1": "前半",
+        "2": "後半"
+      }
+    }
   },
   "shell": {
     "appName": "Peace Buddy",

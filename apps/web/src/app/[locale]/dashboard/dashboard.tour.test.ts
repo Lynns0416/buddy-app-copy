@@ -30,19 +30,17 @@ const stubTours: TourResponse[] = [
     group: { id: 'g1', name: 'Group A', type: 'school' },
     status: TourStatusSchema.enum.published,
     tourDate: '2025-05-01T00:00:00Z',
-    meetingTime: '2025-05-01T10:00:00Z',
-    startTime: null,
-    endTime: null,
     bookingOpen: true,
     location: 'Location A',
-    capacity: 20,
+    participantCount: 0,
     description: null,
     cancellationDeadline: '2025-04-20T00:00:00Z',
     maybeDeadline: null,
     notificationOffsets: [3, 1],
+    sessions: [],
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
-  } as TourResponse,
+  },
 ]
 
 describe('fetchUpcomingTours', () => {

@@ -7,8 +7,11 @@ import {
 import type {
   CreateTour,
   UpdateTour,
+  CreateTourSession,
+  UpdateTourSession,
   AdminTourSummaryResponse,
   AdminTourDetailResponse,
+  TourSessionResponse,
   TourStatus,
   TourAction,
   GroupType,
@@ -36,6 +39,30 @@ export class TourNotDraftError extends Error {
   }
 }
 
+export class SessionNotFoundError extends Error {
+  constructor() {
+    super('Session not found')
+  }
+}
+
+export class SessionHasBookingsError extends Error {
+  constructor() {
+    super('Cannot delete session with bookings')
+  }
+}
+
+export class LastSessionError extends Error {
+  constructor() {
+    super('Cannot delete the only session')
+  }
+}
+
+export class TooManySessionsError extends Error {
+  constructor() {
+    super('Tour already has maximum number of sessions')
+  }
+}
+
 const ACTION_TO_STATUS: Record<TourAction, TourStatus> = {
   publish: TourStatusSchema.enum.published,
   cancel: TourStatusSchema.enum.cancelled,
@@ -54,121 +81,139 @@ function parseTime(hhmm: string): Date {
   return d
 }
 
+const sessionSelect = {
+  id: true,
+  order: true,
+  label: true,
+  meetingTime: true,
+  startTime: true,
+  endTime: true,
+  capacity: true,
+  participantCount: true,
+} as const
+
+function mapSession(row: {
+  id: string
+  order: number
+  label: string | null
+  meetingTime: Date
+  startTime: Date | null
+  endTime: Date | null
+  capacity: number
+  participantCount: number
+}): TourSessionResponse {
+  return {
+    id: row.id,
+    order: row.order,
+    label: row.label,
+    meetingTime: row.meetingTime.toISOString(),
+    startTime: row.startTime ? row.startTime.toISOString() : null,
+    endTime: row.endTime ? row.endTime.toISOString() : null,
+    capacity: row.capacity,
+    participantCount: row.participantCount,
+  }
+}
+
 function mapSummary(row: {
   id: string
   group: { id: string; name: string; type: string }
   status: string
   tourDate: Date
-  meetingTime: Date
-  startTime: Date | null
-  endTime: Date | null
   bookingOpen: boolean
   location: string
-  capacity: number
-  participantCount: number
   description: string | null
   createdAt: Date
   updatedAt: Date
+  sessions: Array<{
+    id: string
+    order: number
+    label: string | null
+    meetingTime: Date
+    startTime: Date | null
+    endTime: Date | null
+    capacity: number
+    participantCount: number
+  }>
   _count: { bookings: number }
 }): AdminTourSummaryResponse {
+  const totalCapacity = row.sessions.reduce((s, sess) => s + sess.capacity, 0)
+  const totalParticipants = row.sessions.reduce((s, sess) => s + sess.participantCount, 0)
   return {
     id: row.id,
     group: { id: row.group.id, name: row.group.name, type: row.group.type as GroupType },
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
-    meetingTime: row.meetingTime.toISOString(),
-    startTime: row.startTime ? row.startTime.toISOString() : null,
-    endTime: row.endTime ? row.endTime.toISOString() : null,
     bookingOpen: row.bookingOpen,
     location: row.location,
-    capacity: row.capacity,
+    capacity: totalCapacity,
     description: row.description,
     confirmedCount: row._count.bookings,
-    participantCount: row.participantCount,
+    participantCount: totalParticipants,
+    sessions: row.sessions.sort((a, b) => a.order - b.order).map(mapSession),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
 }
 
+const tourListSelect = {
+  id: true,
+  group: { select: { id: true, name: true, type: true } },
+  status: true,
+  tourDate: true,
+  bookingOpen: true,
+  location: true,
+  description: true,
+  createdAt: true,
+  updatedAt: true,
+  sessions: { select: sessionSelect, orderBy: { order: 'asc' as const } },
+  _count: {
+    select: {
+      bookings: { where: { status: BookingStatusSchema.enum.confirmed } },
+    },
+  },
+} as const
+
 export async function listAdminTours(params: { status?: TourStatus }): Promise<AdminTourSummaryResponse[]> {
   const rows = await db.tour.findMany({
     where: params.status ? { status: params.status } : undefined,
-    select: {
-      id: true,
-      group: { select: { id: true, name: true, type: true } },
-      status: true,
-      tourDate: true,
-      meetingTime: true,
-      startTime: true,
-      endTime: true,
-      bookingOpen: true,
-      location: true,
-      capacity: true,
-      participantCount: true,
-      description: true,
-      createdAt: true,
-      updatedAt: true,
-      _count: {
-        select: {
-          bookings: { where: { status: BookingStatusSchema.enum.confirmed } },
-        },
-      },
-    },
+    select: tourListSelect,
     orderBy: { tourDate: 'asc' },
   })
   return rows.map(mapSummary)
 }
 
 export async function createTour(data: CreateTour): Promise<AdminTourDetailResponse> {
-  type CreateTourSelect = {
-    id: string
-    group: { id: string; name: string; type: string }
-    status: string
-    tourDate: Date
-    meetingTime: Date
-    startTime: Date | null
-    endTime: Date | null
-    bookingOpen: boolean
-    location: string
-    capacity: number
-    participantCount: number
-    description: string | null
-    adminMemo: string | null
-    cancellationDeadline: Date
-    maybeDeadline: Date | null
-    notificationOffsets: number[]
-    createdAt: Date
-    updatedAt: Date
-  }
-
-  const row = (await db.tour.create({
+  const row = await db.tour.create({
     data: {
       groupId: data.groupId,
       status: TourStatusSchema.enum.draft,
       tourDate: data.tourDate,
-      meetingTime: parseTime(data.meetingTime),
       bookingOpen: data.bookingOpen,
       location: data.location,
-      capacity: data.capacity,
-      participantCount: data.participantCount ?? 0,
       description: data.description ?? null,
       adminMemo: data.adminMemo ?? null,
       cancellationDeadline: data.cancellationDeadline,
       maybeDeadline: data.maybeDeadline ?? null,
       notificationOffsets: data.notificationOffsets,
+      sessions: {
+        create: data.sessions.map((s, idx) => ({
+          order: idx + 1,
+          label: s.label ?? null,
+          meetingTime: parseTime(s.meetingTime),
+          startTime: s.startTime ? parseTime(s.startTime) : null,
+          endTime: s.endTime ? parseTime(s.endTime) : null,
+          capacity: s.capacity,
+          participantCount: s.participantCount ?? 0,
+        })),
+      },
     },
     select: {
       id: true,
       group: { select: { id: true, name: true, type: true } },
       status: true,
       tourDate: true,
-      meetingTime: true,
-      startTime: true,
-      endTime: true,
       bookingOpen: true,
       location: true,
-      capacity: true,
-      participantCount: true,
       description: true,
       adminMemo: true,
       cancellationDeadline: true,
@@ -176,23 +221,22 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
       notificationOffsets: true,
       createdAt: true,
       updatedAt: true,
+      sessions: { select: sessionSelect, orderBy: { order: 'asc' as const } },
     },
-  })) as CreateTourSelect
+  })
 
   return {
     id: row.id,
     group: { id: row.group.id, name: row.group.name, type: row.group.type as GroupType },
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
-    meetingTime: row.meetingTime.toISOString(),
-    startTime: row.startTime ? row.startTime.toISOString() : null,
-    endTime: row.endTime ? row.endTime.toISOString() : null,
     bookingOpen: row.bookingOpen,
     location: row.location,
-    capacity: row.capacity,
+    capacity: row.sessions.reduce((s, sess) => s + sess.capacity, 0),
     description: row.description,
     confirmedCount: 0,
-    participantCount: row.participantCount,
+    participantCount: row.sessions.reduce((s, sess) => s + sess.participantCount, 0),
+    sessions: row.sessions.map(mapSession),
     adminMemo: row.adminMemo,
     cancellationDeadline: row.cancellationDeadline.toISOString(),
     maybeDeadline: row.maybeDeadline ? row.maybeDeadline.toISOString() : null,
@@ -204,51 +248,15 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
 }
 
 export async function getAdminTourDetail(id: string): Promise<AdminTourDetailResponse | null> {
-  type DetailTourSelect = {
-    id: string
-    group: { id: string; name: string; type: string }
-    status: string
-    tourDate: Date
-    meetingTime: Date
-    startTime: Date | null
-    endTime: Date | null
-    bookingOpen: boolean
-    location: string
-    capacity: number
-    participantCount: number
-    description: string | null
-    adminMemo: string | null
-    cancellationDeadline: Date
-    maybeDeadline: Date | null
-    notificationOffsets: number[]
-    createdAt: Date
-    updatedAt: Date
-    bookings: Array<{
-      id: string
-      buddyId: string
-      buddy: { displayName: string }
-      status: string
-      bookedAt: Date
-    }>
-    _count: {
-      bookings: number
-    }
-  }
-
-  const row = (await db.tour.findUnique({
+  const row = await db.tour.findUnique({
     where: { id },
     select: {
       id: true,
       group: { select: { id: true, name: true, type: true } },
       status: true,
       tourDate: true,
-      meetingTime: true,
-      startTime: true,
-      endTime: true,
       bookingOpen: true,
       location: true,
-      capacity: true,
-      participantCount: true,
       description: true,
       adminMemo: true,
       cancellationDeadline: true,
@@ -256,15 +264,18 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
       notificationOffsets: true,
       createdAt: true,
       updatedAt: true,
+      sessions: { select: sessionSelect, orderBy: { order: 'asc' as const } },
       bookings: {
         select: {
           id: true,
           buddyId: true,
+          sessionId: true,
           buddy: { select: { displayName: true } },
           status: true,
           bookedAt: true,
+          session: { select: { order: true, label: true } },
         },
-        orderBy: { bookedAt: 'asc' },
+        orderBy: [{ session: { order: 'asc' } }, { bookedAt: 'asc' }],
       },
       _count: {
         select: {
@@ -272,7 +283,7 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
         },
       },
     },
-  })) as DetailTourSelect | null
+  })
 
   if (!row) return null
   return {
@@ -280,15 +291,13 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
     group: { id: row.group.id, name: row.group.name, type: row.group.type as GroupType },
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
-    meetingTime: row.meetingTime.toISOString(),
-    startTime: row.startTime ? row.startTime.toISOString() : null,
-    endTime: row.endTime ? row.endTime.toISOString() : null,
     bookingOpen: row.bookingOpen,
     location: row.location,
-    capacity: row.capacity,
+    capacity: row.sessions.reduce((s, sess) => s + sess.capacity, 0),
     description: row.description,
     confirmedCount: row._count.bookings,
-    participantCount: row.participantCount,
+    participantCount: row.sessions.reduce((s, sess) => s + sess.participantCount, 0),
+    sessions: row.sessions.map(mapSession),
     adminMemo: row.adminMemo,
     cancellationDeadline: row.cancellationDeadline.toISOString(),
     maybeDeadline: row.maybeDeadline ? row.maybeDeadline.toISOString() : null,
@@ -298,6 +307,9 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
     bookings: row.bookings.map((b) => ({
       id: b.id,
       buddyId: b.buddyId,
+      sessionId: b.sessionId,
+      sessionOrder: b.session.order,
+      sessionLabel: b.session.label,
       displayName: b.buddy.displayName,
       status: b.status as BookingStatus,
       bookedAt: b.bookedAt.toISOString(),
@@ -316,10 +328,7 @@ export async function updateTour(id: string, data: UpdateTour): Promise<AdminTou
       data: {
         ...(data.groupId !== undefined ? { groupId: data.groupId } : {}),
         ...(data.tourDate !== undefined ? { tourDate: data.tourDate } : {}),
-        ...(data.meetingTime !== undefined ? { meetingTime: parseTime(data.meetingTime) } : {}),
         ...(data.location !== undefined ? { location: data.location } : {}),
-        ...(data.capacity !== undefined ? { capacity: data.capacity } : {}),
-        ...(data.participantCount !== undefined ? { participantCount: data.participantCount } : {}),
         ...(data.description !== undefined ? { description: data.description } : {}),
         ...(data.adminMemo !== undefined ? { adminMemo: data.adminMemo } : {}),
         ...(data.cancellationDeadline !== undefined ? { cancellationDeadline: data.cancellationDeadline } : {}),
@@ -366,9 +375,90 @@ export async function deleteTour(id: string): Promise<void> {
   await db.tour.delete({ where: { id } })
 }
 
-export async function getTierCapacities(tourId: string): Promise<TierCapacities> {
-  const rows = await db.tierCapacity.findMany({
+// Session management
+
+export async function addSession(tourId: string, data: CreateTourSession): Promise<AdminTourDetailResponse> {
+  const existing = await db.tour.findUnique({
+    where: { id: tourId },
+    select: { status: true, sessions: { select: { order: true } } },
+  })
+  if (!existing) throw new TourNotFoundError()
+  if (existing.status === TourStatusSchema.enum.cancelled || existing.status === TourStatusSchema.enum.completed) throw new TourImmutableError()
+  if (existing.sessions.length >= 2) throw new TooManySessionsError()
+
+  const nextOrder = existing.sessions.length + 1
+  await db.tourSession.create({
+    data: {
+      tourId,
+      order: nextOrder,
+      label: data.label ?? null,
+      meetingTime: parseTime(data.meetingTime),
+      startTime: data.startTime ? parseTime(data.startTime) : null,
+      endTime: data.endTime ? parseTime(data.endTime) : null,
+      capacity: data.capacity,
+      participantCount: data.participantCount ?? 0,
+    },
+  })
+
+  const detail = await getAdminTourDetail(tourId)
+  return detail!
+}
+
+export async function updateSession(tourId: string, sessionId: string, data: UpdateTourSession): Promise<AdminTourDetailResponse> {
+  const session = await db.tourSession.findUnique({ where: { id: sessionId }, select: { tourId: true } })
+  if (!session || session.tourId !== tourId) throw new SessionNotFoundError()
+
+  await db.tourSession.update({
+    where: { id: sessionId },
+    data: {
+      ...(data.label !== undefined ? { label: data.label } : {}),
+      ...(data.meetingTime !== undefined ? { meetingTime: parseTime(data.meetingTime) } : {}),
+      ...(data.startTime !== undefined ? { startTime: data.startTime ? parseTime(data.startTime) : null } : {}),
+      ...(data.endTime !== undefined ? { endTime: data.endTime ? parseTime(data.endTime) : null } : {}),
+      ...(data.capacity !== undefined ? { capacity: data.capacity } : {}),
+      ...(data.participantCount !== undefined ? { participantCount: data.participantCount } : {}),
+    },
+  })
+
+  const detail = await getAdminTourDetail(tourId)
+  return detail!
+}
+
+export async function deleteSession(tourId: string, sessionId: string): Promise<AdminTourDetailResponse> {
+  const session = await db.tourSession.findUnique({
+    where: { id: sessionId },
+    select: { tourId: true, _count: { select: { bookings: true } } },
+  })
+  if (!session || session.tourId !== tourId) throw new SessionNotFoundError()
+  if (session._count.bookings > 0) throw new SessionHasBookingsError()
+
+  // Ensure at least 1 session remains
+  const tourSessions = await db.tourSession.count({ where: { tourId } })
+  if (tourSessions <= 1) throw new LastSessionError()
+
+  await db.tourSession.delete({ where: { id: sessionId } })
+
+  // Re-order remaining sessions
+  const remaining = await db.tourSession.findMany({
     where: { tourId },
+    orderBy: { order: 'asc' },
+    select: { id: true },
+  })
+  await db.$transaction(
+    remaining.map((s, idx) =>
+      db.tourSession.update({ where: { id: s.id }, data: { order: idx + 1 } })
+    )
+  )
+
+  const detail = await getAdminTourDetail(tourId)
+  return detail!
+}
+
+// Tier capacities (session-scoped)
+
+export async function getSessionTierCapacities(sessionId: string): Promise<TierCapacities> {
+  const rows = await db.tierCapacity.findMany({
+    where: { sessionId },
     select: { pool: true, percent: true },
   })
   const result: TierCapacities = { junior: 20, non_junior: 30, anyone: 50 }
@@ -378,20 +468,20 @@ export async function getTierCapacities(tourId: string): Promise<TierCapacities>
   return result
 }
 
-export async function upsertTierCapacities(tourId: string, data: TierCapacities): Promise<TierCapacities> {
-  const existing = await db.tour.findUnique({ where: { id: tourId }, select: { id: true } })
-  if (!existing) throw new TourNotFoundError()
+export async function upsertSessionTierCapacities(tourId: string, sessionId: string, data: TierCapacities): Promise<TierCapacities> {
+  const session = await db.tourSession.findUnique({ where: { id: sessionId }, select: { tourId: true } })
+  if (!session || session.tourId !== tourId) throw new SessionNotFoundError()
 
   const pools: Array<keyof TierCapacities> = ['junior', 'non_junior', 'anyone']
   await db.$transaction(
     pools.map((pool) =>
       db.tierCapacity.upsert({
-        where: { tourId_pool: { tourId, pool } },
-        create: { tourId, pool, percent: data[pool] },
+        where: { sessionId_pool: { sessionId, pool } },
+        create: { sessionId, pool, percent: data[pool] },
         update: { percent: data[pool] },
       })
     )
   )
 
-  return getTierCapacities(tourId)
+  return getSessionTierCapacities(sessionId)
 }

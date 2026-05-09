@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortTours, nextTourListSort, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchTierCapacities, saveTierCapacities } from './admin.tour'
+import { sortTours, nextTourListSort, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchSessionTierCapacities, saveSessionTierCapacities } from './admin.tour'
 import type { AdminTourDetailResponse, AdminTourSummaryResponse, GroupResponse, TierCapacities } from '@peace-buddy/types'
 
 vi.mock('@/lib/api-client', () => ({
@@ -11,8 +11,8 @@ vi.mock('@/lib/api-client', () => ({
     updateAdminTour: vi.fn(),
     transitionAdminTourStatus: vi.fn(),
     deleteAdminTour: vi.fn(),
-    getAdminTourTierCapacities: vi.fn(),
-    saveAdminTourTierCapacities: vi.fn(),
+    getSessionTierCapacities: vi.fn(),
+    saveSessionTierCapacities: vi.fn(),
   },
 }))
 
@@ -37,8 +37,8 @@ const mockCreateAdminTour = vi.mocked(apiClient.createAdminTour)
 const mockUpdateAdminTour = vi.mocked(apiClient.updateAdminTour)
 const mockTransition = vi.mocked(apiClient.transitionAdminTourStatus)
 const mockDeleteAdminTour = vi.mocked(apiClient.deleteAdminTour)
-const mockGetTierCapacities = vi.mocked(apiClient.getAdminTourTierCapacities)
-const mockSaveTierCapacities = vi.mocked(apiClient.saveAdminTourTierCapacities)
+const mockGetTierCapacities = vi.mocked(apiClient.getSessionTierCapacities)
+const mockSaveTierCapacities = vi.mocked(apiClient.saveSessionTierCapacities)
 
 const stubTour = { id: 't1' } as AdminTourDetailResponse
 const stubSummaryTour = { id: 't1' } as AdminTourSummaryResponse
@@ -53,12 +53,11 @@ const tour = (overrides: Partial<AdminTourSummaryResponse> = {}): AdminTourSumma
   location: 'Tokyo',
   capacity: 10,
   confirmedCount: 5,
+  participantCount: 0,
   status: 'draft',
-  meetingTime: '2025-06-01T09:00:00Z',
   bookingOpen: false,
+  sessions: [],
   createdAt: '2025-01-01T00:00:00Z',
-  startTime: null,
-  endTime: null,
   description: null,
   updatedAt: '2025-01-01T00:00:00Z',
   ...overrides,
@@ -176,6 +175,9 @@ describe('nextTourListSort', () => {
 const booking = (overrides: Partial<AdminTourDetailResponse['bookings'][0]>): AdminTourDetailResponse['bookings'][0] => ({
   id: 'b1',
   buddyId: 'u1',
+  sessionId: 's1',
+  sessionOrder: 1,
+  sessionLabel: null,
   displayName: 'Alice',
   status: 'confirmed',
   bookedAt: '2025-01-01T00:00:00Z',
@@ -468,54 +470,54 @@ describe('deleteTour', () => {
   })
 })
 
-// ── fetchTierCapacities ────────────────────────────────────────────────────
+// ── fetchSessionTierCapacities ────────────────────────────────────────────
 
 const stubCapacities: TierCapacities = { junior: 20, non_junior: 30, anyone: 50 }
 
-describe('fetchTierCapacities', () => {
+describe('fetchSessionTierCapacities', () => {
   beforeEach(() => vi.resetAllMocks())
 
   it('returns ok with data on success', async () => {
     mockGetTierCapacities.mockResolvedValue(stubCapacities)
-    const result = await fetchTierCapacities('t1')
+    const result = await fetchSessionTierCapacities('t1', 's1')
     expect(result).toEqual({ ok: true, data: stubCapacities })
-    expect(mockGetTierCapacities).toHaveBeenCalledWith('t1')
+    expect(mockGetTierCapacities).toHaveBeenCalledWith('t1', 's1')
   })
 
   it('returns not_found for 404', async () => {
     mockGetTierCapacities.mockRejectedValue(new ApiError('not found', 404))
-    const result = await fetchTierCapacities('t1')
+    const result = await fetchSessionTierCapacities('t1', 's1')
     expect(result).toEqual({ ok: false, error: { code: 'not_found' } })
   })
 
   it('returns network for non-ApiError throw', async () => {
     mockGetTierCapacities.mockRejectedValue(new TypeError('Failed to fetch'))
-    const result = await fetchTierCapacities('t1')
+    const result = await fetchSessionTierCapacities('t1', 's1')
     expect(result).toEqual({ ok: false, error: { code: 'network' } })
   })
 })
 
-// ── saveTierCapacities ─────────────────────────────────────────────────────
+// ── saveSessionTierCapacities ─────────────────────────────────────────────
 
-describe('saveTierCapacities', () => {
+describe('saveSessionTierCapacities', () => {
   beforeEach(() => vi.resetAllMocks())
 
   it('returns ok with updated data on success', async () => {
     mockSaveTierCapacities.mockResolvedValue(stubCapacities)
-    const result = await saveTierCapacities('t1', stubCapacities)
+    const result = await saveSessionTierCapacities('t1', 's1', stubCapacities)
     expect(result).toEqual({ ok: true, data: stubCapacities })
-    expect(mockSaveTierCapacities).toHaveBeenCalledWith('t1', stubCapacities)
+    expect(mockSaveTierCapacities).toHaveBeenCalledWith('t1', 's1', stubCapacities)
   })
 
   it('returns not_found for 404', async () => {
     mockSaveTierCapacities.mockRejectedValue(new ApiError('not found', 404))
-    const result = await saveTierCapacities('t1', stubCapacities)
+    const result = await saveSessionTierCapacities('t1', 's1', stubCapacities)
     expect(result).toEqual({ ok: false, error: { code: 'not_found' } })
   })
 
   it('returns network for non-ApiError throw', async () => {
     mockSaveTierCapacities.mockRejectedValue(new TypeError('Failed to fetch'))
-    const result = await saveTierCapacities('t1', stubCapacities)
+    const result = await saveSessionTierCapacities('t1', 's1', stubCapacities)
     expect(result).toEqual({ ok: false, error: { code: 'network' } })
   })
 })

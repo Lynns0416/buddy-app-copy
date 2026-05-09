@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { TourStatusSchema, CreateTourSchema, UpdateTourSchema, TourStatusActionSchema, TierCapacitiesSchema } from '@peace-buddy/types'
+import { TourStatusSchema, CreateTourSchema, UpdateTourSchema, TourStatusActionSchema, TierCapacitiesSchema, CreateTourSessionSchema, UpdateTourSessionSchema } from '@peace-buddy/types'
 import {
   listAdminTours,
   createTour,
@@ -7,12 +7,19 @@ import {
   updateTour,
   transitionTourStatus,
   deleteTour,
-  getTierCapacities,
-  upsertTierCapacities,
+  addSession,
+  updateSession,
+  deleteSession,
+  getSessionTierCapacities,
+  upsertSessionTierCapacities,
   TourNotFoundError,
   TourTransitionError,
   TourImmutableError,
   TourNotDraftError,
+  SessionNotFoundError,
+  SessionHasBookingsError,
+  LastSessionError,
+  TooManySessionsError,
 } from '../services/adminTour.service'
 import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
@@ -107,15 +114,81 @@ adminTourRoutes.delete('/:id', async (c) => {
   }
 })
 
-adminTourRoutes.get('/:id/tier-capacities', async (c) => {
-  const id = c.req.param('id')
-  const existing = await getAdminTourDetail(id)
-  if (!existing) return c.json(apiError('not_found'), 404)
-  return c.json(await getTierCapacities(id))
+// Session management
+
+adminTourRoutes.post('/:id/sessions', async (c) => {
+  const tourId = c.req.param('id')
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json(apiError('invalid_request'), 400)
+  }
+
+  const parsed = CreateTourSessionSchema.safeParse(body)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+
+  try {
+    return c.json(await addSession(tourId, parsed.data), 201)
+  } catch (e) {
+    if (e instanceof TourNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof TourImmutableError) return c.json(apiError('conflict'), 409)
+    if (e instanceof TooManySessionsError) return c.json(apiError('conflict'), 409)
+    throw e
+  }
 })
 
-adminTourRoutes.patch('/:id/tier-capacities', async (c) => {
-  const id = c.req.param('id')
+adminTourRoutes.put('/:id/sessions/:sessionId', async (c) => {
+  const tourId = c.req.param('id')
+  const sessionId = c.req.param('sessionId')
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json(apiError('invalid_request'), 400)
+  }
+
+  const parsed = UpdateTourSessionSchema.safeParse(body)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+
+  try {
+    return c.json(await updateSession(tourId, sessionId, parsed.data))
+  } catch (e) {
+    if (e instanceof SessionNotFoundError) return c.json(apiError('not_found'), 404)
+    throw e
+  }
+})
+
+adminTourRoutes.delete('/:id/sessions/:sessionId', async (c) => {
+  const tourId = c.req.param('id')
+  const sessionId = c.req.param('sessionId')
+
+  try {
+    return c.json(await deleteSession(tourId, sessionId))
+  } catch (e) {
+    if (e instanceof SessionNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof SessionHasBookingsError) return c.json(apiError('conflict'), 409)
+    if (e instanceof LastSessionError) return c.json(apiError('conflict'), 409)
+    throw e
+  }
+})
+
+// Tier capacities (session-scoped)
+
+adminTourRoutes.get('/:id/sessions/:sessionId/tier-capacities', async (c) => {
+  const tourId = c.req.param('id')
+  const sessionId = c.req.param('sessionId')
+  const existing = await getAdminTourDetail(tourId)
+  if (!existing) return c.json(apiError('not_found'), 404)
+  if (!existing.sessions.find((s) => s.id === sessionId)) return c.json(apiError('not_found'), 404)
+  return c.json(await getSessionTierCapacities(sessionId))
+})
+
+adminTourRoutes.patch('/:id/sessions/:sessionId/tier-capacities', async (c) => {
+  const tourId = c.req.param('id')
+  const sessionId = c.req.param('sessionId')
 
   let body: unknown
   try {
@@ -128,9 +201,9 @@ adminTourRoutes.patch('/:id/tier-capacities', async (c) => {
   if (!parsed.success) return c.json(apiError('invalid_request'), 400)
 
   try {
-    return c.json(await upsertTierCapacities(id, parsed.data))
+    return c.json(await upsertSessionTierCapacities(tourId, sessionId, parsed.data))
   } catch (e) {
-    if (e instanceof TourNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof SessionNotFoundError) return c.json(apiError('not_found'), 404)
     throw e
   }
 })

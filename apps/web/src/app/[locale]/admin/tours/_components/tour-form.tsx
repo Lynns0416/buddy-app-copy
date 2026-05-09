@@ -1,6 +1,6 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
@@ -14,20 +14,25 @@ import { Textarea } from '@/components/ui/textarea'
 
 const timeRegex = /^\d{2}:\d{2}$/
 
+const SessionFormSchema = z.object({
+  label: z.string().optional(),
+  meetingTime: z.string().regex(timeRegex),
+  capacity: z.coerce.number().int().positive(),
+  participantCount: z.coerce.number().int().min(0),
+})
+
 const TourFormSchema = z
   .object({
     groupId: z.string().uuid(),
     tourDate: z.string().min(1),
-    meetingTime: z.string().regex(timeRegex),
-    location: z.string().min(1),
-    capacity: z.coerce.number().int().positive(),
-    participantCount: z.coerce.number().int().min(0),
     bookingOpen: z.boolean(),
+    location: z.string().min(1),
     description: z.string().optional(),
     adminMemo: z.string().optional(),
     cancellationDeadline: z.string().min(1),
     maybeDeadline: z.string().optional(),
     notificationOffsets: z.string(),
+    sessions: z.array(SessionFormSchema).min(1).max(2),
   })
   .refine(
     (d) => !d.maybeDeadline || d.maybeDeadline < d.cancellationDeadline,
@@ -36,19 +41,24 @@ const TourFormSchema = z
 
 type TourFormFields = z.infer<typeof TourFormSchema>
 
+export type SessionFormValues = {
+  label?: string
+  meetingTime: string
+  capacity: number
+  participantCount: number
+}
+
 export type TourFormValues = {
   groupId: string
   tourDate: string
-  meetingTime: string
-  location: string
-  capacity: number
-  participantCount: number
   bookingOpen: boolean
+  location: string
   description: string | null
   adminMemo: string | null
   cancellationDeadline: string
   maybeDeadline: string | null
   notificationOffsets: number[]
+  sessions: SessionFormValues[]
 }
 
 type Props = {
@@ -56,14 +66,19 @@ type Props = {
   groups: GroupResponse[]
   cancelHref: string
   onSubmit: (values: TourFormValues) => Promise<void>
+  hideSessionManagement?: boolean
 }
 
-export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props) {
+export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSessionManagement = false }: Props) {
   const t = useTranslations('adminTours')
+
+  const firstSession = defaultValues?.sessions[0]
+  const secondSession = defaultValues?.sessions[1]
 
   const {
     register,
     handleSubmit,
+    control,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<TourFormFields>({
@@ -71,11 +86,8 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
     defaultValues: {
       groupId: defaultValues?.group.id ?? '',
       tourDate: defaultValues?.tourDate.slice(0, 10) ?? '',
-      meetingTime: defaultValues?.meetingTime.slice(11, 16) ?? '',
-      location: defaultValues?.location ?? '',
-      capacity: defaultValues?.capacity ?? ('' as unknown as number),
-      participantCount: defaultValues?.participantCount ?? ('' as unknown as number),
       bookingOpen: defaultValues?.bookingOpen ?? false,
+      location: defaultValues?.location ?? '',
       description: defaultValues?.description ?? '',
       adminMemo: defaultValues?.adminMemo ?? '',
       cancellationDeadline: defaultValues?.cancellationDeadline.slice(0, 10) ?? '',
@@ -83,18 +95,38 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
       notificationOffsets: defaultValues
         ? defaultValues.notificationOffsets.join(', ')
         : '3, 1',
+      sessions: firstSession
+        ? [
+            {
+              label: firstSession.label ?? '',
+              meetingTime: firstSession.meetingTime.slice(11, 16),
+              capacity: firstSession.capacity,
+              participantCount: firstSession.participantCount,
+            },
+            ...(secondSession
+              ? [{
+                  label: secondSession.label ?? '',
+                  meetingTime: secondSession.meetingTime.slice(11, 16),
+                  capacity: secondSession.capacity,
+                  participantCount: secondSession.participantCount,
+                }]
+              : []),
+          ]
+        : [{ label: '', meetingTime: '', capacity: '' as unknown as number, participantCount: 0 }],
     },
+  })
+
+  const { fields: sessionFields, append: appendSession, remove: removeSession } = useFieldArray({
+    control,
+    name: 'sessions',
   })
 
   async function submit(fields: TourFormFields) {
     const values: TourFormValues = {
       groupId: fields.groupId,
       tourDate: fields.tourDate,
-      meetingTime: fields.meetingTime,
-      location: fields.location,
-      capacity: fields.capacity,
-      participantCount: fields.participantCount,
       bookingOpen: fields.bookingOpen,
+      location: fields.location,
       description: fields.description || null,
       adminMemo: fields.adminMemo || null,
       cancellationDeadline: fields.cancellationDeadline,
@@ -103,6 +135,12 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
         .split(',')
         .map((s) => Number(s.trim()))
         .filter((n) => !isNaN(n)),
+      sessions: fields.sessions.map((s) => ({
+        label: s.label || undefined,
+        meetingTime: s.meetingTime,
+        capacity: s.capacity,
+        participantCount: s.participantCount,
+      })),
     }
     try {
       await onSubmit(values)
@@ -150,28 +188,64 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit }: Props)
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="meetingTime">{t('meetingTime')}</Label>
-          <Input id="meetingTime" type="time" {...register('meetingTime')} />
-          {errors.meetingTime && <p className="text-xs text-destructive">{errors.meetingTime.message}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
           <Label htmlFor="location">{t('location')}</Label>
           <Input id="location" {...register('location')} />
           {errors.location && <p className="text-xs text-destructive">{errors.location.message}</p>}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="capacity">{t('capacity')}</Label>
-          <Input id="capacity" type="number" min={1} {...register('capacity')} />
-          {errors.capacity && <p className="text-xs text-destructive">{errors.capacity.message}</p>}
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="participantCount">{t('participantCount')}</Label>
-          <Input id="participantCount" type="number" min={0} {...register('participantCount')} />
-          {errors.participantCount && <p className="text-xs text-destructive">{errors.participantCount.message}</p>}
-        </div>
+        {/* Sessions */}
+        {!hideSessionManagement && <div className="flex flex-col gap-3">
+          {sessionFields.map((field, idx) => (
+            <div key={field.id} className="rounded-md border p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">
+                  {t(`session.defaultLabel.${idx + 1}`)}
+                </p>
+                {idx > 0 && (
+                  <button
+                    type="button"
+                    className="text-xs text-destructive hover:underline"
+                    onClick={() => removeSession(idx)}
+                  >
+                    {t('session.remove')}
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`sessions.${idx}.label`}>{t('session.label')}</Label>
+                <Input
+                  id={`sessions.${idx}.label`}
+                  placeholder={t(`session.defaultLabel.${idx + 1}`)}
+                  {...register(`sessions.${idx}.label`)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`sessions.${idx}.meetingTime`}>{t('meetingTime')}</Label>
+                <Input id={`sessions.${idx}.meetingTime`} type="time" {...register(`sessions.${idx}.meetingTime`)} />
+                {errors.sessions?.[idx]?.meetingTime && <p className="text-xs text-destructive">{errors.sessions[idx]?.meetingTime?.message}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`sessions.${idx}.capacity`}>{t('capacity')}</Label>
+                <Input id={`sessions.${idx}.capacity`} type="number" min={1} {...register(`sessions.${idx}.capacity`)} />
+                {errors.sessions?.[idx]?.capacity && <p className="text-xs text-destructive">{errors.sessions[idx]?.capacity?.message}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`sessions.${idx}.participantCount`}>{t('participantCount')}</Label>
+                <Input id={`sessions.${idx}.participantCount`} type="number" min={0} {...register(`sessions.${idx}.participantCount`)} />
+              </div>
+            </div>
+          ))}
+          {sessionFields.length < 2 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => appendSession({ label: '', meetingTime: '', capacity: '' as unknown as number, participantCount: 0 })}
+            >
+              {t('session.add')}
+            </Button>
+          )}
+        </div>}
 
         <div className="flex items-center gap-2">
           <input

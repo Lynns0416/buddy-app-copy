@@ -18,15 +18,24 @@ const groupTourSelect = {
   id: true,
   status: true,
   tourDate: true,
-  meetingTime: true,
-  startTime: true,
-  endTime: true,
   bookingOpen: true,
   location: true,
-  capacity: true,
   participantCount: true,
   description: true,
   createdAt: true,
+  sessions: {
+    select: {
+      id: true,
+      order: true,
+      label: true,
+      meetingTime: true,
+      startTime: true,
+      endTime: true,
+      capacity: true,
+      participantCount: true,
+    },
+    orderBy: { order: 'asc' as const },
+  },
 } as const
 
 function mapGroup(raw: {
@@ -57,28 +66,40 @@ function mapGroupTour(raw: {
   id: string
   status: string
   tourDate: Date
-  meetingTime: Date
-  startTime: Date | null
-  endTime: Date | null
   bookingOpen: boolean
   location: string
-  capacity: number
   participantCount: number
   description: string | null
   createdAt: Date
+  sessions: {
+    id: string
+    order: number
+    label: string | null
+    meetingTime: Date
+    startTime: Date | null
+    endTime: Date | null
+    capacity: number
+    participantCount: number
+  }[]
 }): GroupTourSummary {
   return {
     id: raw.id,
     status: raw.status as TourStatus,
     tourDate: raw.tourDate.toISOString(),
-    meetingTime: raw.meetingTime.toISOString(),
-    startTime: raw.startTime ? raw.startTime.toISOString() : null,
-    endTime: raw.endTime ? raw.endTime.toISOString() : null,
     bookingOpen: raw.bookingOpen,
     location: raw.location,
-    capacity: raw.capacity,
     participantCount: raw.participantCount,
     description: raw.description,
+    sessions: raw.sessions.map((s) => ({
+      id: s.id,
+      order: s.order,
+      label: s.label,
+      meetingTime: s.meetingTime.toISOString(),
+      startTime: s.startTime ? s.startTime.toISOString() : null,
+      endTime: s.endTime ? s.endTime.toISOString() : null,
+      capacity: s.capacity,
+      participantCount: s.participantCount,
+    })),
     createdAt: raw.createdAt.toISOString(),
   }
 }

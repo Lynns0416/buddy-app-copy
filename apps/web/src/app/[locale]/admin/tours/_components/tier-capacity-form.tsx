@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { BookingPoolSchema, AppErrorCodeSchema } from '@peace-buddy/types'
 import type { AppError, TierCapacities } from '@peace-buddy/types'
-import { fetchTierCapacities, saveTierCapacities } from '../admin.tour'
+import { fetchSessionTierCapacities, saveSessionTierCapacities } from '../admin.tour'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -18,10 +18,14 @@ const DEFAULT_PERCENTS: Record<typeof POOLS[number], number> = {
 
 interface Props {
   tourId: string
+  sessionId: string
+  sessionOrder: number
+  sessionLabel: string | null
+  totalSessions: number
   capacity: number
 }
 
-export function TierCapacityForm({ tourId, capacity }: Props) {
+export function TierCapacityForm({ tourId, sessionId, sessionOrder, sessionLabel, totalSessions, capacity }: Props) {
   const t = useTranslations('adminTours')
   const [percents, setPercents] = useState<TierCapacities>(DEFAULT_PERCENTS)
   const [saving, setSaving] = useState(false)
@@ -36,11 +40,11 @@ export function TierCapacityForm({ tourId, capacity }: Props) {
   }
 
   useEffect(() => {
-    fetchTierCapacities(tourId).then((result) => {
+    fetchSessionTierCapacities(tourId, sessionId).then((result) => {
       if (!result.ok) return
       setPercents(result.data)
     })
-  }, [tourId])
+  }, [tourId, sessionId])
 
   const total = POOLS.reduce((s, p) => s + percents[p], 0)
   const sumError = total !== 100
@@ -56,7 +60,7 @@ export function TierCapacityForm({ tourId, capacity }: Props) {
     if (sumError) return
     setSaving(true)
     setError(null)
-    const result = await saveTierCapacities(tourId, percents)
+    const result = await saveSessionTierCapacities(tourId, sessionId, percents)
     if (result.ok) {
       setPercents(result.data)
       setSaved(true)
@@ -66,9 +70,13 @@ export function TierCapacityForm({ tourId, capacity }: Props) {
     setSaving(false)
   }
 
+  const sessionTitle = sessionLabel ?? (totalSessions > 1 ? t(`session.defaultLabel.${sessionOrder}`) : null)
+
   return (
     <div className="rounded-lg border bg-card p-6">
-      <h2 className="mb-4 text-base font-semibold">{t('tierCapacity.title')}</h2>
+      <h2 className="mb-4 text-base font-semibold">
+        {t('tierCapacity.title')}{sessionTitle ? ` — ${sessionTitle}` : ''}
+      </h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {POOLS.map((pool) => (
           <div key={pool}>

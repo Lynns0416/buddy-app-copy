@@ -192,6 +192,20 @@
       "sumError": "Must sum to 100%",
       "saved": "Saved"
     },
+    "session": {
+      "defaultLabel": {
+        "1": "1st Half",
+        "2": "2nd Half"
+      },
+      "label": "Label (optional)",
+      "add": "Add 2nd Session",
+      "remove": "Remove",
+      "confirmRemove": "Remove this session? This cannot be undone.",
+      "error": {
+        "maxSessions": "A tour cannot have more than 2 sessions."
+      }
+    },
+    "bookingSession": "Session",
     "error": {
       "notFound": "This tour no longer exists.",
       "forbidden": "You don't have permission to perform this action.",
@@ -245,7 +259,14 @@
     "cancelReasonBack": "Go back",
     "selfEvalTitle": "Self-Evaluation",
     "book": "Book",
-    "notEligible": "You are not currently eligible to book this tour."
+    "notEligible": "You are not currently eligible to book this tour.",
+    "sessions": "Sessions",
+    "session": {
+      "defaultLabel": {
+        "1": "1st Half",
+        "2": "2nd Half"
+      }
+    }
   },
   "shell": {
     "appName": "Peace Buddy",

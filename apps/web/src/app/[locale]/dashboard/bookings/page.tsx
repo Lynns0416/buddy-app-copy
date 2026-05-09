@@ -7,17 +7,23 @@ import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
 import { useMyBookings } from '@/hooks/use-my-bookings'
 import { AppShell } from '@/components/app-shell'
-import type { MyBookingEntry } from '@peace-buddy/types'
+import type { MyTourBookingEntry } from '@peace-buddy/types'
 
-function BookingRow({ entry, viewLabel }: { entry: MyBookingEntry; viewLabel: string }) {
+function BookingRow({ entry, viewLabel }: { entry: MyTourBookingEntry; viewLabel: string }) {
   const { locale } = useParams<{ locale: string }>()
+  const tBookingStatus = useTranslations('bookingStatus')
   return (
     <div className="flex items-center justify-between gap-4 rounded-md border p-3 text-sm">
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{entry.tour.group.name}</p>
-        <p className="text-muted-foreground">
-          {entry.tour.tourDate.slice(0, 10)} · {entry.tour.meetingTime.slice(11, 16)} · {entry.tour.location}
-        </p>
+        <p className="font-medium">{entry.group.name}</p>
+        <p className="text-muted-foreground">{entry.tourDate.slice(0, 10)} · {entry.location}</p>
+        <div className="mt-1 flex flex-col gap-0.5">
+          {entry.bookings.map((b) => (
+            <p key={b.sessionId} className="text-xs text-muted-foreground">
+              {b.meetingTime.slice(11, 16)} — {tBookingStatus(b.bookingStatus)}
+            </p>
+          ))}
+        </div>
       </div>
       <Link
         href={routes.dashboardTour(locale, entry.tourId)}
@@ -39,8 +45,8 @@ export default function BookingHistoryPage() {
   if (loading || (!bookings)) return null
 
   const today = new Date().toISOString().slice(0, 10)
-  const upcoming = bookings.filter((b) => b.tour.tourDate.slice(0, 10) >= today)
-  const past = bookings.filter((b) => b.tour.tourDate.slice(0, 10) < today)
+  const upcoming = bookings.filter((b) => b.tourDate.slice(0, 10) >= today)
+  const past = bookings.filter((b) => b.tourDate.slice(0, 10) < today)
 
   return (
     <AppShell variant="buddy">
@@ -59,7 +65,7 @@ export default function BookingHistoryPage() {
         ) : (
           <div className="space-y-2">
             {upcoming.map((b) => (
-              <BookingRow key={b.id} entry={b} viewLabel={t('viewTour')} />
+              <BookingRow key={b.tourId} entry={b} viewLabel={t('viewTour')} />
             ))}
           </div>
         )}
@@ -72,7 +78,7 @@ export default function BookingHistoryPage() {
         ) : (
           <div className="space-y-2">
             {past.map((b) => (
-              <BookingRow key={b.id} entry={b} viewLabel={t('viewTour')} />
+              <BookingRow key={b.tourId} entry={b} viewLabel={t('viewTour')} />
             ))}
           </div>
         )}

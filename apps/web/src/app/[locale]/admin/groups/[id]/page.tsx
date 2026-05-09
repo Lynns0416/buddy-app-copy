@@ -137,7 +137,7 @@ export default function AdminGroupDetailPage() {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{tour.location}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{t('capacity')} {tour.capacity}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t('capacity')} {tour.sessions.reduce((s, x) => s + x.capacity, 0)}</p>
               </div>
             ))}
           </div>
@@ -179,7 +179,7 @@ export default function AdminGroupDetailPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{tour.location}</TableCell>
-                    <TableCell>{tour.capacity}</TableCell>
+                    <TableCell>{tour.sessions.reduce((s, x) => s + x.capacity, 0)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -106,25 +106,33 @@ describe('nextGroupSort', () => {
 
 // ── sortGroupTours ────────────────────────────────────────────────────────────
 
+const session = (capacity: number) => ({
+  id: 's1',
+  order: 1,
+  label: null,
+  meetingTime: '2025-06-01T09:00:00Z',
+  startTime: null,
+  endTime: null,
+  capacity,
+  participantCount: 0,
+})
+
 const tour = (overrides: Partial<GroupDetailResponse['tours'][0]>): GroupDetailResponse['tours'][0] => ({
   id: 't1',
   status: 'draft',
   tourDate: '2025-06-01',
-  meetingTime: '2025-06-01T09:00:00Z',
-  startTime: null,
-  endTime: null,
   bookingOpen: false,
   location: 'Tokyo',
-  capacity: 10,
   participantCount: 0,
   description: null,
+  sessions: [session(10)],
   createdAt: '2025-01-01T00:00:00Z',
   ...overrides,
 })
 
-const t1 = tour({ id: 't1', tourDate: '2025-06-01', status: 'draft',     location: 'Osaka',  capacity: 5  })
-const t2 = tour({ id: 't2', tourDate: '2025-07-01', status: 'published', location: 'Tokyo',  capacity: 10 })
-const t3 = tour({ id: 't3', tourDate: '2025-08-01', status: 'completed', location: 'Kyoto',  capacity: 15 })
+const t1 = tour({ id: 't1', tourDate: '2025-06-01', status: 'draft',     location: 'Osaka',  sessions: [session(5)]  })
+const t2 = tour({ id: 't2', tourDate: '2025-07-01', status: 'published', location: 'Tokyo',  sessions: [session(10)] })
+const t3 = tour({ id: 't3', tourDate: '2025-08-01', status: 'completed', location: 'Kyoto',  sessions: [session(15)] })
 
 describe('sortGroupTours', () => {
   describe('by tourDate', () => {
@@ -166,12 +174,12 @@ describe('sortGroupTours', () => {
   describe('by capacity', () => {
     it('sorts asc', () => {
       const result = sortGroupTours([t3, t1, t2], 'capacity', 'asc')
-      expect(result.map((t) => t.capacity)).toEqual([5, 10, 15])
+      expect(result.map((t) => t.id)).toEqual(['t1', 't2', 't3'])
     })
 
     it('sorts desc', () => {
       const result = sortGroupTours([t3, t1, t2], 'capacity', 'desc')
-      expect(result.map((t) => t.capacity)).toEqual([15, 10, 5])
+      expect(result.map((t) => t.id)).toEqual(['t3', 't2', 't1'])
     })
   })
 

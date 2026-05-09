@@ -8,9 +8,9 @@ const DEFAULT_JUNIOR_PCT = 20
 const DEFAULT_NON_JUNIOR_PCT = 30
 const DEFAULT_ANYONE_PCT = 50
 
-export async function getPoolCapacities(tourId: string, capacity: number): Promise<Record<Pool, number>> {
+export async function getPoolCapacities(sessionId: string, capacity: number): Promise<Record<Pool, number>> {
   const rows = await db.tierCapacity.findMany({
-    where: { tourId },
+    where: { sessionId },
     select: { pool: true, percent: true },
   })
 

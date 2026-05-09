@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
 import type { AuthEnv } from '../types'
-import type { AdminTourSummaryResponse, AdminTourDetailResponse, TierCapacities } from '@peace-buddy/types'
+import type { AdminTourSummaryResponse, AdminTourDetailResponse, TierCapacities, TourSessionResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -55,8 +55,11 @@ vi.mock('../services/adminTour.service', () => ({
   updateTour: vi.fn(),
   transitionTourStatus: vi.fn(),
   deleteTour: vi.fn(),
-  getTierCapacities: vi.fn(),
-  upsertTierCapacities: vi.fn(),
+  addSession: vi.fn(),
+  updateSession: vi.fn(),
+  deleteSession: vi.fn(),
+  getSessionTierCapacities: vi.fn(),
+  upsertSessionTierCapacities: vi.fn(),
   TourNotFoundError: class TourNotFoundError extends Error {
     constructor() { super('Tour not found') }
   },
@@ -67,6 +70,18 @@ vi.mock('../services/adminTour.service', () => ({
   TourNotDraftError: class TourNotDraftError extends Error {
     constructor() { super('Only draft tours can be deleted') }
   },
+  SessionNotFoundError: class SessionNotFoundError extends Error {
+    constructor() { super('Session not found') }
+  },
+  SessionHasBookingsError: class SessionHasBookingsError extends Error {
+    constructor() { super('Cannot delete session with bookings') }
+  },
+  LastSessionError: class LastSessionError extends Error {
+    constructor() { super('Cannot delete the only session') }
+  },
+  TooManySessionsError: class TooManySessionsError extends Error {
+    constructor() { super('Tour already has maximum number of sessions') }
+  },
 }))
 
 import {
@@ -76,12 +91,19 @@ import {
   updateTour,
   transitionTourStatus,
   deleteTour,
-  getTierCapacities,
-  upsertTierCapacities,
+  addSession,
+  updateSession,
+  deleteSession,
+  getSessionTierCapacities,
+  upsertSessionTierCapacities,
   TourNotFoundError,
   TourTransitionError,
   TourImmutableError,
   TourNotDraftError,
+  SessionNotFoundError,
+  SessionHasBookingsError,
+  LastSessionError,
+  TooManySessionsError,
 } from '../services/adminTour.service'
 
 const mockListAdminTours = vi.mocked(listAdminTours)
@@ -90,8 +112,11 @@ const mockGetAdminTourDetail = vi.mocked(getAdminTourDetail)
 const mockUpdateTour = vi.mocked(updateTour)
 const mockTransitionTourStatus = vi.mocked(transitionTourStatus)
 const mockDeleteTour = vi.mocked(deleteTour)
-const mockGetTierCapacities = vi.mocked(getTierCapacities)
-const mockUpsertTierCapacities = vi.mocked(upsertTierCapacities)
+const mockAddSession = vi.mocked(addSession)
+const mockUpdateSession = vi.mocked(updateSession)
+const mockDeleteSession = vi.mocked(deleteSession)
+const mockGetSessionTierCapacities = vi.mocked(getSessionTierCapacities)
+const mockUpsertSessionTierCapacities = vi.mocked(upsertSessionTierCapacities)
 
 function buildApp() {
   const app = new Hono<AuthEnv>()
@@ -105,20 +130,29 @@ function buildApp() {
   return app
 }
 
+const mockSession: TourSessionResponse = {
+  id: 'session-1',
+  order: 1,
+  label: null,
+  meetingTime: '1970-01-01T09:00:00.000Z',
+  startTime: null,
+  endTime: null,
+  capacity: 5,
+  participantCount: 0,
+}
+
 const mockSummary: AdminTourSummaryResponse = {
   id: 'tour-1',
   group: { id: 'group-1', name: 'Test School', type: 'school' },
   status: 'draft',
   tourDate: '2026-06-01T00:00:00.000Z',
-  meetingTime: '1970-01-01T09:00:00.000Z',
-  startTime: null,
-  endTime: null,
   bookingOpen: false,
   location: 'Tokyo Station',
   capacity: 5,
   description: null,
   confirmedCount: 0,
   participantCount: 0,
+  sessions: [mockSession],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 }
@@ -135,12 +169,13 @@ const mockDetail: AdminTourDetailResponse = {
 const validCreateBody = {
   groupId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   tourDate: '2026-06-01',
-  meetingTime: '09:00',
   location: 'Tokyo Station',
-  capacity: 5,
   cancellationDeadline: '2026-05-25',
   notificationOffsets: [3, 1],
+  sessions: [{ meetingTime: '09:00', capacity: 5 }],
 }
+
+const validSessionBody = { meetingTime: '10:00', capacity: 8 }
 
 describe('GET /admin/tours', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -193,11 +228,21 @@ describe('POST /admin/tours', () => {
     expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
-  it('returns 400 for invalid meetingTime format', async () => {
+  it('returns 400 when sessions array is empty', async () => {
     const res = await buildApp().request('/admin/tours', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...validCreateBody, meetingTime: '9:00am' }),
+      body: JSON.stringify({ ...validCreateBody, sessions: [] }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 400 for invalid meetingTime format in session', async () => {
+    const res = await buildApp().request('/admin/tours', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...validCreateBody, sessions: [{ meetingTime: '9:00am', capacity: 5 }] }),
     })
     expect(res.status).toBe(400)
     expect(await res.json()).toEqual({ code: 'invalid_request' })
@@ -319,7 +364,7 @@ describe('PATCH /admin/tours/:id/status', () => {
   })
 
   it('returns 409 with code for invalid transition', async () => {
-    mockTransitionTourStatus.mockRejectedValueOnce(new TourTransitionError("Cannot transition from 'cancelled' to 'published'"))
+    mockTransitionTourStatus.mockRejectedValueOnce(new TourTransitionError("Cannot transition"))
     const res = await buildApp().request('/admin/tours/tour-1/status', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -376,45 +421,210 @@ describe('DELETE /admin/tours/:id', () => {
   })
 })
 
+// ── Session management ──────────────────────────────────────────────────────
+
+describe('POST /admin/tours/:id/sessions', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('creates a session and returns 201', async () => {
+    mockAddSession.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(validSessionBody),
+    })
+    expect(res.status).toBe(201)
+    expect(mockAddSession).toHaveBeenCalledWith('tour-1', expect.objectContaining({ meetingTime: '10:00', capacity: 8 }))
+  })
+
+  it('returns 400 for invalid meetingTime format', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meetingTime: 'bad-time', capacity: 5 }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 400 for missing capacity', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meetingTime: '09:00' }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 404 when tour not found', async () => {
+    mockAddSession.mockRejectedValueOnce(new TourNotFoundError())
+    const res = await buildApp().request('/admin/tours/missing/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(validSessionBody),
+    })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 409 when tour is immutable', async () => {
+    mockAddSession.mockRejectedValueOnce(new TourImmutableError())
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(validSessionBody),
+    })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+
+  it('returns 409 when tour already has max sessions', async () => {
+    mockAddSession.mockRejectedValueOnce(new TooManySessionsError())
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(validSessionBody),
+    })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+
+  it('returns 400 for non-JSON body', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+})
+
+describe('PUT /admin/tours/:id/sessions/:sessionId', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('updates a session and returns 200', async () => {
+    mockUpdateSession.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capacity: 10 }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateSession).toHaveBeenCalledWith('tour-1', 'session-1', expect.objectContaining({ capacity: 10 }))
+  })
+
+  it('returns 404 when session not found', async () => {
+    mockUpdateSession.mockRejectedValueOnce(new SessionNotFoundError())
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/bad-session', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capacity: 10 }),
+    })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 400 for invalid meetingTime format', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meetingTime: 'bad' }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 400 for non-JSON body', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+})
+
+describe('DELETE /admin/tours/:id/sessions/:sessionId', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('deletes a session and returns 200 with updated tour', async () => {
+    mockDeleteSession.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect(mockDeleteSession).toHaveBeenCalledWith('tour-1', 'session-1')
+  })
+
+  it('returns 404 when session not found', async () => {
+    mockDeleteSession.mockRejectedValueOnce(new SessionNotFoundError())
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/bad-session', { method: 'DELETE' })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 409 when session has bookings', async () => {
+    mockDeleteSession.mockRejectedValueOnce(new SessionHasBookingsError())
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', { method: 'DELETE' })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+
+  it('returns 409 when session is the last one', async () => {
+    mockDeleteSession.mockRejectedValueOnce(new LastSessionError())
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', { method: 'DELETE' })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+})
+
+// ── Session-scoped tier capacities ──────────────────────────────────────────
+
 const stubCapacities: TierCapacities = { junior: 20, non_junior: 30, anyone: 50 }
 
-describe('GET /admin/tours/:id/tier-capacities', () => {
+describe('GET /admin/tours/:id/sessions/:sessionId/tier-capacities', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns 200 with tier capacities', async () => {
-    mockGetAdminTourDetail.mockResolvedValueOnce({ id: 'tour-1' } as AdminTourDetailResponse)
-    mockGetTierCapacities.mockResolvedValueOnce(stubCapacities)
-    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities')
+    mockGetAdminTourDetail.mockResolvedValueOnce({ ...mockDetail, sessions: [{ ...mockSession, id: 'session-1' }] })
+    mockGetSessionTierCapacities.mockResolvedValueOnce(stubCapacities)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1/tier-capacities')
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual(stubCapacities)
-    expect(mockGetTierCapacities).toHaveBeenCalledWith('tour-1')
+    expect(mockGetSessionTierCapacities).toHaveBeenCalledWith('session-1')
   })
 
   it('returns 404 when tour not found', async () => {
     mockGetAdminTourDetail.mockResolvedValueOnce(null)
-    const res = await buildApp().request('/admin/tours/missing/tier-capacities')
+    const res = await buildApp().request('/admin/tours/missing/sessions/session-1/tier-capacities')
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 404 when session not in tour', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce({ ...mockDetail, sessions: [{ ...mockSession, id: 'other-session' }] })
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1/tier-capacities')
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ code: 'not_found' })
   })
 })
 
-describe('PATCH /admin/tours/:id/tier-capacities', () => {
+describe('PATCH /admin/tours/:id/sessions/:sessionId/tier-capacities', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns 200 with updated capacities on success', async () => {
-    mockUpsertTierCapacities.mockResolvedValueOnce(stubCapacities)
-    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities', {
+    mockUpsertSessionTierCapacities.mockResolvedValueOnce(stubCapacities)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1/tier-capacities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(stubCapacities),
     })
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual(stubCapacities)
-    expect(mockUpsertTierCapacities).toHaveBeenCalledWith('tour-1', stubCapacities)
+    expect(mockUpsertSessionTierCapacities).toHaveBeenCalledWith('tour-1', 'session-1', stubCapacities)
   })
 
-  it('returns 400 for invalid body', async () => {
-    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities', {
+  it('returns 400 for invalid body (missing field)', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1/tier-capacities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ junior: 50, non_junior: 50 }),
@@ -424,7 +634,7 @@ describe('PATCH /admin/tours/:id/tier-capacities', () => {
   })
 
   it('returns 400 when percents do not sum to 100', async () => {
-    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities', {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1/tier-capacities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ junior: 10, non_junior: 10, anyone: 10 }),
@@ -433,9 +643,9 @@ describe('PATCH /admin/tours/:id/tier-capacities', () => {
     expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
-  it('returns 404 when tour not found', async () => {
-    mockUpsertTierCapacities.mockRejectedValueOnce(new TourNotFoundError())
-    const res = await buildApp().request('/admin/tours/tour-1/tier-capacities', {
+  it('returns 404 when session not found', async () => {
+    mockUpsertSessionTierCapacities.mockRejectedValueOnce(new SessionNotFoundError())
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/bad-session/tier-capacities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(stubCapacities),

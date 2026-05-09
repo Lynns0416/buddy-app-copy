@@ -82,7 +82,7 @@ export default function DashboardPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Clock size={14} />
-                  {tour.meetingTime.slice(11, 16)}
+                  {tour.sessions.map((s) => s.meetingTime.slice(11, 16)).join(' / ')}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin size={14} />
@@ -90,7 +90,7 @@ export default function DashboardPage() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Users size={14} />
-                  {t('capacity')}: {tour.capacity}
+                  {t('capacity')}: {tour.sessions.reduce((sum, s) => sum + s.capacity, 0)}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Users size={14} />

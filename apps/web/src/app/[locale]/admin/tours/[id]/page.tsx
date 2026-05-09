@@ -15,12 +15,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { SortIcon } from '@/components/sort-icon'
 import {
   sortBookings, nextBookingSort, fetchTour, transitionTour, toggleTourBooking, deleteTour,
+  removeTourSession,
   type BookingSortField,
 } from '../admin.tour'
 import { getTourStatusLabel, getBookingStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
 import { CompleteTourModal } from '../_components/complete-tour-modal'
 import { TierCapacityForm } from '../_components/tier-capacity-form'
+import { AddSessionForm } from '../_components/add-session-form'
 
 const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
@@ -42,6 +44,7 @@ export default function AdminTourDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [acting, setActing] = useState(false)
   const [completeModalOpen, setCompleteModalOpen] = useState(false)
+  const [showAddSession, setShowAddSession] = useState(false)
   const [bookingSortField, setBookingSortField] = useState<BookingSortField>('bookedAt')
   const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc')
 
@@ -111,6 +114,20 @@ export default function AdminTourDetailPage() {
     }
   }
 
+  async function handleRemoveSession(sessionId: string) {
+    if (!window.confirm(t('session.confirmRemove'))) return
+    setActing(true)
+    setActionError(null)
+    const result = await removeTourSession(id, sessionId)
+    if (result.ok) setTour(result.data)
+    else setActionError(errorMessage(result.error))
+    setActing(false)
+  }
+
+  const isEditable = tour
+    ? tour.status === TourStatusSchema.enum.draft || tour.status === TourStatusSchema.enum.published
+    : false
+
   if (!ready) return null
 
   if (fetchError) {
@@ -129,7 +146,7 @@ export default function AdminTourDetailPage() {
         <Link href={routes.adminTours(locale)} className="text-sm text-muted-foreground hover:text-foreground">
           ← {t('back')}
         </Link>
-        {(tour.status === TourStatusSchema.enum.draft || tour.status === TourStatusSchema.enum.published) && (
+        {isEditable && (
           <Button asChild size="sm">
             <Link href={routes.adminTourEdit(locale, tour.id)}>{t('edit')}</Link>
           </Button>
@@ -140,6 +157,7 @@ export default function AdminTourDetailPage() {
         <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{actionError}</p>
       )}
 
+      {/* Tour detail */}
       <div className="mb-6 rounded-lg border bg-card p-6">
         <div className="mb-4 flex items-center gap-3">
           <h1 className="text-xl font-semibold">{tour.group.name}</h1>
@@ -149,10 +167,6 @@ export default function AdminTourDetailPage() {
           <div>
             <dt className="text-muted-foreground">{t('tourDate')}</dt>
             <dd className="font-medium tabular-nums">{tour.tourDate.slice(0, 10)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">{t('meetingTime')}</dt>
-            <dd className="font-medium tabular-nums">{tour.meetingTime.slice(11, 16)}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">{t('location')}</dt>
@@ -191,8 +205,60 @@ export default function AdminTourDetailPage() {
         </dl>
       </div>
 
+      {/* Sessions */}
+      <div className="mb-6 rounded-lg border bg-card p-6">
+        <h2 className="mb-4 text-base font-semibold">{t('session.defaultLabel.1')} / {t('session.defaultLabel.2')}</h2>
+        <div className="flex flex-col gap-3">
+          {tour.sessions.map((session) => (
+            <div key={session.id} className="rounded-md border p-3 text-sm">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="font-semibold">
+                  {session.label ?? (tour.sessions.length > 1 ? t(`session.defaultLabel.${session.order}`) : null)}
+                </p>
+                {isEditable && session.order > 1 && (
+                  <button
+                    type="button"
+                    className="text-xs text-destructive hover:underline"
+                    disabled={acting}
+                    onClick={() => void handleRemoveSession(session.id)}
+                  >
+                    {t('session.remove')}
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+                <span>{t('meetingTime')}: {session.meetingTime.slice(11, 16)}</span>
+                <span>{t('capacity')}: {session.capacity}</span>
+                <span>{t('participantCount')}: {session.participantCount}</span>
+              </div>
+            </div>
+          ))}
+
+          {isEditable && tour.sessions.length < 2 && !showAddSession && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => setShowAddSession(true)}
+            >
+              {t('session.add')}
+            </Button>
+          )}
+
+          {showAddSession && (
+            <AddSessionForm
+              tourId={tour.id}
+              onAdded={(updated) => { setTour(updated); setShowAddSession(false) }}
+              onCancel={() => setShowAddSession(false)}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
       <div className="mb-6 flex flex-wrap gap-2">
-        {(tour.status === TourStatusSchema.enum.draft || tour.status === TourStatusSchema.enum.published) && (
+        {isEditable && (
           <Button
             size="sm"
             variant={tour.bookingOpen ? 'secondary' : 'outline'}
@@ -227,10 +293,22 @@ export default function AdminTourDetailPage() {
         )}
       </div>
 
-      <div className="mb-6">
-        <TierCapacityForm tourId={tour.id} capacity={tour.capacity} />
+      {/* Tier capacity per session */}
+      <div className="mb-6 flex flex-col gap-4">
+        {tour.sessions.map((session) => (
+          <TierCapacityForm
+            key={session.id}
+            tourId={tour.id}
+            sessionId={session.id}
+            sessionOrder={session.order}
+            sessionLabel={session.label}
+            totalSessions={tour.sessions.length}
+            capacity={session.capacity}
+          />
+        ))}
       </div>
 
+      {/* Bookings */}
       <h2 className="mb-3 text-base font-semibold">{t('bookings')}</h2>
       {tour.bookings.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('noBookings')}</p>
@@ -239,27 +317,43 @@ export default function AdminTourDetailPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                {([
-                  { field: 'displayName' as const, label: t('buddyName') },
-                  { field: 'status' as const, label: t('bookingStatus') },
-                  { field: 'bookedAt' as const, label: t('bookedAt') },
-                ]).map(({ field, label }) => (
-                  <TableHead key={field}>
-                    <button
-                      className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                      onClick={() => handleBookingSort(field)}
-                    >
-                      {label}
-                      <SortIcon active={bookingSortField === field} dir={bookingSortDir} />
-                    </button>
-                  </TableHead>
-                ))}
+                <TableHead>
+                  <button
+                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                    onClick={() => handleBookingSort('displayName')}
+                  >
+                    {t('buddyName')}
+                    <SortIcon active={bookingSortField === 'displayName'} dir={bookingSortDir} />
+                  </button>
+                </TableHead>
+                <TableHead>{t('bookingSession')}</TableHead>
+                <TableHead>
+                  <button
+                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                    onClick={() => handleBookingSort('status')}
+                  >
+                    {t('bookingStatus')}
+                    <SortIcon active={bookingSortField === 'status'} dir={bookingSortDir} />
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                    onClick={() => handleBookingSort('bookedAt')}
+                  >
+                    {t('bookedAt')}
+                    <SortIcon active={bookingSortField === 'bookedAt'} dir={bookingSortDir} />
+                  </button>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortBookings(tour.bookings, bookingSortField, bookingSortDir).map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-medium">{b.displayName}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {b.sessionLabel ?? (tour.sessions.length > 1 ? t(`session.defaultLabel.${b.sessionOrder}`) : null)}
+                  </TableCell>
                   <TableCell>
                     <Badge className={BOOKING_STATUS_CLASS[b.status]}>{getBookingStatusLabel(tBookingStatus, b.status)}</Badge>
                   </TableCell>

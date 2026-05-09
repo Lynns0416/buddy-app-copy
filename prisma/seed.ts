@@ -29,24 +29,35 @@ const SEED_ADMIN2_UID = 'seed-admin2-00000000000000000000000'
 const FIREBASE_UIDS = [...authExport.users.map((u: any) => u.localId), SEED_ADMIN2_UID]
 // ↑ includes trainee UIDs — excludes them from dynamic "me" detection
 
-// Fixed IDs for groups, tours (never auto-created via login)
+// Fixed IDs for groups, tours, sessions (never auto-created via login)
 const ID = {
-  school:        '00000000-0000-0000-0000-000000000001',
-  company:       '00000000-0000-0000-0000-000000000002',
-  hs1:           '00000000-0000-0000-0000-000000000003',
-  hs2:           '00000000-0000-0000-0000-000000000004',
-  jhs1:          '00000000-0000-0000-0000-000000000005',
-  jhs2:          '00000000-0000-0000-0000-000000000006',
-  tourUrgent:    '00000000-0000-0000-0001-000000000001',
-  tourMidterm:   '00000000-0000-0000-0001-000000000002',
-  tourOpen:      '00000000-0000-0000-0001-000000000003',
-  tourPast:      '00000000-0000-0000-0001-000000000004',
-  tourDraft:     '00000000-0000-0000-0001-000000000005',
-  tourCancelled: '00000000-0000-0000-0001-000000000006',
-  tourPeace1:    '00000000-0000-0000-0001-000000000007',
-  tourPeace2:    '00000000-0000-0000-0001-000000000008',
-  tourPeace3:    '00000000-0000-0000-0001-000000000009',
-  tourPeace4:    '00000000-0000-0000-0001-000000000010',
+  school:           '00000000-0000-0000-0000-000000000001',
+  company:          '00000000-0000-0000-0000-000000000002',
+  hs1:              '00000000-0000-0000-0000-000000000003',
+  hs2:              '00000000-0000-0000-0000-000000000004',
+  jhs1:             '00000000-0000-0000-0000-000000000005',
+  jhs2:             '00000000-0000-0000-0000-000000000006',
+  tourUrgent:       '00000000-0000-0000-0001-000000000001',
+  tourMidterm:      '00000000-0000-0000-0001-000000000002',
+  tourOpen:         '00000000-0000-0000-0001-000000000003',
+  tourPast:         '00000000-0000-0000-0001-000000000004',
+  tourDraft:        '00000000-0000-0000-0001-000000000005',
+  tourCancelled:    '00000000-0000-0000-0001-000000000006',
+  tourPeace1:       '00000000-0000-0000-0001-000000000007',
+  tourPeace2:       '00000000-0000-0000-0001-000000000008',
+  tourPeace3:       '00000000-0000-0000-0001-000000000009',
+  tourPeace4:       '00000000-0000-0000-0001-000000000010',
+  sessionUrgent:    '00000000-0000-0000-0002-000000000001',
+  sessionMidterm:   '00000000-0000-0000-0002-000000000002',
+  sessionOpen:      '00000000-0000-0000-0002-000000000003',
+  sessionPast:      '00000000-0000-0000-0002-000000000004',
+  sessionDraft:     '00000000-0000-0000-0002-000000000005',
+  sessionCancelled: '00000000-0000-0000-0002-000000000006',
+  sessionPeace1:    '00000000-0000-0000-0002-000000000007',
+  sessionPeace2:    '00000000-0000-0000-0002-000000000008',
+  sessionPeace3:    '00000000-0000-0000-0002-000000000009',
+  sessionPeace4:    '00000000-0000-0000-0002-000000000010',
+  sessionOpen2:     '00000000-0000-0000-0002-000000000013',
 }
 
 function daysFromNow(days: number): Date {
@@ -241,14 +252,16 @@ async function main() {
       groupId: ID.school,
       status: TourStatus.published,
       tourDate: daysFromNow(3),
-      meetingTime: timeOnly(9),
       location: '平和公園',
-      capacity: 10,
-      participantCount: 90,
       description: '高校生90名を対象としたツアーです。',
       cancellationDeadline: daysFromNow(1),
       notificationOffsets: [7, 1],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionUrgent },
+    update: {},
+    create: { id: ID.sessionUrgent, tourId: ID.tourUrgent, order: 1, meetingTime: timeOnly(9), capacity: 10, participantCount: 90 },
   })
 
   await prisma.tour.upsert({
@@ -259,16 +272,18 @@ async function main() {
       groupId: ID.company,
       status: TourStatus.published,
       tourDate: daysFromNow(14),
-      meetingTime: timeOnly(13, 30),
       location: '平和公園',
-      capacity: 3,
-      participantCount: 12,
       bookingOpen: true,
       description: '企業チーム向けのツアーです。',
       cancellationDeadline: daysFromNow(10),
       maybeDeadline: daysFromNow(5),
       notificationOffsets: [14, 3],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionMidterm },
+    update: {},
+    create: { id: ID.sessionMidterm, tourId: ID.tourMidterm, order: 1, meetingTime: timeOnly(13, 30), capacity: 3, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -279,15 +294,22 @@ async function main() {
       groupId: ID.school,
       status: TourStatus.published,
       tourDate: daysFromNow(30),
-      meetingTime: timeOnly(10),
       location: '平和公園',
-      capacity: 8,
-      participantCount: 60,
       bookingOpen: true,
       description: '中学生向けのツアーです。',
       cancellationDeadline: daysFromNow(24),
       notificationOffsets: [14, 7],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionOpen },
+    update: {},
+    create: { id: ID.sessionOpen, tourId: ID.tourOpen, order: 1, meetingTime: timeOnly(10), capacity: 8, participantCount: 60 },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionOpen2 },
+    update: {},
+    create: { id: ID.sessionOpen2, tourId: ID.tourOpen, order: 2, meetingTime: timeOnly(13), capacity: 5, participantCount: 60 },
   })
 
   await prisma.tour.upsert({
@@ -298,14 +320,16 @@ async function main() {
       groupId: ID.company,
       status: TourStatus.completed,
       tourDate: daysFromNow(-30),
-      meetingTime: timeOnly(14),
       location: '平和公園',
-      capacity: 3,
-      participantCount: 12,
       description: '企業向けツアーです',
       cancellationDeadline: daysFromNow(-35),
       notificationOffsets: [],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionPast },
+    update: {},
+    create: { id: ID.sessionPast, tourId: ID.tourPast, order: 1, meetingTime: timeOnly(14), capacity: 3, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -316,13 +340,15 @@ async function main() {
       groupId: ID.school,
       status: TourStatus.draft,
       tourDate: daysFromNow(45),
-      meetingTime: timeOnly(9),
       location: '未定',
-      capacity: 4,
-      participantCount: 12,
       cancellationDeadline: daysFromNow(40),
       notificationOffsets: [],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionDraft },
+    update: {},
+    create: { id: ID.sessionDraft, tourId: ID.tourDraft, order: 1, meetingTime: timeOnly(9), capacity: 4, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -333,13 +359,15 @@ async function main() {
       groupId: ID.company,
       status: TourStatus.cancelled,
       tourDate: daysFromNow(7),
-      meetingTime: timeOnly(11),
       location: '平和公園',
-      capacity: 3,
-      participantCount: 20,
       cancellationDeadline: daysFromNow(3),
       notificationOffsets: [],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionCancelled },
+    update: {},
+    create: { id: ID.sessionCancelled, tourId: ID.tourCancelled, order: 1, meetingTime: timeOnly(11), capacity: 3, participantCount: 20 },
   })
 
   // ── Tours (new — all at 平和公園) ───────────────────────────
@@ -352,15 +380,17 @@ async function main() {
       groupId: ID.hs1,
       status: TourStatus.published,
       tourDate: daysFromNow(5),
-      meetingTime: timeOnly(9, 30),
       location: '平和公園',
-      capacity: 15,
-      participantCount: 120,
       bookingOpen: false,
       description: '修学旅行生向け平和学習ツアーです。。',
       cancellationDeadline: daysFromNow(-2),
       notificationOffsets: [7, 1],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionPeace1 },
+    update: {},
+    create: { id: ID.sessionPeace1, tourId: ID.tourPeace1, order: 1, meetingTime: timeOnly(9, 30), capacity: 15, participantCount: 120 },
   })
 
   await prisma.tour.upsert({
@@ -371,16 +401,18 @@ async function main() {
       groupId: ID.jhs1,
       status: TourStatus.published,
       tourDate: daysFromNow(14),
-      meetingTime: timeOnly(10),
       location: '平和公園',
-      capacity: 4,
-      participantCount: 20,
       bookingOpen: true,
       description: '広島市立平和中学校の生徒を対象とした小規模ツアーです。',
       cancellationDeadline: daysFromNow(9),
       maybeDeadline: daysFromNow(5),
       notificationOffsets: [14, 3],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionPeace2 },
+    update: {},
+    create: { id: ID.sessionPeace2, tourId: ID.tourPeace2, order: 1, meetingTime: timeOnly(10), capacity: 4, participantCount: 20 },
   })
 
   await prisma.tour.upsert({
@@ -391,16 +423,18 @@ async function main() {
       groupId: ID.hs2,
       status: TourStatus.published,
       tourDate: daysFromNow(28),
-      meetingTime: timeOnly(13),
       location: '平和公園',
-      capacity: 12,
-      participantCount: 100,
       bookingOpen: true,
       description: '福岡第一高等学校の修学旅行。',
       cancellationDeadline: daysFromNow(21),
       maybeDeadline: daysFromNow(14),
       notificationOffsets: [14, 7, 3],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionPeace3 },
+    update: {},
+    create: { id: ID.sessionPeace3, tourId: ID.tourPeace3, order: 1, meetingTime: timeOnly(13), capacity: 12, participantCount: 100 },
   })
 
   await prisma.tour.upsert({
@@ -411,14 +445,16 @@ async function main() {
       groupId: ID.jhs2,
       status: TourStatus.draft,
       tourDate: daysFromNow(50),
-      meetingTime: timeOnly(9),
       location: '平和公園',
-      capacity: 8,
-      participantCount: 60,
       description: '松山市立南中学校の平和学習ツアー（日程調整中）。',
       cancellationDeadline: daysFromNow(44),
       notificationOffsets: [],
     },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionPeace4 },
+    update: {},
+    create: { id: ID.sessionPeace4, tourId: ID.tourPeace4, order: 1, meetingTime: timeOnly(9), capacity: 8, participantCount: 60 },
   })
 
   // ── Bookings (skip if no buddies) ───────────────────────────
@@ -427,15 +463,15 @@ async function main() {
   } else {
     // Existing bookings
     const existingBookings = [
-      { buddyId: b(0)!, tourId: ID.tourUrgent,    status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: b(0)!, tourId: ID.tourMidterm,   status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: b(1)!, tourId: ID.tourMidterm,   status: BookingStatus.maybe,     buddyTier: BuddyTier.senior },
-      { buddyId: b(0)!, tourId: ID.tourPast,      status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: b(1)!, tourId: ID.tourCancelled, status: BookingStatus.confirmed, buddyTier: BuddyTier.senior },
+      { buddyId: b(0)!, tourId: ID.tourUrgent,    sessionId: ID.sessionUrgent,    status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { buddyId: b(0)!, tourId: ID.tourMidterm,   sessionId: ID.sessionMidterm,   status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { buddyId: b(1)!, tourId: ID.tourMidterm,   sessionId: ID.sessionMidterm,   status: BookingStatus.maybe,     buddyTier: BuddyTier.senior },
+      { buddyId: b(0)!, tourId: ID.tourPast,      sessionId: ID.sessionPast,      status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { buddyId: b(1)!, tourId: ID.tourCancelled, sessionId: ID.sessionCancelled, status: BookingStatus.confirmed, buddyTier: BuddyTier.senior },
     ]
     for (const booking of existingBookings) {
       await prisma.booking.upsert({
-        where: { buddyId_tourId: { buddyId: booking.buddyId, tourId: booking.tourId } },
+        where: { buddyId_sessionId: { buddyId: booking.buddyId, sessionId: booking.sessionId } },
         update: {},
         create: booking,
       })
@@ -443,15 +479,15 @@ async function main() {
 
     // peace-001: confirmed + declined
     await prisma.booking.upsert({
-      where: { buddyId_tourId: { buddyId: b(0)!, tourId: ID.tourPeace1 } },
+      where: { buddyId_sessionId: { buddyId: b(0)!, sessionId: ID.sessionPeace1 } },
       update: {},
-      create: { buddyId: b(0)!, tourId: ID.tourPeace1, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      create: { buddyId: b(0)!, tourId: ID.tourPeace1, sessionId: ID.sessionPeace1, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
     })
 
     const declinedBooking = await prisma.booking.upsert({
-      where: { buddyId_tourId: { buddyId: b(1)!, tourId: ID.tourPeace1 } },
+      where: { buddyId_sessionId: { buddyId: b(1)!, sessionId: ID.sessionPeace1 } },
       update: {},
-      create: { buddyId: b(1)!, tourId: ID.tourPeace1, status: BookingStatus.declined, buddyTier: BuddyTier.senior },
+      create: { buddyId: b(1)!, tourId: ID.tourPeace1, sessionId: ID.sessionPeace1, status: BookingStatus.declined, buddyTier: BuddyTier.senior },
     })
     await prisma.cancellationReason.upsert({
       where: { bookingId: declinedBooking.id },
@@ -467,12 +503,12 @@ async function main() {
 
     // peace-002 (direct/legacy bookings — no application)
     const peace2Bookings = [
-      { buddyId: b(0)!, tourId: ID.tourPeace2, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: b(1)!, tourId: ID.tourPeace2, status: BookingStatus.maybe,     buddyTier: BuddyTier.senior },
+      { buddyId: b(0)!, tourId: ID.tourPeace2, sessionId: ID.sessionPeace2, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { buddyId: b(1)!, tourId: ID.tourPeace2, sessionId: ID.sessionPeace2, status: BookingStatus.maybe,     buddyTier: BuddyTier.senior },
     ]
     for (const booking of peace2Bookings) {
       await prisma.booking.upsert({
-        where: { buddyId_tourId: { buddyId: booking.buddyId, tourId: booking.tourId } },
+        where: { buddyId_sessionId: { buddyId: booking.buddyId, sessionId: booking.sessionId } },
         update: {},
         create: booking,
       })
@@ -485,9 +521,9 @@ async function main() {
     // Ensure b(1) also has a confirmed booking on tourPast so TourBuddyEvalSection shows 2 buddies
     if (buddies.length > 1) {
       await prisma.booking.upsert({
-        where: { buddyId_tourId: { buddyId: b(1)!, tourId: ID.tourPast } },
+        where: { buddyId_sessionId: { buddyId: b(1)!, sessionId: ID.sessionPast } },
         update: {},
-        create: { buddyId: b(1)!, tourId: ID.tourPast, status: BookingStatus.confirmed, buddyTier: BuddyTier.senior },
+        create: { buddyId: b(1)!, tourId: ID.tourPast, sessionId: ID.sessionPast, status: BookingStatus.confirmed, buddyTier: BuddyTier.senior },
       })
     }
 
@@ -624,8 +660,8 @@ async function main() {
     })
   }
 
-  // ── TierCapacity (tourPeace3: custom split to demo the feature) ─
-  // Default is 20/30/50 — tourPeace3 uses 25/35/40 as an example override
+  // ── TierCapacity (sessionPeace3: custom split to demo the feature) ─
+  // Default is 20/30/50 — sessionPeace3 uses 25/35/40 as an example override
   if (buddies.length > 0) {
     const customPools: { pool: BookingPool; percent: number }[] = [
       { pool: BookingPool.junior,     percent: 25 },
@@ -634,9 +670,9 @@ async function main() {
     ]
     for (const { pool, percent } of customPools) {
       await prisma.tierCapacity.upsert({
-        where: { tourId_pool: { tourId: ID.tourPeace3, pool } },
+        where: { sessionId_pool: { sessionId: ID.sessionPeace3, pool } },
         update: { percent },
-        create: { tourId: ID.tourPeace3, pool, percent },
+        create: { sessionId: ID.sessionPeace3, pool, percent },
       })
     }
   }
@@ -644,15 +680,15 @@ async function main() {
   // ── tourPeace3 bookings ─────────────────────────────────────
   if (buddies.length > 0) {
     await prisma.booking.upsert({
-      where: { buddyId_tourId: { buddyId: b(0)!, tourId: ID.tourPeace3 } },
+      where: { buddyId_sessionId: { buddyId: b(0)!, sessionId: ID.sessionPeace3 } },
       update: {},
-      create: { buddyId: b(0)!, tourId: ID.tourPeace3, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      create: { buddyId: b(0)!, tourId: ID.tourPeace3, sessionId: ID.sessionPeace3, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
     })
     if (buddies.length > 1) {
       await prisma.booking.upsert({
-        where: { buddyId_tourId: { buddyId: b(1)!, tourId: ID.tourPeace3 } },
+        where: { buddyId_sessionId: { buddyId: b(1)!, sessionId: ID.sessionPeace3 } },
         update: {},
-        create: { buddyId: b(1)!, tourId: ID.tourPeace3, status: BookingStatus.waitlist, buddyTier: BuddyTier.senior },
+        create: { buddyId: b(1)!, tourId: ID.tourPeace3, sessionId: ID.sessionPeace3, status: BookingStatus.waitlist, buddyTier: BuddyTier.senior },
       })
     }
   }
@@ -672,14 +708,14 @@ async function main() {
       data: { tier: BuddyTier.junior },
     })
     const myBookings = [
-      { buddyId: myBuddyId, tourId: ID.tourPast,    status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: myBuddyId, tourId: ID.tourPeace1,  status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: myBuddyId, tourId: ID.tourPeace2,  status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: myBuddyId, tourId: ID.tourMidterm, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { buddyId: myBuddyId, tourId: ID.tourPast,    sessionId: ID.sessionPast,    status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { buddyId: myBuddyId, tourId: ID.tourPeace1,  sessionId: ID.sessionPeace1,  status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { buddyId: myBuddyId, tourId: ID.tourPeace2,  sessionId: ID.sessionPeace2,  status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { buddyId: myBuddyId, tourId: ID.tourMidterm, sessionId: ID.sessionMidterm, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
     ]
     for (const booking of myBookings) {
       await prisma.booking.upsert({
-        where: { buddyId_tourId: { buddyId: booking.buddyId, tourId: booking.tourId } },
+        where: { buddyId_sessionId: { buddyId: booking.buddyId, sessionId: booking.sessionId } },
         update: {},
         create: booking,
       })

@@ -154,11 +154,11 @@ export async function createSelfEvaluation(
   const buddy = await db.buddyProfile.findUnique({ where: { userId }, select: { id: true } })
   if (!buddy) throw new BuddyNotFoundError()
 
-  const booking = await db.booking.findUnique({
-    where: { buddyId_tourId: { buddyId: buddy.id, tourId: data.tourId } },
-    select: { status: true, tour: { select: { status: true } } },
+  const booking = await db.booking.findFirst({
+    where: { buddyId: buddy.id, tourId: data.tourId, status: BookingStatusSchema.enum.confirmed },
+    select: { tour: { select: { status: true } } },
   })
-  if (!booking || booking.status !== BookingStatusSchema.enum.confirmed || booking.tour.status !== TourStatusSchema.enum.completed) {
+  if (!booking || booking.tour.status !== TourStatusSchema.enum.completed) {
     throw new NotEligibleError()
   }
 

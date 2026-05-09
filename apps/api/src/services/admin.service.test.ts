@@ -39,6 +39,8 @@ const mockRawWithBookings = {
     {
       id: 'booking-1',
       tourId: 'tour-1',
+      sessionId: 'session-1',
+      session: { order: 1, label: null },
       status: 'confirmed',
       bookedAt: new Date('2026-03-01'),
       tour: {

@@ -14,7 +14,7 @@ import type {
   BookingResponse,
   UpdateBookingBody,
   CancellationReasonBody,
-  MyBookingEntry,
+  MyTourBookingEntry,
   BuddyStatus,
   BuddyTier,
   TourStatus,
@@ -33,6 +33,8 @@ import type {
   CreateSelfEvaluation,
   UpdateSelfEvaluation,
   TierCapacities,
+  CreateTourSession,
+  UpdateTourSession,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -125,11 +127,26 @@ export const apiClient = {
   deleteAdminTour: (id: string) =>
     apiRequest<void>(apiPaths.adminTour(id), { method: 'DELETE' }),
 
-  getAdminTourTierCapacities: (id: string) =>
-    apiRequest<TierCapacities>(apiPaths.adminTourTierCapacities(id)),
+  addAdminTourSession: (tourId: string, data: CreateTourSession) =>
+    apiRequest<AdminTourDetailResponse>(apiPaths.adminTourSessions(tourId), {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
-  saveAdminTourTierCapacities: (id: string, data: TierCapacities) =>
-    apiRequest<TierCapacities>(apiPaths.adminTourTierCapacities(id), {
+  updateAdminTourSession: (tourId: string, sessionId: string, data: UpdateTourSession) =>
+    apiRequest<AdminTourDetailResponse>(apiPaths.adminTourSession(tourId, sessionId), {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteAdminTourSession: (tourId: string, sessionId: string) =>
+    apiRequest<AdminTourDetailResponse>(apiPaths.adminTourSession(tourId, sessionId), { method: 'DELETE' }),
+
+  getSessionTierCapacities: (tourId: string, sessionId: string) =>
+    apiRequest<TierCapacities>(apiPaths.adminSessionTierCapacities(tourId, sessionId)),
+
+  saveSessionTierCapacities: (tourId: string, sessionId: string, data: TierCapacities) =>
+    apiRequest<TierCapacities>(apiPaths.adminSessionTierCapacities(tourId, sessionId), {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
@@ -181,17 +198,20 @@ export const apiClient = {
   getTour: (id: string) =>
     apiRequest<TourDetailResponse>(apiPaths.tour(id)),
 
-  createBooking: (tourId: string) =>
-    apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), { method: 'POST' }),
+  createBooking: (tourId: string, sessionId: string) =>
+    apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    }),
 
-  updateBooking: (tourId: string, status: UpdateBookingBody['status'], reason?: CancellationReasonBody) =>
-    apiRequest<BookingResponse>(apiPaths.tourBookingMe(tourId), {
+  updateBooking: (tourId: string, sessionId: string, status: UpdateBookingBody['status'], reason?: CancellationReasonBody) =>
+    apiRequest<BookingResponse>(apiPaths.tourSessionBookingMe(tourId, sessionId), {
       method: 'PUT',
       body: JSON.stringify({ status, reason }),
     }),
 
   getMyBookings: () =>
-    apiRequest<MyBookingEntry[]>(apiPaths.meBookings),
+    apiRequest<MyTourBookingEntry[]>(apiPaths.meBookings),
 
   // Buddy — Self-evaluations
   listMySelfEvaluations: (params: { tourId?: string } = {}) =>

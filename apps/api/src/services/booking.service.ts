@@ -1,13 +1,13 @@
 import { TourStatus, BookingStatus as PrismaBookingStatus, BuddyTier as PrismaBuddyTier, CancellationCategory as PrismaCancellationCategory, Prisma } from '@prisma/client'
 import { db } from '../lib/db'
 import { BookingStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
-import type { BookingResponse, BookingStatus, BuddyTier, CancellationReasonBody, MyBookingEntry } from '@peace-buddy/types'
+import type { BookingResponse, BookingStatus, BuddyTier, CancellationReasonBody, MyTourBookingEntry } from '@peace-buddy/types'
 import { getPoolCapacities, NON_JUNIOR_TIERS } from '../lib/pool'
 import type { Pool } from '../lib/pool'
 
 type CreateBookingResult =
   | { ok: true; booking: BookingResponse }
-  | { ok: false; code: 'TOUR_NOT_FOUND' | 'NOT_BOOKABLE' | 'ALREADY_BOOKED' | 'BUDDY_NOT_FOUND' | 'NOT_ELIGIBLE' }
+  | { ok: false; code: 'TOUR_NOT_FOUND' | 'SESSION_NOT_FOUND' | 'NOT_BOOKABLE' | 'ALREADY_BOOKED' | 'BUDDY_NOT_FOUND' | 'NOT_ELIGIBLE' }
 
 type UpdateBookingResult =
   | { ok: true; booking: BookingResponse }
@@ -16,6 +16,7 @@ type UpdateBookingResult =
 const bookingSelect = {
   id: true,
   tourId: true,
+  sessionId: true,
   buddyTier: true,
   status: true,
   bookedAt: true,
@@ -29,6 +30,7 @@ function localDateStr(d: Date): string {
 function mapBooking(row: {
   id: string
   tourId: string
+  sessionId: string
   buddyTier: string
   status: string
   bookedAt: Date
@@ -37,6 +39,7 @@ function mapBooking(row: {
   return {
     id: row.id,
     tourId: row.tourId,
+    sessionId: row.sessionId,
     buddyTier: row.buddyTier as BuddyTier,
     status: row.status as BookingStatus,
     bookedAt: row.bookedAt.toISOString(),
@@ -48,32 +51,34 @@ function poolForTier(tier: BuddyTier): 'junior' | 'non_junior' {
   return tier === BuddyTierSchema.enum.junior ? 'junior' : 'non_junior'
 }
 
-
-async function getConfirmedCountByPool(tourId: string, pool: Pool): Promise<number> {
+async function getConfirmedCountByPool(sessionId: string, pool: Pool): Promise<number> {
   if (pool === 'junior') {
-    return db.booking.count({ where: { tourId, status: PrismaBookingStatus.confirmed, buddyTier: PrismaBuddyTier.junior } })
+    return db.booking.count({ where: { sessionId, status: PrismaBookingStatus.confirmed, buddyTier: PrismaBuddyTier.junior } })
   }
   if (pool === 'non_junior') {
-    return db.booking.count({ where: { tourId, status: PrismaBookingStatus.confirmed, buddyTier: { in: NON_JUNIOR_TIERS as unknown as PrismaBuddyTier[] } } })
+    return db.booking.count({ where: { sessionId, status: PrismaBookingStatus.confirmed, buddyTier: { in: NON_JUNIOR_TIERS as unknown as PrismaBuddyTier[] } } })
   }
-  return db.booking.count({ where: { tourId, status: PrismaBookingStatus.confirmed } })
+  return db.booking.count({ where: { sessionId, status: PrismaBookingStatus.confirmed } })
 }
 
 export async function createBooking(
   tourId: string,
+  sessionId: string,
   userId: string,
 ): Promise<CreateBookingResult> {
-  const [tour, buddy] = await Promise.all([
-    db.tour.findUnique({
-      where: { id: tourId },
-      select: { status: true, tourDate: true, bookingOpen: true, capacity: true },
+  const [session, buddy] = await Promise.all([
+    db.tourSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true, tourId: true, capacity: true, tour: { select: { status: true, tourDate: true, bookingOpen: true } } },
     }),
     db.buddyProfile.findUnique({ where: { userId }, select: { id: true, tier: true, status: true } }),
   ])
 
-  if (!tour) return { ok: false, code: 'TOUR_NOT_FOUND' }
+  if (!session) return { ok: false, code: 'SESSION_NOT_FOUND' }
+  if (session.tourId !== tourId) return { ok: false, code: 'TOUR_NOT_FOUND' }
   if (!buddy) return { ok: false, code: 'BUDDY_NOT_FOUND' }
 
+  const tour = session.tour
   if (tour.status !== TourStatus.published || !tour.bookingOpen || localDateStr(tour.tourDate) < localDateStr(new Date())) {
     return { ok: false, code: 'NOT_BOOKABLE' }
   }
@@ -83,14 +88,13 @@ export async function createBooking(
   }
 
   const buddyTier = buddy.tier as BuddyTier
-  const capacities = await getPoolCapacities(tourId, tour.capacity)
+  const capacities = await getPoolCapacities(sessionId, session.capacity)
   const primaryPool = poolForTier(buddyTier)
-
   const otherPool: 'junior' | 'non_junior' = primaryPool === 'junior' ? 'non_junior' : 'junior'
   const [primaryCount, otherCount, totalConfirmed] = await Promise.all([
-    getConfirmedCountByPool(tourId, primaryPool),
-    getConfirmedCountByPool(tourId, otherPool),
-    getConfirmedCountByPool(tourId, 'anyone'),
+    getConfirmedCountByPool(sessionId, primaryPool),
+    getConfirmedCountByPool(sessionId, otherPool),
+    getConfirmedCountByPool(sessionId, 'anyone'),
   ])
   const anyoneConfirmed = Math.max(
     0,
@@ -105,12 +109,11 @@ export async function createBooking(
   try {
     const booking = await db.$transaction(async (tx) => {
       const existing = await tx.booking.findUnique({
-        where: { buddyId_tourId: { buddyId: buddy.id, tourId } },
+        where: { buddyId_sessionId: { buddyId: buddy.id, sessionId } },
         select: { id: true, status: true },
       })
       if (existing) {
         if (existing.status !== PrismaBookingStatus.declined) throw new Error('ALREADY_BOOKED')
-        // Re-book: reuse existing row
         return tx.booking.update({
           where: { id: existing.id },
           data: { status: finalStatus, buddyTier: buddyTier as PrismaBuddyTier },
@@ -118,7 +121,7 @@ export async function createBooking(
         })
       }
       return tx.booking.create({
-        data: { buddyId: buddy.id, tourId, buddyTier: buddyTier as PrismaBuddyTier, status: finalStatus },
+        data: { buddyId: buddy.id, tourId, sessionId, buddyTier: buddyTier as PrismaBuddyTier, status: finalStatus },
         select: bookingSelect,
       })
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
@@ -136,36 +139,44 @@ export async function createBooking(
 }
 
 export async function updateBooking(
-  tourId: string,
+  sessionId: string,
   userId: string,
   newStatus: 'confirmed' | 'maybe' | 'waitlist' | 'declined',
   reason?: CancellationReasonBody,
 ): Promise<UpdateBookingResult> {
-  const [buddy, tour] = await Promise.all([
+  const [buddy, session] = await Promise.all([
     db.buddyProfile.findUnique({ where: { userId }, select: { id: true } }),
-    db.tour.findUnique({ where: { id: tourId }, select: { cancellationDeadline: true, maybeDeadline: true, capacity: true } }),
+    db.tourSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        capacity: true,
+        tourId: true,
+        tour: { select: { cancellationDeadline: true, maybeDeadline: true } },
+      },
+    }),
   ])
   if (!buddy) return { ok: false, code: 'BUDDY_NOT_FOUND' }
-  if (!tour) return { ok: false, code: 'NOT_FOUND' }
+  if (!session) return { ok: false, code: 'NOT_FOUND' }
 
   const [booking, deadlineOverride] = await Promise.all([
     db.booking.findUnique({
-      where: { buddyId_tourId: { buddyId: buddy.id, tourId } },
+      where: { buddyId_sessionId: { buddyId: buddy.id, sessionId } },
       select: { id: true, status: true, buddyTier: true },
     }),
     db.buddyCancellationDeadlineOverride.findUnique({
-      where: { buddyId_tourId: { buddyId: buddy.id, tourId } },
+      where: { buddyId_tourId: { buddyId: buddy.id, tourId: session.tourId } },
       select: { deadline: true },
     }),
   ])
   if (!booking) return { ok: false, code: 'NOT_FOUND' }
 
-  const effectiveDeadline = deadlineOverride?.deadline ?? tour.cancellationDeadline
+  const effectiveDeadline = deadlineOverride?.deadline ?? session.tour.cancellationDeadline
   if (localDateStr(new Date()) >= localDateStr(effectiveDeadline)) {
     return { ok: false, code: 'DEADLINE_PASSED' }
   }
 
-  if (newStatus === BookingStatusSchema.enum.maybe && tour.maybeDeadline && localDateStr(new Date()) >= localDateStr(tour.maybeDeadline)) {
+  if (newStatus === BookingStatusSchema.enum.maybe && session.tour.maybeDeadline && localDateStr(new Date()) >= localDateStr(session.tour.maybeDeadline)) {
     return { ok: false, code: 'MAYBE_DEADLINE_PASSED' }
   }
 
@@ -177,22 +188,22 @@ export async function updateBooking(
   if (newStatus === BookingStatusSchema.enum.confirmed && !wasConfirmed) {
     try {
       const updated = await db.$transaction(async (tx) => {
-        const capacities = await getPoolCapacities(tourId, tour.capacity)
+        const capacities = await getPoolCapacities(sessionId, session.capacity)
         const buddyTier = booking.buddyTier as BuddyTier
         const primaryPool = poolForTier(buddyTier)
         const otherPool: 'junior' | 'non_junior' = primaryPool === 'junior' ? 'non_junior' : 'junior'
         const [primaryCount, otherCount, totalConfirmed] = await Promise.all([
-          tx.booking.count({ where: { tourId, status: PrismaBookingStatus.confirmed, buddyTier: booking.buddyTier } }),
+          tx.booking.count({ where: { sessionId, status: PrismaBookingStatus.confirmed, buddyTier: booking.buddyTier } }),
           tx.booking.count({
             where: {
-              tourId,
+              sessionId,
               status: PrismaBookingStatus.confirmed,
               buddyTier: otherPool === 'junior'
                 ? PrismaBuddyTier.junior
                 : { in: NON_JUNIOR_TIERS as unknown as PrismaBuddyTier[] },
             },
           }),
-          tx.booking.count({ where: { tourId, status: PrismaBookingStatus.confirmed } }),
+          tx.booking.count({ where: { sessionId, status: PrismaBookingStatus.confirmed } }),
         ])
         const anyoneConfirmed = Math.max(
           0,
@@ -232,20 +243,19 @@ export async function updateBooking(
         },
       })
     }
-    await promoteWaitlist(tourId, tour.capacity, booking.buddyTier as BuddyTier)
+    await promoteWaitlist(sessionId, session.capacity, booking.buddyTier as BuddyTier)
   }
 
   return { ok: true, booking: mapBooking(updated) }
 }
 
-async function promoteWaitlist(tourId: string, capacity: number, cancelledTier: BuddyTier): Promise<void> {
-  const capacities = await getPoolCapacities(tourId, capacity)
+async function promoteWaitlist(sessionId: string, capacity: number, cancelledTier: BuddyTier): Promise<void> {
+  const capacities = await getPoolCapacities(sessionId, capacity)
   const primaryPool = poolForTier(cancelledTier)
 
-  // Try same-pool candidate first, then any waitlisted buddy for the anyone-pool overflow slot
   const candidate =
-    await findWaitlistCandidate(tourId, primaryPool) ??
-    await findAnyWaitlistCandidate(tourId)
+    await findWaitlistCandidate(sessionId, primaryPool) ??
+    await findAnyWaitlistCandidate(sessionId)
 
   if (!candidate) return
 
@@ -255,19 +265,19 @@ async function promoteWaitlist(tourId: string, capacity: number, cancelledTier: 
     const [primaryCount, otherCount, totalConfirmed] = await Promise.all([
       tx.booking.count({
         where: {
-          tourId,
+          sessionId,
           status: PrismaBookingStatus.confirmed,
           buddyTier: cPool === 'junior' ? PrismaBuddyTier.junior : { in: NON_JUNIOR_TIERS as unknown as PrismaBuddyTier[] },
         },
       }),
       tx.booking.count({
         where: {
-          tourId,
+          sessionId,
           status: PrismaBookingStatus.confirmed,
           buddyTier: cOtherPool === 'junior' ? PrismaBuddyTier.junior : { in: NON_JUNIOR_TIERS as unknown as PrismaBuddyTier[] },
         },
       }),
-      tx.booking.count({ where: { tourId, status: PrismaBookingStatus.confirmed } }),
+      tx.booking.count({ where: { sessionId, status: PrismaBookingStatus.confirmed } }),
     ])
     const anyoneConfirmed = Math.max(
       0,
@@ -282,10 +292,10 @@ async function promoteWaitlist(tourId: string, capacity: number, cancelledTier: 
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 }
 
-async function findWaitlistCandidate(tourId: string, pool: 'junior' | 'non_junior') {
+async function findWaitlistCandidate(sessionId: string, pool: 'junior' | 'non_junior') {
   return db.booking.findFirst({
     where: {
-      tourId,
+      sessionId,
       status: PrismaBookingStatus.waitlist,
       buddyTier: pool === 'junior' ? PrismaBuddyTier.junior : { in: NON_JUNIOR_TIERS as unknown as PrismaBuddyTier[] },
     },
@@ -294,47 +304,72 @@ async function findWaitlistCandidate(tourId: string, pool: 'junior' | 'non_junio
   })
 }
 
-async function findAnyWaitlistCandidate(tourId: string) {
+async function findAnyWaitlistCandidate(sessionId: string) {
   return db.booking.findFirst({
-    where: { tourId, status: PrismaBookingStatus.waitlist },
+    where: { sessionId, status: PrismaBookingStatus.waitlist },
     orderBy: { bookedAt: 'asc' },
     select: { id: true, buddyTier: true },
   })
 }
 
-export async function listMyBookings(userId: string): Promise<MyBookingEntry[]> {
+export async function listMyBookings(userId: string): Promise<MyTourBookingEntry[]> {
   const rows = await db.booking.findMany({
-    where: { buddy: { userId }, status: PrismaBookingStatus.confirmed },
-    orderBy: { tour: { tourDate: 'desc' } },
+    where: {
+      buddy: { userId },
+      status: { not: PrismaBookingStatus.declined },
+    },
+    orderBy: { session: { tour: { tourDate: 'desc' } } },
     select: {
       id: true,
       tourId: true,
+      sessionId: true,
       status: true,
       bookedAt: true,
-      updatedAt: true,
-      tour: {
+      session: {
         select: {
-          tourDate: true,
+          order: true,
+          label: true,
           meetingTime: true,
-          location: true,
-          status: true,
-          group: { select: { name: true } },
+          tour: {
+            select: {
+              tourDate: true,
+              location: true,
+              status: true,
+              group: { select: { name: true } },
+            },
+          },
         },
       },
     },
   })
-  return rows.map((r) => ({
-    id: r.id,
-    tourId: r.tourId,
-    status: r.status as BookingStatus,
-    bookedAt: r.bookedAt.toISOString(),
-    updatedAt: r.updatedAt.toISOString(),
-    tour: {
-      tourDate: r.tour.tourDate.toISOString(),
-      meetingTime: r.tour.meetingTime.toISOString(),
-      location: r.tour.location,
-      status: r.tour.status as import('@peace-buddy/types').TourStatus,
-      group: { name: r.tour.group.name },
-    },
-  }))
+
+  // Group by tourId, preserving order from first booking of each tour
+  const tourMap = new Map<string, MyTourBookingEntry>()
+  for (const r of rows) {
+    const existing = tourMap.get(r.tourId)
+    const sessionEntry = {
+      bookingId: r.id,
+      sessionId: r.sessionId,
+      sessionOrder: r.session.order,
+      sessionLabel: r.session.label,
+      meetingTime: r.session.meetingTime.toISOString(),
+      bookingStatus: r.status as BookingStatus,
+      bookedAt: r.bookedAt.toISOString(),
+    }
+    if (existing) {
+      existing.bookings.push(sessionEntry)
+      existing.bookings.sort((a, b) => a.sessionOrder - b.sessionOrder)
+    } else {
+      tourMap.set(r.tourId, {
+        tourId: r.tourId,
+        tourDate: r.session.tour.tourDate.toISOString(),
+        location: r.session.tour.location,
+        status: r.session.tour.status,
+        group: { name: r.session.tour.group.name },
+        bookings: [sessionEntry],
+      })
+    }
+  }
+
+  return Array.from(tourMap.values())
 }

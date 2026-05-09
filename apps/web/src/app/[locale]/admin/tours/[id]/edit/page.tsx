@@ -57,7 +57,8 @@ export default function AdminTourEditPage() {
   }, [ready, id, locale, router]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(values: TourFormValues) {
-    const result = await updateTour(id, values as Record<string, unknown>)
+    const { sessions: _sessions, ...tourFields } = values
+    const result = await updateTour(id, tourFields as Record<string, unknown>)
     if (result.ok) router.push(routes.adminTourDetail(locale, id))
     else setLoadError(errorMessage(result.error))
   }
@@ -84,6 +85,7 @@ export default function AdminTourEditPage() {
           groups={groups}
           cancelHref={routes.adminTourDetail(locale, id)}
           onSubmit={handleSubmit}
+          hideSessionManagement
         />
       </div>
     </AppShell>

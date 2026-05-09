@@ -109,22 +109,38 @@ export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
 
 const timeRegex = /^\d{2}:\d{2}$/
 
+export const CreateTourSessionSchema = z.object({
+  label: z.string().optional(),
+  meetingTime: z.string().regex(timeRegex),
+  startTime: z.string().regex(timeRegex).optional(),
+  endTime: z.string().regex(timeRegex).optional(),
+  capacity: z.number().int().positive(),
+  participantCount: z.number().int().min(0).optional(),
+})
+export type CreateTourSession = z.infer<typeof CreateTourSessionSchema>
+
+export const UpdateTourSessionSchema = z.object({
+  label: z.string().nullable().optional(),
+  meetingTime: z.string().regex(timeRegex).optional(),
+  startTime: z.string().regex(timeRegex).nullable().optional(),
+  endTime: z.string().regex(timeRegex).nullable().optional(),
+  capacity: z.number().int().positive().optional(),
+  participantCount: z.number().int().min(0).optional(),
+})
+export type UpdateTourSession = z.infer<typeof UpdateTourSessionSchema>
+
 export const CreateTourSchema = z
   .object({
     groupId: z.string().uuid(),
     tourDate: z.coerce.date(),
-    meetingTime: z.string().regex(timeRegex),
-    startTime: z.string().regex(timeRegex).optional(),
-    endTime: z.string().regex(timeRegex).optional(),
     bookingOpen: z.boolean().default(false),
     location: z.string().min(1),
-    capacity: z.number().int().positive(),
-    participantCount: z.number().int().min(0).optional(),
     description: z.string().optional(),
     adminMemo: z.string().optional(),
     cancellationDeadline: z.coerce.date(),
     maybeDeadline: z.coerce.date().optional(),
     notificationOffsets: z.array(z.number().int().min(0)).default([3, 1]),
+    sessions: z.array(CreateTourSessionSchema).min(1).max(2),
   })
   .refine((d) => !d.maybeDeadline || d.maybeDeadline < d.cancellationDeadline, {
     message: 'maybeDeadline must be before cancellationDeadline',
@@ -136,13 +152,8 @@ export const UpdateTourSchema = z
   .object({
     groupId: z.string().uuid().optional(),
     tourDate: z.coerce.date().optional(),
-    meetingTime: z.string().regex(timeRegex).optional(),
-    startTime: z.string().regex(timeRegex).nullable().optional(),
-    endTime: z.string().regex(timeRegex).nullable().optional(),
     bookingOpen: z.boolean().optional(),
     location: z.string().min(1).optional(),
-    capacity: z.number().int().positive().optional(),
-    participantCount: z.number().int().min(0).optional(),
     description: z.string().nullable().optional(),
     adminMemo: z.string().nullable().optional(),
     cancellationDeadline: z.coerce.date().optional(),
@@ -242,23 +253,31 @@ export type BuddyProfileResponse = {
   updatedAt: string
 }
 
+export type TourSessionResponse = {
+  id: string
+  order: number
+  label: string | null
+  meetingTime: string
+  startTime: string | null
+  endTime: string | null
+  capacity: number
+  participantCount: number
+}
+
 export type TourResponse = {
   id: string
   groupId: string
   group: { id: string; name: string; type: GroupType }
   status: TourStatus
   tourDate: string
-  meetingTime: string
-  startTime: string | null
-  endTime: string | null
   bookingOpen: boolean
   location: string
-  capacity: number
   participantCount: number
   description: string | null
   cancellationDeadline: string
   maybeDeadline: string | null
   notificationOffsets: number[]
+  sessions: TourSessionResponse[]
   createdAt: string
   updatedAt: string
 }
@@ -279,14 +298,11 @@ export type GroupTourSummary = {
   id: string
   status: TourStatus
   tourDate: string
-  meetingTime: string
-  startTime: string | null
-  endTime: string | null
   bookingOpen: boolean
   location: string
-  capacity: number
   participantCount: number
   description: string | null
+  sessions: TourSessionResponse[]
   createdAt: string
 }
 
@@ -311,6 +327,9 @@ export type AdminBuddyResponse = {
 export type AdminBuddyBookingEntry = {
   id: string
   tourId: string
+  sessionId: string
+  sessionOrder: number
+  sessionLabel: string | null
   status: BookingStatus
   bookedAt: string
   tour: {
@@ -341,12 +360,16 @@ export type TourSeatCounts = {
   declined: number
 }
 
-export type TourDetailResponse = TourResponse & {
+export type TourSessionDetailResponse = TourSessionResponse & {
   seatCounts: TourSeatCounts
   remaining: number
   myCapacity: number | null
   myRemaining: number | null
   myBookingStatus: BookingStatus | null
+}
+
+export type TourDetailResponse = Omit<TourResponse, 'sessions'> & {
+  sessions: TourSessionDetailResponse[]
 }
 
 export const CancellationReasonBodySchema = z.object({
@@ -366,6 +389,7 @@ export type UpdateBookingBody = z.infer<typeof UpdateBookingBodySchema>
 export type BookingResponse = {
   id: string
   tourId: string
+  sessionId: string
   buddyTier: BuddyTier
   status: BookingStatus
   bookedAt: string
@@ -375,6 +399,9 @@ export type BookingResponse = {
 export type AdminTourBookingEntry = {
   id: string
   buddyId: string
+  sessionId: string
+  sessionOrder: number
+  sessionLabel: string | null
   displayName: string
   status: BookingStatus
   bookedAt: string
@@ -385,15 +412,13 @@ export type AdminTourSummaryResponse = {
   group: { id: string; name: string; type: GroupType }
   status: TourStatus
   tourDate: string
-  meetingTime: string
-  startTime: string | null
-  endTime: string | null
   bookingOpen: boolean
   location: string
   capacity: number
   description: string | null
   confirmedCount: number
   participantCount: number
+  sessions: TourSessionResponse[]
   createdAt: string
   updatedAt: string
 }
@@ -406,19 +431,23 @@ export type AdminTourDetailResponse = AdminTourSummaryResponse & {
   bookings: AdminTourBookingEntry[]
 }
 
-export type MyBookingEntry = {
-  id: string
-  tourId: string
-  status: BookingStatus
+export type MySessionBookingEntry = {
+  bookingId: string
+  sessionId: string
+  sessionOrder: number
+  sessionLabel: string | null
+  meetingTime: string
+  bookingStatus: BookingStatus
   bookedAt: string
-  updatedAt: string
-  tour: {
-    tourDate: string
-    meetingTime: string
-    location: string
-    group: { name: string }
-    status: TourStatus
-  }
+}
+
+export type MyTourBookingEntry = {
+  tourId: string
+  tourDate: string
+  location: string
+  status: TourStatus
+  group: { name: string }
+  bookings: MySessionBookingEntry[]
 }
 
 // Evaluations

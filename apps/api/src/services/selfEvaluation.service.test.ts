@@ -20,7 +20,7 @@ const {
 vi.mock('../lib/db', () => ({
   db: {
     buddyProfile: { findUnique: mockBuddyFind },
-    booking: { findUnique: mockBookingFind },
+    booking: { findFirst: mockBookingFind },
     selfEvaluation: {
       create: mockCreate,
       findMany: mockFindMany,
@@ -78,10 +78,8 @@ describe('createSelfEvaluation', () => {
 
   it('creates and returns mapped response with locked field', async () => {
     mockBuddyFind.mockResolvedValueOnce({ id: 'buddy-1' } as never)
-    mockBookingFind.mockResolvedValueOnce({
-      status: 'confirmed',
-      tour: { status: 'completed' },
-    } as never)
+    // findFirst with status:confirmed filter — returns tour status only
+    mockBookingFind.mockResolvedValueOnce({ tour: { status: 'completed' } } as never)
     mockCreate.mockResolvedValueOnce(selfEvalRow as never)
 
     const result = await createSelfEvaluation({ tourId: 'tour-1', overallRating: 3 }, 'user-1')
@@ -98,10 +96,8 @@ describe('createSelfEvaluation', () => {
 
   it('throws NotEligibleError when no confirmed booking', async () => {
     mockBuddyFind.mockResolvedValueOnce({ id: 'buddy-1' } as never)
-    mockBookingFind.mockResolvedValueOnce({
-      status: 'maybe',
-      tour: { status: 'completed' },
-    } as never)
+    // confirmed filter in query means no match returns null
+    mockBookingFind.mockResolvedValueOnce(null)
 
     await expect(
       createSelfEvaluation({ tourId: 'tour-1' }, 'user-1'),
@@ -110,10 +106,7 @@ describe('createSelfEvaluation', () => {
 
   it('throws NotEligibleError when tour not completed', async () => {
     mockBuddyFind.mockResolvedValueOnce({ id: 'buddy-1' } as never)
-    mockBookingFind.mockResolvedValueOnce({
-      status: 'confirmed',
-      tour: { status: 'published' },
-    } as never)
+    mockBookingFind.mockResolvedValueOnce({ tour: { status: 'published' } } as never)
 
     await expect(
       createSelfEvaluation({ tourId: 'tour-1' }, 'user-1'),
@@ -131,10 +124,7 @@ describe('createSelfEvaluation', () => {
 
   it('throws EvalAlreadyExistsError on P2002', async () => {
     mockBuddyFind.mockResolvedValueOnce({ id: 'buddy-1' } as never)
-    mockBookingFind.mockResolvedValueOnce({
-      status: 'confirmed',
-      tour: { status: 'completed' },
-    } as never)
+    mockBookingFind.mockResolvedValueOnce({ tour: { status: 'completed' } } as never)
     const prismaError = new Prisma.PrismaClientKnownRequestError('Unique', {
       code: 'P2002',
       clientVersion: '5.0.0',

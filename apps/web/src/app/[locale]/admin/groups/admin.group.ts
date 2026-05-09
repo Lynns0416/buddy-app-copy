@@ -41,7 +41,7 @@ export function sortGroupTours(
       case 'tourDate':  cmp = a.tourDate.localeCompare(b.tourDate); break
       case 'status':    cmp = a.status.localeCompare(b.status); break
       case 'location':  cmp = a.location.localeCompare(b.location, routing.defaultLocale); break
-      case 'capacity':  cmp = a.capacity - b.capacity; break
+      case 'capacity':  cmp = a.sessions.reduce((s, x) => s + x.capacity, 0) - b.sessions.reduce((s, x) => s + x.capacity, 0); break
     }
     return dir === ASC ? cmp : -cmp
   })

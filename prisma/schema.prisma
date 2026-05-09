@@ -148,13 +148,8 @@ model Tour {
   groupId              String
   status               TourStatus
   tourDate             DateTime                            @db.Date
-  meetingTime          DateTime                            @db.Time
-  startTime            DateTime?                           @db.Time
-  endTime              DateTime?                           @db.Time
   bookingOpen          Boolean                             @default(false)
   location             String
-  capacity             Int
-  participantCount     Int                                 @default(0)
   description          String?
   adminMemo            String?
   cancellationDeadline DateTime                            @db.Date
@@ -163,8 +158,8 @@ model Tour {
   createdAt            DateTime                            @default(now())
   updatedAt            DateTime                            @updatedAt
   group                Group                               @relation(fields: [groupId], references: [id])
+  sessions             TourSession[]
   bookings             Booking[]
-  tierCapacities       TierCapacity[]
   adminEvaluations     AdminEvaluation[]
   selfEvaluations      SelfEvaluation[]
   deadlineOverrides    BuddyCancellationDeadlineOverride[]
@@ -172,33 +167,56 @@ model Tour {
   @@index([status, tourDate])
 }
 
+model TourSession {
+  id               String        @id @default(uuid())
+  tourId           String
+  order            Int
+  label            String?
+  meetingTime      DateTime      @db.Time
+  startTime        DateTime?     @db.Time
+  endTime          DateTime?     @db.Time
+  capacity         Int
+  participantCount Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  tour             Tour          @relation(fields: [tourId], references: [id])
+  bookings         Booking[]
+  tierCapacities   TierCapacity[]
+
+  @@unique([tourId, order])
+  @@index([tourId])
+}
+
 model TierCapacity {
   id        String      @id @default(uuid())
-  tourId    String
+  sessionId String
   pool      BookingPool
   percent   Int
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
-  tour      Tour            @relation(fields: [tourId], references: [id])
+  session   TourSession     @relation(fields: [sessionId], references: [id])
 
-  @@unique([tourId, pool])
+  @@unique([sessionId, pool])
 }
 
 model Booking {
   id                 String               @id @default(uuid())
   buddyId            String
   tourId             String
+  sessionId          String
   buddyTier          BuddyTier
   status             BookingStatus
   bookedAt           DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   buddy              BuddyProfile         @relation(fields: [buddyId], references: [id])
   tour               Tour                 @relation(fields: [tourId], references: [id])
+  session            TourSession          @relation(fields: [sessionId], references: [id])
   cancellationReason CancellationReason?
 
-  @@unique([buddyId, tourId])
+  @@unique([buddyId, sessionId])
   @@index([tourId, status])
-  @@index([tourId, status, buddyTier])
+  @@index([sessionId, status])
+  @@index([sessionId, status, buddyTier])
 }
 
 model CancellationReason {

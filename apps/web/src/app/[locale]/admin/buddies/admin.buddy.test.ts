@@ -135,6 +135,9 @@ const booking = (overrides: {
 } = {}): AdminBuddyBookingEntry => ({
   id: overrides.id ?? 'bk1',
   tourId: 't1',
+  sessionId: 's1',
+  sessionOrder: 1,
+  sessionLabel: null,
   status: overrides.status ?? 'confirmed',
   bookedAt: '2026-01-01T00:00:00Z',
   tour: {

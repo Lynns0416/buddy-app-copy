@@ -8,7 +8,7 @@ export const apiPaths = {
   tours: '/tours',
   tour: (id: string) => `/tours/${id}`,
   tourBookings: (tourId: string) => `/tours/${tourId}/bookings`,
-  tourBookingMe: (tourId: string) => `/tours/${tourId}/bookings/me`,
+  tourSessionBookingMe: (tourId: string, sessionId: string) => `/tours/${tourId}/sessions/${sessionId}/bookings/me`,
 
   adminBuddies: '/admin/buddies',
   adminBuddy: (id: string) => `/admin/buddies/${id}`,
@@ -20,7 +20,9 @@ export const apiPaths = {
   adminTours: '/admin/tours',
   adminTour: (id: string) => `/admin/tours/${id}`,
   adminTourStatus: (id: string) => `/admin/tours/${id}/status`,
-  adminTourTierCapacities: (id: string) => `/admin/tours/${id}/tier-capacities`,
+  adminTourSessions: (tourId: string) => `/admin/tours/${tourId}/sessions`,
+  adminTourSession: (tourId: string, sessionId: string) => `/admin/tours/${tourId}/sessions/${sessionId}`,
+  adminSessionTierCapacities: (tourId: string, sessionId: string) => `/admin/tours/${tourId}/sessions/${sessionId}/tier-capacities`,
 
   adminEvaluations: '/admin/evaluations',
   adminEvaluation: (id: string) => `/admin/evaluations/${id}`,

@@ -11,6 +11,10 @@ const ToursQuerySchema = z.object({
   to: z.coerce.date().optional(),
 })
 
+const CreateBookingBodySchema = z.object({
+  sessionId: z.string().uuid(),
+})
+
 const tourRoutes = new Hono<AuthEnv>()
 
 tourRoutes.get('/', async (c) => {
@@ -38,9 +42,19 @@ tourRoutes.post('/:id/bookings', async (c) => {
   const tourId = c.req.param('id')
   const userId = c.get('user').id
 
-  const result = await createBooking(tourId, userId)
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400)
+  }
+
+  const parsed = CreateBookingBodySchema.safeParse(body)
+  if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
+
+  const result = await createBooking(tourId, parsed.data.sessionId, userId)
   if (!result.ok) {
-    if (result.code === 'TOUR_NOT_FOUND') return c.json({ error: 'Tour not found' }, 404)
+    if (result.code === 'TOUR_NOT_FOUND' || result.code === 'SESSION_NOT_FOUND') return c.json({ error: 'Tour not found' }, 404)
     if (result.code === 'ALREADY_BOOKED') return c.json({ error: 'Already booked' }, 409)
     if (result.code === 'NOT_ELIGIBLE') return c.json({ error: 'Not eligible to book' }, 403)
     if (result.code === 'BUDDY_NOT_FOUND') return c.json({ error: 'Buddy profile not found' }, 404)
@@ -49,8 +63,8 @@ tourRoutes.post('/:id/bookings', async (c) => {
   return c.json(result.booking, 201)
 })
 
-tourRoutes.put('/:id/bookings/me', async (c) => {
-  const tourId = c.req.param('id')
+tourRoutes.put('/:tourId/sessions/:sessionId/bookings/me', async (c) => {
+  const sessionId = c.req.param('sessionId')
   const userId = c.get('user').id
   let body
   try {
@@ -58,7 +72,7 @@ tourRoutes.put('/:id/bookings/me', async (c) => {
   } catch {
     return c.json({ error: 'Invalid request body' }, 400)
   }
-  const result = await updateBooking(tourId, userId, body.status, body.reason)
+  const result = await updateBooking(sessionId, userId, body.status, body.reason)
   if (!result.ok) {
     if (result.code === 'NOT_FOUND') return c.json({ error: 'Booking not found' }, 404)
     if (result.code === 'TOUR_FULL') return c.json({ error: 'Tour is full' }, 409)

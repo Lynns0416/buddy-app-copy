@@ -22,9 +22,9 @@ const groups: GroupResponse[] = [
 const validFields = {
   groupId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   tourDate: '2026-06-01',
-  meetingTime: '09:00',
+  sessionMeetingTime: '09:00',
   location: '平和公園',
-  capacity: '5',
+  sessionCapacity: '5',
   cancellationDeadline: '2026-05-25',
   notificationOffsets: '3, 1',
 }
@@ -51,10 +51,10 @@ async function fillAndSubmit(overrides: Partial<typeof validFields> = {}, onSubm
 
   await user.selectOptions(screen.getByLabelText('group'), fields.groupId)
   await user.type(screen.getByLabelText('tourDate'), fields.tourDate)
-  await user.type(screen.getByLabelText('meetingTime'), fields.meetingTime)
+  await user.type(screen.getByLabelText('meetingTime'), fields.sessionMeetingTime)
   await user.type(screen.getByLabelText('location'), fields.location)
   await user.clear(screen.getByLabelText('capacity'))
-  await user.type(screen.getByLabelText('capacity'), fields.capacity)
+  await user.type(screen.getByLabelText('capacity'), fields.sessionCapacity)
   await user.type(screen.getByLabelText('cancellationDeadline'), fields.cancellationDeadline)
 
   await user.click(screen.getByRole('button', { name: 'save' }))
@@ -72,9 +72,9 @@ describe('TourForm', () => {
     const values = onSubmit.mock.calls[0][0]
     expect(values.groupId).toBe(validFields.groupId)
     expect(values.tourDate).toBe('2026-06-01')
-    expect(values.meetingTime).toBe('09:00')
+    expect(values.sessions[0].meetingTime).toBe('09:00')
     expect(values.location).toBe('平和公園')
-    expect(values.capacity).toBe(5)
+    expect(values.sessions[0].capacity).toBe(5)
     expect(values.cancellationDeadline).toBe('2026-05-25')
     expect(values.notificationOffsets).toEqual([3, 1])
     expect(values.description).toBeNull()
@@ -88,10 +88,10 @@ describe('TourForm', () => {
 
     await user.selectOptions(screen.getByLabelText('group'), validFields.groupId)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
-    await user.type(screen.getByLabelText('meetingTime'), validFields.meetingTime)
+    await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.type(screen.getByLabelText('location'), validFields.location)
     await user.clear(screen.getByLabelText('capacity'))
-    await user.type(screen.getByLabelText('capacity'), validFields.capacity)
+    await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
     await user.type(screen.getByLabelText('cancellationDeadline'), '2026-05-25')
     await user.type(screen.getByLabelText('maybeDeadline'), '2026-05-26')
 
@@ -146,10 +146,10 @@ describe('TourForm', () => {
 
     await user.selectOptions(screen.getByLabelText('group'), validFields.groupId)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
-    await user.type(screen.getByLabelText('meetingTime'), validFields.meetingTime)
+    await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.type(screen.getByLabelText('location'), validFields.location)
     await user.clear(screen.getByLabelText('capacity'))
-    await user.type(screen.getByLabelText('capacity'), validFields.capacity)
+    await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
     await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
 
     await user.click(screen.getByRole('button', { name: 'save' }))
@@ -168,9 +168,6 @@ describe('TourForm', () => {
           group: { id: groups[0].id, name: groups[0].name, type: 'school' },
           status: 'draft',
           tourDate: '2026-06-01T00:00:00.000Z',
-          meetingTime: '1970-01-01T09:30:00.000Z',
-          startTime: null,
-          endTime: null,
           bookingOpen: false,
           location: 'Nagasaki',
           capacity: 10,
@@ -181,6 +178,16 @@ describe('TourForm', () => {
           cancellationDeadline: '2026-05-25T00:00:00.000Z',
           maybeDeadline: null,
           notificationOffsets: [3, 1],
+          sessions: [{
+            id: 's1',
+            order: 1,
+            label: null,
+            meetingTime: '1970-01-01T09:30:00.000Z',
+            startTime: null,
+            endTime: null,
+            capacity: 10,
+            participantCount: 0,
+          }],
           bookings: [],
           createdAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',

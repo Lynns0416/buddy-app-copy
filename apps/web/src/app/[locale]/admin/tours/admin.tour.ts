@@ -1,4 +1,4 @@
-import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -136,17 +136,41 @@ export async function deleteTour(id: string): Promise<ActionResult> {
   }
 }
 
-export async function fetchTierCapacities(tourId: string): Promise<ActionResult<TierCapacities>> {
+export async function fetchSessionTierCapacities(tourId: string, sessionId: string): Promise<ActionResult<TierCapacities>> {
   try {
-    return { ok: true, data: await apiClient.getAdminTourTierCapacities(tourId) }
+    return { ok: true, data: await apiClient.getSessionTierCapacities(tourId, sessionId) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }
 }
 
-export async function saveTierCapacities(tourId: string, data: TierCapacities): Promise<ActionResult<TierCapacities>> {
+export async function saveSessionTierCapacities(tourId: string, sessionId: string, data: TierCapacities): Promise<ActionResult<TierCapacities>> {
   try {
-    return { ok: true, data: await apiClient.saveAdminTourTierCapacities(tourId, data) }
+    return { ok: true, data: await apiClient.saveSessionTierCapacities(tourId, sessionId, data) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function addTourSession(tourId: string, data: CreateTourSession): Promise<ActionResult<AdminTourDetailResponse>> {
+  try {
+    return { ok: true, data: await apiClient.addAdminTourSession(tourId, data) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function updateTourSession(tourId: string, sessionId: string, data: UpdateTourSession): Promise<ActionResult<AdminTourDetailResponse>> {
+  try {
+    return { ok: true, data: await apiClient.updateAdminTourSession(tourId, sessionId, data) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function removeTourSession(tourId: string, sessionId: string): Promise<ActionResult<AdminTourDetailResponse>> {
+  try {
+    return { ok: true, data: await apiClient.deleteAdminTourSession(tourId, sessionId) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }

@@ -1,5 +1,5 @@
 import { db } from '../lib/db'
-import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
 const adminBuddySelect = {
@@ -50,8 +50,15 @@ const adminBuddyDetailSelect = {
     select: {
       id: true,
       tourId: true,
+      sessionId: true,
       status: true,
       bookedAt: true,
+      session: {
+        select: {
+          order: true,
+          label: true,
+        },
+      },
       tour: {
         select: {
           tourDate: true,
@@ -75,11 +82,18 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
   return {
     ...mapBuddy(rest),
     bookings: bookings.map((b) => ({
-      ...b,
+      id: b.id,
+      tourId: b.tourId,
+      sessionId: b.sessionId,
+      sessionOrder: b.session.order,
+      sessionLabel: b.session.label,
+      status: b.status as BookingStatus,
       bookedAt: b.bookedAt.toISOString(),
       tour: {
-        ...b.tour,
         tourDate: b.tour.tourDate.toISOString(),
+        location: b.tour.location,
+        status: b.tour.status as TourStatus,
+        group: { name: b.tour.group.name },
       },
     })),
   }

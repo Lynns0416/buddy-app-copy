@@ -11,38 +11,35 @@ originSessionId: b4422d44-5a3d-4967-9db8-c9ddd4f1ed06
 - Tour booking consolidation: removed applications UI, consolidated into tours booking flow, removed applications endpoints
 - Tier-based capacity model (#68): 3-pool capacity (junior/non_junior/anyone), TierCapacity table, pool-scoped myCapacity/myRemaining, TierCapacityForm admin UI, anyoneConfirmed formula fix, promoteWaitlist serializable tx, notEligible i18n error
 - Fix/tour api for trainee (#69): listTours/getTour block trainee buddies at service level
+- Trainee refactor (#70): `trainee` moved from `BuddyTier` to `BuddyStatus`; tier=null for trainees; booking/tour eligibility gates updated; seed, UI, i18n, tests all updated
 
-## Current Work — feat/admin/add-trainee-menu-item
-Refactoring `trainee` from `BuddyTier` to `BuddyStatus`.
+## Current Work — feat/multiple-tours
 
-### Complete (not yet PR'd)
-- **Schema**: `BuddyStatus` gains `trainee`; `BuddyTier` loses `trainee`
-- **Types package**: `BuddyStatusSchema`, `BuddyTierSchema`, `UpdateBuddyStatusSchema` updated; rebuilt
-- **`admin.service.ts`**: `updateBuddyStatus` always sets `tier=junior` on `active`, no tier on `trainee`
-- **`tour.service.ts`**: trainee gate uses `status === trainee` (not tier)
-- **`booking.service.ts`**: removed redundant `tier === trainee` check
-- **`admin.ts` route**: removed tier extraction from status update body
-- **`admin.service.test.ts`**: full rewrite — fixed eslint-disables, vi.mocked pattern, new status tests
-- **`admin.test.ts`**: updated tier/status tests, trainee tier now 400
-- **`tour.service.test.ts`**: trainee gate tests use `status: 'trainee'`
-- **`booking.service.test.ts`**: trainee NOT_ELIGIBLE test uses `status: 'trainee'`
-- **`status-display.ts`**: added `trainee` badge variant
-- **i18n en/ja**: `buddyStatus.trainee`, `promoteButton`, updated `promoteTierModal.message` (name only), `adminTrainees.error.unknown`, removed `tierTrainee`, replaced `traineesNote` with `viewTrainees`
-- **`admin.buddy.ts`**: `fetchTrainees()` calls `fetchBuddies(status=trainee)`; removed BuddyTierSchema import
-- **`admin.buddy.test.ts`**: fixture tier null, fetchTrainees expects trainee status
-- **`use-buddies.ts`**: new hook (fetch+error, pages own sort state)
-- **`use-trainees.ts`**: new hook
-- **`buddies/page.tsx`**: uses `useBuddies()`, static "View trainees →" link
-- **`trainees/page.tsx`**: uses `useTrainees()`, clean namespace
-- **`buddy-form.tsx`**: status-aware — trainee shows promote button, hides tier dropdown; non-trainee shows tier dropdown; `doPromote()` calls `updateBuddyStatus('active')` → redirects to adminTrainees
-- **`promote-tier-modal.tsx`**: removed `tierLabel` prop, message uses `{name}` only
-- **`pending/page.tsx`**: approve sets status=trainee (not active); eslint-disable removed
-- **`[id]/page.tsx`**: back link status-aware (trainee→adminTrainees, else adminBuddies); eslint-disable removed
-- **`seed.ts`**: trainees use `status: BuddyStatus.trainee`, `tier: null`
-- **`prisma db push`**: applied (removed trainee from BuddyTier enum)
-- **Tests**: 442/442 pass
+### Complete (API layer — previous sessions)
+- `TourSession` model: id, tourId, order, label, meetingTime, capacity, participantCount
+- `Booking.sessionId` + `@@unique([buddyId, sessionId])`, `TierCapacity` moved to session-scoped
+- Types: `TourSessionResponse`, `TourSessionDetailResponse`, `MyTourBookingEntry`, `MySessionBookingEntry`, `AdminTourBookingEntry` updated with session fields
+- API routes: `POST/PUT/DELETE /admin/tours/:id/sessions/:sessionId`, tier-capacity session-scoped
+- `PUT /tours/:tourId/sessions/:sessionId/bookings/me` replaces old `PUT /tours/:id/bookings/me`
+- Services fully updated (booking, tour, adminTour, admin buddy)
+- `api-paths.ts`, `api-client.ts`, `admin.tour.ts` updated
+
+### Complete (Web layer — this session)
+- `tour-form.tsx`: sessions via `useFieldArray`, `hideSessionManagement` prop for edit mode
+- `add-session-form.tsx`: new component for admin to add 2nd session
+- `session-booking-card.tsx`: new component for per-session booking actions on buddy tour detail
+- `admin/tours/[id]/page.tsx`: sessions display, per-session TierCapacityForm, session management, session column in bookings table
+- `admin/tours/[id]/edit/page.tsx`: strips sessions from updateTour payload, hideSessionManagement
+- `dashboard/page.tsx`: shows sessions meetingTime
+- `dashboard/tours/[id]/page.tsx`: completely rewritten for per-session booking
+- `dashboard/tours/[id]/dashboard.booking.ts`: sessionId param added
+- `dashboard/bookings/page.tsx`: uses `MyTourBookingEntry`
+- `hooks/use-my-bookings.ts`: updated to `MyTourBookingEntry`
+- `messages/en.json` + `ja.json`: session strings added
+- All affected tests updated
 
 ### Open
+- `prisma db push` not yet run (needs Docker)
 - PR not yet created
 
 ## Next Phase

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import BookingHistoryPage from './page'
-import type { MyBookingEntry } from '@peace-buddy/types'
+import type { MyTourBookingEntry } from '@peace-buddy/types'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -35,19 +35,21 @@ import { useMyBookings } from '@/hooks/use-my-bookings'
 const mockUseAuth = vi.mocked(useAuth)
 const mockUseMyBookings = vi.mocked(useMyBookings)
 
-const makeEntry = (overrides: Partial<MyBookingEntry> = {}): MyBookingEntry => ({
-  id: 'b1',
+const makeEntry = (overrides: Partial<MyTourBookingEntry> = {}): MyTourBookingEntry => ({
   tourId: 't1',
-  status: 'confirmed',
-  bookedAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-  tour: {
-    tourDate: '2099-06-01T00:00:00.000Z',
+  tourDate: '2099-06-01T00:00:00.000Z',
+  location: 'Tokyo Station',
+  status: 'published',
+  group: { name: 'Test School' },
+  bookings: [{
+    bookingId: 'b1',
+    sessionId: 's1',
+    sessionOrder: 1,
+    sessionLabel: null,
     meetingTime: '1970-01-01T09:00:00.000Z',
-    location: 'Tokyo Station',
-    group: { name: 'Test School' },
-    status: 'published',
-  },
+    bookingStatus: 'confirmed',
+    bookedAt: '2026-01-01T00:00:00.000Z',
+  }],
   ...overrides,
 })
 
@@ -85,7 +87,7 @@ describe('BookingHistoryPage', () => {
   })
 
   it('places future tour in upcoming section', async () => {
-    const entry = makeEntry({ tour: { ...makeEntry().tour, tourDate: '2099-06-01T00:00:00.000Z' } })
+    const entry = makeEntry({ tourDate: '2099-06-01T00:00:00.000Z' })
     mockUseMyBookings.mockReturnValue({ bookings: [entry], error: false })
     render(<BookingHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
@@ -94,7 +96,7 @@ describe('BookingHistoryPage', () => {
   })
 
   it('places past tour in past section', async () => {
-    const entry = makeEntry({ tour: { ...makeEntry().tour, tourDate: '2020-01-01T00:00:00.000Z' } })
+    const entry = makeEntry({ tourDate: '2020-01-01T00:00:00.000Z' })
     mockUseMyBookings.mockReturnValue({ bookings: [entry], error: false })
     render(<BookingHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
@@ -102,7 +104,7 @@ describe('BookingHistoryPage', () => {
     expect(screen.queryByText('noPast')).not.toBeInTheDocument()
   })
 
-  it('renders tour date, meeting time, and location', async () => {
+  it('renders tour date and location', async () => {
     mockUseMyBookings.mockReturnValue({ bookings: [makeEntry()], error: false })
     render(<BookingHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
