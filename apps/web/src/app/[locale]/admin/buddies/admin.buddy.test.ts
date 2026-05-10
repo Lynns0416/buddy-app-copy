@@ -140,6 +140,7 @@ const booking = (overrides: {
   sessionLabel: null,
   status: overrides.status ?? 'confirmed',
   bookedAt: '2026-01-01T00:00:00Z',
+  cancellationReason: null,
   tour: {
     tourDate: overrides.tourDate ?? '2026-05-01T00:00:00.000Z',
     location: 'Hall',

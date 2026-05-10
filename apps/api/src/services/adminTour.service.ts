@@ -14,6 +14,7 @@ import type {
   TourAction,
   GroupType,
   BookingStatus,
+  CancellationReasonResponse,
 } from '@peace-buddy/types'
 
 export class TourNotFoundError extends Error {
@@ -248,6 +249,16 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
           status: true,
           bookedAt: true,
           session: { select: { order: true, label: true } },
+          cancellationReason: {
+            select: {
+              id: true,
+              category: true,
+              freeText: true,
+              unavoidable: true,
+              createdAt: true,
+              recorder: { select: { email: true } },
+            },
+          },
         },
         orderBy: [{ session: { order: 'asc' } }, { bookedAt: 'asc' }],
       },
@@ -278,16 +289,30 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
     notificationOffsets: row.notificationOffsets,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    bookings: row.bookings.map((b) => ({
-      id: b.id,
-      buddyId: b.buddyId,
-      sessionId: b.sessionId,
-      sessionOrder: b.session.order,
-      sessionLabel: b.session.label,
-      displayName: b.buddy.displayName,
-      status: b.status as BookingStatus,
-      bookedAt: b.bookedAt.toISOString(),
-    })),
+    bookings: row.bookings.map((b) => {
+      const cr = b.cancellationReason
+      const cancellationReason: CancellationReasonResponse | null = cr
+        ? {
+            id: cr.id,
+            category: cr.category as CancellationReasonResponse['category'],
+            freeText: cr.freeText,
+            unavoidable: cr.unavoidable,
+            recordedBy: { email: cr.recorder.email },
+            createdAt: cr.createdAt.toISOString(),
+          }
+        : null
+      return {
+        id: b.id,
+        buddyId: b.buddyId,
+        sessionId: b.sessionId,
+        sessionOrder: b.session.order,
+        sessionLabel: b.session.label,
+        displayName: b.buddy.displayName,
+        status: b.status as BookingStatus,
+        bookedAt: b.bookedAt.toISOString(),
+        cancellationReason,
+      }
+    }),
   }
 }
 

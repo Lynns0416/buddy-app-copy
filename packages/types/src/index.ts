@@ -332,6 +332,7 @@ export type AdminBuddyBookingEntry = {
   sessionLabel: string | null
   status: BookingStatus
   bookedAt: string
+  cancellationReason: CancellationReasonResponse | null
   tour: {
     tourDate: string
     location: string
@@ -342,6 +343,7 @@ export type AdminBuddyBookingEntry = {
 
 export type AdminBuddyDetailResponse = AdminBuddyResponse & {
   bookings: AdminBuddyBookingEntry[]
+  cancellationSummary: CancellationSummary
 }
 
 // Sanitized response — no admin-only fields
@@ -375,10 +377,29 @@ export type TourDetailResponse = Omit<TourResponse, 'sessions'> & {
 export const CancellationReasonBodySchema = z.object({
   category: CancellationCategorySchema,
   freeText: z.string().optional(),
-  unavoidable: z.boolean(),
 })
 export type CancellationReasonBody = z.infer<typeof CancellationReasonBodySchema>
 
+export const AdminUpdateCancellationSchema = z.object({
+  unavoidable: z.boolean().nullable(),
+})
+export type AdminUpdateCancellation = z.infer<typeof AdminUpdateCancellationSchema>
+
+export type CancellationReasonResponse = {
+  id: string
+  category: CancellationCategory
+  freeText: string | null
+  unavoidable: boolean | null
+  recordedBy: { email: string }
+  createdAt: string
+}
+
+export type CancellationSummary = {
+  total: number
+  unavoidable: number
+  avoidable: number
+  unreviewed: number
+}
 
 export const UpdateBookingBodySchema = z.object({
   status: z.enum(['confirmed', 'maybe', 'waitlist', 'declined']),
@@ -405,6 +426,7 @@ export type AdminTourBookingEntry = {
   displayName: string
   status: BookingStatus
   bookedAt: string
+  cancellationReason: CancellationReasonResponse | null
 }
 
 export type AdminTourSummaryResponse = {

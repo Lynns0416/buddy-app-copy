@@ -379,7 +379,7 @@ describe('PUT /tours/:tourId/sessions/:sessionId/bookings/me', () => {
   })
 
   it('passes sessionId, userId, status, and reason to updateBooking', async () => {
-    const reason = { category: 'health', unavoidable: false }
+    const reason = { category: 'health' }
     mockUpdateBooking.mockResolvedValueOnce({ ok: true, booking: mockBooking })
     await buildApp().request(`/tours/tour-1/sessions/${SESSION_ID}/bookings/me`, {
       method: 'PUT',

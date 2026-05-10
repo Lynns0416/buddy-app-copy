@@ -4,8 +4,8 @@ import { routes } from './index'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
 import type { AuthEnv } from '../types'
-import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from '../services/admin.service'
-import type { AdminBuddyResponse, AdminBuddyDetailResponse } from '@peace-buddy/types'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason } from '../services/admin.service'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, CancellationReasonResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -20,6 +20,7 @@ vi.mock('../services/admin.service', () => ({
   updateBuddyStatus: vi.fn(),
   getBuddyDetail: vi.fn(),
   updateBuddyProfile: vi.fn(),
+  updateCancellationReason: vi.fn(),
 }))
 
 vi.mock('../services/group.service', () => ({
@@ -83,6 +84,7 @@ const mockListBuddies = vi.mocked(listBuddies)
 const mockUpdateBuddyStatus = vi.mocked(updateBuddyStatus)
 const mockGetBuddyDetail = vi.mocked(getBuddyDetail)
 const mockUpdateBuddyProfile = vi.mocked(updateBuddyProfile)
+const mockUpdateCancellationReason = vi.mocked(updateCancellationReason)
 
 function buildApp(role: string) {
   const app = new Hono<AuthEnv>()
@@ -304,6 +306,70 @@ describe('PUT /admin/buddies/:id/status', () => {
   it('returns 400 for non-JSON body', async () => {
     const res = await buildApp('admin').request('/admin/buddies/profile-1/status', {
       method: 'PUT',
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
+  })
+})
+
+describe('PATCH /admin/bookings/:bookingId/cancellation-reason', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const mockReason: CancellationReasonResponse = {
+    id: 'cr-1',
+    category: 'health',
+    freeText: null,
+    unavoidable: true,
+    recordedBy: { email: 'admin@example.com' },
+    createdAt: new Date('2026-03-01').toISOString(),
+  }
+
+  it('returns updated reason with unavoidable: true', async () => {
+    mockUpdateCancellationReason.mockResolvedValueOnce(mockReason)
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/cancellation-reason', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unavoidable: true }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateCancellationReason).toHaveBeenCalledWith('booking-1', true)
+    const body = await res.json() as CancellationReasonResponse
+    expect(body.unavoidable).toBe(true)
+  })
+
+  it('accepts unavoidable: null', async () => {
+    mockUpdateCancellationReason.mockResolvedValueOnce({ ...mockReason, unavoidable: null })
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/cancellation-reason', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unavoidable: null }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateCancellationReason).toHaveBeenCalledWith('booking-1', null)
+  })
+
+  it('returns 404 when cancellation reason not found', async () => {
+    mockUpdateCancellationReason.mockResolvedValueOnce(null)
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/cancellation-reason', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unavoidable: false }),
+    })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 400 for missing unavoidable field', async () => {
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/cancellation-reason', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for non-JSON body', async () => {
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/cancellation-reason', {
+      method: 'PATCH',
       body: 'not json',
     })
     expect(res.status).toBe(400)

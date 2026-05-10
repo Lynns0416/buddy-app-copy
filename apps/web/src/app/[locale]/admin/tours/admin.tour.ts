@@ -1,4 +1,4 @@
-import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession, CancellationReasonResponse } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -171,6 +171,14 @@ export async function updateTourSession(tourId: string, sessionId: string, data:
 export async function removeTourSession(tourId: string, sessionId: string): Promise<ActionResult<AdminTourDetailResponse>> {
   try {
     return { ok: true, data: await apiClient.deleteAdminTourSession(tourId, sessionId) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function updateCancellationReason(bookingId: string, unavoidable: boolean | null): Promise<ActionResult<CancellationReasonResponse>> {
+  try {
+    return { ok: true, data: await apiClient.updateCancellationReason(bookingId, unavoidable) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }

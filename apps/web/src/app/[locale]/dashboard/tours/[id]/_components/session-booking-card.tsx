@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Clock, Users } from 'lucide-react'
-import { createInitialBooking, updateBookingStatus, mapErrorToI18nKey } from '../dashboard.booking'
+import { createInitialBooking, updateBookingStatus, reportCantGo, mapErrorToI18nKey } from '../dashboard.booking'
 import { CANCEL_CATEGORIES } from '../../../lib/constants'
 import { isPastDeadline, canSelectMaybeStatus, isBookingAllowed } from '../../../lib/deadline'
 import { getBookingStatusLabel, bookingStatusBadgeVariant } from '@/lib/status-display'
@@ -46,7 +46,9 @@ export function SessionBookingCard({
   const [cancelRequested, setCancelRequested] = useState(false)
   const [cancelCategory, setCancelCategory] = useState<CancellationCategory | ''>('')
   const [cancelFreeText, setCancelFreeText] = useState('')
-  const [cancelUnavoidable, setCancelUnavoidable] = useState(false)
+  const [cantGoRequested, setCantGoRequested] = useState(false)
+  const [cantGoCategory, setCantGoCategory] = useState<CancellationCategory | ''>('')
+  const [cantGoFreeText, setCantGoFreeText] = useState('')
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const isPastCancellationDeadline = isPastDeadline(todayStr, cancellationDeadline)
@@ -87,7 +89,6 @@ export function SessionBookingCard({
     const reason: CancellationReasonBody = {
       category: cancelCategory as CancellationCategory,
       freeText: cancelFreeText.trim() || undefined,
-      unavoidable: cancelUnavoidable,
     }
     setActing(true)
     setActionError(null)
@@ -98,6 +99,23 @@ export function SessionBookingCard({
     } else {
       const key = mapErrorToI18nKey(result.error.code)
       setActionError(t(key))
+    }
+    setActing(false)
+  }
+
+  const handleCantGoConfirmed = async () => {
+    if (!cantGoCategory) return
+    setActing(true)
+    setActionError(null)
+    const result = await reportCantGo(tourId, session.id, {
+      category: cantGoCategory as CancellationCategory,
+      freeText: cantGoFreeText.trim() || undefined,
+    })
+    if (result.ok) {
+      setCantGoRequested(false)
+      await onRefetch()
+    } else {
+      setActionError(t('bookingError'))
     }
     setActing(false)
   }
@@ -164,7 +182,46 @@ export function SessionBookingCard({
 
       {tourStatus !== TourStatusSchema.enum.cancelled && tourStatus !== TourStatusSchema.enum.completed && (
         <div className="mt-3">
-          {cancelRequested ? (
+          {cantGoRequested ? (
+            <div className="space-y-3 rounded-md border p-3">
+              <h4 className="text-sm font-semibold">{t('cantGoTitle')}</h4>
+              <div className="space-y-1">
+                <Label htmlFor={`cantgo-category-${session.id}`}>{t('cancelReasonCategory')}</Label>
+                <Select value={cantGoCategory} onValueChange={(v) => setCantGoCategory(v as CancellationCategory)}>
+                  <SelectTrigger id={`cantgo-category-${session.id}`}>
+                    <SelectValue placeholder={t('cancelReasonCategoryPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CANCEL_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cancelCategoryLabel[cat]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`cantgo-freetext-${session.id}`}>{t('cancelReasonFreeText')}</Label>
+                <Textarea
+                  id={`cantgo-freetext-${session.id}`}
+                  value={cantGoFreeText}
+                  onChange={(e) => setCantGoFreeText(e.target.value)}
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={!cantGoCategory || acting}
+                  onClick={() => void handleCantGoConfirmed()}
+                >
+                  {t('cantGoSubmit')}
+                </Button>
+                <Button variant="outline" size="sm" disabled={acting} onClick={() => setCantGoRequested(false)}>
+                  {t('cancelReasonBack')}
+                </Button>
+              </div>
+            </div>
+          ) : cancelRequested ? (
             <div className="space-y-3 rounded-md border p-3">
               <h4 className="text-sm font-semibold">{t('cancelReasonTitle')}</h4>
               <div className="space-y-1">
@@ -189,15 +246,6 @@ export function SessionBookingCard({
                   rows={2}
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={cancelUnavoidable}
-                  onChange={(e) => setCancelUnavoidable(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                {t('cancelReasonUnavoidable')}
-              </label>
               <div className="flex gap-2">
                 <Button
                   variant="destructive"
@@ -256,6 +304,19 @@ export function SessionBookingCard({
                   disabled={acting}
                 >
                   {t('cancelBooking')}
+                </Button>
+              )}
+              {isPastCancellationDeadline &&
+                session.myBookingStatus !== null &&
+                session.myBookingStatus !== BookingStatusSchema.enum.declined && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setCantGoRequested(true)}
+                  disabled={acting}
+                >
+                  {t('cantGo')}
                 </Button>
               )}
             </div>

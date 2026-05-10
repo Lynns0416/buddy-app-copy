@@ -305,7 +305,7 @@ describe('TourDetailPage', () => {
         'tour-1',
         'session-1',
         'declined',
-        expect.objectContaining({ category: 'health', unavoidable: false }),
+        expect.objectContaining({ category: 'health' }),
       )
     )
   })

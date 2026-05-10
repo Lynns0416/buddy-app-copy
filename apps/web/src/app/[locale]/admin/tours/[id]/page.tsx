@@ -7,29 +7,17 @@ import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
 import { TourStatusSchema, TourActionSchema, AppErrorCodeSchema, BookingStatusSchema } from '@peace-buddy/types'
-import type { AdminTourDetailResponse, TourAction, BookingStatus, AppError } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, TourAction, AppError } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SortIcon } from '@/components/sort-icon'
-import {
-  sortBookings, nextBookingSort, fetchTour, transitionTour, toggleTourBooking, deleteTour,
-  removeTourSession,
-  type BookingSortField,
-} from '../admin.tour'
-import { getTourStatusLabel, getBookingStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
+import { fetchTour, transitionTour, toggleTourBooking, deleteTour, removeTourSession } from '../admin.tour'
+import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
+import { TourBookingsTable } from '../_components/tour-bookings-table'
 import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
 import { CompleteTourModal } from '../_components/complete-tour-modal'
 import { TierCapacityForm } from '../_components/tier-capacity-form'
 import { AddSessionForm } from '../_components/add-session-form'
-
-const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
-  confirmed: 'bg-green-100 text-green-800 border-green-200',
-  maybe: 'bg-amber-100 text-amber-800 border-amber-200',
-  waitlist: 'bg-blue-100 text-blue-800 border-blue-200',
-  declined: 'bg-slate-100 text-slate-700 border-slate-200',
-}
 
 export default function AdminTourDetailPage() {
   const { ready, locale } = useAdminGuard()
@@ -37,7 +25,6 @@ export default function AdminTourDetailPage() {
   const { id } = useParams<{ id: string }>()
   const t = useTranslations('adminTours')
   const tTourStatus = useTranslations('tourStatus')
-  const tBookingStatus = useTranslations('bookingStatus')
   const tEval = useTranslations('adminEvaluations')
   const [tour, setTour] = useState<AdminTourDetailResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -45,14 +32,6 @@ export default function AdminTourDetailPage() {
   const [acting, setActing] = useState(false)
   const [completeModalOpen, setCompleteModalOpen] = useState(false)
   const [showAddSession, setShowAddSession] = useState(false)
-  const [bookingSortField, setBookingSortField] = useState<BookingSortField>('bookedAt')
-  const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc')
-
-  function handleBookingSort(field: BookingSortField) {
-    const next = nextBookingSort({ field: bookingSortField, dir: bookingSortDir }, field)
-    setBookingSortField(next.field)
-    setBookingSortDir(next.dir)
-  }
 
   function errorMessage(error: AppError): string {
     switch (error.code) {
@@ -310,62 +289,7 @@ export default function AdminTourDetailPage() {
 
       {/* Bookings */}
       <h2 className="mb-3 text-base font-semibold">{t('bookings')}</h2>
-      {tour.bookings.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('noBookings')}</p>
-      ) : (
-        <div className="rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <button
-                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                    onClick={() => handleBookingSort('displayName')}
-                  >
-                    {t('buddyName')}
-                    <SortIcon active={bookingSortField === 'displayName'} dir={bookingSortDir} />
-                  </button>
-                </TableHead>
-                <TableHead>{t('bookingSession')}</TableHead>
-                <TableHead>
-                  <button
-                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                    onClick={() => handleBookingSort('status')}
-                  >
-                    {t('bookingStatus')}
-                    <SortIcon active={bookingSortField === 'status'} dir={bookingSortDir} />
-                  </button>
-                </TableHead>
-                <TableHead>
-                  <button
-                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                    onClick={() => handleBookingSort('bookedAt')}
-                  >
-                    {t('bookedAt')}
-                    <SortIcon active={bookingSortField === 'bookedAt'} dir={bookingSortDir} />
-                  </button>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortBookings(tour.bookings, bookingSortField, bookingSortDir).map((b) => (
-                <TableRow key={b.id}>
-                  <TableCell className="font-medium">{b.displayName}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {b.sessionLabel ?? (tour.sessions.length > 1 ? t(`session.defaultLabel.${b.sessionOrder}`) : null)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={BOOKING_STATUS_CLASS[b.status]}>{getBookingStatusLabel(tBookingStatus, b.status)}</Badge>
-                  </TableCell>
-                  <TableCell className="tabular-nums text-sm text-muted-foreground">
-                    {new Date(b.bookedAt).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      <TourBookingsTable bookings={tour.bookings} totalSessions={tour.sessions.length} />
 
       {tour.status === TourStatusSchema.enum.completed && (
         <>

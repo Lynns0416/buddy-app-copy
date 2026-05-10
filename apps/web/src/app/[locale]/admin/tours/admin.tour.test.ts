@@ -181,6 +181,7 @@ const booking = (overrides: Partial<AdminTourDetailResponse['bookings'][0]>): Ad
   displayName: 'Alice',
   status: 'confirmed',
   bookedAt: '2025-01-01T00:00:00Z',
+  cancellationReason: null,
   ...overrides,
 })
 

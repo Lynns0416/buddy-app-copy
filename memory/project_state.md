@@ -39,7 +39,6 @@ originSessionId: b4422d44-5a3d-4967-9db8-c9ddd4f1ed06
 - All affected tests updated
 
 ### Open
-- `prisma db push` not yet run (needs Docker)
 - PR not yet created
 
 ## Next Phase

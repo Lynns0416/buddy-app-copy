@@ -37,6 +37,19 @@ export async function updateBookingStatus(
   }
 }
 
+export async function reportCantGo(
+  tourId: string,
+  sessionId: string,
+  data: CancellationReasonBody,
+): Promise<BookingActionResult> {
+  try {
+    await apiClient.reportCantGo(tourId, sessionId, data)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
 export function mapErrorToI18nKey(code: AppErrorCode): string {
   switch (code) {
     case 'conflict':

@@ -1,4 +1,4 @@
-import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile, AppError } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile, AppError, CancellationReasonResponse } from '@peace-buddy/types'
 import { AppErrorCodeSchema, BuddyStatusSchema } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
@@ -111,6 +111,14 @@ export async function fetchBuddy(id: string): Promise<ActionResult<AdminBuddyDet
 export async function updateBuddy(id: string, data: UpdateAdminBuddyProfile): Promise<ActionResult<AdminBuddyResponse>> {
   try {
     return { ok: true, data: await apiClient.updateBuddy(id, data) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function updateCancellationReason(bookingId: string, unavoidable: boolean | null): Promise<ActionResult<CancellationReasonResponse>> {
+  try {
+    return { ok: true, data: await apiClient.updateCancellationReason(bookingId, unavoidable) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }

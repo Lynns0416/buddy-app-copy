@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Mock } from 'vitest'
-import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile } from './admin.service'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason } from './admin.service'
 
 type MockFn = Mock<(...args: unknown[]) => unknown>
 interface MockDb {
   buddyProfile: { findMany: MockFn; findUnique: MockFn; update: MockFn }
+  cancellationReason: { update: MockFn }
 }
 
 vi.mock('../lib/db', () => ({
@@ -12,6 +13,9 @@ vi.mock('../lib/db', () => ({
     buddyProfile: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    cancellationReason: {
       update: vi.fn(),
     },
   },
@@ -43,6 +47,7 @@ const mockRawWithBookings = {
       session: { order: 1, label: null },
       status: 'confirmed',
       bookedAt: new Date('2026-03-01'),
+      cancellationReason: null,
       tour: {
         tourDate: new Date('2026-05-01'),
         location: 'Main Hall',
@@ -121,6 +126,88 @@ describe('getBuddyDetail', () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(null)
     const result = await getBuddyDetail('missing')
     expect(result).toBeNull()
+  })
+
+  it('returns cancellationSummary with zero counts when no bookings have reasons', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockRawWithBookings as unknown)
+    const result = await getBuddyDetail('profile-1')
+    expect(result!.cancellationSummary).toEqual({ total: 0, unavoidable: 0, avoidable: 0, unreviewed: 0 })
+  })
+
+  it('computes cancellationSummary correctly across mixed unavoidable values', async () => {
+    const rawWithReasons = {
+      ...mockRaw,
+      bookings: [
+        {
+          id: 'b-1', tourId: 'tour-1', sessionId: 's-1',
+          session: { order: 1, label: null }, status: 'declined',
+          bookedAt: new Date('2026-03-01'),
+          cancellationReason: { id: 'cr-1', category: 'health', freeText: null, unavoidable: true, createdAt: new Date(), recorder: { email: 'a@a.com' } },
+          tour: { tourDate: new Date('2026-05-01'), location: 'Hall', status: 'completed', group: { name: 'G' } },
+        },
+        {
+          id: 'b-2', tourId: 'tour-2', sessionId: 's-2',
+          session: { order: 1, label: null }, status: 'declined',
+          bookedAt: new Date('2026-04-01'),
+          cancellationReason: { id: 'cr-2', category: 'personal', freeText: null, unavoidable: false, createdAt: new Date(), recorder: { email: 'a@a.com' } },
+          tour: { tourDate: new Date('2026-06-01'), location: 'Hall', status: 'completed', group: { name: 'G' } },
+        },
+        {
+          id: 'b-3', tourId: 'tour-3', sessionId: 's-3',
+          session: { order: 1, label: null }, status: 'declined',
+          bookedAt: new Date('2026-04-15'),
+          cancellationReason: { id: 'cr-3', category: 'work', freeText: null, unavoidable: null, createdAt: new Date(), recorder: { email: 'a@a.com' } },
+          tour: { tourDate: new Date('2026-07-01'), location: 'Hall', status: 'completed', group: { name: 'G' } },
+        },
+      ],
+    }
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(rawWithReasons as unknown)
+    const result = await getBuddyDetail('profile-1')
+    expect(result!.cancellationSummary).toEqual({ total: 3, unavoidable: 1, avoidable: 1, unreviewed: 1 })
+  })
+})
+
+describe('updateCancellationReason', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const mockCrRaw = {
+    id: 'cr-1',
+    category: 'health',
+    freeText: null,
+    unavoidable: true,
+    createdAt: new Date('2026-03-01'),
+    recorder: { email: 'admin@example.com' },
+  }
+
+  it('returns updated reason on success', async () => {
+    mdb.cancellationReason.update.mockResolvedValueOnce(mockCrRaw as unknown)
+    const result = await updateCancellationReason('booking-1', true)
+    expect(mdb.cancellationReason.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { bookingId: 'booking-1' }, data: { unavoidable: true } })
+    )
+    expect(result).not.toBeNull()
+    expect(result!.unavoidable).toBe(true)
+    expect(result!.recordedBy.email).toBe('admin@example.com')
+  })
+
+  it('accepts null for unavoidable', async () => {
+    mdb.cancellationReason.update.mockResolvedValueOnce({ ...mockCrRaw, unavoidable: null } as unknown)
+    const result = await updateCancellationReason('booking-1', null)
+    expect(mdb.cancellationReason.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { unavoidable: null } })
+    )
+    expect(result!.unavoidable).toBeNull()
+  })
+
+  it('returns null on P2025 (booking has no cancellation reason)', async () => {
+    mdb.cancellationReason.update.mockRejectedValueOnce({ code: 'P2025' })
+    const result = await updateCancellationReason('booking-1', false)
+    expect(result).toBeNull()
+  })
+
+  it('rethrows non-P2025 errors', async () => {
+    mdb.cancellationReason.update.mockRejectedValueOnce(new Error('db failure'))
+    await expect(updateCancellationReason('booking-1', true)).rejects.toThrow('db failure')
   })
 })
 

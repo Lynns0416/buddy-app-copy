@@ -1,5 +1,5 @@
 import { db } from '../lib/db'
-import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
 const adminBuddySelect = {
@@ -53,6 +53,16 @@ const adminBuddyDetailSelect = {
       sessionId: true,
       status: true,
       bookedAt: true,
+      cancellationReason: {
+        select: {
+          id: true,
+          category: true,
+          freeText: true,
+          unavoidable: true,
+          createdAt: true,
+          recorder: { select: { email: true } },
+        },
+      },
       session: {
         select: {
           order: true,
@@ -79,9 +89,19 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
   })
   if (!raw) return null
   const { bookings, ...rest } = raw
-  return {
-    ...mapBuddy(rest),
-    bookings: bookings.map((b) => ({
+  const mappedBookings = bookings.map((b) => {
+    const cr = b.cancellationReason
+    const cancellationReason: CancellationReasonResponse | null = cr
+      ? {
+          id: cr.id,
+          category: cr.category as CancellationReasonResponse['category'],
+          freeText: cr.freeText,
+          unavoidable: cr.unavoidable,
+          recordedBy: { email: cr.recorder.email },
+          createdAt: cr.createdAt.toISOString(),
+        }
+      : null
+    return {
       id: b.id,
       tourId: b.tourId,
       sessionId: b.sessionId,
@@ -89,13 +109,59 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
       sessionLabel: b.session.label,
       status: b.status as BookingStatus,
       bookedAt: b.bookedAt.toISOString(),
+      cancellationReason,
       tour: {
         tourDate: b.tour.tourDate.toISOString(),
         location: b.tour.location,
         status: b.tour.status as TourStatus,
         group: { name: b.tour.group.name },
       },
-    })),
+    }
+  })
+  const reasons = mappedBookings
+    .map((b) => b.cancellationReason)
+    .filter((cr): cr is CancellationReasonResponse => cr !== null)
+  const cancellationSummary: CancellationSummary = {
+    total: reasons.length,
+    unavoidable: reasons.filter((cr) => cr.unavoidable === true).length,
+    avoidable: reasons.filter((cr) => cr.unavoidable === false).length,
+    unreviewed: reasons.filter((cr) => cr.unavoidable === null).length,
+  }
+  return {
+    ...mapBuddy(rest),
+    bookings: mappedBookings,
+    cancellationSummary,
+  }
+}
+
+export async function updateCancellationReason(
+  bookingId: string,
+  unavoidable: boolean | null,
+): Promise<CancellationReasonResponse | null> {
+  try {
+    const updated = await db.cancellationReason.update({
+      where: { bookingId },
+      data: { unavoidable },
+      select: {
+        id: true,
+        category: true,
+        freeText: true,
+        unavoidable: true,
+        createdAt: true,
+        recorder: { select: { email: true } },
+      },
+    })
+    return {
+      id: updated.id,
+      category: updated.category as CancellationReasonResponse['category'],
+      freeText: updated.freeText,
+      unavoidable: updated.unavoidable,
+      recordedBy: { email: updated.recorder.email },
+      createdAt: updated.createdAt.toISOString(),
+    }
+  } catch (e) {
+    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
+    throw e
   }
 }
 

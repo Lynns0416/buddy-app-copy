@@ -13,6 +13,10 @@ type UpdateBookingResult =
   | { ok: true; booking: BookingResponse }
   | { ok: false; code: 'NOT_FOUND' | 'TOUR_FULL' | 'BUDDY_NOT_FOUND' | 'DEADLINE_PASSED' | 'MAYBE_DEADLINE_PASSED' | 'REASON_REQUIRED' }
 
+type ReportCantGoResult =
+  | { ok: true; booking: BookingResponse }
+  | { ok: false; code: 'NOT_FOUND' | 'BUDDY_NOT_FOUND' | 'DEADLINE_NOT_PASSED' | 'INVALID_STATUS' }
+
 const bookingSelect = {
   id: true,
   tourId: true,
@@ -238,11 +242,77 @@ export async function updateBooking(
           bookingId: booking.id,
           category: reason.category as PrismaCancellationCategory,
           freeText: reason.freeText,
-          unavoidable: reason.unavoidable,
+          unavoidable: false,
           recordedBy: userId,
         },
       })
     }
+    await promoteWaitlist(sessionId, session.capacity, booking.buddyTier as BuddyTier)
+  }
+
+  return { ok: true, booking: mapBooking(updated) }
+}
+
+export async function reportCantGo(
+  tourId: string,
+  sessionId: string,
+  userId: string,
+  body: CancellationReasonBody,
+): Promise<ReportCantGoResult> {
+  const [buddy, session] = await Promise.all([
+    db.buddyProfile.findUnique({ where: { userId }, select: { id: true } }),
+    db.tourSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        tourId: true,
+        capacity: true,
+        tour: { select: { cancellationDeadline: true } },
+      },
+    }),
+  ])
+  if (!buddy) return { ok: false, code: 'BUDDY_NOT_FOUND' }
+  if (!session || session.tourId !== tourId) return { ok: false, code: 'NOT_FOUND' }
+
+  if (localDateStr(new Date()) < localDateStr(session.tour.cancellationDeadline)) {
+    return { ok: false, code: 'DEADLINE_NOT_PASSED' }
+  }
+
+  const booking = await db.booking.findUnique({
+    where: { buddyId_sessionId: { buddyId: buddy.id, sessionId } },
+    select: { id: true, status: true, buddyTier: true },
+  })
+  if (!booking) return { ok: false, code: 'NOT_FOUND' }
+
+  const validStatuses: PrismaBookingStatus[] = [
+    PrismaBookingStatus.confirmed,
+    PrismaBookingStatus.maybe,
+    PrismaBookingStatus.waitlist,
+  ]
+  if (!validStatuses.includes(booking.status)) {
+    return { ok: false, code: 'INVALID_STATUS' }
+  }
+
+  const wasConfirmed = booking.status === PrismaBookingStatus.confirmed
+
+  const [updated] = await db.$transaction([
+    db.booking.update({
+      where: { id: booking.id },
+      data: { status: PrismaBookingStatus.declined },
+      select: bookingSelect,
+    }),
+    db.cancellationReason.create({
+      data: {
+        bookingId: booking.id,
+        category: body.category as PrismaCancellationCategory,
+        freeText: body.freeText,
+        unavoidable: false,
+        recordedBy: userId,
+      },
+    }),
+  ])
+
+  if (wasConfirmed) {
     await promoteWaitlist(sessionId, session.capacity, booking.buddyTier as BuddyTier)
   }
 

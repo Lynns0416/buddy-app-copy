@@ -51,7 +51,7 @@ export function TierCapacityForm({ tourId, sessionId, sessionOrder, sessionLabel
 
   function handleChange(pool: typeof POOLS[number], value: string) {
     const n = parseInt(value, 10)
-    setPercents((prev) => ({ ...prev, [pool]: isNaN(n) ? 0 : n }))
+    setPercents((prev: Record<typeof POOLS[number], number>) => ({ ...prev, [pool]: isNaN(n) ? 0 : n }))
     setSaved(false)
     setError(null)
   }

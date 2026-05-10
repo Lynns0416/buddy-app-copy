@@ -9,10 +9,12 @@ export const apiPaths = {
   tour: (id: string) => `/tours/${id}`,
   tourBookings: (tourId: string) => `/tours/${tourId}/bookings`,
   tourSessionBookingMe: (tourId: string, sessionId: string) => `/tours/${tourId}/sessions/${sessionId}/bookings/me`,
+  tourSessionCantGo: (tourId: string, sessionId: string) => `/tours/${tourId}/sessions/${sessionId}/bookings/me/cant-go`,
 
   adminBuddies: '/admin/buddies',
   adminBuddy: (id: string) => `/admin/buddies/${id}`,
   adminBuddyStatus: (id: string) => `/admin/buddies/${id}/status`,
+  adminBookingCancellationReason: (bookingId: string) => `/admin/bookings/${bookingId}/cancellation-reason`,
 
   adminGroups: '/admin/groups',
   adminGroup: (id: string) => `/admin/groups/${id}`,

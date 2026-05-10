@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { TourStatusSchema, UpdateBookingBodySchema } from '@peace-buddy/types'
+import { TourStatusSchema, UpdateBookingBodySchema, CancellationReasonBodySchema } from '@peace-buddy/types'
 import { listTours, getTour } from '../services/tour.service'
-import { createBooking, updateBooking } from '../services/booking.service'
+import { createBooking, updateBooking, reportCantGo } from '../services/booking.service'
 import type { AuthEnv } from '../types'
 
 const ToursQuerySchema = z.object({
@@ -80,6 +80,27 @@ tourRoutes.put('/:tourId/sessions/:sessionId/bookings/me', async (c) => {
     if (result.code === 'MAYBE_DEADLINE_PASSED') return c.json({ error: 'Maybe deadline has passed' }, 422)
     if (result.code === 'REASON_REQUIRED') return c.json({ error: 'Cancellation reason required' }, 400)
     return c.json({ error: 'Buddy profile not found' }, 422)
+  }
+  return c.json(result.booking)
+})
+
+tourRoutes.post('/:tourId/sessions/:sessionId/bookings/me/cant-go', async (c) => {
+  const tourId = c.req.param('tourId')
+  const sessionId = c.req.param('sessionId')
+  const userId = c.get('user').id
+  let body
+  try {
+    body = CancellationReasonBodySchema.parse(await c.req.json())
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400)
+  }
+  const result = await reportCantGo(tourId, sessionId, userId, body)
+  if (!result.ok) {
+    if (result.code === 'NOT_FOUND') return c.json({ error: 'Booking not found' }, 404)
+    if (result.code === 'BUDDY_NOT_FOUND') return c.json({ error: 'Buddy profile not found' }, 404)
+    if (result.code === 'DEADLINE_NOT_PASSED') return c.json({ error: 'Cancellation deadline has not passed yet' }, 422)
+    if (result.code === 'INVALID_STATUS') return c.json({ error: 'Booking status does not allow this action' }, 422)
+    return c.json({ error: 'Unknown error' }, 500)
   }
   return c.json(result.booking)
 })

@@ -14,6 +14,7 @@ import type {
   BookingResponse,
   UpdateBookingBody,
   CancellationReasonBody,
+  CancellationReasonResponse,
   MyTourBookingEntry,
   BuddyStatus,
   BuddyTier,
@@ -208,6 +209,18 @@ export const apiClient = {
     apiRequest<BookingResponse>(apiPaths.tourSessionBookingMe(tourId, sessionId), {
       method: 'PUT',
       body: JSON.stringify({ status, reason }),
+    }),
+
+  reportCantGo: (tourId: string, sessionId: string, data: CancellationReasonBody) =>
+    apiRequest<BookingResponse>(apiPaths.tourSessionCantGo(tourId, sessionId), {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateCancellationReason: (bookingId: string, unavoidable: boolean | null) =>
+    apiRequest<CancellationReasonResponse>(apiPaths.adminBookingCancellationReason(bookingId), {
+      method: 'PATCH',
+      body: JSON.stringify({ unavoidable }),
     }),
 
   getMyBookings: () =>
