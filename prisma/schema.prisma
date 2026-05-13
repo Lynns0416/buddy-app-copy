@@ -257,6 +257,7 @@ model AdminEvaluation {
   emotionNote         String?
   confidence          Int?
   confidenceNote      String?
+  absentWithoutReport Boolean      @default(false)
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   buddy               BuddyProfile @relation(fields: [buddyId], references: [id])

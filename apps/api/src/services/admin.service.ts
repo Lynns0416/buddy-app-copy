@@ -83,10 +83,10 @@ const adminBuddyDetailSelect = {
 } as const
 
 export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailResponse | null> {
-  const raw = await db.buddyProfile.findUnique({
-    where: { id },
-    select: adminBuddyDetailSelect,
-  })
+  const [raw, absentWithoutReportCount] = await Promise.all([
+    db.buddyProfile.findUnique({ where: { id }, select: adminBuddyDetailSelect }),
+    db.adminEvaluation.count({ where: { buddyId: id, absentWithoutReport: true } }),
+  ])
   if (!raw) return null
   const { bookings, ...rest } = raw
   const mappedBookings = bookings.map((b) => {
@@ -131,6 +131,7 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
     ...mapBuddy(rest),
     bookings: mappedBookings,
     cancellationSummary,
+    absenceSummary: { absentWithoutReport: absentWithoutReportCount },
   }
 }
 

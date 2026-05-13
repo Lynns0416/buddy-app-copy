@@ -344,6 +344,7 @@ export type AdminBuddyBookingEntry = {
 export type AdminBuddyDetailResponse = AdminBuddyResponse & {
   bookings: AdminBuddyBookingEntry[]
   cancellationSummary: CancellationSummary
+  absenceSummary: { absentWithoutReport: number }
 }
 
 // Sanitized response — no admin-only fields
@@ -527,11 +528,15 @@ const selfEvalScoreFields = {
 export const CreateAdminEvaluationSchema = z.object({
   buddyId: z.string().uuid(),
   tourId: z.string().uuid(),
+  absentWithoutReport: z.boolean().optional(),
   ...adminEvalScoreFields,
 })
 export type CreateAdminEvaluation = z.infer<typeof CreateAdminEvaluationSchema>
 
-export const UpdateAdminEvaluationSchema = z.object(adminEvalScoreFields)
+export const UpdateAdminEvaluationSchema = z.object({
+  absentWithoutReport: z.boolean().optional(),
+  ...adminEvalScoreFields,
+})
 export type UpdateAdminEvaluation = z.infer<typeof UpdateAdminEvaluationSchema>
 
 // Admin profile evaluation (overall)
@@ -587,6 +592,7 @@ export type AdminEvaluationResponse = AdminEvalScores & {
   tourGroupName: string
   createdBy: string
   createdByName: string
+  absentWithoutReport: boolean
   createdAt: string
   updatedAt: string
 }

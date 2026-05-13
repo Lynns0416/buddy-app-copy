@@ -90,9 +90,12 @@
     "bookingHistoryEmpty": "No bookings",
     "bookingHistoryCancellationReason": "Cancellation reason",
     "bookingHistoryUnavoidable": "Unavoidable",
-    "cancellationSummary": "Cancellations: {total} total / {unavoidable} unavoidable / {avoidable} avoidable",
+    "absenceSummary": "Absent without report: {count}",
+    "cancellationSummaryTitle": "Cancellations",
+    "cancellationTotal": "Total",
     "unavoidable": "Unavoidable",
     "avoidable": "Avoidable",
+    "unreviewed": "Unreviewed",
     "cancelCategory": {
       "health": "Health",
       "emergency": "Emergency",
@@ -382,7 +385,8 @@
       "adaptabilityNote": "Note",
       "emotionNote": "Emotional Note",
       "confidence": "Confidence",
-      "confidenceNote": "Note"
+      "confidenceNote": "Note",
+      "absentWithoutReport": "Absent without report"
     },
     "scores": {
       "1": "1 – Poor",

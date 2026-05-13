@@ -63,13 +63,24 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
   return (
     <div className="flex flex-col gap-4">
       {cancellationSummary.total > 0 && (
-        <p className="text-sm text-muted-foreground">
-          {t('cancellationSummary', {
-            total: cancellationSummary.total,
-            unavoidable: cancellationSummary.unavoidable,
-            avoidable: cancellationSummary.avoidable,
-          })}
-        </p>
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t('cancellationSummaryTitle')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { value: cancellationSummary.total, label: t('cancellationTotal') },
+              { value: cancellationSummary.unavoidable, label: t('unavoidable') },
+              { value: cancellationSummary.avoidable, label: t('avoidable') },
+              { value: cancellationSummary.unreviewed, label: t('unreviewed') },
+            ] as const).map(({ value, label }) => (
+              <div key={label} className="flex flex-col items-center rounded-md border bg-card px-4 py-2 text-center">
+                <span className="text-xl font-semibold leading-none">{value}</span>
+                <span className="mt-1 text-xs text-muted-foreground">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
       <div className="rounded-lg border bg-card">
         <Table>

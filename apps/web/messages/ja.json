@@ -90,9 +90,12 @@
     "bookingHistoryEmpty": "予約はありません",
     "bookingHistoryCancellationReason": "キャンセル理由",
     "bookingHistoryUnavoidable": "やむを得ない",
-    "cancellationSummary": "キャンセル: 合計{total}件 / やむを得ない{unavoidable}件 / 不可{avoidable}件",
+    "absenceSummary": "無断欠席: {count}件",
+    "cancellationSummaryTitle": "キャンセル",
+    "cancellationTotal": "合計",
     "unavoidable": "やむを得ない",
     "avoidable": "不可",
+    "unreviewed": "未確認",
     "cancelCategory": {
       "health": "体調不良",
       "emergency": "緊急事態",
@@ -382,7 +385,8 @@
       "adaptabilityNote": "メモ",
       "emotionNote": "感情メモ",
       "confidence": "自信",
-      "confidenceNote": "メモ"
+      "confidenceNote": "メモ",
+      "absentWithoutReport": "無断欠席"
     },
     "scores": {
       "1": "1 – 不十分",

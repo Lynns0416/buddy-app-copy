@@ -96,6 +96,11 @@ export default function AdminBuddyDetailPage() {
         <BuddyForm buddy={buddy} />
 
         <h2 className="mt-10 mb-4 text-lg font-semibold">{t('bookingHistoryTitle')}</h2>
+        {buddy.absenceSummary.absentWithoutReport > 0 && (
+          <p className="mb-3 text-sm font-medium text-destructive">
+            {t('absenceSummary', { count: buddy.absenceSummary.absentWithoutReport })}
+          </p>
+        )}
         <BuddyBookingHistory bookings={buddy.bookings} />
 
         <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.profileEvaluation')}</h2>

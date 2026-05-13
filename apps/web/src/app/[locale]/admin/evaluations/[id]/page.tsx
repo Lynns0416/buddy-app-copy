@@ -36,6 +36,7 @@ export default function AdminEvaluationDetailPage() {
   const [ev, setEv] = useState<AdminEvaluationResponse | null>(null)
   const [scores, setScores] = useState<ScoreState>(emptyScores)
   const [notes, setNotes] = useState<NoteState>(emptyNotes)
+  const [absentWithoutReport, setAbsentWithoutReport] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -50,13 +51,14 @@ export default function AdminEvaluationDetailPage() {
       } else if (!result.data) {
         setFetchError(t('error.notFound'))
       } else {
-        const { scores: s, notes: n } = fromResponse(result.data)
+        const { scores: s, notes: n, absentWithoutReport: awr } = fromResponse(result.data)
         setEv(result.data)
         setScores(s)
         setNotes(n)
+        setAbsentWithoutReport(awr)
       }
     })
-  }, [ready, id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, id, t])
 
   function setScore(key: keyof ScoreState, value: number | null) {
     setScores((prev) => ({ ...prev, [key]: value }))
@@ -72,7 +74,7 @@ export default function AdminEvaluationDetailPage() {
     setSaving(true)
     setSaveError(null)
     setSaved(false)
-    const result = await updateAdminEvaluation(ev.id, buildPayload(scores, notes))
+    const result = await updateAdminEvaluation(ev.id, buildPayload(scores, notes, absentWithoutReport))
     setSaving(false)
     if (result.ok) {
       setEv(result.data)
@@ -172,6 +174,17 @@ export default function AdminEvaluationDetailPage() {
               />
             </div>
 
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={absentWithoutReport}
+                disabled={saving}
+                onChange={(e) => setAbsentWithoutReport(e.target.checked)}
+                className="h-4 w-4 rounded border"
+              />
+              {t('fields.absentWithoutReport')}
+            </label>
+
             <Button type="submit" disabled={saving}>{t('actions.save')}</Button>
           </form>
         ) : (
@@ -194,6 +207,9 @@ export default function AdminEvaluationDetailPage() {
                 <p className="text-sm font-medium">{t('fields.emotionNote')}</p>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{notes.emotionNote}</p>
               </div>
+            )}
+            {absentWithoutReport && (
+              <p className="text-sm font-medium text-destructive">{t('fields.absentWithoutReport')}</p>
             )}
           </div>
         )}

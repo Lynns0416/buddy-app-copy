@@ -61,6 +61,7 @@ const adminEvalSelect = {
   emotionNote: true,
   confidence: true,
   confidenceNote: true,
+  absentWithoutReport: true,
   createdAt: true,
   updatedAt: true,
 } as const
@@ -94,6 +95,7 @@ function mapResponse(row: {
   emotionNote: string | null
   confidence: number | null
   confidenceNote: string | null
+  absentWithoutReport: boolean
   createdAt: Date
   updatedAt: Date
 }): AdminEvaluationResponse {
@@ -127,6 +129,7 @@ function mapResponse(row: {
     emotionNote: row.emotionNote,
     confidence: row.confidence,
     confidenceNote: row.confidenceNote,
+    absentWithoutReport: row.absentWithoutReport,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -170,6 +173,7 @@ export async function createAdminEvaluation(
         emotionNote: data.emotionNote ?? null,
         confidence: data.confidence ?? null,
         confidenceNote: data.confidenceNote ?? null,
+        absentWithoutReport: data.absentWithoutReport ?? false,
       },
       select: adminEvalSelect,
     })
@@ -241,6 +245,7 @@ export async function updateAdminEvaluation(
         ...(data.emotionNote !== undefined ? { emotionNote: data.emotionNote ?? null } : {}),
         ...(data.confidence !== undefined ? { confidence: data.confidence ?? null } : {}),
         ...(data.confidenceNote !== undefined ? { confidenceNote: data.confidenceNote ?? null } : {}),
+        ...(data.absentWithoutReport !== undefined ? { absentWithoutReport: data.absentWithoutReport } : {}),
       },
       select: adminEvalSelect,
     })
