@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
 import type { AdminBuddyBookingEntry } from '@peace-buddy/types'
@@ -82,7 +82,78 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
           </div>
         </div>
       )}
-      <div className="rounded-lg border bg-card">
+      {/* Mobile cards */}
+      <div className="lg:hidden space-y-2">
+        <div className="flex flex-wrap gap-2 mb-1">
+          {([
+            { field: 'group' as const, label: t('bookingHistoryGroup') },
+            { field: 'tourDate' as const, label: t('bookingHistoryTourDate') },
+            { field: 'status' as const, label: t('bookingHistoryStatus') },
+          ]).map(({ field, label }) => (
+            <button
+              key={field}
+              className="inline-flex items-center gap-0.5 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => handleSort(field)}
+            >
+              {label}
+              <SortIcon active={sortField === field} dir={sortDir} />
+            </button>
+          ))}
+        </div>
+        {sorted.map((booking) => (
+          <div key={booking.id} className="rounded-lg border bg-card p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <Link
+                  href={routes.adminTourDetail(locale, booking.tourId)}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {booking.tour.group.name}
+                </Link>
+                <p className="tabular-nums text-xs text-muted-foreground">{booking.tour.tourDate.slice(0, 10)}</p>
+              </div>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {getBookingStatusLabel(tBookingStatus, booking.status)}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{booking.tour.location}</p>
+            {booking.cancellationReason && (
+              <div className="mt-2 rounded-md bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+                <p>
+                  <span className="font-medium">{t('bookingHistoryCancellationReason')}:</span>{' '}
+                  {t(`cancelCategory.${booking.cancellationReason.category}`)}
+                  {booking.cancellationReason.freeText && ` — ${booking.cancellationReason.freeText}`}
+                </p>
+                <div className="mt-1 flex gap-3">
+                  <label className="inline-flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="h-3.5 w-3.5"
+                      checked={booking.cancellationReason.unavoidable === true}
+                      disabled={updatingReason === booking.id}
+                      onChange={() => void handleUnavoidableChange(booking.id, true)}
+                    />
+                    {t('unavoidable')}
+                  </label>
+                  <label className="inline-flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="h-3.5 w-3.5"
+                      checked={booking.cancellationReason.unavoidable !== true}
+                      disabled={updatingReason === booking.id}
+                      onChange={() => void handleUnavoidableChange(booking.id, false)}
+                    />
+                    {t('avoidable')}
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -118,8 +189,8 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
           </TableHeader>
           <TableBody>
             {sorted.map((booking) => (
-              <>
-                <TableRow key={booking.id}>
+              <React.Fragment key={booking.id}>
+                <TableRow>
                   <TableCell className="font-medium">
                     <Link
                       href={routes.adminTourDetail(locale, booking.tourId)}
@@ -137,7 +208,7 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
                   </TableCell>
                 </TableRow>
                 {booking.cancellationReason && (
-                  <TableRow key={`${booking.id}-reason`} className="bg-muted/30">
+                  <TableRow className="bg-muted/30">
                     <TableCell colSpan={4} className="py-2 text-xs text-muted-foreground">
                       <div className="flex flex-col gap-1">
                         <span>
@@ -171,7 +242,7 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>
