@@ -58,6 +58,17 @@ Monorepo managed with pnpm workspaces:
 
 See PRD §13 for the full tech stack rationale.
 
+## Responsive Layout Convention
+
+Admin data tables follow a **card-on-mobile, table-on-desktop** pattern with a consistent breakpoint:
+
+- **Below `lg:` (< 1024px):** card list — each row rendered as a tappable card, all fields visible
+- **At `lg:` and above (≥ 1024px):** full table with sortable column headers
+
+Implementation: two sibling elements in the same component — `<div className="lg:hidden …">` (cards) and `<div className="hidden lg:block …">` (table). Sort state is shared; sort controls appear above the card list on mobile.
+
+**All new admin list/detail tables must use `lg:` as the breakpoint.** Using `md:` creates an inconsistent switch point across pages.
+
 ## Request Flow
 
 ```
@@ -167,7 +178,7 @@ See PRD §10 for event types, channels, and delivery mode defaults.
 GitHub PR → GitHub Actions
      ├── Type check (tsc) — web + api + types
      ├── Lint
-     └── (Tests — to be added)
+     └── Tests (Vitest — api)
 
 Merge to main → GitHub Actions
      ├── Build & deploy web → Cloud Run

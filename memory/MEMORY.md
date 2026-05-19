@@ -1,10 +1,7 @@
 # Memory Index
 
 ## Project
-- [project_state.md](project_state.md) — Build status, blockers, next steps
-- [plan_absence_without_report.md](plan_absence_without_report.md) — Next branch: `absentWithoutReport` on AdminEvaluation + buddy detail count
 - [project_prerelease.md](project_prerelease.md) — Pre-release: schema changes = `prisma db push`, never raise migration concerns. DELETE on first prod deploy.
-- [project_followup_trainee_capacity.md](project_followup_trainee_capacity.md) — Follow-up: trainees must not see tours (API-level, listTours+getTour return empty/null)
 
 ## User
 - [user_profile.md](user_profile.md) — Org context (Google Workspace for Nonprofits, Apple sign-in deferred)
@@ -16,3 +13,4 @@
 - [feedback_token_efficiency.md](feedback_token_efficiency.md) — grep first, targeted reads only, skip typecheck for mechanical changes, user handles tasks manually
 - **Never eslint-disable** — Fix code pattern instead. Suppressing rules masks real bugs and creates tech debt.
 - [feedback_mock_pattern.md](feedback_mock_pattern.md) — Prisma mock pattern: use `as unknown as MockDb` cast, never `vi.mocked(db.model.method)` standalone
+- [feedback_project_state.md](feedback_project_state.md) — Do not maintain project_state.md; git log is source of truth for completed work
