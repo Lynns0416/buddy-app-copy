@@ -4,8 +4,8 @@ import { routes } from './index'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
 import type { AuthEnv } from '../types'
-import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason } from '../services/admin.service'
-import type { AdminBuddyResponse, AdminBuddyDetailResponse, CancellationReasonResponse } from '@peace-buddy/types'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason, updateAdminBookingStatus } from '../services/admin.service'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, CancellationReasonResponse, AdminBookingStatusResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -21,6 +21,7 @@ vi.mock('../services/admin.service', () => ({
   getBuddyDetail: vi.fn(),
   updateBuddyProfile: vi.fn(),
   updateCancellationReason: vi.fn(),
+  updateAdminBookingStatus: vi.fn(),
 }))
 
 vi.mock('../services/group.service', () => ({
@@ -85,6 +86,7 @@ const mockUpdateBuddyStatus = vi.mocked(updateBuddyStatus)
 const mockGetBuddyDetail = vi.mocked(getBuddyDetail)
 const mockUpdateBuddyProfile = vi.mocked(updateBuddyProfile)
 const mockUpdateCancellationReason = vi.mocked(updateCancellationReason)
+const mockUpdateAdminBookingStatus = vi.mocked(updateAdminBookingStatus)
 
 function buildApp(role: string) {
   const app = new Hono<AuthEnv>()
@@ -369,6 +371,91 @@ describe('PATCH /admin/bookings/:bookingId/cancellation-reason', () => {
 
   it('returns 400 for non-JSON body', async () => {
     const res = await buildApp('admin').request('/admin/bookings/booking-1/cancellation-reason', {
+      method: 'PATCH',
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
+  })
+})
+
+describe('PATCH /admin/bookings/:bookingId/status', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const mockBookingStatus: AdminBookingStatusResponse = { id: 'booking-1', status: 'waitlist' }
+
+  it('returns 403 for buddy role', async () => {
+    const res = await buildApp('buddy').request('/admin/bookings/booking-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'confirmed' }),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it('returns 403 for non-admin role', async () => {
+    const res = await buildApp('other').request('/admin/bookings/booking-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'confirmed' }),
+    })
+    expect(res.status).toBe(403)
+  })
+
+  it('returns updated booking status', async () => {
+    mockUpdateAdminBookingStatus.mockResolvedValueOnce(mockBookingStatus)
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'waitlist' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateAdminBookingStatus).toHaveBeenCalledWith('booking-1', 'waitlist')
+    const body = await res.json() as AdminBookingStatusResponse
+    expect(body.status).toBe('waitlist')
+  })
+
+  it('accepts all valid booking statuses', async () => {
+    for (const status of ['confirmed', 'maybe', 'waitlist', 'declined'] as const) {
+      mockUpdateAdminBookingStatus.mockResolvedValueOnce({ id: 'booking-1', status })
+      const res = await buildApp('admin').request('/admin/bookings/booking-1/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      expect(res.status).toBe(200)
+    }
+  })
+
+  it('returns 404 when booking not found', async () => {
+    mockUpdateAdminBookingStatus.mockResolvedValueOnce(null)
+    const res = await buildApp('admin').request('/admin/bookings/missing/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'confirmed' }),
+    })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 400 for invalid status value', async () => {
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'invalid' }),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for missing status field', async () => {
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for non-JSON body', async () => {
+    const res = await buildApp('admin').request('/admin/bookings/booking-1/status', {
       method: 'PATCH',
       body: 'not json',
     })

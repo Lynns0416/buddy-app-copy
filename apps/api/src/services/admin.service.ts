@@ -1,5 +1,6 @@
+import { BookingStatus as PrismaBookingStatus } from '@prisma/client'
 import { db } from '../lib/db'
-import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
 const adminBuddySelect = {
@@ -181,6 +182,23 @@ export async function updateBuddyStatus(
       select: adminBuddySelect,
     })
     return mapBuddy(raw)
+  } catch (e) {
+    if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
+    throw e
+  }
+}
+
+export async function updateAdminBookingStatus(
+  bookingId: string,
+  status: BookingStatus,
+): Promise<AdminBookingStatusResponse | null> {
+  try {
+    const updated = await db.booking.update({
+      where: { id: bookingId },
+      data: { status: status as PrismaBookingStatus },
+      select: { id: true, status: true },
+    })
+    return { id: updated.id, status: updated.status as BookingStatus }
   } catch (e) {
     if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
-import { BuddyStatusSchema, BuddyTierSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema, AdminUpdateCancellationSchema } from '@peace-buddy/types'
-import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason } from '../services/admin.service'
+import { BuddyStatusSchema, BuddyTierSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema, AdminUpdateCancellationSchema, AdminUpdateBookingStatusSchema } from '@peace-buddy/types'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason, updateAdminBookingStatus } from '../services/admin.service'
 import { adminGroupRoutes } from './adminGroups'
 import { adminTourRoutes } from './adminTours'
 import { adminEvaluationRoutes } from './adminEvaluations'
@@ -107,6 +107,24 @@ adminRoutes.patch('/bookings/:bookingId/cancellation-reason', async (c) => {
 
   const result = await updateCancellationReason(bookingId, parsed.data.unavoidable)
   if (!result) return c.json({ error: 'Cancellation reason not found' }, 404)
+  return c.json(result)
+})
+
+adminRoutes.patch('/bookings/:bookingId/status', async (c) => {
+  const bookingId = c.req.param('bookingId')
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400)
+  }
+
+  const parsed = AdminUpdateBookingStatusSchema.safeParse(body)
+  if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
+
+  const result = await updateAdminBookingStatus(bookingId, parsed.data.status)
+  if (!result) return c.json({ error: 'Booking not found' }, 404)
   return c.json(result)
 })
 

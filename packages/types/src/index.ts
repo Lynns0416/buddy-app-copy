@@ -386,6 +386,16 @@ export const AdminUpdateCancellationSchema = z.object({
 })
 export type AdminUpdateCancellation = z.infer<typeof AdminUpdateCancellationSchema>
 
+export const AdminUpdateBookingStatusSchema = z.object({
+  status: BookingStatusSchema,
+})
+export type AdminUpdateBookingStatus = z.infer<typeof AdminUpdateBookingStatusSchema>
+
+export type AdminBookingStatusResponse = {
+  id: string
+  status: BookingStatus
+}
+
 export type CancellationReasonResponse = {
   id: string
   category: CancellationCategory

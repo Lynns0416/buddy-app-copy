@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Mock } from 'vitest'
-import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason } from './admin.service'
+import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason, updateAdminBookingStatus } from './admin.service'
 
 type MockFn = Mock<(...args: unknown[]) => unknown>
 interface MockDb {
   buddyProfile: { findMany: MockFn; findUnique: MockFn; update: MockFn }
   cancellationReason: { update: MockFn }
   adminEvaluation: { count: MockFn }
+  booking: { update: MockFn }
 }
 
 vi.mock('../lib/db', () => ({
@@ -21,6 +22,9 @@ vi.mock('../lib/db', () => ({
     },
     adminEvaluation: {
       count: vi.fn(),
+    },
+    booking: {
+      update: vi.fn(),
     },
   },
 }))
@@ -259,6 +263,30 @@ describe('updateBuddyProfile', () => {
   it('rethrows non-P2025 errors', async () => {
     mdb.buddyProfile.update.mockRejectedValueOnce(new Error('db failure'))
     await expect(updateBuddyProfile('profile-1', 'junior', null)).rejects.toThrow('db failure')
+  })
+})
+
+describe('updateAdminBookingStatus', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns updated booking on success', async () => {
+    mdb.booking.update.mockResolvedValueOnce({ id: 'booking-1', status: 'waitlist' } as unknown)
+    const result = await updateAdminBookingStatus('booking-1', 'waitlist')
+    expect(mdb.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'booking-1' }, data: { status: 'waitlist' } })
+    )
+    expect(result).toEqual({ id: 'booking-1', status: 'waitlist' })
+  })
+
+  it('returns null on P2025 (booking not found)', async () => {
+    mdb.booking.update.mockRejectedValueOnce({ code: 'P2025' })
+    const result = await updateAdminBookingStatus('booking-1', 'confirmed')
+    expect(result).toBeNull()
+  })
+
+  it('rethrows non-P2025 errors', async () => {
+    mdb.booking.update.mockRejectedValueOnce(new Error('db failure'))
+    await expect(updateAdminBookingStatus('booking-1', 'confirmed')).rejects.toThrow('db failure')
   })
 })
 

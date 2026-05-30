@@ -2,13 +2,12 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import type { AdminTourBookingEntry, CancellationCategory } from '@peace-buddy/types'
-import { Badge } from '@/components/ui/badge'
+import type { AdminTourBookingEntry, CancellationCategory, AppError, BookingStatus } from '@peace-buddy/types'
+import { BookingStatusSchema, AppErrorCodeSchema } from '@peace-buddy/types'
 import { SortIcon } from '@/components/sort-icon'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { sortBookings, nextBookingSort, updateCancellationReason, type BookingSortField } from '../admin.tour'
+import { sortBookings, nextBookingSort, updateCancellationReason, updateBookingStatus, type BookingSortField } from '../admin.tour'
 import { getBookingStatusLabel } from '@/lib/status-display'
-import type { BookingStatus } from '@peace-buddy/types'
 
 const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
@@ -29,11 +28,37 @@ export function TourBookingsTable({ bookings: initialBookings, totalSessions }: 
   const [sortField, setSortField] = useState<BookingSortField>('bookedAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [updatingReason, setUpdatingReason] = useState<string | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [statusError, setStatusError] = useState<string | null>(null)
+
+  function errorMessage(e: AppError): string {
+    switch (e.code) {
+      case AppErrorCodeSchema.enum.network: return t('error.network')
+      default: return t('error.unknown')
+    }
+  }
 
   function handleSort(field: BookingSortField) {
     const next = nextBookingSort({ field: sortField, dir: sortDir }, field)
     setSortField(next.field)
     setSortDir(next.dir)
+  }
+
+  async function handleStatusChange(bookingId: string, status: BookingStatus) {
+    setUpdatingStatus(bookingId)
+    setStatusError(null)
+    try {
+      const result = await updateBookingStatus(bookingId, status)
+      if (result.ok) {
+        setBookings((prev) =>
+          prev.map((b) => (b.id === bookingId ? { ...b, status: result.data.status } : b)),
+        )
+      } else {
+        setStatusError(errorMessage(result.error))
+      }
+    } finally {
+      setUpdatingStatus(null)
+    }
   }
 
   async function handleUnavoidableChange(bookingId: string, value: boolean) {
@@ -67,6 +92,9 @@ export function TourBookingsTable({ bookings: initialBookings, totalSessions }: 
 
   return (
     <div className="rounded-lg border bg-card">
+      {statusError && (
+        <p className="px-4 pt-3 text-sm text-destructive">{statusError}</p>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -111,9 +139,16 @@ export function TourBookingsTable({ bookings: initialBookings, totalSessions }: 
                   </TableCell>
                 )}
                 <TableCell>
-                  <Badge className={BOOKING_STATUS_CLASS[b.status]}>
-                    {getBookingStatusLabel(tBookingStatus, b.status)}
-                  </Badge>
+                  <select
+                    value={b.status}
+                    disabled={updatingStatus === b.id}
+                    onChange={(e) => void handleStatusChange(b.id, BookingStatusSchema.parse(e.target.value))}
+                    className={`rounded border px-1.5 py-0.5 text-xs font-medium ${BOOKING_STATUS_CLASS[b.status]}`}
+                  >
+                    {BookingStatusSchema.options.map((s: BookingStatus) => (
+                      <option key={s} value={s}>{getBookingStatusLabel(tBookingStatus, s)}</option>
+                    ))}
+                  </select>
                 </TableCell>
                 <TableCell className="tabular-nums text-sm text-muted-foreground">
                   {new Date(b.bookedAt).toLocaleString()}

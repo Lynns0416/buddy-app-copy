@@ -3,12 +3,20 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
-import type { AdminBuddyBookingEntry } from '@peace-buddy/types'
+import type { AdminBuddyBookingEntry, AppError, BookingStatus } from '@peace-buddy/types'
+import { BookingStatusSchema, AppErrorCodeSchema } from '@peace-buddy/types'
 import { SortIcon } from '@/components/sort-icon'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { routes } from '@/lib/routes'
-import { sortBookingHistory, nextBookingSort, updateCancellationReason, type BookingHistorySortField } from '../admin.buddy'
+import { sortBookingHistory, nextBookingSort, updateCancellationReason, updateBookingStatus, type BookingHistorySortField } from '../admin.buddy'
 import { getBookingStatusLabel } from '@/lib/status-display'
+
+const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
+  confirmed: 'bg-green-100 text-green-800 border-green-200',
+  maybe: 'bg-amber-100 text-amber-800 border-amber-200',
+  waitlist: 'bg-blue-100 text-blue-800 border-blue-200',
+  declined: 'bg-slate-100 text-slate-700 border-slate-200',
+}
 
 interface BuddyBookingHistoryProps {
   bookings: AdminBuddyBookingEntry[]
@@ -22,11 +30,37 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
   const [sortField, setSortField] = useState<BookingHistorySortField>('tourDate')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [updatingReason, setUpdatingReason] = useState<string | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [statusError, setStatusError] = useState<string | null>(null)
+
+  function errorMessage(e: AppError): string {
+    switch (e.code) {
+      case AppErrorCodeSchema.enum.network: return t('error.network')
+      default: return t('error.unknown')
+    }
+  }
 
   function handleSort(field: BookingHistorySortField) {
     const next = nextBookingSort({ field: sortField, dir: sortDir }, field)
     setSortField(next.field)
     setSortDir(next.dir)
+  }
+
+  async function handleStatusChange(bookingId: string, status: BookingStatus) {
+    setUpdatingStatus(bookingId)
+    setStatusError(null)
+    try {
+      const result = await updateBookingStatus(bookingId, status)
+      if (result.ok) {
+        setBookings((prev) =>
+          prev.map((b) => (b.id === bookingId ? { ...b, status: result.data.status } : b)),
+        )
+      } else {
+        setStatusError(errorMessage(result.error))
+      }
+    } finally {
+      setUpdatingStatus(null)
+    }
   }
 
   async function handleUnavoidableChange(bookingId: string, value: boolean) {
@@ -62,6 +96,9 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
 
   return (
     <div className="flex flex-col gap-4">
+      {statusError && (
+        <p className="text-sm text-destructive">{statusError}</p>
+      )}
       {cancellationSummary.total > 0 && (
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -112,9 +149,16 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
                 </Link>
                 <p className="tabular-nums text-xs text-muted-foreground">{booking.tour.tourDate.slice(0, 10)}</p>
               </div>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {getBookingStatusLabel(tBookingStatus, booking.status)}
-              </span>
+              <select
+                value={booking.status}
+                disabled={updatingStatus === booking.id}
+                onChange={(e) => void handleStatusChange(booking.id, BookingStatusSchema.parse(e.target.value))}
+                className={`rounded border px-1.5 py-0.5 text-xs font-medium ${BOOKING_STATUS_CLASS[booking.status]}`}
+              >
+                {BookingStatusSchema.options.map((s: BookingStatus) => (
+                  <option key={s} value={s}>{getBookingStatusLabel(tBookingStatus, s)}</option>
+                ))}
+              </select>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{booking.tour.location}</p>
             {booking.cancellationReason && (
@@ -203,8 +247,17 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
                     {booking.tour.tourDate.slice(0, 10)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{booking.tour.location}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {getBookingStatusLabel(tBookingStatus, booking.status)}
+                  <TableCell>
+                    <select
+                      value={booking.status}
+                      disabled={updatingStatus === booking.id}
+                      onChange={(e) => void handleStatusChange(booking.id, BookingStatusSchema.parse(e.target.value))}
+                      className={`rounded border px-1.5 py-0.5 text-xs font-medium ${BOOKING_STATUS_CLASS[booking.status]}`}
+                    >
+                      {BookingStatusSchema.options.map((s: BookingStatus) => (
+                        <option key={s} value={s}>{getBookingStatusLabel(tBookingStatus, s)}</option>
+                      ))}
+                    </select>
                   </TableCell>
                 </TableRow>
                 {booking.cancellationReason && (

@@ -36,6 +36,8 @@ import type {
   TierCapacities,
   CreateTourSession,
   UpdateTourSession,
+  BookingStatus,
+  AdminBookingStatusResponse,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -221,6 +223,12 @@ export const apiClient = {
     apiRequest<CancellationReasonResponse>(apiPaths.adminBookingCancellationReason(bookingId), {
       method: 'PATCH',
       body: JSON.stringify({ unavoidable }),
+    }),
+
+  updateBookingStatus: (bookingId: string, status: BookingStatus) =>
+    apiRequest<AdminBookingStatusResponse>(apiPaths.adminBookingStatus(bookingId), {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
     }),
 
   getMyBookings: () =>
