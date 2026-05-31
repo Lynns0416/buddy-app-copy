@@ -184,6 +184,7 @@ adminTourRoutes.put('/:id/staff-in-charge', async (c) => {
   try {
     return c.json(await setStaffInCharge(tourId, parsed.data.adminId))
   } catch (e) {
+    if (e instanceof AssignAdminNotFoundError) return c.json(apiError('not_found'), 404)
     if (e instanceof StaffInChargeNotAssignedError) return c.json(apiError('conflict'), 409)
     if (e instanceof StaffInChargeRequiredError) return c.json(apiError('conflict'), 409)
     throw e

@@ -9,6 +9,7 @@ import { SortIcon } from '@/components/sort-icon'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import type { AdminProfileResponse } from '@peace-buddy/types'
+import { AppErrorCodeSchema } from '@peace-buddy/types'
 import {
   listAdminProfiles,
   softDeleteAdminProfile,
@@ -60,7 +61,7 @@ export default function AdminProfilesPage() {
     if (result.ok) {
       setProfiles((prev) => prev.filter((p) => p.userId !== userId))
     } else {
-      setActionError(result.error.code === 'conflict' ? t('conflictError') : t('actionError'))
+      setActionError(result.error.code === AppErrorCodeSchema.enum.conflict ? t('conflictError') : t('actionError'))
     }
   }
 

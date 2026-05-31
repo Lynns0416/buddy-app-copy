@@ -33,9 +33,10 @@ export function TourAdminAssignment({ tourId, assignedAdmins, staffInChargeId, a
     if (result.ok) {
       onUpdate(result.data)
       setSelectedAdminId('')
-    } else {
-      setError(t('error.unknown'))
-    }
+    } else if (result.error.code === AppErrorCodeSchema.enum.conflict) setError(t('error.conflict'))
+    else if (result.error.code === AppErrorCodeSchema.enum.not_found) setError(t('error.notFound'))
+    else if (result.error.code === AppErrorCodeSchema.enum.network) setError(t('error.network'))
+    else setError(t('error.unknown'))
     setActing(false)
   }
 
