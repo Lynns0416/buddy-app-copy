@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { TourStatusSchema, CreateTourSchema, UpdateTourSchema, TourStatusActionSchema, TierCapacitiesSchema, CreateTourSessionSchema, UpdateTourSessionSchema } from '@peace-buddy/types'
+import { TourStatusSchema, CreateTourSchema, UpdateTourSchema, TourStatusActionSchema, TierCapacitiesSchema, CreateTourSessionSchema, UpdateTourSessionSchema, AssignTourAdminSchema, SetStaffInChargeSchema } from '@peace-buddy/types'
 import {
   listAdminTours,
   createTour,
@@ -23,6 +23,17 @@ import {
   LastSessionError,
   TooManySessionsError,
 } from '../services/adminSession.service'
+import {
+  assignAdmin,
+  unassignAdmin,
+  setStaffInCharge,
+  AssignAdminNotFoundError,
+  AdminAlreadyAssignedError,
+  AdminNotAssignedError,
+  StaffInChargeNotAssignedError,
+  StaffInChargeRequiresReplacementError,
+  StaffInChargeRequiredError,
+} from '../services/tourAdminAssignment.service'
 import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
 
@@ -112,6 +123,69 @@ adminTourRoutes.delete('/:id', async (c) => {
   } catch (e) {
     if (e instanceof TourNotFoundError) return c.json(apiError('not_found'), 404)
     if (e instanceof TourNotDraftError) return c.json(apiError('conflict'), 409)
+    throw e
+  }
+})
+
+// Admin assignment
+
+adminTourRoutes.post('/:id/admins', async (c) => {
+  const tourId = c.req.param('id')
+  const tour = await getAdminTourDetail(tourId)
+  if (!tour) return c.json(apiError('not_found'), 404)
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json(apiError('invalid_request'), 400)
+  }
+
+  const parsed = AssignTourAdminSchema.safeParse(body)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+
+  try {
+    return c.json(await assignAdmin(tourId, parsed.data.adminId))
+  } catch (e) {
+    if (e instanceof AssignAdminNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof AdminAlreadyAssignedError) return c.json(apiError('conflict'), 409)
+    throw e
+  }
+})
+
+adminTourRoutes.delete('/:id/admins/:adminId', async (c) => {
+  const tourId = c.req.param('id')
+  const adminId = c.req.param('adminId')
+
+  try {
+    return c.json(await unassignAdmin(tourId, adminId))
+  } catch (e) {
+    if (e instanceof AdminNotAssignedError) return c.json(apiError('not_found'), 404)
+    if (e instanceof StaffInChargeRequiresReplacementError) return c.json(apiError('conflict'), 409)
+    throw e
+  }
+})
+
+adminTourRoutes.put('/:id/staff-in-charge', async (c) => {
+  const tourId = c.req.param('id')
+  const tour = await getAdminTourDetail(tourId)
+  if (!tour) return c.json(apiError('not_found'), 404)
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json(apiError('invalid_request'), 400)
+  }
+
+  const parsed = SetStaffInChargeSchema.safeParse(body)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+
+  try {
+    return c.json(await setStaffInCharge(tourId, parsed.data.adminId))
+  } catch (e) {
+    if (e instanceof StaffInChargeNotAssignedError) return c.json(apiError('conflict'), 409)
+    if (e instanceof StaffInChargeRequiredError) return c.json(apiError('conflict'), 409)
     throw e
   }
 })

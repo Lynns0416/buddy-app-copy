@@ -50,11 +50,6 @@ vi.mock('../services/adminSelfEvaluation.service', () => ({
   getSelfEvaluation: vi.fn(),
 }))
 
-vi.mock('../services/adminSelfEvaluation.service', () => ({
-  listSelfEvaluations: vi.fn(),
-  getSelfEvaluation: vi.fn(),
-}))
-
 vi.mock('../services/adminTour.service', () => ({
   listAdminTours: vi.fn(),
   createTour: vi.fn(),
@@ -94,6 +89,18 @@ vi.mock('../services/adminSession.service', () => ({
   },
 }))
 
+vi.mock('../services/tourAdminAssignment.service', () => ({
+  assignAdmin: vi.fn(),
+  unassignAdmin: vi.fn(),
+  setStaffInCharge: vi.fn(),
+  AssignAdminNotFoundError: class AssignAdminNotFoundError extends Error {},
+  AdminAlreadyAssignedError: class AdminAlreadyAssignedError extends Error {},
+  AdminNotAssignedError: class AdminNotAssignedError extends Error {},
+  StaffInChargeNotAssignedError: class StaffInChargeNotAssignedError extends Error {},
+  StaffInChargeRequiresReplacementError: class StaffInChargeRequiresReplacementError extends Error {},
+  StaffInChargeRequiredError: class StaffInChargeRequiredError extends Error {},
+}))
+
 import {
   listAdminTours,
   createTour,
@@ -117,6 +124,17 @@ import {
   LastSessionError,
   TooManySessionsError,
 } from '../services/adminSession.service'
+import {
+  assignAdmin,
+  unassignAdmin,
+  setStaffInCharge,
+  AssignAdminNotFoundError,
+  AdminAlreadyAssignedError,
+  AdminNotAssignedError,
+  StaffInChargeNotAssignedError,
+  StaffInChargeRequiresReplacementError,
+  StaffInChargeRequiredError,
+} from '../services/tourAdminAssignment.service'
 
 const mockListAdminTours = vi.mocked(listAdminTours)
 const mockCreateTour = vi.mocked(createTour)
@@ -129,6 +147,9 @@ const mockUpdateSession = vi.mocked(updateSession)
 const mockDeleteSession = vi.mocked(deleteSession)
 const mockGetSessionTierCapacities = vi.mocked(getSessionTierCapacities)
 const mockUpsertSessionTierCapacities = vi.mocked(upsertSessionTierCapacities)
+const mockAssignAdmin = vi.mocked(assignAdmin)
+const mockUnassignAdmin = vi.mocked(unassignAdmin)
+const mockSetStaffInCharge = vi.mocked(setStaffInCharge)
 
 function buildApp() {
   const app = new Hono<AuthEnv>()
@@ -176,6 +197,8 @@ const mockDetail: AdminTourDetailResponse = {
   maybeDeadline: null,
   notificationOffsets: [3, 1],
   bookings: [],
+  assignedAdmins: [],
+  staffInChargeId: null,
 }
 
 const validCreateBody = {
@@ -664,5 +687,174 @@ describe('PATCH /admin/tours/:id/sessions/:sessionId/tier-capacities', () => {
     })
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+})
+
+describe('POST /admin/tours/:id/admins', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('assigns an admin and returns 200 with updated tour', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    mockAssignAdmin.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockAssignAdmin).toHaveBeenCalledWith('tour-1', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890')
+  })
+
+  it('returns 404 when tour does not exist', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(null)
+    const res = await buildApp().request('/admin/tours/bad-tour/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 404 when admin does not exist', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    mockAssignAdmin.mockRejectedValueOnce(new AssignAdminNotFoundError())
+    const res = await buildApp().request('/admin/tours/tour-1/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 409 when admin is already assigned', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    mockAssignAdmin.mockRejectedValueOnce(new AdminAlreadyAssignedError())
+    const res = await buildApp().request('/admin/tours/tour-1/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+
+  it('returns 400 when adminId is not a UUID', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'not-a-uuid' }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 400 for non-JSON body', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/admins', {
+      method: 'POST',
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+})
+
+describe('DELETE /admin/tours/:id/admins/:adminId', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('unassigns an admin and returns 200 with updated tour', async () => {
+    mockUnassignAdmin.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/admins/ap-1', { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect(mockUnassignAdmin).toHaveBeenCalledWith('tour-1', 'ap-1')
+  })
+
+  it('returns 404 when assignment does not exist', async () => {
+    mockUnassignAdmin.mockRejectedValueOnce(new AdminNotAssignedError())
+    const res = await buildApp().request('/admin/tours/tour-1/admins/ap-1', { method: 'DELETE' })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 409 when removing staff-in-charge while other admins remain', async () => {
+    mockUnassignAdmin.mockRejectedValueOnce(new StaffInChargeRequiresReplacementError())
+    const res = await buildApp().request('/admin/tours/tour-1/admins/ap-1', { method: 'DELETE' })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+})
+
+describe('PUT /admin/tours/:id/staff-in-charge', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('sets staff-in-charge and returns 200 with updated tour', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    mockSetStaffInCharge.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/staff-in-charge', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockSetStaffInCharge).toHaveBeenCalledWith('tour-1', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890')
+  })
+
+  it('returns 404 when tour does not exist', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(null)
+    const res = await buildApp().request('/admin/tours/bad-tour/staff-in-charge', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 409 when admin is not assigned to the tour', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    mockSetStaffInCharge.mockRejectedValueOnce(new StaffInChargeNotAssignedError())
+    const res = await buildApp().request('/admin/tours/tour-1/staff-in-charge', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+
+  it('returns 409 when clearing staff-in-charge while admins are assigned', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    mockSetStaffInCharge.mockRejectedValueOnce(new StaffInChargeRequiredError())
+    const res = await buildApp().request('/admin/tours/tour-1/staff-in-charge', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: null }),
+    })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict' })
+  })
+
+  it('returns 400 when adminId is not a UUID or null', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/staff-in-charge', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'not-a-uuid' }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 400 for non-JSON body', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/staff-in-charge', {
+      method: 'PUT',
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 })

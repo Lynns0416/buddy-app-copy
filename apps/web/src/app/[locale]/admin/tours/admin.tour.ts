@@ -1,4 +1,4 @@
-import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession, CancellationReasonResponse, BookingStatus, AdminBookingStatusResponse } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession, CancellationReasonResponse, BookingStatus, AdminBookingStatusResponse, AdminProfileResponse } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -187,6 +187,38 @@ export async function updateCancellationReason(bookingId: string, unavoidable: b
 export async function updateBookingStatus(bookingId: string, status: BookingStatus): Promise<ActionResult<AdminBookingStatusResponse>> {
   try {
     return { ok: true, data: await apiClient.updateBookingStatus(bookingId, status) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function fetchAllAdminProfiles(): Promise<ActionResult<AdminProfileResponse[]>> {
+  try {
+    return { ok: true, data: await apiClient.listAdminProfiles() }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function assignTourAdmin(tourId: string, adminId: string): Promise<ActionResult<AdminTourDetailResponse>> {
+  try {
+    return { ok: true, data: await apiClient.assignTourAdmin(tourId, adminId) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function unassignTourAdmin(tourId: string, adminId: string): Promise<ActionResult<AdminTourDetailResponse>> {
+  try {
+    return { ok: true, data: await apiClient.unassignTourAdmin(tourId, adminId) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function setTourStaffInCharge(tourId: string, adminId: string | null): Promise<ActionResult<AdminTourDetailResponse>> {
+  try {
+    return { ok: true, data: await apiClient.setTourStaffInCharge(tourId, adminId) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }

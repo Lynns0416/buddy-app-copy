@@ -26,6 +26,9 @@ export const apiPaths = {
   adminTourSessions: (tourId: string) => `/admin/tours/${tourId}/sessions`,
   adminTourSession: (tourId: string, sessionId: string) => `/admin/tours/${tourId}/sessions/${sessionId}`,
   adminSessionTierCapacities: (tourId: string, sessionId: string) => `/admin/tours/${tourId}/sessions/${sessionId}/tier-capacities`,
+  adminTourAdmins: (tourId: string) => `/admin/tours/${tourId}/admins`,
+  adminTourAdmin: (tourId: string, adminId: string) => `/admin/tours/${tourId}/admins/${adminId}`,
+  adminTourStaffInCharge: (tourId: string) => `/admin/tours/${tourId}/staff-in-charge`,
 
   adminEvaluations: '/admin/evaluations',
   adminEvaluation: (id: string) => `/admin/evaluations/${id}`,

@@ -120,12 +120,14 @@ model BuddyProfile {
 }
 
 model AdminProfile {
-  id        String    @id @default(uuid())
-  userId    String    @unique
-  name      String
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id])
+  id               String                @id @default(uuid())
+  userId           String                @unique
+  name             String
+  deletedAt        DateTime?
+  createdAt        DateTime              @default(now())
+  user             User                  @relation(fields: [userId], references: [id])
+  tourAssignments  TourAdminAssignment[]
+  toursInCharge    Tour[]                @relation("StaffInCharge")
 
   @@index([deletedAt])
 }
@@ -157,14 +159,28 @@ model Tour {
   notificationOffsets  Int[]
   createdAt            DateTime                            @default(now())
   updatedAt            DateTime                            @updatedAt
+  staffInChargeId      String?
   group                Group                               @relation(fields: [groupId], references: [id])
+  staffInCharge        AdminProfile?                       @relation("StaffInCharge", fields: [staffInChargeId], references: [id])
   sessions             TourSession[]
   bookings             Booking[]
   adminEvaluations     AdminEvaluation[]
   selfEvaluations      SelfEvaluation[]
   deadlineOverrides    BuddyCancellationDeadlineOverride[]
+  adminAssignments     TourAdminAssignment[]
 
   @@index([status, tourDate])
+}
+
+model TourAdminAssignment {
+  id        String       @id @default(uuid())
+  tourId    String
+  adminId   String
+  createdAt DateTime     @default(now())
+  tour      Tour         @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  admin     AdminProfile @relation(fields: [adminId], references: [id])
+
+  @@unique([tourId, adminId])
 }
 
 model TourSession {

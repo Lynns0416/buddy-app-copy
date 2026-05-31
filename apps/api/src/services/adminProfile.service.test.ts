@@ -9,6 +9,9 @@ vi.mock('../lib/db', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    tourAdminAssignment: {
+      findFirst: vi.fn(),
+    },
   },
 }))
 
@@ -18,6 +21,7 @@ import {
   createAdminProfile,
   updateAdminProfile,
   softDeleteAdminProfile,
+  HasActiveTourAssignmentsError,
 } from './adminProfile.service'
 import { db } from '../lib/db'
 
@@ -36,6 +40,9 @@ const getDb = () => {
       findMany: ReturnType<typeof vi.fn>
       create: ReturnType<typeof vi.fn>
       update: ReturnType<typeof vi.fn>
+    }
+    tourAdminAssignment: {
+      findFirst: ReturnType<typeof vi.fn>
     }
   }
   return typedDb
@@ -168,6 +175,8 @@ describe('adminProfile.service', () => {
   describe('softDeleteAdminProfile', () => {
     it('soft deletes admin profile by setting deletedAt', async () => {
       const deletedProfile = { ...stubAdminProfile }
+      getDb().adminProfile.findUnique.mockResolvedValueOnce({ id: 'ap-1' })
+      getDb().tourAdminAssignment.findFirst.mockResolvedValueOnce(null)
       getDb().adminProfile.update.mockResolvedValue(deletedProfile)
       const result: unknown = await softDeleteAdminProfile('u1')
       expect(result).not.toBeNull()
@@ -178,14 +187,16 @@ describe('adminProfile.service', () => {
       })
     })
 
-    it('returns null if profile not found (P2025)', async () => {
-      const error = new Prisma.PrismaClientKnownRequestError('Record not found', {
-        code: 'P2025',
-        clientVersion: '5.0.0',
-      })
-      getDb().adminProfile.update.mockRejectedValue(error)
+    it('returns null if profile not found', async () => {
+      getDb().adminProfile.findUnique.mockResolvedValueOnce(null)
       const result: unknown = await softDeleteAdminProfile('u1')
       expect(result).toBeNull()
+    })
+
+    it('throws HasActiveTourAssignmentsError when admin has active tour assignments', async () => {
+      getDb().adminProfile.findUnique.mockResolvedValueOnce({ id: 'ap-1' })
+      getDb().tourAdminAssignment.findFirst.mockResolvedValueOnce({ id: 'assign-1' })
+      await expect(softDeleteAdminProfile('u1')).rejects.toThrow(HasActiveTourAssignmentsError)
     })
   })
 })

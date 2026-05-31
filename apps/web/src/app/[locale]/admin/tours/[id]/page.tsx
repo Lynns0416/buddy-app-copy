@@ -18,9 +18,12 @@ import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
 import { CompleteTourModal } from '../_components/complete-tour-modal'
 import { TierCapacityForm } from '../_components/tier-capacity-form'
 import { AddSessionForm } from '../_components/add-session-form'
+import { TourAdminAssignment } from '../_components/tour-admin-assignment'
+import { useAllAdmins } from '../hooks/use-all-admins'
 
 export default function AdminTourDetailPage() {
   const { ready, locale } = useAdminGuard()
+  const allAdmins = useAllAdmins()
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const t = useTranslations('adminTours')
@@ -285,6 +288,17 @@ export default function AdminTourDetailPage() {
             capacity={session.capacity}
           />
         ))}
+      </div>
+
+      {/* Admin assignment */}
+      <div className="mb-6">
+        <TourAdminAssignment
+          tourId={tour.id}
+          assignedAdmins={tour.assignedAdmins}
+          staffInChargeId={tour.staffInChargeId}
+          allAdmins={allAdmins}
+          onUpdate={setTour}
+        />
       </div>
 
       {/* Bookings */}

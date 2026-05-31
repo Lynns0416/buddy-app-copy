@@ -60,7 +60,7 @@ export const TierCapacitiesSchema = z.object({
   junior: z.number().int().min(0).max(100),
   non_junior: z.number().int().min(0).max(100),
   anyone: z.number().int().min(0).max(100),
-}).refine((v) => v.junior + v.non_junior + v.anyone === 100, { message: 'Percentages must sum to 100' })
+}).refine((v: { junior: number; non_junior: number; anyone: number }) => v.junior + v.non_junior + v.anyone === 100, { message: 'Percentages must sum to 100' })
 export type TierCapacities = z.infer<typeof TierCapacitiesSchema>
 
 // `network` is client-only and is never emitted by the server
@@ -81,7 +81,7 @@ export const RegisterRequestBodySchema = z
     bio: z.string().optional(),
   })
   .refine(
-    (d) => !d.languages || d.languages.length === new Set(d.languages).size,
+    (d: { languages?: string[] }) => !d.languages || d.languages.length === new Set(d.languages).size,
     { message: 'Duplicate languages are not allowed', path: ['languages'] }
   )
 export type RegisterRequestBody = z.infer<typeof RegisterRequestBodySchema>
@@ -100,7 +100,7 @@ export const UpdateBuddyProfileSchema = z
     availability: z.string().nullable().optional(),
   })
   .refine(
-    (d) => !d.languages || d.languages.length === new Set(d.languages).size,
+    (d: { languages?: string[] }) => !d.languages || d.languages.length === new Set(d.languages).size,
     { message: 'Duplicate languages are not allowed', path: ['languages'] }
   )
 export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
@@ -142,7 +142,7 @@ export const CreateTourSchema = z
     notificationOffsets: z.array(z.number().int().min(0)).default([3, 1]),
     sessions: z.array(CreateTourSessionSchema).min(1).max(2),
   })
-  .refine((d) => !d.maybeDeadline || d.maybeDeadline < d.cancellationDeadline, {
+  .refine((d: { maybeDeadline?: Date; cancellationDeadline: Date }) => !d.maybeDeadline || d.maybeDeadline < d.cancellationDeadline, {
     message: 'maybeDeadline must be before cancellationDeadline',
     path: ['maybeDeadline'],
   })
@@ -161,7 +161,7 @@ export const UpdateTourSchema = z
     notificationOffsets: z.array(z.number().int().min(0)).optional(),
   })
   .refine(
-    (d) => {
+    (d: { maybeDeadline?: Date | null; cancellationDeadline?: Date }) => {
       if (d.maybeDeadline && d.cancellationDeadline) {
         return d.maybeDeadline < d.cancellationDeadline
       }
@@ -456,12 +456,25 @@ export type AdminTourSummaryResponse = {
   updatedAt: string
 }
 
+export type TourAdminAssignedAdmin = {
+  adminId: string
+  name: string
+}
+
+export const AssignTourAdminSchema = z.object({ adminId: z.string().uuid() })
+export type AssignTourAdmin = z.infer<typeof AssignTourAdminSchema>
+
+export const SetStaffInChargeSchema = z.object({ adminId: z.string().uuid().nullable() })
+export type SetStaffInCharge = z.infer<typeof SetStaffInChargeSchema>
+
 export type AdminTourDetailResponse = AdminTourSummaryResponse & {
   adminMemo: string | null
   cancellationDeadline: string
   maybeDeadline: string | null
   notificationOffsets: number[]
   bookings: AdminTourBookingEntry[]
+  assignedAdmins: TourAdminAssignedAdmin[]
+  staffInChargeId: string | null
 }
 
 export type MySessionBookingEntry = {

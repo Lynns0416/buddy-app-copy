@@ -232,6 +232,15 @@
       }
     },
     "bookingSession": "セッション",
+    "assignedAdmins": {
+      "title": "担当管理者",
+      "noAdmins": "担当管理者なし",
+      "staffInCharge": "担当者",
+      "setStaffInCharge": "担当者に設定",
+      "unassign": "外す",
+      "assign": "追加",
+      "selectAdmin": "管理者を選択..."
+    },
     "error": {
       "notFound": "このツアーは存在しません。",
       "forbidden": "この操作を行う権限がありません。",
@@ -523,6 +532,7 @@
     "confirmDelete": "この管理者を削除しますか？この操作は取り消せません。",
     "cancelDelete": "キャンセル",
     "actionError": "操作に失敗しました。もう一度お試しください。",
+    "conflictError": "進行中のツアーに担当者として割り当てられているため削除できません。",
     "error": {
       "forbidden": "この操作を行う権限がありません。",
       "network": "通信エラーが発生しました。",

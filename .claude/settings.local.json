@@ -36,7 +36,8 @@
       "Bash(python3 *)",
       "Bash(grep -A60 *)",
       "Bash(grep -n *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(pnpm tsc *)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

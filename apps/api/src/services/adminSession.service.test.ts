@@ -82,6 +82,8 @@ function makeDetailRow(overrides: Record<string, unknown> = {}) {
     updatedAt: new Date(),
     sessions: [],
     bookings: [],
+    adminAssignments: [],
+    staffInChargeId: null,
     _count: { bookings: 0 },
     ...overrides,
   }

@@ -9,6 +9,7 @@ import type {
   UpdateTour,
   AdminTourSummaryResponse,
   AdminTourDetailResponse,
+  TourAdminAssignedAdmin,
   TourSessionResponse,
   TourStatus,
   TourAction,
@@ -217,6 +218,8 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
     maybeDeadline: row.maybeDeadline ? row.maybeDeadline.toISOString() : null,
     notificationOffsets: row.notificationOffsets,
     bookings: [],
+    assignedAdmins: [],
+    staffInChargeId: null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -262,6 +265,11 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
         },
         orderBy: [{ session: { order: 'asc' } }, { bookedAt: 'asc' }],
       },
+      adminAssignments: {
+        select: { adminId: true, admin: { select: { name: true } } },
+        orderBy: { createdAt: 'asc' },
+      },
+      staffInChargeId: true,
       _count: {
         select: {
           bookings: { where: { status: BookingStatusSchema.enum.confirmed } },
@@ -313,6 +321,8 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
         cancellationReason,
       }
     }),
+    assignedAdmins: row.adminAssignments.map((a): TourAdminAssignedAdmin => ({ adminId: a.adminId, name: a.admin.name })),
+    staffInChargeId: row.staffInChargeId,
   }
 }
 

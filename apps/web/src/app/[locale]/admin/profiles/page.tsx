@@ -60,7 +60,7 @@ export default function AdminProfilesPage() {
     if (result.ok) {
       setProfiles((prev) => prev.filter((p) => p.userId !== userId))
     } else {
-      setActionError(t('actionError'))
+      setActionError(result.error.code === 'conflict' ? t('conflictError') : t('actionError'))
     }
   }
 

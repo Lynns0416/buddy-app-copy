@@ -6,6 +6,7 @@ import {
   createAdminProfile,
   updateAdminProfile,
   softDeleteAdminProfile,
+  HasActiveTourAssignmentsError,
 } from '../services/adminProfile.service'
 import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
@@ -95,7 +96,12 @@ adminProfileRoutes.delete('/profiles/:userId', async (c) => {
     return c.json(apiError('invalid_request'), 400)
   }
 
-  const profile = await softDeleteAdminProfile(userId)
-  if (!profile) return c.json(apiError('not_found'), 404)
-  return c.json(profile)
+  try {
+    const profile = await softDeleteAdminProfile(userId)
+    if (!profile) return c.json(apiError('not_found'), 404)
+    return c.json(profile)
+  } catch (e) {
+    if (e instanceof HasActiveTourAssignmentsError) return c.json(apiError('conflict'), 409)
+    throw e
+  }
 })

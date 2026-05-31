@@ -154,6 +154,22 @@ export const apiClient = {
       body: JSON.stringify(data),
     }),
 
+  // Admin — Tour admin assignment
+  assignTourAdmin: (tourId: string, adminId: string) =>
+    apiRequest<AdminTourDetailResponse>(apiPaths.adminTourAdmins(tourId), {
+      method: 'POST',
+      body: JSON.stringify({ adminId }),
+    }),
+
+  unassignTourAdmin: (tourId: string, adminId: string) =>
+    apiRequest<AdminTourDetailResponse>(apiPaths.adminTourAdmin(tourId, adminId), { method: 'DELETE' }),
+
+  setTourStaffInCharge: (tourId: string, adminId: string | null) =>
+    apiRequest<AdminTourDetailResponse>(apiPaths.adminTourStaffInCharge(tourId), {
+      method: 'PUT',
+      body: JSON.stringify({ adminId }),
+    }),
+
   // Admin — Evaluations
   listAdminEvaluations: (params: { buddyId?: string; tourId?: string }) => {
     const qs = new URLSearchParams()

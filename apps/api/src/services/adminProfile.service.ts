@@ -1,6 +1,9 @@
 import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
+import { TourStatusSchema } from '@peace-buddy/types'
 import type { AdminProfileResponse } from '@peace-buddy/types'
+
+export class HasActiveTourAssignmentsError extends Error {}
 
 const adminProfileSelect = {
   id: true,
@@ -75,6 +78,18 @@ export async function updateAdminProfile(userId: string, name: string): Promise<
 }
 
 export async function softDeleteAdminProfile(userId: string): Promise<AdminProfileResponse | null> {
+  const profile = await db.adminProfile.findUnique({ where: { userId }, select: { id: true } })
+  if (!profile) return null
+
+  const activeAssignment = await db.tourAdminAssignment.findFirst({
+    where: {
+      adminId: profile.id,
+      tour: { status: { in: [TourStatusSchema.enum.draft, TourStatusSchema.enum.published] } },
+    },
+    select: { id: true },
+  })
+  if (activeAssignment) throw new HasActiveTourAssignmentsError()
+
   try {
     const raw = await db.adminProfile.update({
       where: { userId },

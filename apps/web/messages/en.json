@@ -232,6 +232,15 @@
       }
     },
     "bookingSession": "Session",
+    "assignedAdmins": {
+      "title": "Assigned Admins",
+      "noAdmins": "No admins assigned",
+      "staffInCharge": "Staff in Charge",
+      "setStaffInCharge": "Set as Staff in Charge",
+      "unassign": "Remove",
+      "assign": "Assign",
+      "selectAdmin": "Select admin..."
+    },
     "error": {
       "notFound": "This tour no longer exists.",
       "forbidden": "You don't have permission to perform this action.",
@@ -523,6 +532,7 @@
     "confirmDelete": "Remove this admin? This cannot be undone.",
     "cancelDelete": "Cancel",
     "actionError": "Action failed. Please try again.",
+    "conflictError": "Cannot remove admin with upcoming tour assignments.",
     "error": {
       "forbidden": "You don't have permission to perform this action.",
       "network": "Network error. Please check your connection.",
