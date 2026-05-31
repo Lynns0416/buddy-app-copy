@@ -23,13 +23,14 @@ vi.mock('../lib/db', () => ({
 
 vi.mock('./adminTour.service', () => ({
   getAdminTourDetail: vi.fn(),
+  TourNotFoundError: class TourNotFoundError extends Error {},
 }))
 
 import {
   assignAdmin,
   unassignAdmin,
   setStaffInCharge,
-  AssignAdminNotFoundError,
+  AdminNotFoundError,
   AdminAlreadyAssignedError,
   AdminNotAssignedError,
   StaffInChargeNotAssignedError,
@@ -37,7 +38,7 @@ import {
   StaffInChargeRequiredError,
 } from './tourAdminAssignment.service'
 import { db } from '../lib/db'
-import { getAdminTourDetail } from './adminTour.service'
+import { getAdminTourDetail, TourNotFoundError } from './adminTour.service'
 
 type MockDb = {
   adminProfile: { findUnique: ReturnType<typeof vi.fn> }
@@ -78,17 +79,17 @@ describe('assignAdmin', () => {
     expect(result).toBe(stubDetail)
   })
 
-  it('throws AssignAdminNotFoundError when admin does not exist', async () => {
+  it('throws AdminNotFoundError when admin does not exist', async () => {
     getDb().adminProfile.findUnique.mockResolvedValueOnce(null)
-    await expect(assignAdmin('tour-1', 'ap-1')).rejects.toThrow(AssignAdminNotFoundError)
+    await expect(assignAdmin('tour-1', 'ap-1')).rejects.toThrow(AdminNotFoundError)
   })
 
-  it('throws AssignAdminNotFoundError when admin is soft-deleted', async () => {
+  it('throws AdminNotFoundError when admin is soft-deleted', async () => {
     getDb().adminProfile.findUnique.mockResolvedValueOnce({
       id: 'ap-1',
       deletedAt: new Date('2026-01-01'),
     })
-    await expect(assignAdmin('tour-1', 'ap-1')).rejects.toThrow(AssignAdminNotFoundError)
+    await expect(assignAdmin('tour-1', 'ap-1')).rejects.toThrow(AdminNotFoundError)
   })
 
   it('throws AdminAlreadyAssignedError on duplicate assignment (P2002)', async () => {
@@ -100,6 +101,17 @@ describe('assignAdmin', () => {
       }),
     )
     await expect(assignAdmin('tour-1', 'ap-1')).rejects.toThrow(AdminAlreadyAssignedError)
+  })
+
+  it('throws TourNotFoundError when tour FK is missing (P2003)', async () => {
+    getDb().adminProfile.findUnique.mockResolvedValueOnce({ id: 'ap-1', deletedAt: null })
+    getDb().tourAdminAssignment.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Foreign key constraint failed', {
+        code: 'P2003',
+        clientVersion: '5.0.0',
+      }),
+    )
+    await expect(assignAdmin('tour-1', 'ap-1')).rejects.toThrow(TourNotFoundError)
   })
 })
 
@@ -194,5 +206,16 @@ describe('setStaffInCharge', () => {
       data: { staffInChargeId: null },
     })
     expect(result).toBe(stubDetail)
+  })
+
+  it('throws TourNotFoundError when tour is missing (P2025) during update', async () => {
+    getDb().tourAdminAssignment.findUnique.mockResolvedValueOnce({ id: 'assign-1' })
+    getDb().tour.update.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: '5.0.0',
+      }),
+    )
+    await expect(setStaffInCharge('tour-1', 'ap-1')).rejects.toThrow(TourNotFoundError)
   })
 })

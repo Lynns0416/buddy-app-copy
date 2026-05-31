@@ -1,9 +1,9 @@
 import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
 import type { AdminTourDetailResponse } from '@peace-buddy/types'
-import { getAdminTourDetail } from './adminTour.service'
+import { getAdminTourDetail, TourNotFoundError } from './adminTour.service'
 
-export class AssignAdminNotFoundError extends Error {}
+export class AdminNotFoundError extends Error {}
 export class AdminAlreadyAssignedError extends Error {}
 export class AdminNotAssignedError extends Error {}
 export class StaffInChargeNotAssignedError extends Error {}
@@ -12,12 +12,17 @@ export class StaffInChargeRequiredError extends Error {}
 
 export async function assignAdmin(tourId: string, adminId: string): Promise<AdminTourDetailResponse> {
   const admin = await db.adminProfile.findUnique({ where: { id: adminId }, select: { id: true, deletedAt: true } })
-  if (!admin || admin.deletedAt !== null) throw new AssignAdminNotFoundError()
+  if (!admin || admin.deletedAt !== null) throw new AdminNotFoundError()
 
   try {
     await db.tourAdminAssignment.create({ data: { tourId, adminId } })
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new AdminAlreadyAssignedError()
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      if (e.code === 'P2002') throw new AdminAlreadyAssignedError()
+      // P2003 (FK violation) can only originate from the tour side here:
+      // admin existence was checked above, and admins are soft-deleted (never removed from DB).
+      if (e.code === 'P2003') throw new TourNotFoundError()
+    }
     throw e
   }
 
@@ -65,7 +70,7 @@ export async function setStaffInCharge(tourId: string, adminId: string | null): 
   try {
     await db.tour.update({ where: { id: tourId }, data: { staffInChargeId: adminId } })
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') throw new AssignAdminNotFoundError()
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') throw new TourNotFoundError()
     throw e
   }
   return (await getAdminTourDetail(tourId))!

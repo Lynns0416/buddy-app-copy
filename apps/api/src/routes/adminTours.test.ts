@@ -93,7 +93,7 @@ vi.mock('../services/tourAdminAssignment.service', () => ({
   assignAdmin: vi.fn(),
   unassignAdmin: vi.fn(),
   setStaffInCharge: vi.fn(),
-  AssignAdminNotFoundError: class AssignAdminNotFoundError extends Error {},
+  AdminNotFoundError: class AdminNotFoundError extends Error {},
   AdminAlreadyAssignedError: class AdminAlreadyAssignedError extends Error {},
   AdminNotAssignedError: class AdminNotAssignedError extends Error {},
   StaffInChargeNotAssignedError: class StaffInChargeNotAssignedError extends Error {},
@@ -128,7 +128,7 @@ import {
   assignAdmin,
   unassignAdmin,
   setStaffInCharge,
-  AssignAdminNotFoundError,
+  AdminNotFoundError,
   AdminAlreadyAssignedError,
   AdminNotAssignedError,
   StaffInChargeNotAssignedError,
@@ -718,7 +718,19 @@ describe('POST /admin/tours/:id/admins', () => {
 
   it('returns 404 when admin does not exist', async () => {
     mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
-    mockAssignAdmin.mockRejectedValueOnce(new AssignAdminNotFoundError())
+    mockAssignAdmin.mockRejectedValueOnce(new AdminNotFoundError())
+    const res = await buildApp().request('/admin/tours/tour-1/admins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('returns 404 when tour is gone in the race window (TourNotFoundError)', async () => {
+    mockGetAdminTourDetail.mockResolvedValueOnce(mockDetail)
+    mockAssignAdmin.mockRejectedValueOnce(new TourNotFoundError())
     const res = await buildApp().request('/admin/tours/tour-1/admins', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
