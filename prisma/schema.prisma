@@ -107,7 +107,6 @@ model BuddyProfile {
   contactInfo      String?
   languages        String[]
   skills           String[]
-  availability     String?
   internalNotes    String?
   createdAt        DateTime                            @default(now())
   updatedAt        DateTime                            @updatedAt

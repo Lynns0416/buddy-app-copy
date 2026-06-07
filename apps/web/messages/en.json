@@ -123,8 +123,8 @@
       "unknown": "An error occurred. Please try again."
     }
   },
-  "dashboard": {
-    "title": "Dashboard",
+  "tour": {
+    "title": "Tour",
     "noTours": "No upcoming tours",
     "signOut": "Sign out",
     "meetingTime": "Meeting time",
@@ -134,9 +134,9 @@
     "notRegistered": "Sorry, but it seems like you're not registered as a buddy. If you have any questions, please contact any of plab staff.",
     "myBookingsLink": "My bookings"
   },
-  "bookingHistory": {
+  "history": {
     "title": "My bookings",
-    "back": "Back to dashboard",
+    "back": "Back to tour",
     "upcoming": "Upcoming",
     "past": "Past",
     "noUpcoming": "No upcoming bookings",
@@ -311,7 +311,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "nav": {
-      "dashboard": "Dashboard",
+      "tour": "Tour",
+      "history": "History",
       "profile": "Profile",
       "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
@@ -335,7 +336,6 @@
     "contactInfo": "Contact info",
     "skills": "Skills",
     "skillsHelp": "One skill per line",
-    "availability": "Availability",
     "languages": "Languages",
     "photo": {
       "altText": "Profile photo of {name}",

@@ -32,7 +32,6 @@ const stubProfile: BuddyProfileResponse = {
   contactInfo: null,
   languages: [],
   skills: [],
-  availability: null,
   createdAt: '2026-01-15T00:00:00Z',
   updatedAt: '2026-01-15T00:00:00Z',
 }

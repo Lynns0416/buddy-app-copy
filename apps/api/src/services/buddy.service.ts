@@ -12,7 +12,6 @@ export const buddyProfileSelect = {
   contactInfo: true,
   languages: true,
   skills: true,
-  availability: true,
   createdAt: true,
   updatedAt: true,
 } as const

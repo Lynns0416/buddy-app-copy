@@ -57,7 +57,7 @@ describe('AuthProvider — 401 /auth/me handling', () => {
   }
 
   it('redirects to /ja/login with session_expired on 401', async () => {
-    const replace = stubLocation('/ja/dashboard')
+    const replace = stubLocation('/ja/buddy')
     mockApiRequest.mockRejectedValue(new ApiError('Unauthorized', 401))
     await signInWithStaleCookie()
     expect(replace).toHaveBeenCalledWith('/ja/login?reason=session_expired')
@@ -65,14 +65,14 @@ describe('AuthProvider — 401 /auth/me handling', () => {
   })
 
   it('preserves en locale in redirect URL', async () => {
-    const replace = stubLocation('/en/dashboard')
+    const replace = stubLocation('/en/buddy')
     mockApiRequest.mockRejectedValue(new ApiError('Unauthorized', 401))
     await signInWithStaleCookie()
     expect(replace).toHaveBeenCalledWith('/en/login?reason=session_expired')
   })
 
   it('falls back to ja when path has no locale prefix', async () => {
-    const replace = stubLocation('/dashboard')
+    const replace = stubLocation('/buddy')
     mockApiRequest.mockRejectedValue(new ApiError('Unauthorized', 401))
     await signInWithStaleCookie()
     expect(replace).toHaveBeenCalledWith('/ja/login?reason=session_expired')
@@ -87,7 +87,7 @@ describe('AuthProvider — 401 /auth/me handling', () => {
   })
 
   it('does not redirect for non-401 API errors', async () => {
-    const replace = stubLocation('/ja/dashboard')
+    const replace = stubLocation('/ja/buddy')
     mockApiRequest.mockRejectedValue(new ApiError('Server error', 500))
     await signInWithStaleCookie()
     expect(replace).not.toHaveBeenCalled()

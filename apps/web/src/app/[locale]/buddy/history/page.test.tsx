@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import BookingHistoryPage from './page'
+import BuddyHistoryPage from './page'
 import type { MyTourBookingEntry } from '@peace-buddy/types'
 
 vi.mock('next-intl', () => ({
@@ -53,7 +53,7 @@ const makeEntry = (overrides: Partial<MyTourBookingEntry> = {}): MyTourBookingEn
   ...overrides,
 })
 
-describe('BookingHistoryPage', () => {
+describe('BuddyHistoryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAuth.mockReturnValue({
@@ -69,19 +69,19 @@ describe('BookingHistoryPage', () => {
   it('renders nothing while loading', () => {
     mockUseAuth.mockReturnValue({ firebaseUser: null, dbUser: null, loading: true, signOut: vi.fn(), signInWithGoogle: vi.fn(), signInWithApple: vi.fn() })
     mockUseMyBookings.mockReturnValue({ bookings: null, error: false })
-    const { container } = render(<BookingHistoryPage />)
+    const { container } = render(<BuddyHistoryPage />)
     expect(container.firstChild).toBeNull()
   })
 
   it('renders nothing while bookings are null', () => {
     mockUseMyBookings.mockReturnValue({ bookings: null, error: false })
-    const { container } = render(<BookingHistoryPage />)
+    const { container } = render(<BuddyHistoryPage />)
     expect(container.firstChild).toBeNull()
   })
 
   it('shows empty state for both sections when no bookings', async () => {
     mockUseMyBookings.mockReturnValue({ bookings: [], error: false })
-    render(<BookingHistoryPage />)
+    render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('noUpcoming')).toBeInTheDocument())
     expect(screen.getByText('noPast')).toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe('BookingHistoryPage', () => {
   it('places future tour in upcoming section', async () => {
     const entry = makeEntry({ tourDate: '2099-06-01T00:00:00.000Z' })
     mockUseMyBookings.mockReturnValue({ bookings: [entry], error: false })
-    render(<BookingHistoryPage />)
+    render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
     expect(screen.queryByText('noUpcoming')).not.toBeInTheDocument()
     expect(screen.getByText('noPast')).toBeInTheDocument()
@@ -98,7 +98,7 @@ describe('BookingHistoryPage', () => {
   it('places past tour in past section', async () => {
     const entry = makeEntry({ tourDate: '2020-01-01T00:00:00.000Z' })
     mockUseMyBookings.mockReturnValue({ bookings: [entry], error: false })
-    render(<BookingHistoryPage />)
+    render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
     expect(screen.getByText('noUpcoming')).toBeInTheDocument()
     expect(screen.queryByText('noPast')).not.toBeInTheDocument()
@@ -106,7 +106,7 @@ describe('BookingHistoryPage', () => {
 
   it('renders tour date and location', async () => {
     mockUseMyBookings.mockReturnValue({ bookings: [makeEntry()], error: false })
-    render(<BookingHistoryPage />)
+    render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
     expect(screen.getByText(/2099-06-01/)).toBeInTheDocument()
     expect(screen.getByText(/Tokyo Station/)).toBeInTheDocument()
@@ -114,21 +114,21 @@ describe('BookingHistoryPage', () => {
 
   it('renders view link pointing to tour detail', async () => {
     mockUseMyBookings.mockReturnValue({ bookings: [makeEntry()], error: false })
-    render(<BookingHistoryPage />)
+    render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('viewTour')).toBeInTheDocument())
-    expect(screen.getByText('viewTour').closest('a')).toHaveAttribute('href', '/en/dashboard/tours/t1')
+    expect(screen.getByText('viewTour').closest('a')).toHaveAttribute('href', '/en/buddy/tours/t1')
   })
 
   it('passes ready=true when auth is loaded and user exists', () => {
     mockUseMyBookings.mockReturnValue({ bookings: [], error: false })
-    render(<BookingHistoryPage />)
+    render(<BuddyHistoryPage />)
     expect(mockUseMyBookings).toHaveBeenCalledWith(true)
   })
 
   it('passes ready=false when loading', () => {
     mockUseAuth.mockReturnValue({ firebaseUser: null, dbUser: null, loading: true, signOut: vi.fn(), signInWithGoogle: vi.fn(), signInWithApple: vi.fn() })
     mockUseMyBookings.mockReturnValue({ bookings: null, error: false })
-    render(<BookingHistoryPage />)
+    render(<BuddyHistoryPage />)
     expect(mockUseMyBookings).toHaveBeenCalledWith(false)
   })
 })

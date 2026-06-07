@@ -33,7 +33,7 @@ export default function LoginPage() {
       } else if (dbUser.role === UserRoleSchema.enum.admin || dbUser.role === UserRoleSchema.enum.super_admin) {
         router.replace(routes.admin(locale))
       } else {
-        router.replace(routes.dashboard(locale))
+        router.replace(routes.buddy(locale))
       }
     }
   }, [loading, firebaseUser, dbUser, locale, router])

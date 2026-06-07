@@ -26,7 +26,7 @@ function BookingRow({ entry, viewLabel }: { entry: MyTourBookingEntry; viewLabel
         </div>
       </div>
       <Link
-        href={routes.dashboardTour(locale, entry.tourId)}
+        href={routes.buddyTour(locale, entry.tourId)}
         className="shrink-0 text-sm font-medium text-primary hover:underline"
       >
         {viewLabel}
@@ -35,10 +35,10 @@ function BookingRow({ entry, viewLabel }: { entry: MyTourBookingEntry; viewLabel
   )
 }
 
-export default function BookingHistoryPage() {
+export default function BuddyHistoryPage() {
   const { firebaseUser, loading } = useAuth()
   const { locale } = useParams<{ locale: string }>()
-  const t = useTranslations('bookingHistory')
+  const t = useTranslations('history')
 
   const { bookings } = useMyBookings(!loading && !!firebaseUser)
 
@@ -51,7 +51,7 @@ export default function BookingHistoryPage() {
   return (
     <AppShell variant="buddy">
       <div className="mb-6">
-        <Link href={routes.dashboard(locale)} className="text-sm text-muted-foreground hover:text-foreground">
+        <Link href={routes.buddy(locale)} className="text-sm text-muted-foreground hover:text-foreground">
           ← {t('back')}
         </Link>
       </div>

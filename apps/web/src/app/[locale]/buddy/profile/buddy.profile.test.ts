@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchMyProfile, updateMyProfile } from './dashboard.profile'
+import { fetchMyProfile, updateMyProfile } from './buddy.profile'
 import type { BuddyProfileResponse } from '@peace-buddy/types'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 
@@ -33,7 +33,6 @@ const stubProfile: BuddyProfileResponse = {
   contactInfo: null,
   languages: ['english', 'japanese'],
   skills: ['sign language'],
-  availability: null,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 }

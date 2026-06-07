@@ -97,7 +97,6 @@ export const UpdateBuddyProfileSchema = z
     contactInfo: z.string().nullable().optional(),
     languages: z.array(LanguageSchema).optional(),
     skills: z.array(z.string()).optional(),
-    availability: z.string().nullable().optional(),
   })
   .refine(
     (d: { languages?: string[] }) => !d.languages || d.languages.length === new Set(d.languages).size,
@@ -248,7 +247,6 @@ export type BuddyProfileResponse = {
   contactInfo: string | null
   languages: Language[]
   skills: string[]
-  availability: string | null
   createdAt: string
   updatedAt: string
 }

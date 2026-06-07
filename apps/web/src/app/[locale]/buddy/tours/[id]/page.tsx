@@ -39,7 +39,7 @@ export default function TourDetailPage() {
   return (
     <AppShell variant="buddy">
       <div className="mb-6">
-        <Link href={routes.dashboard(locale)} className="text-sm text-muted-foreground hover:text-foreground">
+        <Link href={routes.buddy(locale)} className="text-sm text-muted-foreground hover:text-foreground">
           ← {t('back')}
         </Link>
       </div>

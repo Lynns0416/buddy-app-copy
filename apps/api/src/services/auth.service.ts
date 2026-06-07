@@ -19,7 +19,6 @@ const userSelect = {
       contactInfo: true,
       languages: true,
       skills: true,
-      availability: true,
       createdAt: true,
       updatedAt: true,
     },

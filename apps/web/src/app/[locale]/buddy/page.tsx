@@ -11,14 +11,14 @@ import type { TourResponse } from '@peace-buddy/types'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
-import { fetchUpcomingTours } from './dashboard.tour'
+import { fetchUpcomingTours } from './buddy.tour'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 
-export default function DashboardPage() {
+export default function BuddyTourPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
-  const t = useTranslations('dashboard')
+  const t = useTranslations('tour')
   const tTourStatus = useTranslations('tourStatus')
   const [tours, setTours] = useState<TourResponse[]>([])
 
@@ -58,7 +58,7 @@ export default function DashboardPage() {
       <h1 className="mb-6 text-xl font-semibold">{t('title')}</h1>
 
       <div className="mb-6">
-        <Link href={routes.dashboardBookings(locale)} className="text-sm font-medium text-primary hover:underline">
+        <Link href={routes.buddyHistory(locale)} className="text-sm font-medium text-primary hover:underline">
           {t('myBookingsLink')}
         </Link>
       </div>
@@ -68,7 +68,7 @@ export default function DashboardPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {tours.map((tour) => (
-            <Link key={tour.id} href={routes.dashboardTour(locale, tour.id)} className="rounded-lg border bg-card p-4 hover:bg-accent transition-colors">
+            <Link key={tour.id} href={routes.buddyTour(locale, tour.id)} className="rounded-lg border bg-card p-4 hover:bg-accent transition-colors">
               <div className="mb-3 flex items-start justify-between gap-2">
                 <p className="font-medium">{tour.group.name}</p>
                 <Badge variant={tourStatusBadgeVariant[tour.status]} className="shrink-0">

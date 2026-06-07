@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { routes } from '@/lib/routes'
-import { updateMyProfile } from '../dashboard.profile'
+import { updateMyProfile } from '../buddy.profile'
 
 interface ProfileFormProps {
   profile: BuddyProfileResponse
@@ -29,7 +29,6 @@ export function ProfileForm({ profile, onSaved }: ProfileFormProps) {
   const [realName, setRealName] = useState(profile.realName)
   const [bio, setBio] = useState(profile.bio ?? '')
   const [contactInfo, setContactInfo] = useState(profile.contactInfo ?? '')
-  const [availability, setAvailability] = useState(profile.availability ?? '')
   const [skillsText, setSkillsText] = useState(profile.skills.join('\n'))
   const [selectedLanguages, setSelectedLanguages] = useState<Set<Language>>(
     new Set(profile.languages)
@@ -61,7 +60,6 @@ export function ProfileForm({ profile, onSaved }: ProfileFormProps) {
       realName: realName || undefined,
       bio: bio || null,
       contactInfo: contactInfo || null,
-      availability: availability || null,
       skills,
       languages: Array.from(selectedLanguages),
     })
@@ -135,16 +133,6 @@ export function ProfileForm({ profile, onSaved }: ProfileFormProps) {
       </div>
 
       <div>
-        <Label htmlFor="availability">{t('availability')}</Label>
-        <Input
-          id="availability"
-          value={availability}
-          onChange={(e) => { setSuccess(false); setAvailability(e.target.value) }}
-          className="mt-1"
-        />
-      </div>
-
-      <div>
         <p className="mb-2 text-sm font-medium leading-none">{t('languages')}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {LanguageSchema.options.map((lang: Language) => (
@@ -181,7 +169,7 @@ export function ProfileForm({ profile, onSaved }: ProfileFormProps) {
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push(routes.dashboard(locale))}
+          onClick={() => router.push(routes.buddy(locale))}
           disabled={isSubmitting}
         >
           {t('cancel')}

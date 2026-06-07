@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { BuddyProfileResponse, AppError } from '@peace-buddy/types'
-import { uploadProfilePhoto, deleteProfilePhoto } from '../dashboard.profile'
+import { uploadProfilePhoto, deleteProfilePhoto } from '../buddy.profile'
 
 type UploadState = 'idle' | 'uploading' | 'deleting'
 

@@ -50,7 +50,7 @@ vi.mock('@/components/ui/textarea', () => ({
 }))
 
 vi.mock('@/lib/routes', () => ({
-  routes: { dashboard: (locale: string) => `/${locale}/dashboard` },
+  routes: { buddy: (locale: string) => `/${locale}/buddy` },
 }))
 
 vi.mock('@/lib/auth', () => ({

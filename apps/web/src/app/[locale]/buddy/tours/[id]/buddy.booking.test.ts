@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createInitialBooking, updateBookingStatus, mapErrorToI18nKey } from './dashboard.booking'
+import { createInitialBooking, updateBookingStatus, mapErrorToI18nKey } from './buddy.booking'
 import type { BookingResponse } from '@peace-buddy/types'
 import { BookingStatusSchema } from '@peace-buddy/types'
 

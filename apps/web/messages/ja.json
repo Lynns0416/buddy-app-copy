@@ -123,8 +123,8 @@
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
   },
-  "dashboard": {
-    "title": "ダッシュボード",
+  "tour": {
+    "title": "ツアー",
     "noTours": "直近のツアーはありません",
     "signOut": "ログアウト",
     "meetingTime": "集合時間",
@@ -134,9 +134,9 @@
     "notRegistered": "申し訳ありませんが、バディとして登録されていないようです。ご不明な点がある場合は、plabスタッフまでお問い合わせください。",
     "myBookingsLink": "参加履歴"
   },
-  "bookingHistory": {
+  "history": {
     "title": "参加履歴",
-    "back": "ダッシュボードに戻る",
+    "back": "ツアーに戻る",
     "upcoming": "参加予定",
     "past": "参加済み",
     "noUpcoming": "参加予定のツアーはありません",
@@ -311,7 +311,8 @@
     "openMenu": "メニューを開く",
     "closeMenu": "メニューを閉じる",
     "nav": {
-      "dashboard": "ダッシュボード",
+      "tour": "ツアー",
+      "history": "履歴",
       "profile": "プロフィール",
       "buddiesPending": "承認待ち",
       "buddies": "バディ",
@@ -335,7 +336,6 @@
     "contactInfo": "連絡先",
     "skills": "スキル",
     "skillsHelp": "1行に1つのスキルを入力",
-    "availability": "対応可能時間",
     "languages": "対応言語",
     "photo": {
       "altText": "{name}のプロフィール写真",

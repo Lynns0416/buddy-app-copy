@@ -13,7 +13,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!loading) {
       if (firebaseUser) {
-        router.replace(routes.dashboard(locale))
+        router.replace(routes.buddy(locale))
       } else {
         router.replace(routes.login(locale))
       }

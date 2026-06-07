@@ -32,10 +32,10 @@ describe('HomePage', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('redirects to dashboard when authenticated', () => {
+  it('redirects to buddy area when authenticated', () => {
     mockUseAuth.mockReturnValue({ firebaseUser: { uid: 'u1' }, loading: false } as never)
     render(<HomePage />)
-    expect(mockReplace).toHaveBeenCalledWith('/en/dashboard')
+    expect(mockReplace).toHaveBeenCalledWith('/en/buddy')
   })
 
   it('redirects to login when not authenticated', () => {

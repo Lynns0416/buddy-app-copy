@@ -56,7 +56,7 @@ describe('PendingPage', () => {
     expect(mockReplace).toHaveBeenCalledWith('/en/login')
   })
 
-  it('redirects to dashboard when buddy is active', () => {
+  it('redirects to buddy area when buddy is active', () => {
     mockUseAuth.mockReturnValue({
       firebaseUser: { uid: 'u1' },
       dbUser: { buddyProfile: { status: 'active' } },
@@ -64,7 +64,7 @@ describe('PendingPage', () => {
       signOut: mockSignOut,
     } as never)
     render(<PendingPage />)
-    expect(mockReplace).toHaveBeenCalledWith('/en/dashboard')
+    expect(mockReplace).toHaveBeenCalledWith('/en/buddy')
   })
 
   it('renders pending message', () => {

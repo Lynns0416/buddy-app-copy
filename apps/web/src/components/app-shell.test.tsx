@@ -9,7 +9,7 @@ vi.mock('next-intl', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
   useParams: () => ({ locale: 'en' }),
-  usePathname: () => '/en/dashboard',
+  usePathname: () => '/en/buddy',
 }))
 
 vi.mock('next/link', () => ({

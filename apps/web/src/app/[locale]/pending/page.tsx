@@ -19,7 +19,7 @@ export default function PendingPage() {
       if (!firebaseUser) {
         router.replace(routes.login(locale))
       } else if (dbUser && dbUser.buddyProfile?.status !== BuddyStatusSchema.enum.pending) {
-        router.replace(routes.dashboard(locale))
+        router.replace(routes.buddy(locale))
       }
     }
   }, [loading, firebaseUser, dbUser, locale, router])

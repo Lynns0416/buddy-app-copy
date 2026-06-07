@@ -51,7 +51,6 @@ const userResponse = {
     contactInfo: null,
     languages: [],
     skills: [],
-    availability: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
   },

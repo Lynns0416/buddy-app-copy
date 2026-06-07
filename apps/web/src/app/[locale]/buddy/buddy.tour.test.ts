@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchUpcomingTours } from './dashboard.tour'
+import { fetchUpcomingTours } from './buddy.tour'
 import type { TourResponse } from '@peace-buddy/types'
 import { TourStatusSchema } from '@peace-buddy/types'
 

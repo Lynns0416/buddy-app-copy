@@ -12,11 +12,11 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('../dashboard.profile', () => ({
+vi.mock('../buddy.profile', () => ({
   updateMyProfile: vi.fn(),
 }))
 
-import { updateMyProfile } from '../dashboard.profile'
+import { updateMyProfile } from '../buddy.profile'
 
 const mockUpdate = vi.mocked(updateMyProfile)
 
@@ -30,7 +30,6 @@ const stubProfile: BuddyProfileResponse = {
   contactInfo: 'test@example.com',
   languages: ['english', 'japanese'],
   skills: ['sign language', 'navigation'],
-  availability: 'weekends',
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 }
@@ -49,7 +48,6 @@ describe('ProfileForm', () => {
     expect(screen.getByText('bio')).toBeInTheDocument()
     expect(screen.getByText('contactInfo')).toBeInTheDocument()
     expect(screen.getByText('skills')).toBeInTheDocument()
-    expect(screen.getByText('availability')).toBeInTheDocument()
     expect(screen.getByText('languages')).toBeInTheDocument()
   })
 
@@ -73,7 +71,7 @@ describe('ProfileForm', () => {
     expect(onSaved).toHaveBeenCalledOnce()
   })
 
-  it('does not redirect to dashboard on success', async () => {
+  it('does not redirect to tour on success', async () => {
     mockUpdate.mockResolvedValue({ ok: true, data: stubProfile })
     render(<ProfileForm profile={stubProfile} onSaved={onSaved} />)
 

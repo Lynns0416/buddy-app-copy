@@ -44,8 +44,9 @@ export function AppShell({ variant, children }: Props) {
     variant === 'admin'
       ? adminNavItems
       : [
-          { href: routes.dashboard(locale), label: t('nav.dashboard') },
-          { href: routes.dashboardProfile(locale), label: t('nav.profile') },
+          { href: routes.buddy(locale), label: t('nav.tour') },
+          { href: routes.buddyHistory(locale), label: t('nav.history') },
+          { href: routes.buddyProfile(locale), label: t('nav.profile') },
         ]
 
   const allNavHrefs = navItems.map((item) => item.href)
