@@ -94,12 +94,6 @@ export function ProfileForm({ profile, onSaved }: ProfileFormProps) {
       )}
 
       <div>
-        <Label htmlFor="photo">{t('photo')}</Label>
-        <Input id="photo" value={profile.photoUrl ?? ''} disabled className="mt-1" />
-        <p className="mt-1 text-xs text-muted-foreground">{t('photoComingSoon')}</p>
-      </div>
-
-      <div>
         <Label htmlFor="displayName">{t('displayName')}</Label>
         <Input
           id="displayName"

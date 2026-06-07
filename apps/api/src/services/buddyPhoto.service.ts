@@ -26,6 +26,9 @@ function r2Client(): S3Client {
         accessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
       },
+      // R2 only routes path-style requests on the API endpoint; virtual-hosted style
+      // ({bucket}.{account}.r2.cloudflarestorage.com) fails TLS. Do not remove.
+      forcePathStyle: true,
     })
   }
   return _client
@@ -101,13 +104,15 @@ export async function uploadBuddyPhoto(
 
   const photoUrl = publicUrl(key)
 
-  await deleteR2Object(existing.photoUrl)
-
+  // DB update first, then delete the previous object: if the delete fails we orphan
+  // ~KB in R2 (best-effort, swallowed); the inverse order would point the DB at a 404.
   const updated = await db.buddyProfile.update({
     where: { userId },
     data: { photoUrl },
     select: buddyProfileSelect,
   })
+
+  await deleteR2Object(existing.photoUrl)
 
   return updated as unknown as BuddyProfileResponse
 }
@@ -119,13 +124,13 @@ export async function deleteBuddyPhoto(userId: string): Promise<BuddyProfileResp
   })
   if (!existing) throw new BuddyNotFoundError()
 
-  await deleteR2Object(existing.photoUrl)
-
   const updated = await db.buddyProfile.update({
     where: { userId },
     data: { photoUrl: null },
     select: buddyProfileSelect,
   })
+
+  await deleteR2Object(existing.photoUrl)
 
   return updated as unknown as BuddyProfileResponse
 }

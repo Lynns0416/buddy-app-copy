@@ -30,6 +30,11 @@ Peace Buddy is an internal app for ~200–250 buddies (coworkers). The org is a 
 - Already integrated
 - Free tier covers far more than 250 users
 
+### Object Storage — Cloudflare R2
+- Stores buddy profile photos
+- Free tier: 10 GB storage, zero egress fees (unlike Firebase Storage which charges per GB out)
+- Custom domain via `photos.buddy.plab.jp` once the `buddy.plab.jp` Cloudflare zone is set up; or use the built-in `r2.dev` URL
+
 ### Domain & Email — Google Workspace Business Standard (existing)
 - Non-profit pricing already in place
 - Org domain is `plab.jp`, registered and DNS-hosted on **Xserver** (managed jointly with a partner org)
@@ -56,7 +61,7 @@ Estimated DB growth based on current `prisma/schema.prisma`:
 **Storage drivers to watch**:
 - `AdminEvaluation` / `AdminProfileEvaluation` / `SelfEvaluation` — 11 `xxxNote` fields each. Most will be null/short, but bloat possible if evaluators write essays.
 - `Notification.payload` / `DigestQueue.payload` — keep JSON payloads lean (no full embedded objects).
-- Don't store binary data in Postgres — `photoUrl` references should point to object storage (Firebase Storage free tier handles this).
+- Don't store binary data in Postgres — `photoUrl` references point to **Cloudflare R2** (free egress vs Firebase Storage's paid egress at scale).
 
 ## Google Cloud Nonprofit Credits
 
@@ -99,6 +104,7 @@ Even any credit amount (including $500) covers Cloud Run + Firebase usage for ye
 | Cloud Run | $0 | $0–5/mo | $0–10/mo |
 | Neon | $0 | $0 | $0 (likely; $19/mo worst case) |
 | Firebase Auth | $0 | $0 | $0 |
+| Cloudflare R2 (photos) | $0 | $0 | $0 |
 | **Total** | **$0** | **$0–5/mo** | **$0–30/mo** |
 
 Nonprofit credits (if approved) cover the Google services portion.
@@ -111,13 +117,14 @@ Nonprofit credits (if approved) cover the Google services portion.
 ## Deployment Flow (when ready)
 
 1. Apply for Google Cloud Nonprofit credits via Google for Nonprofits admin console
-2. Create Firebase project (web hosting + auth + storage)
+2. Create Firebase project (web hosting + auth)
 3. Create Cloud Run service for the Hono API (deploy via `gcloud run deploy` or GitHub Actions)
 4. Create Neon project + database; set `DATABASE_URL` in Cloud Run env
-5. Configure custom domain: add NS record in Xserver delegating `buddy.plab.jp` to Cloudflare; add CNAME records in Cloudflare for Firebase Hosting (web) and Cloud Run (API)
-6. Set env vars: Firebase service account, API URL, Neon connection string
-7. Run `prisma db push` to initialize schema
-8. Deploy & smoke test
+5. Create Cloudflare R2 bucket; enable public access (`r2.dev` URL or custom domain under `buddy.plab.jp`); set `R2_*` env vars in Cloud Run
+6. Configure custom domain: add NS record in Xserver delegating `buddy.plab.jp` to Cloudflare; add CNAME records in Cloudflare for Firebase Hosting (web) and Cloud Run (API)
+7. Set env vars: Firebase service account, API URL, Neon connection string
+8. Run `prisma db push` to initialize schema
+9. Deploy & smoke test
 
 ## Fallback: Truly Free Stack (no credits needed)
 
