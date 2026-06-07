@@ -20,7 +20,6 @@ const groupTourSelect = {
   tourDate: true,
   bookingOpen: true,
   location: true,
-  participantCount: true,
   description: true,
   createdAt: true,
   sessions: {
@@ -68,7 +67,6 @@ function mapGroupTour(raw: {
   tourDate: Date
   bookingOpen: boolean
   location: string
-  participantCount: number
   description: string | null
   createdAt: Date
   sessions: {
@@ -82,13 +80,14 @@ function mapGroupTour(raw: {
     participantCount: number
   }[]
 }): GroupTourSummary {
+  const totalParticipants = raw.sessions.reduce((s, sess) => s + sess.participantCount, 0)
   return {
     id: raw.id,
     status: raw.status as TourStatus,
     tourDate: raw.tourDate.toISOString(),
     bookingOpen: raw.bookingOpen,
     location: raw.location,
-    participantCount: raw.participantCount,
+    participantCount: totalParticipants,
     description: raw.description,
     sessions: raw.sessions.map((s) => ({
       id: s.id,

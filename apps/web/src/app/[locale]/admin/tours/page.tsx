@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -15,6 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { SortIcon } from '@/components/sort-icon'
 import { fetchTours, sortTours, nextTourListSort, type TourListSortField } from './admin.tour'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
+import { getTodayLocal } from '@/lib/date'
+import { TodayDivider } from './_components/today-divider'
 
 export default function AdminToursPage() {
   const { ready, locale } = useAdminGuard()
@@ -51,6 +53,20 @@ export default function AdminToursPage() {
   }
 
   const sorted = sortTours(tours, sortField, sortDir)
+  const todayStr = getTodayLocal()
+  const isUpcoming = (tour: AdminTourSummaryResponse) => tour.tourDate.slice(0, 10) >= todayStr
+  const dividerEnabled = sortField === 'tourDate'
+
+  const desktopColumns = [
+    { field: 'tourDate' as const, label: t('tourDate') },
+    { field: 'group' as const, label: t('group') },
+    { field: 'location' as const, label: t('location') },
+    { field: 'capacity' as const, label: t('capacity') },
+    { field: 'participantCount' as const, label: t('participantCount') },
+    { field: 'confirmedCount' as const, label: t('confirmedCount') },
+    { field: 'status' as const, label: t('status') },
+  ]
+  const desktopColSpan = desktopColumns.length + 1
 
   if (!ready) return null
 
@@ -91,29 +107,38 @@ export default function AdminToursPage() {
                 </button>
               ))}
             </div>
-            {sorted.map((tour) => (
-              <div
-                key={tour.id}
-                className="rounded-lg border bg-card p-4 cursor-pointer active:bg-muted/50"
-                onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">{tour.group.name}</p>
-                    <p className="tabular-nums text-sm text-muted-foreground">{tour.tourDate.slice(0, 10)}</p>
+            {sorted.map((tour, idx) => {
+              const showDivider = dividerEnabled && idx > 0 && isUpcoming(tour) !== isUpcoming(sorted[idx - 1])
+              return (
+                <Fragment key={tour.id}>
+                  {showDivider && (
+                    <div className="py-1">
+                      <TodayDivider date={todayStr} label={t('todayDivider')} />
+                    </div>
+                  )}
+                  <div
+                    className="rounded-lg border bg-card p-4 cursor-pointer active:bg-muted/50"
+                    onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{tour.group.name}</p>
+                        <p className="tabular-nums text-sm text-muted-foreground">{tour.tourDate.slice(0, 10)}</p>
+                      </div>
+                      <Badge variant={tourStatusBadgeVariant[tour.status]}>
+                        {getTourStatusLabel(tTourStatus, tour.status)}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">{tour.location}</p>
+                    <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
+                      <span>{t('capacity')}: {tour.capacity}</span>
+                      <span>{t('participantCount')}: {tour.participantCount}</span>
+                      <span>{t('confirmedCount')}: {tour.confirmedCount}</span>
+                    </div>
                   </div>
-                  <Badge variant={tourStatusBadgeVariant[tour.status]}>
-                    {getTourStatusLabel(tTourStatus, tour.status)}
-                  </Badge>
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">{tour.location}</p>
-                <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
-                  <span>{t('capacity')}: {tour.capacity}</span>
-                  <span>{t('participantCount')}: {tour.participantCount}</span>
-                  <span>{t('confirmedCount')}: {tour.confirmedCount}</span>
-                </div>
-              </div>
-            ))}
+                </Fragment>
+              )
+            })}
           </div>
 
           {/* Desktop table */}
@@ -121,15 +146,7 @@ export default function AdminToursPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {([
-                    { field: 'tourDate' as const, label: t('tourDate') },
-                    { field: 'group' as const, label: t('group') },
-                    { field: 'location' as const, label: t('location') },
-                    { field: 'capacity' as const, label: t('capacity') },
-                    { field: 'participantCount' as const, label: t('participantCount') },
-                    { field: 'confirmedCount' as const, label: t('confirmedCount') },
-                    { field: 'status' as const, label: t('status') },
-                  ]).map(({ field, label }) => (
+                  {desktopColumns.map(({ field, label }) => (
                     <TableHead key={field} className="whitespace-nowrap">
                       <button
                         className="inline-flex items-center font-medium transition-colors hover:text-foreground"
@@ -144,30 +161,41 @@ export default function AdminToursPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sorted.map((tour) => (
-                  <TableRow
-                    key={tour.id}
-                    className="cursor-pointer"
-                    onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
-                  >
-                    <TableCell className="tabular-nums text-sm">{tour.tourDate.slice(0, 10)}</TableCell>
-                    <TableCell className="font-medium">{tour.group.name}</TableCell>
-                    <TableCell>{tour.location}</TableCell>
-                    <TableCell className="text-center">{tour.capacity}</TableCell>
-                    <TableCell className="text-center">{tour.participantCount}</TableCell>
-                    <TableCell className="text-center">{tour.confirmedCount}</TableCell>
-                    <TableCell>
-                      <Badge variant={tourStatusBadgeVariant[tour.status]}>
-                        {getTourStatusLabel(tTourStatus, tour.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {sorted.map((tour, idx) => {
+                  const showDivider = dividerEnabled && idx > 0 && isUpcoming(tour) !== isUpcoming(sorted[idx - 1])
+                  return (
+                    <Fragment key={tour.id}>
+                      {showDivider && (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={desktopColSpan} className="py-1">
+                            <TodayDivider date={todayStr} label={t('todayDivider')} />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      <TableRow
+                        className="cursor-pointer"
+                        onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
+                      >
+                        <TableCell className="tabular-nums text-sm">{tour.tourDate.slice(0, 10)}</TableCell>
+                        <TableCell className="font-medium">{tour.group.name}</TableCell>
+                        <TableCell>{tour.location}</TableCell>
+                        <TableCell className="text-center">{tour.capacity}</TableCell>
+                        <TableCell className="text-center">{tour.participantCount}</TableCell>
+                        <TableCell className="text-center">{tour.confirmedCount}</TableCell>
+                        <TableCell>
+                          <Badge variant={tourStatusBadgeVariant[tour.status]}>
+                            {getTourStatusLabel(tTourStatus, tour.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    </Fragment>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>

@@ -19,13 +19,10 @@ const DEFAULT_PERCENTS: Record<typeof POOLS[number], number> = {
 interface Props {
   tourId: string
   sessionId: string
-  sessionOrder: number
-  sessionLabel: string | null
-  totalSessions: number
   capacity: number
 }
 
-export function TierCapacityForm({ tourId, sessionId, sessionOrder, sessionLabel, totalSessions, capacity }: Props) {
+export function TierCapacityForm({ tourId, sessionId, capacity }: Props) {
   const t = useTranslations('adminTours')
   const [percents, setPercents] = useState<TierCapacities>(DEFAULT_PERCENTS)
   const [saving, setSaving] = useState(false)
@@ -70,13 +67,9 @@ export function TierCapacityForm({ tourId, sessionId, sessionOrder, sessionLabel
     setSaving(false)
   }
 
-  const sessionTitle = sessionLabel ?? (totalSessions > 1 ? t(`session.defaultLabel.${sessionOrder}`) : null)
-
   return (
-    <div className="rounded-lg border bg-card p-6">
-      <h2 className="mb-4 text-base font-semibold">
-        {t('tierCapacity.title')}{sessionTitle ? ` — ${sessionTitle}` : ''}
-      </h2>
+    <div>
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('tierCapacity.title')}</h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {POOLS.map((pool) => (
           <div key={pool}>

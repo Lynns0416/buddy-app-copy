@@ -122,6 +122,8 @@ export default function AdminTourDetailPage() {
 
   if (!tour) return null
 
+  const firstSession = tour.sessions.find((s) => s.order === 1)
+
   return (
     <AppShell variant="admin">
       <div className="mb-6 flex items-center justify-between">
@@ -150,6 +152,12 @@ export default function AdminTourDetailPage() {
             <dt className="text-muted-foreground">{t('tourDate')}</dt>
             <dd className="font-medium tabular-nums">{tour.tourDate.slice(0, 10)}</dd>
           </div>
+          {firstSession?.startTime && (
+            <div>
+              <dt className="text-muted-foreground">{t('startTime')}</dt>
+              <dd className="font-medium tabular-nums">{firstSession.startTime.slice(11, 16)}</dd>
+            </div>
+          )}
           <div>
             <dt className="text-muted-foreground">{t('location')}</dt>
             <dd className="font-medium">{tour.location}</dd>
@@ -157,6 +165,10 @@ export default function AdminTourDetailPage() {
           <div>
             <dt className="text-muted-foreground">{t('capacity')}</dt>
             <dd className="font-medium">{tour.capacity}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t('participantCount')}</dt>
+            <dd className="font-medium">{tour.participantCount}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">{t('cancellationDeadline')}</dt>
@@ -188,54 +200,70 @@ export default function AdminTourDetailPage() {
       </div>
 
       {/* Sessions */}
-      <div className="mb-6 rounded-lg border bg-card p-6">
-        <h2 className="mb-4 text-base font-semibold">{t('session.defaultLabel.1')} / {t('session.defaultLabel.2')}</h2>
-        <div className="flex flex-col gap-3">
-          {tour.sessions.map((session) => (
-            <div key={session.id} className="rounded-md border p-3 text-sm">
-              <div className="mb-1 flex items-center justify-between">
-                <p className="font-semibold">
-                  {session.label ?? (tour.sessions.length > 1 ? t(`session.defaultLabel.${session.order}`) : null)}
-                </p>
-                {isEditable && session.order > 1 && (
-                  <button
-                    type="button"
-                    className="text-xs text-destructive hover:underline"
-                    disabled={acting}
-                    onClick={() => void handleRemoveSession(session.id)}
-                  >
-                    {t('session.remove')}
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
-                <span>{t('meetingTime')}: {session.meetingTime.slice(11, 16)}</span>
-                <span>{t('capacity')}: {session.capacity}</span>
-                <span>{t('participantCount')}: {session.participantCount}</span>
+      <div className="mb-6 flex flex-col gap-4">
+        {tour.sessions.map((session) => {
+          const sessionLabel = session.label ?? (tour.sessions.length > 1 ? t(`session.defaultLabel.${session.order}`) : null)
+          return (
+            <div key={session.id} className="rounded-lg border bg-card p-6">
+              {(sessionLabel || (isEditable && session.order > 1)) && (
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="text-base font-semibold">{sessionLabel}</p>
+                  {isEditable && session.order > 1 && (
+                    <button
+                      type="button"
+                      className="text-xs text-destructive hover:underline"
+                      disabled={acting}
+                      onClick={() => void handleRemoveSession(session.id)}
+                    >
+                      {t('session.remove')}
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t('meetingTime')}</div>
+                    <div className="font-medium tabular-nums">{session.meetingTime.slice(11, 16)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t('capacity')}</div>
+                    <div className="font-medium tabular-nums">{session.capacity}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t('participantCount')}</div>
+                    <div className="font-medium tabular-nums">{session.participantCount}</div>
+                  </div>
+                </div>
+                <TierCapacityForm
+                  tourId={tour.id}
+                  sessionId={session.id}
+                  capacity={session.capacity}
+                />
               </div>
             </div>
-          ))}
+          )
+        })}
 
-          {isEditable && tour.sessions.length < 2 && !showAddSession && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="self-start"
-              onClick={() => setShowAddSession(true)}
-            >
-              {t('session.add')}
-            </Button>
-          )}
+        {isEditable && tour.sessions.length < 2 && !showAddSession && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="self-start"
+            onClick={() => setShowAddSession(true)}
+          >
+            {t('session.add')}
+          </Button>
+        )}
 
-          {showAddSession && (
-            <AddSessionForm
-              tourId={tour.id}
-              onAdded={(updated) => { setTour(updated); setShowAddSession(false) }}
-              onCancel={() => setShowAddSession(false)}
-            />
-          )}
-        </div>
+        {showAddSession && (
+          <AddSessionForm
+            tourId={tour.id}
+            onAdded={(updated) => { setTour(updated); setShowAddSession(false) }}
+            onCancel={() => setShowAddSession(false)}
+          />
+        )}
       </div>
 
       {/* Actions */}
@@ -273,21 +301,6 @@ export default function AdminTourDetailPage() {
             </Button>
           </>
         )}
-      </div>
-
-      {/* Tier capacity per session */}
-      <div className="mb-6 flex flex-col gap-4">
-        {tour.sessions.map((session) => (
-          <TierCapacityForm
-            key={session.id}
-            tourId={tour.id}
-            sessionId={session.id}
-            sessionOrder={session.order}
-            sessionLabel={session.label}
-            totalSessions={tour.sessions.length}
-            capacity={session.capacity}
-          />
-        ))}
       </div>
 
       {/* Admin assignment */}
