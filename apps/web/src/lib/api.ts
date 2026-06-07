@@ -44,3 +44,18 @@ export async function apiRequest<T>(
 
   return res.json() as Promise<T>
 }
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const token = await getToken()
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${API_URL}${path}`, { method: 'POST', body: formData, headers })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: 'Request failed' }))
+    throw new ApiError(body.error ?? 'Request failed', res.status, body.details)
+  }
+
+  return res.json() as Promise<T>
+}

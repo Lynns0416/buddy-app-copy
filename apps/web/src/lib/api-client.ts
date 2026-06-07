@@ -1,4 +1,4 @@
-import { apiRequest } from './api'
+import { apiRequest, apiUpload } from './api'
 import { apiPaths } from './api-paths'
 import type {
   GroupResponse,
@@ -270,4 +270,11 @@ export const apiClient = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  uploadMyPhoto: (file: Blob, filename: string) => {
+    const form = new FormData()
+    form.append('photo', file, filename)
+    return apiUpload<BuddyProfileResponse>(apiPaths.meProfilePhoto, form)
+  },
+  deleteMyPhoto: () =>
+    apiRequest<BuddyProfileResponse>(apiPaths.meProfilePhoto, { method: 'DELETE' }),
 }

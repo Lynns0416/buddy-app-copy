@@ -18,3 +18,19 @@ export async function updateMyProfile(data: UpdateBuddyProfile): Promise<ActionR
     return { ok: false, error: classifyApiError(err) }
   }
 }
+
+export async function uploadProfilePhoto(file: Blob, filename: string): Promise<ActionResult<BuddyProfileResponse>> {
+  try {
+    return { ok: true, data: await apiClient.uploadMyPhoto(file, filename) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function deleteProfilePhoto(): Promise<ActionResult<BuddyProfileResponse>> {
+  try {
+    return { ok: true, data: await apiClient.deleteMyPhoto() }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}

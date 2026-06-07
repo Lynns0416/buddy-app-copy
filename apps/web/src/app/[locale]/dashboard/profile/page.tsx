@@ -16,7 +16,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('profile')
-  const { profile, error: fetchError, refetch } = useMyProfile(!loading && !!firebaseUser)
+  const { profile, error: fetchError, refetch, updateProfile } = useMyProfile(!loading && !!firebaseUser)
 
   useEffect(() => {
     if (!loading) {
@@ -42,7 +42,7 @@ export default function ProfilePage() {
 
       {profile && (
         <>
-          <ProfileHeader profile={profile} />
+          <ProfileHeader profile={profile} onPhotoSaved={updateProfile} />
           <ProfileForm profile={profile} onSaved={refetch} />
         </>
       )}

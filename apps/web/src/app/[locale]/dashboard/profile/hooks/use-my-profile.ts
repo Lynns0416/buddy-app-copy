@@ -24,5 +24,7 @@ export function useMyProfile(enabled: boolean) {
     setProfile(updated)
   }
 
-  return { profile, error, refetch }
+  const updateProfile = (updated: BuddyProfileResponse) => setProfile(updated)
+
+  return { profile, error, refetch, updateProfile }
 }

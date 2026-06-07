@@ -64,7 +64,7 @@ export const TierCapacitiesSchema = z.object({
 export type TierCapacities = z.infer<typeof TierCapacitiesSchema>
 
 // `network` is client-only and is never emitted by the server
-export const AppErrorCodeSchema = z.enum(['not_found', 'forbidden', 'conflict', 'invalid_request', 'network', 'unknown'])
+export const AppErrorCodeSchema = z.enum(['not_found', 'forbidden', 'conflict', 'invalid_request', 'payload_too_large', 'network', 'unknown'])
 export type AppErrorCode = z.infer<typeof AppErrorCodeSchema>
 
 export type AppError = { code: AppErrorCode; detail?: string }
@@ -318,6 +318,7 @@ export type AdminBuddyResponse = {
   tier: BuddyTier | null
   displayName: string
   realName: string
+  photoUrl: string | null
   email: string
   internalNotes: string | null
   createdAt: string

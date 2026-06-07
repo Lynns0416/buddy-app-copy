@@ -32,6 +32,9 @@ Peace Buddy is an internal app for ~200–250 buddies (coworkers). The org is a 
 
 ### Domain & Email — Google Workspace Business Standard (existing)
 - Non-profit pricing already in place
+- Org domain is `plab.jp`, registered and DNS-hosted on **Xserver** (managed jointly with a partner org)
+- For the app subdomain: delegate a subdomain (e.g. `buddy.plab.jp`) to **Cloudflare DNS** via a single NS record in Xserver — one-time setup, then all app DNS records are managed in Cloudflare
+- Firebase Hosting and Cloud Run both support custom domains via CNAME; TLS is provisioned automatically by each service
 
 ## Storage Capacity Analysis (Neon 0.5 GB free)
 
@@ -111,7 +114,7 @@ Nonprofit credits (if approved) cover the Google services portion.
 2. Create Firebase project (web hosting + auth + storage)
 3. Create Cloud Run service for the Hono API (deploy via `gcloud run deploy` or GitHub Actions)
 4. Create Neon project + database; set `DATABASE_URL` in Cloud Run env
-5. Configure custom domain (via Google Workspace DNS)
+5. Configure custom domain: add NS record in Xserver delegating `buddy.plab.jp` to Cloudflare; add CNAME records in Cloudflare for Firebase Hosting (web) and Cloud Run (API)
 6. Set env vars: Firebase service account, API URL, Neon connection string
 7. Run `prisma db push` to initialize schema
 8. Deploy & smoke test

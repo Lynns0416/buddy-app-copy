@@ -3,6 +3,7 @@ export const apiPaths = {
   authMe: '/auth/me',
 
   meProfile: '/me/profile',
+  meProfilePhoto: '/me/profile/photo',
   meBookings: '/me/bookings',
 
   tours: '/tours',

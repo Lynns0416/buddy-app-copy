@@ -337,8 +337,21 @@
     "skillsHelp": "One skill per line",
     "availability": "Availability",
     "languages": "Languages",
-    "photo": "Profile photo",
-    "photoComingSoon": "Photo upload coming soon",
+    "photo": {
+      "altText": "Profile photo of {name}",
+      "uploadButton": "Change photo",
+      "removeButton": "Remove",
+      "uploading": "Uploading…",
+      "zoom": "Zoom",
+      "cropConfirm": "Apply crop",
+      "cropCancel": "Cancel",
+      "error": {
+        "tooLarge": "Photo must be under 2 MB.",
+        "wrongFormat": "Only JPEG, PNG, or WebP files are allowed.",
+        "network": "Network error. Please check your connection.",
+        "unknown": "Upload failed. Please try again."
+      }
+    },
     "statusLabel": "Account status",
     "memberSince": "Member since",
     "save": "Save",

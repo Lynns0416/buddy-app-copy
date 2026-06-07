@@ -337,8 +337,21 @@
     "skillsHelp": "1行に1つのスキルを入力",
     "availability": "対応可能時間",
     "languages": "対応言語",
-    "photo": "プロフィール写真",
-    "photoComingSoon": "写真のアップロードは近日対応予定",
+    "photo": {
+      "altText": "{name}のプロフィール写真",
+      "uploadButton": "写真を変更",
+      "removeButton": "削除",
+      "uploading": "アップロード中…",
+      "zoom": "ズーム",
+      "cropConfirm": "この範囲で確定",
+      "cropCancel": "キャンセル",
+      "error": {
+        "tooLarge": "写真は2MB以下にしてください。",
+        "wrongFormat": "JPEG・PNG・WebPファイルのみ対応しています。",
+        "network": "ネットワークエラーが発生しました。接続を確認してください。",
+        "unknown": "アップロードに失敗しました。再度お試しください。"
+      }
+    },
     "statusLabel": "アカウントステータス",
     "memberSince": "登録日",
     "save": "保存",

@@ -14,3 +14,4 @@
 - **Never eslint-disable** — Fix code pattern instead. Suppressing rules masks real bugs and creates tech debt.
 - [feedback_mock_pattern.md](feedback_mock_pattern.md) — Prisma mock pattern: use `as unknown as MockDb` cast, never `vi.mocked(db.model.method)` standalone
 - [feedback_project_state.md](feedback_project_state.md) — Do not maintain project_state.md; git log is source of truth for completed work
+- [feedback_ask_before_concluding.md](feedback_ask_before_concluding.md) — Ask questions until confident; never state recommendations with false confidence

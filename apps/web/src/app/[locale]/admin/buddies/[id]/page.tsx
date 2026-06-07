@@ -12,6 +12,7 @@ import { AppShell } from '@/components/app-shell'
 import { getBuddyStatusLabel } from '@/lib/status-display'
 import { routes } from '@/lib/routes'
 import { fetchBuddy, mapBuddyError } from '../admin.buddy'
+import { ProfilePhoto } from '../../../dashboard/profile/_components/profile-photo'
 import { BuddyForm } from '../_components/buddy-form'
 import { BuddyBookingHistory } from '../_components/buddy-booking-history'
 import { BuddyPerTourEvaluations } from '../_components/buddy-per-tour-evaluations'
@@ -72,8 +73,13 @@ export default function AdminBuddyDetailPage() {
       </div>
 
       <div className="max-w-2xl">
-        <h1 className="mb-2 text-2xl font-semibold">{buddy.displayName}</h1>
-        <p className="mb-6 text-muted-foreground">{buddy.email}</p>
+        <div className="mb-4 flex items-center gap-4">
+          <ProfilePhoto photoUrl={buddy.photoUrl} displayName={buddy.displayName} readOnly />
+          <div>
+            <h1 className="text-2xl font-semibold">{buddy.displayName}</h1>
+            <p className="text-muted-foreground">{buddy.email}</p>
+          </div>
+        </div>
 
         <div className="rounded-lg border bg-card p-6 mb-6">
           <div className="grid gap-4 mb-6">

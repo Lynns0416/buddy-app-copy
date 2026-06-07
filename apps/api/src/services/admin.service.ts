@@ -10,6 +10,7 @@ const adminBuddySelect = {
   tier: true,
   displayName: true,
   realName: true,
+  photoUrl: true,
   internalNotes: true,
   createdAt: true,
   updatedAt: true,
@@ -26,6 +27,7 @@ function mapBuddy(raw: {
   tier: string | null
   displayName: string
   realName: string
+  photoUrl: string | null
   internalNotes: string | null
   createdAt: Date
   updatedAt: Date

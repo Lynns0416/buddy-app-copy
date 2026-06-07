@@ -18,6 +18,10 @@ vi.mock('@/lib/status-display', () => ({
   },
 }))
 
+vi.mock('./profile-photo', () => ({
+  ProfilePhoto: () => null,
+}))
+
 const stubProfile: BuddyProfileResponse = {
   id: 'p1',
   status: 'active',
@@ -35,27 +39,27 @@ const stubProfile: BuddyProfileResponse = {
 
 describe('ProfileHeader', () => {
   it('renders status label key', () => {
-    render(<ProfileHeader profile={stubProfile} />)
+    render(<ProfileHeader profile={stubProfile} onPhotoSaved={vi.fn()} />)
     expect(screen.getByText('statusLabel')).toBeInTheDocument()
   })
 
   it('renders mapped status label', () => {
-    render(<ProfileHeader profile={stubProfile} />)
+    render(<ProfileHeader profile={stubProfile} onPhotoSaved={vi.fn()} />)
     expect(screen.getByText('status:active')).toBeInTheDocument()
   })
 
   it('renders memberSince label key', () => {
-    render(<ProfileHeader profile={stubProfile} />)
+    render(<ProfileHeader profile={stubProfile} onPhotoSaved={vi.fn()} />)
     expect(screen.getByText('memberSince')).toBeInTheDocument()
   })
 
   it('renders formatted member since date', () => {
-    render(<ProfileHeader profile={stubProfile} />)
+    render(<ProfileHeader profile={stubProfile} onPhotoSaved={vi.fn()} />)
     expect(screen.getByText(/January 15, 2026/)).toBeInTheDocument()
   })
 
   it('renders correct badge variant for pending status', () => {
-    render(<ProfileHeader profile={{ ...stubProfile, status: 'pending' }} />)
+    render(<ProfileHeader profile={{ ...stubProfile, status: 'pending' }} onPhotoSaved={vi.fn()} />)
     expect(screen.getByText('status:pending')).toBeInTheDocument()
   })
 })
