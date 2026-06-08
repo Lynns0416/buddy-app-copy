@@ -114,7 +114,9 @@ const session = (capacity: number) => ({
   startTime: null,
   endTime: null,
   capacity,
+  minBuddies: null,
   participantCount: 0,
+  belowMinimum: false,
 })
 
 const tour = (overrides: Partial<GroupDetailResponse['tours'][0]>): GroupDetailResponse['tours'][0] => ({

@@ -65,6 +65,7 @@ const sessionSelect = {
   startTime: true,
   endTime: true,
   capacity: true,
+  minBuddies: true,
   participantCount: true,
 } as const
 
@@ -76,6 +77,7 @@ function mapSession(row: {
   startTime: Date | null
   endTime: Date | null
   capacity: number
+  minBuddies: number | null
   participantCount: number
 }): TourSessionResponse {
   return {
@@ -86,7 +88,9 @@ function mapSession(row: {
     startTime: row.startTime ? row.startTime.toISOString() : null,
     endTime: row.endTime ? row.endTime.toISOString() : null,
     capacity: row.capacity,
+    minBuddies: row.minBuddies,
     participantCount: row.participantCount,
+    belowMinimum: row.minBuddies != null && row.participantCount < row.minBuddies,
   }
 }
 
@@ -108,6 +112,7 @@ function mapSummary(row: {
     startTime: Date | null
     endTime: Date | null
     capacity: number
+    minBuddies: number | null
     participantCount: number
   }>
   _count: { bookings: number }
@@ -179,6 +184,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
           startTime: s.startTime ? parseTime(s.startTime) : null,
           endTime: s.endTime ? parseTime(s.endTime) : null,
           capacity: s.capacity,
+          minBuddies: s.minBuddies ?? null,
           participantCount: s.participantCount ?? 0,
         })),
       },

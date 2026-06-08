@@ -31,6 +31,7 @@ const groupTourSelect = {
       startTime: true,
       endTime: true,
       capacity: true,
+      minBuddies: true,
       participantCount: true,
     },
     orderBy: { order: 'asc' as const },
@@ -77,6 +78,7 @@ function mapGroupTour(raw: {
     startTime: Date | null
     endTime: Date | null
     capacity: number
+    minBuddies: number | null
     participantCount: number
   }[]
 }): GroupTourSummary {
@@ -97,7 +99,9 @@ function mapGroupTour(raw: {
       startTime: s.startTime ? s.startTime.toISOString() : null,
       endTime: s.endTime ? s.endTime.toISOString() : null,
       capacity: s.capacity,
+      minBuddies: s.minBuddies,
       participantCount: s.participantCount,
+      belowMinimum: s.minBuddies != null && s.participantCount < s.minBuddies,
     })),
     createdAt: raw.createdAt.toISOString(),
   }

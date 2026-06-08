@@ -58,6 +58,7 @@ export async function addSession(tourId: string, data: CreateTourSession): Promi
       startTime: data.startTime ? parseTime(data.startTime) : null,
       endTime: data.endTime ? parseTime(data.endTime) : null,
       capacity: data.capacity,
+      minBuddies: data.minBuddies ?? null,
       participantCount: data.participantCount ?? 0,
     },
   })
@@ -78,6 +79,7 @@ export async function updateSession(tourId: string, sessionId: string, data: Upd
       ...(data.startTime !== undefined ? { startTime: data.startTime ? parseTime(data.startTime) : null } : {}),
       ...(data.endTime !== undefined ? { endTime: data.endTime ? parseTime(data.endTime) : null } : {}),
       ...(data.capacity !== undefined ? { capacity: data.capacity } : {}),
+      ...(data.minBuddies !== undefined ? { minBuddies: data.minBuddies } : {}),
       ...(data.participantCount !== undefined ? { participantCount: data.participantCount } : {}),
     },
   })

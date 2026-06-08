@@ -171,7 +171,9 @@ const mockSession: TourSessionResponse = {
   startTime: null,
   endTime: null,
   capacity: 5,
+  minBuddies: null,
   participantCount: 0,
+  belowMinimum: false,
 }
 
 const mockSummary: AdminTourSummaryResponse = {
@@ -304,6 +306,51 @@ describe('POST /admin/tours', () => {
     })
     expect(res.status).toBe(400)
     expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 400 when session minBuddies exceeds capacity', async () => {
+    const res = await buildApp().request('/admin/tours', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...validCreateBody,
+        sessions: [{ meetingTime: '09:00', capacity: 5, minBuddies: 10 }],
+      }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+    expect(mockCreateTour).not.toHaveBeenCalled()
+  })
+
+  it('accepts session with minBuddies equal to capacity', async () => {
+    mockCreateTour.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...validCreateBody,
+        sessions: [{ meetingTime: '09:00', capacity: 5, minBuddies: 5 }],
+      }),
+    })
+    expect(res.status).toBe(201)
+    expect(mockCreateTour).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessions: expect.arrayContaining([expect.objectContaining({ minBuddies: 5 })]) as unknown as Array<{ minBuddies: number }>,
+      }),
+    )
+  })
+
+  it('returns 400 when session minBuddies is negative', async () => {
+    const res = await buildApp().request('/admin/tours', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...validCreateBody,
+        sessions: [{ meetingTime: '09:00', capacity: 5, minBuddies: -1 }],
+      }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockCreateTour).not.toHaveBeenCalled()
   })
 })
 
@@ -533,6 +580,30 @@ describe('POST /admin/tours/:id/sessions', () => {
     expect(res.status).toBe(400)
     expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
+
+  it('returns 400 when minBuddies exceeds capacity', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meetingTime: '10:00', capacity: 5, minBuddies: 6 }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockAddSession).not.toHaveBeenCalled()
+  })
+
+  it('forwards minBuddies to the service when valid', async () => {
+    mockAddSession.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meetingTime: '10:00', capacity: 8, minBuddies: 3 }),
+    })
+    expect(res.status).toBe(201)
+    expect(mockAddSession).toHaveBeenCalledWith(
+      'tour-1',
+      expect.objectContaining({ minBuddies: 3 }),
+    )
+  })
 })
 
 describe('PUT /admin/tours/:id/sessions/:sessionId', () => {
@@ -577,6 +648,46 @@ describe('PUT /admin/tours/:id/sessions/:sessionId', () => {
     })
     expect(res.status).toBe(400)
     expect(await res.json()).toEqual({ code: 'invalid_request' })
+  })
+
+  it('returns 400 when minBuddies exceeds the updated capacity', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capacity: 5, minBuddies: 10 }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockUpdateSession).not.toHaveBeenCalled()
+  })
+
+  it('accepts minBuddies-only update without capacity (refine skipped)', async () => {
+    mockUpdateSession.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ minBuddies: 99 }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateSession).toHaveBeenCalledWith(
+      'tour-1',
+      'session-1',
+      expect.objectContaining({ minBuddies: 99 }),
+    )
+  })
+
+  it('forwards explicit null minBuddies to clear the value', async () => {
+    mockUpdateSession.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ minBuddies: null }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateSession).toHaveBeenCalledWith(
+      'tour-1',
+      'session-1',
+      expect.objectContaining({ minBuddies: null }),
+    )
   })
 })
 

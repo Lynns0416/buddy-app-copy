@@ -108,24 +108,38 @@ export type UpdateBuddyProfile = z.infer<typeof UpdateBuddyProfileSchema>
 
 const timeRegex = /^\d{2}:\d{2}$/
 
-export const CreateTourSessionSchema = z.object({
-  label: z.string().optional(),
-  meetingTime: z.string().regex(timeRegex),
-  startTime: z.string().regex(timeRegex).optional(),
-  endTime: z.string().regex(timeRegex).optional(),
-  capacity: z.number().int().positive(),
-  participantCount: z.number().int().min(0).optional(),
-})
+export const CreateTourSessionSchema = z
+  .object({
+    label: z.string().optional(),
+    meetingTime: z.string().regex(timeRegex),
+    startTime: z.string().regex(timeRegex).optional(),
+    endTime: z.string().regex(timeRegex).optional(),
+    capacity: z.number().int().positive(),
+    minBuddies: z.number().int().min(0).nullable().optional(),
+    participantCount: z.number().int().min(0).optional(),
+  })
+  .refine(
+    (d: { capacity: number; minBuddies?: number | null }) =>
+      d.minBuddies == null || d.minBuddies <= d.capacity,
+    { message: 'minBuddies must be ≤ capacity', path: ['minBuddies'] },
+  )
 export type CreateTourSession = z.infer<typeof CreateTourSessionSchema>
 
-export const UpdateTourSessionSchema = z.object({
-  label: z.string().nullable().optional(),
-  meetingTime: z.string().regex(timeRegex).optional(),
-  startTime: z.string().regex(timeRegex).nullable().optional(),
-  endTime: z.string().regex(timeRegex).nullable().optional(),
-  capacity: z.number().int().positive().optional(),
-  participantCount: z.number().int().min(0).optional(),
-})
+export const UpdateTourSessionSchema = z
+  .object({
+    label: z.string().nullable().optional(),
+    meetingTime: z.string().regex(timeRegex).optional(),
+    startTime: z.string().regex(timeRegex).nullable().optional(),
+    endTime: z.string().regex(timeRegex).nullable().optional(),
+    capacity: z.number().int().positive().optional(),
+    minBuddies: z.number().int().min(0).nullable().optional(),
+    participantCount: z.number().int().min(0).optional(),
+  })
+  .refine(
+    (d: { capacity?: number; minBuddies?: number | null }) =>
+      d.capacity == null || d.minBuddies == null || d.minBuddies <= d.capacity,
+    { message: 'minBuddies must be ≤ capacity', path: ['minBuddies'] },
+  )
 export type UpdateTourSession = z.infer<typeof UpdateTourSessionSchema>
 
 export const CreateTourSchema = z
@@ -259,7 +273,9 @@ export type TourSessionResponse = {
   startTime: string | null
   endTime: string | null
   capacity: number
+  minBuddies: number | null
   participantCount: number
+  belowMinimum: boolean
 }
 
 export type TourResponse = {

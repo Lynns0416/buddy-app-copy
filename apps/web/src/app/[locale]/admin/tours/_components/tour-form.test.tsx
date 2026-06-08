@@ -160,6 +160,56 @@ describe('TourForm', () => {
     resolve()
   })
 
+  it('submits minBuddies as null when the input is empty', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    await fillAndSubmit({}, onSubmit)
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    const values = onSubmit.mock.calls[0][0]
+    expect(values.sessions[0].minBuddies).toBeNull()
+  })
+
+  it('submits minBuddies as a number when filled', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    renderForm(onSubmit)
+    const user = userEvent.setup()
+
+    await user.selectOptions(screen.getByLabelText('group'), validFields.groupId)
+    await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
+    await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
+    await user.type(screen.getByLabelText('location'), validFields.location)
+    await user.clear(screen.getByLabelText('capacity'))
+    await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
+    await user.type(screen.getByLabelText('minBuddies'), '2')
+    await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    const values = onSubmit.mock.calls[0][0]
+    expect(values.sessions[0].minBuddies).toBe(2)
+  })
+
+  it('shows error and blocks submit when minBuddies exceeds capacity', async () => {
+    const onSubmit = vi.fn()
+    renderForm(onSubmit)
+    const user = userEvent.setup()
+
+    await user.selectOptions(screen.getByLabelText('group'), validFields.groupId)
+    await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
+    await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
+    await user.type(screen.getByLabelText('location'), validFields.location)
+    await user.clear(screen.getByLabelText('capacity'))
+    await user.type(screen.getByLabelText('capacity'), '5')
+    await user.type(screen.getByLabelText('minBuddies'), '10')
+    await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('minBuddiesExceedsCapacity')).toBeInTheDocument(),
+    )
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it('renders defaultValues in edit mode', () => {
     render(
       <TourForm
@@ -186,7 +236,9 @@ describe('TourForm', () => {
             startTime: null,
             endTime: null,
             capacity: 10,
+            minBuddies: null,
             participantCount: 0,
+            belowMinimum: false,
           }],
           bookings: [],
           assignedAdmins: [],

@@ -155,6 +155,45 @@ describe('addSession', () => {
     expect(call.data.meetingTime).toBeInstanceOf(Date)
     expect(call.data.meetingTime.toISOString()).toBe('1970-01-01T09:30:00.000Z')
   })
+
+  it('persists minBuddies when provided', async () => {
+    mdb.tour.findUnique
+      .mockResolvedValueOnce({ status: 'draft', sessions: [] })
+      .mockResolvedValueOnce(makeDetailRow())
+    mdb.tourSession.create.mockResolvedValueOnce({})
+
+    await addSession('tour-1', { meetingTime: '09:00', capacity: 10, minBuddies: 3 })
+
+    expect(mdb.tourSession.create).toHaveBeenCalledWith(
+      oc({ data: oc({ minBuddies: 3 }) }),
+    )
+  })
+
+  it('persists minBuddies as null when omitted', async () => {
+    mdb.tour.findUnique
+      .mockResolvedValueOnce({ status: 'draft', sessions: [] })
+      .mockResolvedValueOnce(makeDetailRow())
+    mdb.tourSession.create.mockResolvedValueOnce({})
+
+    await addSession('tour-1', { meetingTime: '09:00', capacity: 10 })
+
+    expect(mdb.tourSession.create).toHaveBeenCalledWith(
+      oc({ data: oc({ minBuddies: null }) }),
+    )
+  })
+
+  it('persists minBuddies as null when explicitly null', async () => {
+    mdb.tour.findUnique
+      .mockResolvedValueOnce({ status: 'draft', sessions: [] })
+      .mockResolvedValueOnce(makeDetailRow())
+    mdb.tourSession.create.mockResolvedValueOnce({})
+
+    await addSession('tour-1', { meetingTime: '09:00', capacity: 10, minBuddies: null })
+
+    expect(mdb.tourSession.create).toHaveBeenCalledWith(
+      oc({ data: oc({ minBuddies: null }) }),
+    )
+  })
 })
 
 // ── updateSession ───────────────────────────────────────────────────────────
@@ -194,6 +233,41 @@ describe('updateSession', () => {
     const call = mdb.tourSession.update.mock.calls[0][0] as { data: { meetingTime: Date } }
     expect(call.data.meetingTime).toBeInstanceOf(Date)
     expect(call.data.meetingTime.toISOString()).toBe('1970-01-01T11:00:00.000Z')
+  })
+
+  it('persists minBuddies when provided', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1' })
+    mdb.tourSession.update.mockResolvedValueOnce({})
+    mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
+
+    await updateSession('tour-1', 'session-1', { minBuddies: 4 })
+
+    expect(mdb.tourSession.update).toHaveBeenCalledWith(
+      oc({ where: { id: 'session-1' }, data: oc({ minBuddies: 4 }) }),
+    )
+  })
+
+  it('clears minBuddies when explicitly null', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1' })
+    mdb.tourSession.update.mockResolvedValueOnce({})
+    mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
+
+    await updateSession('tour-1', 'session-1', { minBuddies: null })
+
+    expect(mdb.tourSession.update).toHaveBeenCalledWith(
+      oc({ where: { id: 'session-1' }, data: oc({ minBuddies: null }) }),
+    )
+  })
+
+  it('does not set minBuddies when omitted from update', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1' })
+    mdb.tourSession.update.mockResolvedValueOnce({})
+    mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
+
+    await updateSession('tour-1', 'session-1', { capacity: 12 })
+
+    const call = mdb.tourSession.update.mock.calls[0][0] as { data: Record<string, unknown> }
+    expect(call.data).not.toHaveProperty('minBuddies')
   })
 })
 

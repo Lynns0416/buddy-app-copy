@@ -32,6 +32,7 @@ const mockSessionRow = {
   startTime: null as Date | null,
   endTime: null as Date | null,
   capacity: 10,
+  minBuddies: null as number | null,
   participantCount: 0,
 }
 
@@ -108,6 +109,38 @@ describe('listTours', () => {
     mdb.tour.findMany.mockResolvedValueOnce([mockRow])
     const result = await listTours('user-1')
     expect(result[0].bookingOpen).toBe(true)
+  })
+
+  it('exposes minBuddies and belowMinimum=false when minBuddies is null', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([mockRow])
+    const result = await listTours('user-1')
+    expect(result[0].sessions[0].minBuddies).toBeNull()
+    expect(result[0].sessions[0].belowMinimum).toBe(false)
+  })
+
+  it('sets belowMinimum=true when participantCount < minBuddies', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([
+      { ...mockRow, sessions: [{ ...mockSessionRow, minBuddies: 5, participantCount: 2 }] },
+    ])
+    const result = await listTours('user-1')
+    expect(result[0].sessions[0].minBuddies).toBe(5)
+    expect(result[0].sessions[0].belowMinimum).toBe(true)
+  })
+
+  it('sets belowMinimum=false when participantCount equals minBuddies', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([
+      { ...mockRow, sessions: [{ ...mockSessionRow, minBuddies: 3, participantCount: 3 }] },
+    ])
+    const result = await listTours('user-1')
+    expect(result[0].sessions[0].belowMinimum).toBe(false)
+  })
+
+  it('sets belowMinimum=false when participantCount exceeds minBuddies', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([
+      { ...mockRow, sessions: [{ ...mockSessionRow, minBuddies: 2, participantCount: 5 }] },
+    ])
+    const result = await listTours('user-1')
+    expect(result[0].sessions[0].belowMinimum).toBe(false)
   })
 
   it('defaults to published status when no filters given', async () => {

@@ -50,7 +50,9 @@ const mockSessionSummary = {
   startTime: null,
   endTime: null,
   capacity: 10,
+  minBuddies: null,
   participantCount: 0,
+  belowMinimum: false,
 }
 
 const mockTour: TourResponse = {

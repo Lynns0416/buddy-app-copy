@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { fetchTours, sortTours, nextTourListSort, type TourListSortField } from './admin.tour'
+import { BelowMinimumBadge } from './_components/below-minimum-badge'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { getTodayLocal } from '@/lib/date'
 import { TodayDivider } from './_components/today-divider'
@@ -130,10 +131,11 @@ export default function AdminToursPage() {
                       </Badge>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{tour.location}</p>
-                    <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span>{t('capacity')}: {tour.capacity}</span>
                       <span>{t('participantCount')}: {tour.participantCount}</span>
                       <span>{t('confirmedCount')}: {tour.confirmedCount}</span>
+                      {tour.sessions.some((s) => s.belowMinimum) && <BelowMinimumBadge />}
                     </div>
                   </div>
                 </Fragment>
@@ -180,7 +182,12 @@ export default function AdminToursPage() {
                         <TableCell className="font-medium">{tour.group.name}</TableCell>
                         <TableCell>{tour.location}</TableCell>
                         <TableCell className="text-center">{tour.capacity}</TableCell>
-                        <TableCell className="text-center">{tour.participantCount}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="inline-flex items-center gap-2">
+                            <span className="tabular-nums">{tour.participantCount}</span>
+                            {tour.sessions.some((s) => s.belowMinimum) && <BelowMinimumBadge />}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-center">{tour.confirmedCount}</TableCell>
                         <TableCell>
                           <Badge variant={tourStatusBadgeVariant[tour.status]}>

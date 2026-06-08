@@ -14,12 +14,18 @@ import { Textarea } from '@/components/ui/textarea'
 
 const timeRegex = /^\d{2}:\d{2}$/
 
-const SessionFormSchema = z.object({
-  label: z.string().optional(),
-  meetingTime: z.string().regex(timeRegex),
-  capacity: z.coerce.number().int().positive(),
-  participantCount: z.coerce.number().int().min(0),
-})
+const SessionFormSchema = z
+  .object({
+    label: z.string().optional(),
+    meetingTime: z.string().regex(timeRegex),
+    capacity: z.coerce.number().int().positive(),
+    minBuddies: z.coerce.number().int().min(0).optional(),
+    participantCount: z.coerce.number().int().min(0),
+  })
+  .refine(
+    (d) => d.minBuddies == null || d.minBuddies <= d.capacity,
+    { message: 'minBuddiesExceedsCapacity', path: ['minBuddies'] },
+  )
 
 const TourFormSchema = z
   .object({
@@ -45,6 +51,7 @@ export type SessionFormValues = {
   label?: string
   meetingTime: string
   capacity: number
+  minBuddies: number | null
   participantCount: number
 }
 
@@ -101,6 +108,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
               label: firstSession.label ?? '',
               meetingTime: firstSession.meetingTime.slice(11, 16),
               capacity: firstSession.capacity,
+              minBuddies: firstSession.minBuddies ?? undefined,
               participantCount: firstSession.participantCount,
             },
             ...(secondSession
@@ -108,6 +116,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
                   label: secondSession.label ?? '',
                   meetingTime: secondSession.meetingTime.slice(11, 16),
                   capacity: secondSession.capacity,
+                  minBuddies: secondSession.minBuddies ?? undefined,
                   participantCount: secondSession.participantCount,
                 }]
               : []),
@@ -139,6 +148,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
         label: s.label || undefined,
         meetingTime: s.meetingTime,
         capacity: s.capacity,
+        minBuddies: s.minBuddies || null,
         participantCount: s.participantCount,
       })),
     }
@@ -228,6 +238,17 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
                 <Label htmlFor={`sessions.${idx}.capacity`}>{t('capacity')}</Label>
                 <Input id={`sessions.${idx}.capacity`} type="number" min={1} {...register(`sessions.${idx}.capacity`)} />
                 {errors.sessions?.[idx]?.capacity && <p className="text-xs text-destructive">{errors.sessions[idx]?.capacity?.message}</p>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`sessions.${idx}.minBuddies`}>{t('minBuddies')}</Label>
+                <Input id={`sessions.${idx}.minBuddies`} type="number" min={0} {...register(`sessions.${idx}.minBuddies`)} />
+                {errors.sessions?.[idx]?.minBuddies && (
+                  <p className="text-xs text-destructive">
+                    {errors.sessions[idx]?.minBuddies?.message === 'minBuddiesExceedsCapacity'
+                      ? t('minBuddiesExceedsCapacity')
+                      : errors.sessions[idx]?.minBuddies?.message}
+                  </p>
+                )}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`sessions.${idx}.participantCount`}>{t('participantCount')}</Label>
