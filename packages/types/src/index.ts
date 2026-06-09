@@ -357,6 +357,12 @@ export type AdminBuddyBookingEntry = {
 }
 
 export type AdminBuddyDetailResponse = AdminBuddyResponse & {
+  buddyProfile: {
+    bio: string | null
+    contactInfo: string | null
+    languages: Language[]
+    skills: string[]
+  } | null
   bookings: AdminBuddyBookingEntry[]
   cancellationSummary: CancellationSummary
   absenceSummary: { absentWithoutReport: number }

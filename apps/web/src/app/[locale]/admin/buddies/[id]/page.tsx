@@ -27,6 +27,8 @@ export default function AdminBuddyDetailPage() {
   const t = useTranslations('adminBuddies')
   const tBuddyStatus = useTranslations('buddyStatus')
   const tEval = useTranslations('adminEvaluations')
+  const tProfile = useTranslations('profile')
+  const tLang = useTranslations('languages')
   const [buddy, setBuddy] = useState<AdminBuddyDetailResponse | null>(null)
   const [fetched, setFetched] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -96,6 +98,45 @@ export default function AdminBuddyDetailPage() {
               <p>{new Date(buddy.createdAt).toLocaleDateString(locale)}</p>
             </div>
           </div>
+        </div>
+
+        <h2 className="mb-4 text-lg font-semibold">{t('profileSectionTitle')}</h2>
+        <div className="rounded-lg border bg-card p-6 mb-6">
+          {!buddy.buddyProfile ? (
+            <p className="text-sm text-muted-foreground">{t('noProfile')}</p>
+          ) : (
+            <div className="grid gap-4">
+              {buddy.buddyProfile.bio && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{tProfile('bio')}</p>
+                  <p className="whitespace-pre-wrap text-sm">{buddy.buddyProfile.bio}</p>
+                </div>
+              )}
+              {buddy.buddyProfile.languages.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{tProfile('languages')}</p>
+                  <p className="text-sm">{buddy.buddyProfile.languages.map((l) => tLang(l as Parameters<typeof tLang>[0])).join(', ')}</p>
+                </div>
+              )}
+              {buddy.buddyProfile.skills.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{tProfile('skills')}</p>
+                  <ul className="text-sm list-disc list-inside">
+                    {buddy.buddyProfile.skills.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+              )}
+              {buddy.buddyProfile.contactInfo && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{tProfile('contactInfo')}</p>
+                  <p className="whitespace-pre-wrap text-sm">{buddy.buddyProfile.contactInfo}</p>
+                </div>
+              )}
+              {!buddy.buddyProfile.bio && !buddy.buddyProfile.contactInfo && buddy.buddyProfile.languages.length === 0 && buddy.buddyProfile.skills.length === 0 && (
+                <p className="text-sm text-muted-foreground">{t('noProfile')}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <h2 className="mb-4 text-lg font-semibold">{t('editForm')}</h2>

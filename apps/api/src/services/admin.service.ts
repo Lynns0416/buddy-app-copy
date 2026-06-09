@@ -1,6 +1,6 @@
 import { BookingStatus as PrismaBookingStatus } from '@prisma/client'
 import { db } from '../lib/db'
-import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse, Language } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
 const adminBuddySelect = {
@@ -49,6 +49,10 @@ export async function listBuddies(status?: BuddyStatus, tier?: BuddyTier): Promi
 
 const adminBuddyDetailSelect = {
   ...adminBuddySelect,
+  bio: true,
+  contactInfo: true,
+  languages: true,
+  skills: true,
   bookings: {
     select: {
       id: true,
@@ -91,7 +95,7 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
     db.adminEvaluation.count({ where: { buddyId: id, absentWithoutReport: true } }),
   ])
   if (!raw) return null
-  const { bookings, ...rest } = raw
+  const { bookings, bio, contactInfo, languages, skills, ...rest } = raw
   const mappedBookings = bookings.map((b) => {
     const cr = b.cancellationReason
     const cancellationReason: CancellationReasonResponse | null = cr
@@ -130,8 +134,10 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
     avoidable: reasons.filter((cr) => cr.unavoidable === false).length,
     unreviewed: reasons.filter((cr) => cr.unavoidable === null).length,
   }
+  const hasProfile = bio !== null || contactInfo !== null || languages.length > 0 || skills.length > 0
   return {
     ...mapBuddy(rest),
+    buddyProfile: hasProfile ? { bio, contactInfo, languages: languages as Language[], skills } : null,
     bookings: mappedBookings,
     cancellationSummary,
     absenceSummary: { absentWithoutReport: absentWithoutReportCount },

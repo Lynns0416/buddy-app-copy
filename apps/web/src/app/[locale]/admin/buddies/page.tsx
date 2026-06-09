@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { AppShell } from '@/components/app-shell'
@@ -11,10 +12,12 @@ import { SortIcon } from '@/components/sort-icon'
 import { routes } from '@/lib/routes'
 import { sortBuddies, nextBuddySort, mapBuddyError, type BuddySortField } from './admin.buddy'
 import { useBuddies } from './use-buddies'
+import { BuddyAvatar } from '@/components/buddy-avatar'
 
 export default function AdminBuddiesPage() {
   const { ready } = useAdminGuard()
   const locale = useLocale()
+  const router = useRouter()
   const t = useTranslations('adminBuddies')
   const { buddies, fetchError } = useBuddies(ready)
   const [sortField, setSortField] = useState<BuddySortField>('displayName')
@@ -27,6 +30,11 @@ export default function AdminBuddiesPage() {
   }
 
   const sorted = sortBuddies(buddies, sortField, sortDir)
+
+  function tierLabel(tier: string | null): string {
+    if (!tier) return '—'
+    return t(`tier${tier.charAt(0).toUpperCase() + tier.slice(1)}` as Parameters<typeof t>[0])
+  }
 
   if (!ready) return null
 
@@ -49,59 +57,101 @@ export default function AdminBuddiesPage() {
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('noResults')}</p>
       ) : (
-        <div className="rounded-lg border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <button
-                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                    onClick={() => handleSort('displayName')}
-                  >
-                    {t('name')}
-                    <SortIcon active={sortField === 'displayName'} dir={sortDir} />
-                  </button>
-                </TableHead>
-                <TableHead>
-                  <button
-                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                    onClick={() => handleSort('email')}
-                  >
-                    {t('email')}
-                    <SortIcon active={sortField === 'email'} dir={sortDir} />
-                  </button>
-                </TableHead>
-                <TableHead>
-                  <button
-                    className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                    onClick={() => handleSort('tier')}
-                  >
-                    {t('tier')}
-                    <SortIcon active={sortField === 'tier'} dir={sortDir} />
-                  </button>
-                </TableHead>
-                <TableHead className="w-20" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.map((buddy) => (
-                <TableRow key={buddy.id}>
-                  <TableCell className="font-medium">{buddy.displayName}</TableCell>
-                  <TableCell className="text-muted-foreground">{buddy.email}</TableCell>
-                  <TableCell>{buddy.tier || '—'}</TableCell>
-                  <TableCell>
-                    <Link
-                      href={routes.adminBuddyDetail(locale, buddy.id)}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      {t('view')}
-                    </Link>
-                  </TableCell>
-                </TableRow>
+        <>
+          {/* Mobile cards */}
+          <div className="flex flex-col gap-3 sm:hidden">
+            <div className="flex flex-wrap gap-2">
+              {([
+                { field: 'displayName' as const, label: t('name') },
+                { field: 'email' as const, label: t('email') },
+                { field: 'tier' as const, label: t('tier') },
+              ]).map(({ field, label }) => (
+                <button
+                  key={field}
+                  className="inline-flex items-center gap-0.5 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => handleSort(field)}
+                >
+                  {label}
+                  <SortIcon active={sortField === field} dir={sortDir} />
+                </button>
               ))}
-            </TableBody>
-          </Table>
-        </div>
+            </div>
+            {sorted.map((buddy) => (
+              <div
+                key={buddy.id}
+                className="flex justify-between cursor-pointer items-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
+                onClick={() => router.push(routes.adminBuddyDetail(locale, buddy.id))}
+              >
+                <div>
+                  <p className="font-medium">{buddy.displayName}</p>
+                  <p className="text-sm text-muted-foreground">{buddy.email}</p>
+                  {buddy.tier && <p className="mt-1 text-xs text-muted-foreground">{tierLabel(buddy.tier)}</p>}
+                </div>
+                <div>
+                  <BuddyAvatar photoUrl={buddy.photoUrl} displayName={buddy.displayName} size="lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* sm+: scrollable table */}
+          <div className="hidden sm:block overflow-x-auto rounded-lg border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-px" />
+                  <TableHead>
+                    <button
+                      className="inline-flex items-center gap-1 whitespace-nowrap font-medium transition-colors hover:text-foreground"
+                      onClick={() => handleSort('displayName')}
+                    >
+                      {t('name')}
+                      <SortIcon active={sortField === 'displayName'} dir={sortDir} />
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      className="inline-flex items-center gap-1 whitespace-nowrap font-medium transition-colors hover:text-foreground"
+                      onClick={() => handleSort('email')}
+                    >
+                      {t('email')}
+                      <SortIcon active={sortField === 'email'} dir={sortDir} />
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      className="inline-flex items-center gap-1 whitespace-nowrap font-medium transition-colors hover:text-foreground"
+                      onClick={() => handleSort('tier')}
+                    >
+                      {t('tier')}
+                      <SortIcon active={sortField === 'tier'} dir={sortDir} />
+                    </button>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((buddy) => (
+                  <TableRow
+                    key={buddy.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(routes.adminBuddyDetail(locale, buddy.id))}
+                  >
+                    <TableCell>
+                      <BuddyAvatar photoUrl={buddy.photoUrl} displayName={buddy.displayName} size="md" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{buddy.displayName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{buddy.email}</TableCell>
+                    <TableCell>{tierLabel(buddy.tier)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </AppShell>
   )

@@ -103,6 +103,8 @@
       "work": "Work",
       "other": "Other"
     },
+    "profileSectionTitle": "Profile",
+    "noProfile": "No profile submitted yet.",
     "actionError": "Action failed. Please try again.",
     "error": {
       "notFound": "Buddy not found.",

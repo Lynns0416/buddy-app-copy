@@ -80,20 +80,30 @@ export default function AdminGroupsPage() {
         <>
           {/* Mobile: cards */}
           <div className="flex flex-col gap-3 sm:hidden">
+            <div className="flex flex-wrap gap-2">
+              {([
+                { field: 'name' as const, label: t('name') },
+                { field: 'type' as const, label: t('type') },
+              ]).map(({ field, label }) => (
+                <button
+                  key={field}
+                  className="inline-flex items-center gap-0.5 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => handleSort(field)}
+                >
+                  {label}
+                  <SortIcon active={sortField === field} dir={sortDir} />
+                </button>
+              ))}
+            </div>
             {sorted.map((group) => (
               <div
                 key={group.id}
                 className="cursor-pointer rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50"
                 onClick={() => router.push(routes.adminGroupDetail(locale, group.id))}
               >
-                <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{group.name}</span>
                   <Badge className={GROUP_TYPE_CLASS[group.type]}>{group.type}</Badge>
-                </div>
-                <div className="flex justify-end">
-                  <Button asChild variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
-                    <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
-                  </Button>
                 </div>
               </div>
             ))}
