@@ -136,7 +136,7 @@ export function SessionBookingCard({
       {sessionLabel && <h3 className="mb-3 text-sm font-semibold">{sessionLabel}</h3>}
 
       <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 text-foreground font-bold">
           <Clock size={14} />
           {session.meetingTime.slice(11, 16)}
         </span>

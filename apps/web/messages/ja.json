@@ -132,10 +132,10 @@
     "capacity": "バディ数",
     "participantCount": "参加者数",
     "notRegistered": "申し訳ありませんが、バディとして登録されていないようです。ご不明な点がある場合は、plabスタッフまでお問い合わせください。",
-    "myBookingsLink": "参加履歴"
+    "myBookingsLink": "あなたの活動記録・予定"
   },
   "history": {
-    "title": "参加履歴",
+    "title": "すべての活動",
     "back": "ツアーに戻る",
     "upcoming": "参加予定",
     "past": "参加済み",
@@ -317,7 +317,7 @@
     "closeMenu": "メニューを閉じる",
     "nav": {
       "tour": "ツアー",
-      "history": "履歴",
+      "history": "活動記録・予定",
       "profile": "プロフィール",
       "buddiesPending": "承認待ち",
       "buddies": "バディ",
