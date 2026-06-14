@@ -1,10 +1,13 @@
 export const apiPaths = {
   authRegister: '/auth/register',
   authMe: '/auth/me',
+  authMeLocale: '/auth/me/locale',
 
   meProfile: '/me/profile',
   meProfilePhoto: '/me/profile/photo',
   meBookings: '/me/bookings',
+  meNotifications: '/me/notifications',
+  meNotificationsRead: '/me/notifications/read',
 
   tours: '/tours',
   tour: (id: string) => `/tours/${id}`,

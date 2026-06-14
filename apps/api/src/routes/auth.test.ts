@@ -20,11 +20,12 @@ vi.mock('../lib/db', () => ({
 vi.mock('../services/auth.service', () => ({
   upsertUser: vi.fn(),
   getUser: vi.fn(),
+  updateLocale: vi.fn(),
 }))
 
 import { auth } from '../lib/firebase'
 import { db } from '../lib/db'
-import { upsertUser, getUser } from '../services/auth.service'
+import { upsertUser, getUser, updateLocale } from '../services/auth.service'
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const mockVerify = vi.mocked(auth).verifyIdToken
@@ -32,6 +33,7 @@ const mockVerify = vi.mocked(auth).verifyIdToken
 const mockFindUnique = vi.mocked(db.user).findUnique
 const mockUpsertUser = vi.mocked(upsertUser)
 const mockGetUser = vi.mocked(getUser)
+const mockUpdateLocale = vi.mocked(updateLocale)
 
 const validToken = 'valid-token'
 const decodedToken = { uid: 'uid-123', email: 'test@example.com', name: 'Test', picture: undefined }
@@ -187,5 +189,68 @@ describe('GET /auth/me', () => {
     expect(body.firebaseUid).toBeUndefined()
     expect((body.buddyProfile as Record<string, unknown> | null | undefined)?.tier).toBeUndefined()
     expect((body.buddyProfile as Record<string, unknown> | null | undefined)?.internalNotes).toBeUndefined()
+  })
+})
+
+describe('PUT /auth/me/locale', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await routes.request('/auth/me/locale', { method: 'PUT' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 400 when body is not JSON', async () => {
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(dbUser as unknown as User)
+
+    const res = await routes.request('/auth/me/locale', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${validToken}`, 'Content-Type': 'application/json' },
+      body: 'not json',
+    })
+    expect(res.status).toBe(400)
+    expect(mockUpdateLocale).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when locale is not "ja" or "en"', async () => {
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(dbUser as unknown as User)
+
+    const res = await routes.request('/auth/me/locale', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${validToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale: 'fr' }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockUpdateLocale).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 when the user no longer exists', async () => {
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(dbUser as unknown as User)
+    mockUpdateLocale.mockResolvedValueOnce(null)
+
+    const res = await routes.request('/auth/me/locale', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${validToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale: 'en' }),
+    })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 200 with updated user when valid', async () => {
+    mockVerify.mockResolvedValueOnce(decodedToken as unknown as DecodedIdToken)
+    mockFindUnique.mockResolvedValueOnce(dbUser as unknown as User)
+    mockUpdateLocale.mockResolvedValueOnce({ ...userResponse, locale: 'en' } as unknown as UserResponse)
+
+    const res = await routes.request('/auth/me/locale', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${validToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale: 'en' }),
+    })
+
+    expect(res.status).toBe(200)
+    expect(mockUpdateLocale).toHaveBeenCalledWith('user-1', 'en')
   })
 })

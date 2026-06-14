@@ -73,6 +73,7 @@ const mockDbUser = {
   id: 'user-1',
   email: 'test@example.com',
   role: 'buddy' as const,
+  locale: 'ja' as const,
   createdAt: '2026-01-01T00:00:00.000Z',
   buddyProfile: null,
 }

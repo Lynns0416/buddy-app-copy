@@ -8,10 +8,14 @@ interface MockDb {
   cancellationReason: { update: MockFn }
   adminEvaluation: { count: MockFn }
   booking: { update: MockFn }
+  user: { findUnique: MockFn }
+  notificationJob: { create: MockFn }
+  $transaction: MockFn
 }
 
-vi.mock('../lib/db', () => ({
-  db: {
+vi.mock('../lib/db', () => {
+  const $transaction = vi.fn()
+  const mockDb = {
     buddyProfile: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -26,8 +30,16 @@ vi.mock('../lib/db', () => ({
     booking: {
       update: vi.fn(),
     },
-  },
-}))
+    user: { findUnique: vi.fn().mockResolvedValue({ locale: 'ja' }) },
+    notificationJob: { create: vi.fn() },
+    $transaction,
+  }
+  $transaction.mockImplementation((fn: unknown) => {
+    if (typeof fn === 'function') return (fn as (tx: unknown) => Promise<unknown>)(mockDb)
+    return Promise.all(fn as Promise<unknown>[])
+  })
+  return { db: mockDb }
+})
 
 import { db } from '../lib/db'
 const mdb = db as unknown as MockDb
@@ -291,7 +303,11 @@ describe('updateAdminBookingStatus', () => {
 })
 
 describe('updateBuddyStatus', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mdb.buddyProfile.findUnique.mockResolvedValue({ status: 'pending', userId: 'user-1' })
+    mdb.user.findUnique.mockResolvedValue({ locale: 'ja' })
+  })
 
   it('returns null on P2025', async () => {
     mdb.buddyProfile.update.mockRejectedValueOnce({ code: 'P2025' })
@@ -334,5 +350,33 @@ describe('updateBuddyStatus', () => {
     const result = await updateBuddyStatus('profile-1', 'active')
     expect(result?.email).toBe('buddy@example.com')
     expect((result as Record<string, unknown> | null)?.user).toBeUndefined()
+  })
+
+  it('enqueues account_approved when transitioning pending → trainee', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce({ status: 'pending', userId: 'user-1' })
+    mdb.buddyProfile.update.mockResolvedValueOnce({ ...mockRaw, status: 'trainee' } as unknown)
+    await updateBuddyStatus('profile-1', 'trainee')
+
+    expect(mdb.notificationJob.create).toHaveBeenCalledTimes(1)
+    expect((mdb.notificationJob.create.mock.calls[0][0] as { data: { eventType: string; recipientUserId: string } }).data).toMatchObject({
+      eventType: 'account_approved',
+      recipientUserId: 'user-1',
+    })
+  })
+
+  it('enqueues account_rejected when transitioning pending → rejected', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce({ status: 'pending', userId: 'user-1' })
+    mdb.buddyProfile.update.mockResolvedValueOnce({ ...mockRaw, status: 'rejected' } as unknown)
+    await updateBuddyStatus('profile-1', 'rejected')
+
+    expect((mdb.notificationJob.create.mock.calls[0][0] as { data: { eventType: string } }).data.eventType).toBe('account_rejected')
+  })
+
+  it('does not enqueue when status was not pending (e.g. trainee → active)', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce({ status: 'trainee', userId: 'user-1' })
+    mdb.buddyProfile.update.mockResolvedValueOnce({ ...mockRaw, status: 'active' } as unknown)
+    await updateBuddyStatus('profile-1', 'active')
+
+    expect(mdb.notificationJob.create).not.toHaveBeenCalled()
   })
 })

@@ -38,6 +38,8 @@ import type {
   UpdateTourSession,
   BookingStatus,
   AdminBookingStatusResponse,
+  NotificationsListResponse,
+  MarkNotificationsRead,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -277,4 +279,14 @@ export const apiClient = {
   },
   deleteMyPhoto: () =>
     apiRequest<BuddyProfileResponse>(apiPaths.meProfilePhoto, { method: 'DELETE' }),
+
+  // Notifications
+  listNotifications: () =>
+    apiRequest<NotificationsListResponse>(apiPaths.meNotifications),
+
+  markNotificationsRead: (body: MarkNotificationsRead) =>
+    apiRequest<{ ok: true }>(apiPaths.meNotificationsRead, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 }

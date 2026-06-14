@@ -1,6 +1,7 @@
 import { Hono, type Context } from 'hono'
-import { RegisterRequestBodySchema, type RegisterRequestBody } from '@peace-buddy/types'
-import { upsertUser, getUser } from '../services/auth.service'
+import { RegisterRequestBodySchema, UpdateLocaleSchema, type RegisterRequestBody } from '@peace-buddy/types'
+import { upsertUser, getUser, updateLocale } from '../services/auth.service'
+import { apiError } from '../lib/api-error'
 import type { FirebaseEnv, AuthEnv } from '../types'
 
 // Handler for POST /auth/register — mounted on publicApp (firebaseAuth middleware only)
@@ -43,6 +44,25 @@ authRoutes.get('/me', async (c) => {
   if (!user) {
     return c.json({ error: 'User not found' }, 404)
   }
+
+  return c.json(user)
+})
+
+authRoutes.put('/me/locale', async (c) => {
+  const { id } = c.get('user')
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json(apiError('invalid_request'), 400)
+  }
+
+  const parsed = UpdateLocaleSchema.safeParse(body)
+  if (!parsed.success) return c.json(apiError('invalid_request'), 400)
+
+  const user = await updateLocale(id, parsed.data.locale)
+  if (!user) return c.json(apiError('not_found'), 404)
 
   return c.json(user)
 })

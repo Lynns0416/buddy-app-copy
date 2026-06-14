@@ -1,22 +1,36 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { Mock } from 'vitest'
 import { upsertUser, getUser } from './auth.service'
 
-vi.mock('../lib/db', () => ({
-  db: {
+type MockFn = Mock<(...args: unknown[]) => unknown>
+interface MockDb {
+  user: { upsert: MockFn; findUnique: MockFn; findMany: MockFn }
+  notificationJob: { createMany: MockFn }
+  $transaction: MockFn
+}
+
+vi.mock('../lib/db', () => {
+  const $transaction = vi.fn()
+  const mockDb = {
     user: {
       upsert: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
     },
-  },
-}))
+    notificationJob: { createMany: vi.fn() },
+    $transaction,
+  }
+  $transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn(mockDb))
+  return { db: mockDb }
+})
 
 import { db } from '../lib/db'
+const mdb = db as unknown as MockDb
 
-// eslint-disable-next-line @typescript-eslint/unbound-method
-const mockUpsert = vi.mocked(db.user).upsert
-// eslint-disable-next-line @typescript-eslint/unbound-method
-const mockFindUnique = vi.mocked(db.user).findUnique
+// Typed wrapper: expect.objectContaining returns `any` in this Vitest version
+function oc<T extends Record<string, unknown>>(v: T): T {
+  return expect.objectContaining(v) as unknown as T
+}
 
 const mockUserRow = {
   id: 'user-1',
@@ -39,10 +53,14 @@ const mockUserRow = {
 }
 
 describe('upsertUser', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mdb.user.findUnique.mockResolvedValue({ id: 'user-1' })
+    mdb.user.findMany.mockResolvedValue([])
+  })
 
   it('calls db.user.upsert with correct create args', async () => {
-    mockUpsert.mockResolvedValueOnce(mockUserRow as any)
+    mdb.user.upsert.mockResolvedValueOnce(mockUserRow)
 
     await upsertUser('uid-123', 'test@example.com', {
       displayName: 'Test User',
@@ -50,15 +68,15 @@ describe('upsertUser', () => {
       languages: ['japanese', 'english'],
     })
 
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
+    expect(mdb.user.upsert).toHaveBeenCalledWith(
+      oc({
         where: { firebaseUid: 'uid-123' },
-        create: expect.objectContaining({
+        create: oc({
           firebaseUid: 'uid-123',
           email: 'test@example.com',
           role: 'buddy',
           buddyProfile: {
-            create: expect.objectContaining({
+            create: oc({
               status: 'pending',
               displayName: 'Test User',
               realName: 'Real Name',
@@ -72,15 +90,15 @@ describe('upsertUser', () => {
   })
 
   it('falls back to email prefix when displayName is not provided', async () => {
-    mockUpsert.mockResolvedValueOnce(mockUserRow as any)
+    mdb.user.upsert.mockResolvedValueOnce(mockUserRow)
 
     await upsertUser('uid-123', 'hello@example.com', {})
 
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
+    expect(mdb.user.upsert).toHaveBeenCalledWith(
+      oc({
+        create: oc({
           buddyProfile: {
-            create: expect.objectContaining({ displayName: 'hello' }),
+            create: oc({ displayName: 'hello' }),
           },
         }),
       })
@@ -88,7 +106,7 @@ describe('upsertUser', () => {
   })
 
   it('returns the user record', async () => {
-    mockUpsert.mockResolvedValueOnce(mockUserRow as any)
+    mdb.user.upsert.mockResolvedValueOnce(mockUserRow)
 
     const result = await upsertUser('uid-123', 'test@example.com', {})
 
@@ -96,11 +114,11 @@ describe('upsertUser', () => {
   })
 
   it('does not include admin-only fields in the select', async () => {
-    mockUpsert.mockResolvedValueOnce(mockUserRow as any)
+    mdb.user.upsert.mockResolvedValueOnce(mockUserRow)
 
     await upsertUser('uid-123', 'test@example.com', {})
 
-    const call = mockUpsert.mock.calls[0][0] as any
+    const call = mdb.user.upsert.mock.calls[0][0] as { select: Record<string, unknown> & { buddyProfile: { select: Record<string, unknown> } } }
     expect(call.select).toBeDefined()
     expect(call.select.buddyProfile.select.internalNotes).toBeUndefined()
     expect(call.select.buddyProfile.select.tier).toBeUndefined()
@@ -112,7 +130,7 @@ describe('getUser', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns null when user is not found', async () => {
-    mockFindUnique.mockResolvedValueOnce(null as any)
+    mdb.user.findUnique.mockResolvedValueOnce(null)
 
     const result = await getUser('unknown-id')
 
@@ -120,7 +138,7 @@ describe('getUser', () => {
   })
 
   it('returns the user when found', async () => {
-    mockFindUnique.mockResolvedValueOnce(mockUserRow as any)
+    mdb.user.findUnique.mockResolvedValueOnce(mockUserRow)
 
     const result = await getUser('user-1')
 
@@ -128,21 +146,21 @@ describe('getUser', () => {
   })
 
   it('queries by id', async () => {
-    mockFindUnique.mockResolvedValueOnce(mockUserRow as any)
+    mdb.user.findUnique.mockResolvedValueOnce(mockUserRow)
 
     await getUser('user-1')
 
-    expect(mockFindUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'user-1' } })
+    expect(mdb.user.findUnique).toHaveBeenCalledWith(
+      oc({ where: { id: 'user-1' } })
     )
   })
 
   it('does not include admin-only fields in the select', async () => {
-    mockFindUnique.mockResolvedValueOnce(mockUserRow as any)
+    mdb.user.findUnique.mockResolvedValueOnce(mockUserRow)
 
     await getUser('user-1')
 
-    const call = mockFindUnique.mock.calls[0][0] as any
+    const call = mdb.user.findUnique.mock.calls[0][0] as { select: Record<string, unknown> & { buddyProfile: { select: Record<string, unknown> } } }
     expect(call.select.buddyProfile.select.internalNotes).toBeUndefined()
     expect(call.select.buddyProfile.select.tier).toBeUndefined()
     expect(call.select.firebaseUid).toBeUndefined()

@@ -56,6 +56,67 @@ export type EmailMode = z.infer<typeof EmailModeSchema>
 export const BookingPoolSchema = z.enum(['junior', 'non_junior', 'anyone'])
 export type BookingPool = z.infer<typeof BookingPoolSchema>
 
+export const LocaleSchema = z.enum(['ja', 'en'])
+export type Locale = z.infer<typeof LocaleSchema>
+
+export const NotificationChannelSchema = z.enum(['in_app', 'email', 'slack'])
+export type NotificationChannel = z.infer<typeof NotificationChannelSchema>
+
+export const NotificationJobStatusSchema = z.enum(['pending', 'sent', 'failed', 'dead'])
+export type NotificationJobStatus = z.infer<typeof NotificationJobStatusSchema>
+
+// Full set of dispatchable notification events. Distinct from NotifEventType
+// (admin notification preferences) — this covers every PRD §10 event across
+// buddy + admin recipients.
+export const NotifEventKindSchema = z.enum([
+  // Buddy-targeted
+  'account_approved',
+  'account_rejected',
+  'tour_published',
+  'tour_details_changed',
+  'tour_cancelled',
+  'tour_reminder',
+  'maybe_reminder',
+  'waitlist_promoted',
+  'waitlist_opened',
+  'self_eval_prompt',
+  // Admin-targeted
+  'new_signup',
+  'new_booking',
+  'booking_cancelled',
+  'cant_go_post_deadline',
+  'maybe_resolved',
+  'maybe_deadline_missed',
+])
+export type NotifEventKind = z.infer<typeof NotifEventKindSchema>
+
+export type NotificationResponse = {
+  id: string
+  type: NotifEventKind
+  payload: Record<string, unknown>
+  readAt: string | null
+  createdAt: string
+}
+
+export type NotificationsListResponse = {
+  items: NotificationResponse[]
+  unreadCount: number
+}
+
+export type DispatchResult = {
+  picked: number
+  sent: number
+  failed: number
+  dead: number
+  skipped: number
+}
+
+export const MarkNotificationsReadSchema = z.union([
+  z.object({ ids: z.array(z.string().uuid()).min(1) }),
+  z.object({ all: z.literal(true) }),
+])
+export type MarkNotificationsRead = z.infer<typeof MarkNotificationsReadSchema>
+
 export const TierCapacitiesSchema = z.object({
   junior: z.number().int().min(0).max(100),
   non_junior: z.number().int().min(0).max(100),
@@ -373,9 +434,13 @@ export type UserResponse = {
   id: string
   email: string
   role: UserRole
+  locale: Locale
   createdAt: string
   buddyProfile: BuddyProfileResponse | null
 }
+
+export const UpdateLocaleSchema = z.object({ locale: LocaleSchema })
+export type UpdateLocale = z.infer<typeof UpdateLocaleSchema>
 
 export type TourSeatCounts = {
   confirmed: number

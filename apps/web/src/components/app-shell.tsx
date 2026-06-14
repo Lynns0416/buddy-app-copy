@@ -8,6 +8,8 @@ import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
 import { Button } from '@/components/ui/button'
+import { LanguageSwitcher } from '@/components/language-switcher'
+import { NotificationBell } from '@/components/notification-bell'
 import { cn } from '@/lib/utils'
 
 type NavItem = { href: string; label: string }
@@ -79,11 +81,13 @@ export function AppShell({ variant, children }: Props) {
     <div className={cn('flex min-h-screen bg-background', variant === 'admin' && 'theme-admin')}>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-56 shrink-0 flex-col border-r bg-card">
-        <div className="flex h-14 items-center border-b px-4">
+        <div className="flex h-14 items-center justify-between border-b px-4">
           <span className="text-sm font-semibold tracking-tight">{t('appName')}</span>
+          <NotificationBell />
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-3">{navLinks}</nav>
-        <div className="border-t p-3">
+        <div className="border-t p-3 space-y-3">
+          <LanguageSwitcher />
           <Button
             variant="ghost"
             size="sm"
@@ -121,7 +125,8 @@ export function AppShell({ variant, children }: Props) {
           </button>
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-3">{navLinks}</nav>
-        <div className="border-t p-3">
+        <div className="border-t p-3 space-y-3">
+          <LanguageSwitcher />
           <Button
             variant="ghost"
             size="sm"
@@ -136,15 +141,18 @@ export function AppShell({ variant, children }: Props) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <header className="flex h-14 items-center border-b bg-card px-4 md:hidden">
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="rounded-md p-1 text-muted-foreground hover:bg-accent"
-            aria-label={t('openMenu')}
-          >
-            <Menu size={20} />
-          </button>
-          <span className="ml-3 text-sm font-semibold tracking-tight">{t('appName')}</span>
+        <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:hidden">
+          <div className="flex items-center">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+              aria-label={t('openMenu')}
+            >
+              <Menu size={20} />
+            </button>
+            <span className="ml-3 text-sm font-semibold tracking-tight">{t('appName')}</span>
+          </div>
+          <NotificationBell />
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">

@@ -3,7 +3,12 @@ import { db } from '../lib/db'
 import {
   TourStatusSchema,
   BookingStatusSchema,
+  NotifEventKindSchema,
 } from '@peace-buddy/types'
+import {
+  enqueueInAppForActiveBuddies,
+  enqueueInAppForBookedBuddies,
+} from './notification.service'
 import type {
   CreateTour,
   UpdateTour,
@@ -333,24 +338,42 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
 }
 
 export async function updateTour(id: string, data: UpdateTour): Promise<AdminTourDetailResponse> {
-  const existing = await db.tour.findUnique({ where: { id }, select: { status: true } })
+  const existing = await db.tour.findUnique({
+    where: { id },
+    select: { status: true, tourDate: true, location: true },
+  })
   if (!existing) throw new TourNotFoundError()
   if (existing.status === TourStatusSchema.enum.cancelled || existing.status === TourStatusSchema.enum.completed) throw new TourImmutableError()
 
+  const tourDateChanged = data.tourDate !== undefined && data.tourDate.getTime() !== existing.tourDate.getTime()
+  const locationChanged = data.location !== undefined && data.location !== existing.location
+  const notifyDetailsChanged =
+    existing.status === TourStatusSchema.enum.published && (tourDateChanged || locationChanged)
+
   try {
-    await db.tour.update({
-      where: { id },
-      data: {
-        ...(data.groupId !== undefined ? { groupId: data.groupId } : {}),
-        ...(data.tourDate !== undefined ? { tourDate: data.tourDate } : {}),
-        ...(data.location !== undefined ? { location: data.location } : {}),
-        ...(data.description !== undefined ? { description: data.description } : {}),
-        ...(data.adminMemo !== undefined ? { adminMemo: data.adminMemo } : {}),
-        ...(data.cancellationDeadline !== undefined ? { cancellationDeadline: data.cancellationDeadline } : {}),
-        ...(data.maybeDeadline !== undefined ? { maybeDeadline: data.maybeDeadline } : {}),
-        ...(data.bookingOpen !== undefined ? { bookingOpen: data.bookingOpen } : {}),
-        ...(data.notificationOffsets !== undefined ? { notificationOffsets: data.notificationOffsets } : {}),
-      },
+    await db.$transaction(async (tx) => {
+      await tx.tour.update({
+        where: { id },
+        data: {
+          ...(data.groupId !== undefined ? { groupId: data.groupId } : {}),
+          ...(data.tourDate !== undefined ? { tourDate: data.tourDate } : {}),
+          ...(data.location !== undefined ? { location: data.location } : {}),
+          ...(data.description !== undefined ? { description: data.description } : {}),
+          ...(data.adminMemo !== undefined ? { adminMemo: data.adminMemo } : {}),
+          ...(data.cancellationDeadline !== undefined ? { cancellationDeadline: data.cancellationDeadline } : {}),
+          ...(data.maybeDeadline !== undefined ? { maybeDeadline: data.maybeDeadline } : {}),
+          ...(data.bookingOpen !== undefined ? { bookingOpen: data.bookingOpen } : {}),
+          ...(data.notificationOffsets !== undefined ? { notificationOffsets: data.notificationOffsets } : {}),
+        },
+      })
+
+      if (notifyDetailsChanged) {
+        await enqueueInAppForBookedBuddies(
+          id,
+          { eventType: NotifEventKindSchema.enum.tour_details_changed, payload: { tourId: id } },
+          tx,
+        )
+      }
     })
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') throw new TourNotFoundError()
@@ -376,7 +399,22 @@ export async function transitionTourStatus(
     )
   }
 
-  await db.tour.update({ where: { id }, data: { status: targetStatus } })
+  await db.$transaction(async (tx) => {
+    await tx.tour.update({ where: { id }, data: { status: targetStatus } })
+
+    if (targetStatus === TourStatusSchema.enum.published) {
+      await enqueueInAppForActiveBuddies(
+        { eventType: NotifEventKindSchema.enum.tour_published, payload: { tourId: id } },
+        tx,
+      )
+    } else if (targetStatus === TourStatusSchema.enum.cancelled) {
+      await enqueueInAppForBookedBuddies(
+        id,
+        { eventType: NotifEventKindSchema.enum.tour_cancelled, payload: { tourId: id } },
+        tx,
+      )
+    }
+  })
 
   const detail = await getAdminTourDetail(id)
   return detail!

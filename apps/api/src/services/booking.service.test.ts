@@ -10,6 +10,9 @@ interface MockDb {
   booking: { findUnique: MockFn; count: MockFn; create: MockFn; findFirst: MockFn; update: MockFn }
   buddyCancellationDeadlineOverride: { findUnique: MockFn }
   cancellationReason: { create: MockFn }
+  tourAdminAssignment: { findMany: MockFn }
+  notificationJob: { create: MockFn; createMany: MockFn }
+  user: { findUnique: MockFn }
   $transaction: MockFn
 }
 
@@ -22,6 +25,9 @@ vi.mock('../lib/db', () => {
     booking: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     buddyCancellationDeadlineOverride: { findUnique: vi.fn() },
     cancellationReason: { create: vi.fn() },
+    tourAdminAssignment: { findMany: vi.fn().mockResolvedValue([]) },
+    notificationJob: { create: vi.fn(), createMany: vi.fn() },
+    user: { findUnique: vi.fn() },
     $transaction,
   }
   $transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn(mockDb))

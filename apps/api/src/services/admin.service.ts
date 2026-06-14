@@ -1,7 +1,8 @@
 import { BookingStatus as PrismaBookingStatus } from '@prisma/client'
 import { db } from '../lib/db'
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse, Language } from '@peace-buddy/types'
-import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, BuddyTierSchema, NotifEventKindSchema } from '@peace-buddy/types'
+import { enqueueInApp } from './notification.service'
 
 const adminBuddySelect = {
   id: true,
@@ -184,12 +185,45 @@ export async function updateBuddyStatus(
     if (status === BuddyStatusSchema.enum.active) {
       data.tier = BuddyTierSchema.enum.junior
     }
-    const raw = await db.buddyProfile.update({
-      where: { id },
-      data,
-      select: adminBuddySelect,
+    const result = await db.$transaction(async (tx) => {
+      const before = await tx.buddyProfile.findUnique({
+        where: { id },
+        select: { status: true, userId: true },
+      })
+      if (!before) return null
+
+      const raw = await tx.buddyProfile.update({
+        where: { id },
+        data,
+        select: adminBuddySelect,
+      })
+
+      const wasPending = before.status === BuddyStatusSchema.enum.pending
+      if (wasPending && status === BuddyStatusSchema.enum.trainee) {
+        await enqueueInApp(
+          {
+            eventType: NotifEventKindSchema.enum.account_approved,
+            recipientUserId: before.userId,
+            payload: {},
+          },
+          tx,
+        )
+      } else if (wasPending && status === BuddyStatusSchema.enum.rejected) {
+        await enqueueInApp(
+          {
+            eventType: NotifEventKindSchema.enum.account_rejected,
+            recipientUserId: before.userId,
+            payload: {},
+          },
+          tx,
+        )
+      }
+
+      return raw
     })
-    return mapBuddy(raw)
+
+    if (!result) return null
+    return mapBuddy(result)
   } catch (e) {
     if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e

@@ -1,9 +1,10 @@
 import { TourStatus, BookingStatus as PrismaBookingStatus, BuddyTier as PrismaBuddyTier, CancellationCategory as PrismaCancellationCategory, Prisma } from '@prisma/client'
 import { db } from '../lib/db'
-import { BookingStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
+import { BookingStatusSchema, BuddyTierSchema, NotifEventKindSchema } from '@peace-buddy/types'
 import type { BookingResponse, BookingStatus, BuddyTier, CancellationReasonBody, MyTourBookingEntry } from '@peace-buddy/types'
 import { getPoolCapacities, NON_JUNIOR_TIERS } from '../lib/pool'
 import type { Pool } from '../lib/pool'
+import { enqueueInApp, enqueueInAppForTourAdmins } from './notification.service'
 
 type CreateBookingResult =
   | { ok: true; booking: BookingResponse }
@@ -116,18 +117,29 @@ export async function createBooking(
         where: { buddyId_sessionId: { buddyId: buddy.id, sessionId } },
         select: { id: true, status: true },
       })
+      let row
       if (existing) {
         if (existing.status !== PrismaBookingStatus.declined) throw new Error('ALREADY_BOOKED')
-        return tx.booking.update({
+        row = await tx.booking.update({
           where: { id: existing.id },
           data: { status: finalStatus, buddyTier: buddyTier as PrismaBuddyTier },
           select: bookingSelect,
         })
+      } else {
+        row = await tx.booking.create({
+          data: { buddyId: buddy.id, tourId, sessionId, buddyTier: buddyTier as PrismaBuddyTier, status: finalStatus },
+          select: bookingSelect,
+        })
       }
-      return tx.booking.create({
-        data: { buddyId: buddy.id, tourId, sessionId, buddyTier: buddyTier as PrismaBuddyTier, status: finalStatus },
-        select: bookingSelect,
-      })
+      await enqueueInAppForTourAdmins(
+        tourId,
+        {
+          eventType: NotifEventKindSchema.enum.new_booking,
+          payload: { bookingId: row.id, tourId, sessionId, buddyId: buddy.id, status: row.status },
+        },
+        tx,
+      )
+      return row
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
     return { ok: true, booking: mapBooking(booking) }
@@ -229,25 +241,54 @@ export async function updateBooking(
     }
   }
 
-  const updated = await db.booking.update({
-    where: { id: booking.id },
-    data: { status: newStatus as PrismaBookingStatus },
-    select: bookingSelect,
+  const wasMaybe = booking.status === PrismaBookingStatus.maybe
+  const willDecline = wasConfirmed && newStatus === BookingStatusSchema.enum.declined
+
+  const updated = await db.$transaction(async (tx) => {
+    const u = await tx.booking.update({
+      where: { id: booking.id },
+      data: { status: newStatus as PrismaBookingStatus },
+      select: bookingSelect,
+    })
+
+    if (willDecline) {
+      if (reason) {
+        await tx.cancellationReason.create({
+          data: {
+            bookingId: booking.id,
+            category: reason.category as PrismaCancellationCategory,
+            freeText: reason.freeText,
+            unavoidable: false,
+            recordedBy: userId,
+          },
+        })
+      }
+      await enqueueInAppForTourAdmins(
+        session.tourId,
+        {
+          eventType: NotifEventKindSchema.enum.booking_cancelled,
+          payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id },
+        },
+        tx,
+      )
+    }
+
+    if (wasMaybe && newStatus !== BookingStatusSchema.enum.maybe) {
+      await enqueueInAppForTourAdmins(
+        session.tourId,
+        {
+          eventType: NotifEventKindSchema.enum.maybe_resolved,
+          payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id, resolution: newStatus },
+        },
+        tx,
+      )
+    }
+
+    return u
   })
 
-  if (wasConfirmed && newStatus === BookingStatusSchema.enum.declined) {
-    if (reason) {
-      await db.cancellationReason.create({
-        data: {
-          bookingId: booking.id,
-          category: reason.category as PrismaCancellationCategory,
-          freeText: reason.freeText,
-          unavoidable: false,
-          recordedBy: userId,
-        },
-      })
-    }
-    await promoteWaitlist(sessionId, session.capacity, booking.buddyTier as BuddyTier)
+  if (willDecline) {
+    await promoteWaitlist(sessionId, session.capacity, booking.buddyTier as BuddyTier, session.tourId)
   }
 
   return { ok: true, booking: mapBooking(updated) }
@@ -295,13 +336,13 @@ export async function reportCantGo(
 
   const wasConfirmed = booking.status === PrismaBookingStatus.confirmed
 
-  const [updated] = await db.$transaction([
-    db.booking.update({
+  const updated = await db.$transaction(async (tx) => {
+    const u = await tx.booking.update({
       where: { id: booking.id },
       data: { status: PrismaBookingStatus.declined },
       select: bookingSelect,
-    }),
-    db.cancellationReason.create({
+    })
+    await tx.cancellationReason.create({
       data: {
         bookingId: booking.id,
         category: body.category as PrismaCancellationCategory,
@@ -309,17 +350,26 @@ export async function reportCantGo(
         unavoidable: false,
         recordedBy: userId,
       },
-    }),
-  ])
+    })
+    await enqueueInAppForTourAdmins(
+      session.tourId,
+      {
+        eventType: NotifEventKindSchema.enum.cant_go_post_deadline,
+        payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id, category: body.category },
+      },
+      tx,
+    )
+    return u
+  })
 
   if (wasConfirmed) {
-    await promoteWaitlist(sessionId, session.capacity, booking.buddyTier as BuddyTier)
+    await promoteWaitlist(sessionId, session.capacity, booking.buddyTier as BuddyTier, session.tourId)
   }
 
   return { ok: true, booking: mapBooking(updated) }
 }
 
-async function promoteWaitlist(sessionId: string, capacity: number, cancelledTier: BuddyTier): Promise<void> {
+async function promoteWaitlist(sessionId: string, capacity: number, cancelledTier: BuddyTier, tourId: string): Promise<void> {
   const capacities = await getPoolCapacities(sessionId, capacity)
   const primaryPool = poolForTier(cancelledTier)
 
@@ -358,6 +408,20 @@ async function promoteWaitlist(sessionId: string, capacity: number, cancelledTie
         where: { id: candidate.id },
         data: { status: PrismaBookingStatus.confirmed },
       })
+      const promoted = await tx.booking.findUnique({
+        where: { id: candidate.id },
+        select: { buddy: { select: { userId: true } } },
+      })
+      if (promoted) {
+        await enqueueInApp(
+          {
+            eventType: NotifEventKindSchema.enum.waitlist_promoted,
+            recipientUserId: promoted.buddy.userId,
+            payload: { bookingId: candidate.id, tourId, sessionId },
+          },
+          tx,
+        )
+      }
     }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 }

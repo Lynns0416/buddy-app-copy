@@ -78,11 +78,30 @@ enum BookingPool {
   anyone
 }
 
+enum Locale {
+  ja
+  en
+}
+
+enum NotificationChannel {
+  in_app
+  email
+  slack
+}
+
+enum NotificationJobStatus {
+  pending
+  sent
+  failed
+  dead
+}
+
 model User {
   id                          String                              @id @default(uuid())
   firebaseUid                 String                              @unique
   email                       String
   role                        UserRole
+  locale                      Locale                              @default(ja)
   createdAt                   DateTime                            @default(now())
   buddyProfile                BuddyProfile?
   adminProfile                AdminProfile?
@@ -90,6 +109,7 @@ model User {
   profileEvaluationsCreated   AdminProfileEvaluation[]            @relation("ProfileEvalCreator")
   notificationPrefs           NotificationPreference[]
   notifications               Notification[]
+  notificationJobs            NotificationJob[]
   digestQueue                 DigestQueue[]
   cancellationReasonsRecorded CancellationReason[]
   deadlineOverridesSet        BuddyCancellationDeadlineOverride[]
@@ -395,4 +415,24 @@ model DigestQueue {
   admin     User      @relation(fields: [adminId], references: [id])
 
   @@index([adminId, flushedAt])
+}
+
+model NotificationJob {
+  id              String                @id @default(uuid())
+  channel         NotificationChannel
+  eventType       String
+  recipientUserId String?
+  payload         Json
+  locale          Locale                @default(ja)
+  status          NotificationJobStatus @default(pending)
+  attempts        Int                   @default(0)
+  scheduledFor    DateTime              @default(now())
+  sentAt          DateTime?
+  lastError       String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  recipient       User?                 @relation(fields: [recipientUserId], references: [id])
+
+  @@index([status, scheduledFor])
+  @@index([recipientUserId])
 }

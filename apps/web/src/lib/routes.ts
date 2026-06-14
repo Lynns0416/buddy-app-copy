@@ -23,4 +23,5 @@ export const routes = {
   buddyTour: (locale: string, id: string) => `/${locale}/buddy/tours/${id}`,
   buddyHistory: (locale: string) => `/${locale}/buddy/history`,
   buddyProfile: (locale: string) => `/${locale}/buddy/profile`,
+  notifications: (locale: string) => `/${locale}/notifications`,
 }
