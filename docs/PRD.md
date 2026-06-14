@@ -75,15 +75,16 @@ A web-first internal booking application for managing group tour assignments. Th
 
 ## 4. Authentication
 
-- **Social login:** Google and Apple (OAuth 2.0) via Firebase Auth
+- **Social login:** Google and Apple (OAuth 2.0) via Firebase Auth.
 - **Signup flow:**
-  1. Buddy signs up via Google or Apple
-  2. Account created in **pending** state
-  3. Admin notified of new signup
-  4. Admin approves or rejects
-  5. Buddy notified of outcome
-- **Admin accounts:** Created and managed by Super Admin only (not self-signup)
-- **Session management:** Firebase Auth handles token lifecycle
+  1. Buddy signs in via Google or Apple in the frontend (Firebase issues an ID token).
+  2. Frontend calls `POST /auth/register` with an optional profile payload (`displayName`, `realName`, `languages`, `photoUrl`, `bio`). The server upserts a `User` (role `buddy`) and a `BuddyProfile` in `pending` state. If `displayName` is missing it falls back to the email prefix.
+  3. Subsequent requests go through `authMiddleware`, which validates the Firebase token and looks the user up by `firebaseUid`.
+  4. Admin notification of new signup is **Planned** (§10).
+  5. Admin approves or rejects via `PUT /admin/buddies/:id/status`. Allowed status values via the API: `trainee` / `active` / `rejected`. See §11.4 for the approval flow and §5.1 for status constraints.
+  6. Approved-buddy notification is **Planned** (§10).
+- **Admin accounts:** A `User` with role `admin` or `super_admin` is created by a Super Admin (`POST /admin/profiles`). On first login, `ensureAdminProfile` middleware lazily creates an `AdminProfile` row if one is missing, using Firebase `name` or the email prefix as the initial display name.
+- **Session management:** Firebase Auth handles token lifecycle. Identity + role for the current user are obtained from `GET /me/profile` (buddies) or `GET /admin/profile` (admins).
 
 ---
 
@@ -98,9 +99,11 @@ A web-first internal booking application for managing group tour assignments. Th
 | **Rejected** | Signup rejected by admin — account is closed |
 | **Suspended** | Temporarily or permanently deactivated after being active |
 
-Status is set manually by admin. Typical progression: Pending → Active (with tier=trainee). Pending → Rejected is a terminal state for denied signups. Rejected and Suspended are distinct: Rejected means the signup was never approved; Suspended means an active buddy was deactivated.
+Status is set manually by admin via `PUT /admin/buddies/:id/status`. The API accepts only `trainee` / `active` / `rejected`. `pending` is the initial state (set on registration) and is not reachable via update. `suspended` is **Planned** — the enum value exists but no API endpoint transitions to it yet.
 
-Buddies are never deleted from the database. Suspended accounts remain in the DB with all history intact.
+Typical progression: Pending → Trainee (approve) → Active (promote — auto-sets `tier = junior`) or → Rejected (terminal). Rejected and Suspended are distinct: Rejected means the signup was never approved; Suspended means an active buddy was deactivated.
+
+Buddies are never deleted from the database. Status updates are the only lifecycle change.
 
 **Trainee access:** Trainees (status=active, tier=trainee) can log in but cannot see tours or make bookings. A dedicated training schedules section is planned for a future release. Admins manage trainees via `/admin/trainees`; promotion to junior is done through the buddy detail page (tier dropdown), which requires confirmation.
 
@@ -127,7 +130,7 @@ Typical progression: Junior → Mid → Senior → Expert → Instructor → Org
 |---|---|---|
 | Display name / nickname | Text | Chosen by buddy; editable in profile settings |
 | Real name | Text | For admin reference; editable in profile settings |
-| Profile photo | Image upload | GCP Cloud Storage — **deferred post-v1** |
+| Profile photo | Image upload | **Shipped** via Cloudflare R2. `POST /me/profile/photo` (multipart `photo` field) and `DELETE /me/profile/photo`. Constraints: ≤ 2 MB, MIME in `image/jpeg` / `image/png` / `image/webp`, magic-byte validated. |
 | Bio | Long text | Free description |
 | Contact info | Text / Email | Preferred contact method |
 | Languages spoken | Multi-select enum (`LanguageSchema`) | See enum values below |
@@ -712,9 +715,9 @@ When a buddy logs in, they see:
 
 - **Table:** displayName, email, [Approve] [Reject]
 - **Sortable by:** name, email
-- **Actions:**
-  - **Approve** → sets status=active, assigns default tier=trainee, removes from pending queue, adds to buddy roster
-  - **Reject** → sets status=rejected, removes from pending queue (terminal state)
+- **Actions** (both call `PUT /admin/buddies/:id/status`):
+  - **Approve** → `{status: 'trainee'}` — buddy can now log in but cannot see tours / book yet. Tier remains null until later promotion (see Buddy Detail).
+  - **Reject** → `{status: 'rejected'}` (terminal)
 
 #### Buddy Roster (`/admin/buddies`)
 
@@ -725,18 +728,24 @@ When a buddy logs in, they see:
 #### Buddy Detail Page (`/admin/buddies/:id`)
 
 **Display section:**
-- Real name
-- Email
-- Status (active / suspended / rejected)
-- Tier (trainee / junior / mid / senior / expert / instructor / organizer)
+- Real name, email, photo
+- Status (`trainee` / `active` / `rejected` — `suspended` planned)
+- Tier (`junior` / `mid` / `senior` / `expert` / `instructor` / `organizer`; null for trainees)
 - Internal notes
 - Created date
+- **Cancellation summary** — total / unavoidable / avoidable / unreviewed counts derived from the buddy's `CancellationReason` rows
+- **Absence summary** — `absentWithoutReport` count from `AdminEvaluation` rows; admins use it to inform the `reliability` score in `AdminProfileEvaluation`
 - Full booking history (table of tours + booking status) — see below
 
-**Edit form:**
-- Tier dropdown (nullable; only set when status=active)
+**Edit form** (`PUT /admin/buddies/:id` — body `{tier?, internalNotes?}`):
+- Tier dropdown
 - Internal notes textarea
 - [Save] [Cancel]
+
+**Status transitions on this page** (`PUT /admin/buddies/:id/status`):
+- Promote trainee → active (auto-sets tier to `junior`)
+- Reject pending (from this page if needed)
+- Suspend / un-suspend — **Planned**: enum value exists but no API path yet
 
 **Booking history table:**
 - Columns: Group name (linked to `/admin/tours/:id`), Tour date, Location, Booking status
@@ -746,33 +755,34 @@ When a buddy logs in, they see:
 - Empty state: "No bookings"
 - API: `GET /admin/buddies/:id` returns `AdminBuddyDetailResponse` (extends `AdminBuddyResponse` with `bookings: AdminBuddyBookingEntry[]`)
 
-**`AdminBuddyBookingEntry` fields:** `id`, `tourId`, `status` (BookingStatus), `bookedAt`, `tour: { tourDate, location, group: { name }, status }`
+**`AdminBuddyBookingEntry` fields:** `id`, `tourId`, `sessionId`, `sessionOrder`, `sessionLabel`, `status` (`BookingStatus`), `bookedAt`, `cancellationReason`, `tour: { tourDate, location, group: { name }, status }`
 
 #### API Endpoints
 
-Note: frontend page routes and API endpoints are separate layers. `/admin/buddies/pending` is a Next.js page URL; the underlying API call uses query parameters, consistent with the rest of the codebase (e.g. `/admin/tours?status=...`).
+Frontend page routes and API endpoints are separate layers. `/admin/buddies/pending` is a Next.js page URL; the underlying API call uses query parameters.
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/admin/buddies?status=pending` | List pending buddies (called by the `/admin/buddies/pending` page) |
-| `GET` | `/admin/buddies?status=active` | List active buddies (called by the `/admin/buddies` page) |
-| `GET` | `/admin/buddies/:id` | Fetch buddy detail |
-| `PUT` | `/admin/buddies/:id/status` | Change status (approve/reject/suspend) |
-| `PUT` | `/admin/buddies/:id` | Update tier and internalNotes |
+| `GET` | `/admin/buddies?status=active&tier=...` | List active buddies (called by the `/admin/buddies` page); filterable by tier |
+| `GET` | `/admin/buddies/:id` | Fetch `AdminBuddyDetailResponse` (profile + bookings + cancellation/absence summaries) |
+| `PUT` | `/admin/buddies/:id/status` | Set status. Allowed values: `trainee` / `active` / `rejected`. `→ active` auto-sets `tier = junior`. |
+| `PUT` | `/admin/buddies/:id` | Update `tier` and/or `internalNotes` (both nullable) |
 
 #### Business Rules
 
-- **Approval:** Only admins can approve/reject pending buddies
-- **Tier assignment:** Tier is set automatically to `trainee` on approval; admin can update anytime thereafter
-- **Internal notes:** Admins only; never visible to buddies
-- **Status transitions:**
-  - Pending → Active (via Approve button)
-  - Pending → Rejected (via Reject button, terminal)
-  - Active → Suspended (via detail page)
-  - Suspended → Active (via detail page)
-- **Tier constraints:** Tier values are: trainee, junior, mid, senior, expert, instructor, organizer
-- **Typical flow:** Pending → Active (tier: trainee) → Admin updates tier as buddy gains experience
-- **Data retention:** Buddies are never deleted; all history retained even after rejection or suspension
+| Rule | Detail |
+|---|---|
+| Approval | Admins only. Approve → `trainee`; Reject → `rejected` (terminal). |
+| Promotion | Trainee → Active via the same status endpoint with `{status: 'active'}`. Server auto-sets `tier = junior` on that transition. |
+| Tier updates | Admin can change tier any time after promotion via `PUT /admin/buddies/:id`. |
+| Internal notes | Admins only; never visible to buddies (excluded from buddy responses by `select`). |
+| Tier values | `junior` / `mid` / `senior` / `expert` / `instructor` / `organizer`. Trainees have `tier = null`. |
+| Data retention | Buddies are never deleted; all history retained. |
+
+#### Planned
+
+- Suspension flow: `BuddyStatus.suspended` exists in schema, but the status endpoint doesn't accept `suspended`. Admin promotion to / from suspended is not yet exposed.
 
 ### 11.5 System Configuration (Super Admin only)
 - Manage admin accounts and roles
@@ -805,7 +815,7 @@ Nav item: "Profile" in buddy shell sidebar (alongside "Dashboard").
 | Languages | Checkbox group | Ordered by `LanguageSchema.options`; priority tier (en/ko/zh) shown first |
 | Skills & interests | Textarea | One skill per line; split on `\n` before submit; joined with `\n` for display |
 | Availability | Textarea | Free text |
-| Profile photo | Disabled input | "GCP Cloud Storage — coming soon" placeholder; `photoUrl` not sent in PUT body until upload is wired |
+| Profile photo | File input + preview | Uploads via `POST /me/profile/photo` to Cloudflare R2; delete via `DELETE /me/profile/photo`. See §5.3 for constraints. |
 
 `[Save]` `[Cancel]`
 
@@ -870,7 +880,7 @@ New additions:
 | Database | GCP Cloud SQL (Postgres) | Via GCP nonprofit credits |
 | ORM | Prisma | Lives in `apps/api`; schema in `prisma/` |
 | Auth | Firebase Auth | Google + Apple OAuth; token validated in Hono middleware |
-| File storage | GCP Cloud Storage | Profile photos; via nonprofit credits |
+| File storage | Cloudflare R2 (S3-compatible) | Profile photos; single-step multipart upload via `POST /me/profile/photo` |
 | Scheduled jobs | GCP Cloud Scheduler | Hits Hono API routes for reminders, deadline checks, digest flush |
 | Email | Gmail API (Google Workspace for Nonprofits) | Single `sendEmail()` utility in `apps/api`; env: `GMAIL_*` credentials (provider-specific) |
 | Slack notifications | Slack Incoming Webhooks | Admin notifications; env: `SLACK_WEBHOOK_URL`; fired from `apps/api` |

@@ -18,62 +18,62 @@ All routes are served by the Hono API (`apps/api`). Every request must include a
 ## Auth
 
 ### `POST /auth/register`
-Called on first login after Firebase Auth. Creates a User + BuddyProfile in pending state.
+Called on first login. Validates the Firebase ID token (no DB user required yet) and upserts a `User` (role `buddy`) + `BuddyProfile` in `pending` state. `firebaseUid` and `email` come from the verified token, not the body.
 
-**Auth:** Firebase token required (new user, no role yet)
+**Auth:** Firebase ID token (`firebaseAuthMiddleware` only — no DB user yet)
 
-**Request**
+**Request** — `RegisterRequestBodySchema` (all fields optional; falls back to email prefix if `displayName` missing)
 ```json
 {
+  "displayName": "string",
+  "realName": "string",
+  "languages": ["english", "japanese"],
+  "photoUrl": "string",
+  "bio": "string"
+}
+```
+
+**Response `200`** — `UserResponse` (identity + nested `buddyProfile`)
+```json
+{
+  "id": "uuid",
   "firebaseUid": "string",
-  "email": "string"
-}
-```
-
-**Response `201`**
-```json
-{
-  "id": "uuid",
-  "email": "string",
-  "role": "buddy",
-  "status": "pending"
-}
-```
-
----
-
-### `GET /auth/me`
-Returns the current user's identity and role. Used by frontend on every load to determine routing.
-
-**Auth:** any authenticated user
-
-**Response `200`**
-```json
-{
-  "id": "uuid",
   "email": "string",
   "role": "buddy | admin | super_admin",
   "buddyProfile": {
     "id": "uuid",
-    "status": "pending | trainee | active | suspended",
-    "displayName": "string"
+    "status": "pending | trainee | active | rejected | suspended",
+    "displayName": "string",
+    "realName": "string",
+    "photoUrl": "string | null",
+    "bio": "string | null",
+    "contactInfo": "string | null",
+    "languages": ["string"],
+    "skills": ["string"],
+    "createdAt": "ISO8601",
+    "updatedAt": "ISO8601"
   } | null
 }
 ```
+
+`tier` and `internalNotes` are never included in buddy-side responses. There is no `GET /auth/me` — buddies use `GET /me/profile`, admins use `GET /admin/profile`.
 
 ---
 
 ## Buddy Profile
 
-### `GET /buddies/me`
-Returns the authenticated buddy's full self-visible profile.
+Buddy-side endpoints sit under `/me/profile`. Admin reads/writes use `/admin/buddies/*`. The buddy-side response shape (`BuddyProfileResponse`) never includes `tier`, `internalNotes`, or the underlying `userId`.
 
-**Auth:** `trainee+`
+### Buddy: `GET /me/profile`
+Fetch own profile.
 
-**Response `200`**
+**Auth:** any authenticated buddy
+
+**Response `200`** — `BuddyProfileResponse`
 ```json
 {
   "id": "uuid",
+  "status": "pending | trainee | active | rejected | suspended",
   "displayName": "string",
   "realName": "string",
   "photoUrl": "string | null",
@@ -81,151 +81,234 @@ Returns the authenticated buddy's full self-visible profile.
   "contactInfo": "string | null",
   "languages": ["string"],
   "skills": ["string"],
-  "availability": "string | null",
-  "status": "pending | trainee | active | suspended"
-}
-```
-
----
-
-### `PATCH /buddies/me`
-Updates the authenticated buddy's self-managed fields.
-
-**Auth:** `trainee+`
-
-**Request** (all fields optional)
-```json
-{
-  "displayName": "string",
-  "realName": "string",
-  "bio": "string",
-  "contactInfo": "string",
-  "languages": ["string"],
-  "skills": ["string"],
-  "availability": "string"
-}
-```
-
-**Response `200`** — updated profile (same shape as `GET /buddies/me`)
-
----
-
-### `POST /buddies/me/photo`
-Requests a signed GCS URL for profile photo upload.
-
-**Auth:** `trainee+`
-
-**Request**
-```json
-{
-  "contentType": "image/jpeg | image/png | image/webp"
-}
-```
-
-**Response `200`**
-```json
-{
-  "uploadUrl": "string",
-  "objectPath": "string"
-}
-```
-
----
-
-### `POST /buddies/me/photo/confirm`
-Called by client after successful direct upload to GCS. Saves the object path to DB.
-
-**Auth:** `trainee+`
-
-**Request**
-```json
-{
-  "objectPath": "string"
-}
-```
-
-**Response `200`**
-```json
-{
-  "photoUrl": "string"
-}
-```
-
----
-
-### `GET /buddies` *(admin)*
-Returns paginated list of all buddy profiles with admin-visible fields.
-
-**Auth:** `admin`
-
-**Query params:** `?status=pending|trainee|active|suspended`, `?tier=junior|mid|senior|expert|instructor|organizer`, `?page=1`, `?limit=50`
-
-**Response `200`**
-```json
-{
-  "data": [
-    {
-      "id": "uuid",
-      "userId": "uuid",
-      "displayName": "string",
-      "realName": "string",
-      "status": "string",
-      "tier": "string | null",
-      "languages": ["string"],
-      "createdAt": "ISO8601"
-    }
-  ],
-  "total": 0,
-  "page": 1,
-  "limit": 50
-}
-```
-
----
-
-### `GET /buddies/:id` *(admin)*
-Returns full buddy profile including admin-only fields.
-
-**Auth:** `admin`
-
-**Response `200`**
-```json
-{
-  "id": "uuid",
-  "userId": "uuid",
-  "displayName": "string",
-  "realName": "string",
-  "photoUrl": "string | null",
-  "bio": "string | null",
-  "contactInfo": "string | null",
-  "languages": ["string"],
-  "skills": ["string"],
-  "availability": "string | null",
-  "status": "string",
-  "tier": "string | null",
-  "internalNotes": "string | null",
   "createdAt": "ISO8601",
   "updatedAt": "ISO8601"
 }
 ```
 
+**Errors**
+- `404` — buddy profile not found
+
 ---
 
-### `PATCH /buddies/:id` *(admin)*
-Updates admin-managed fields on a buddy profile.
+### Buddy: `PUT /me/profile`
+Update self-managed fields.
 
-**Auth:** `admin`
+**Auth:** any authenticated buddy
 
-**Request** (all fields optional)
+**Request** — `UpdateBuddyProfileSchema` (all fields optional)
 ```json
 {
-  "status": "pending | trainee | active | suspended",
-  "tier": "junior | mid | senior | expert | instructor | organizer",
-  "internalNotes": "string"
+  "displayName": "string",
+  "realName": "string",
+  "photoUrl": "string",
+  "bio": "string",
+  "contactInfo": "string",
+  "languages": ["english", "japanese"],
+  "skills": ["string"]
 }
 ```
 
-**Response `200`** — updated buddy profile (same shape as `GET /buddies/:id`)
+`languages` must be unique values from `LanguageSchema`. `availability` is not currently in the update schema — the field is unused in the shipped form.
+
+**Response `200`** — `BuddyProfileResponse`
+
+---
+
+### Buddy: `POST /me/profile/photo`
+Direct upload to Cloudflare R2. Single-step — no signed-URL flow.
+
+**Auth:** any authenticated buddy
+
+**Request** — `multipart/form-data` with one field `photo` (File)
+
+Server validation:
+- ≤ 2 MB
+- MIME ∈ `image/jpeg` / `image/png` / `image/webp`
+- Magic bytes verified against declared MIME (rejects spoofed types)
+
+The previous photo (if any) is deleted from R2 asynchronously after the DB row updates.
+
+**Response `200`** — updated `BuddyProfileResponse`
+
+**Errors**
+- `400` — invalid MIME type or magic-byte mismatch
+- `404` — buddy profile not found
+- `413` — payload too large (> 2 MB)
+
+---
+
+### Buddy: `DELETE /me/profile/photo`
+Remove the current profile photo. Sets `photoUrl = null` and deletes the R2 object.
+
+**Auth:** any authenticated buddy
+
+**Response `200`** — updated `BuddyProfileResponse`
+
+---
+
+### Admin: `GET /admin/buddies`
+List buddies. Returns `AdminBuddyResponse[]` (includes `tier`, `internalNotes`, `email`).
+
+**Auth:** `admin`
+
+**Query params:** `?status=pending|trainee|active|rejected|suspended`, `?tier=junior|mid|senior|expert|instructor|organizer`
+
+**Response `200`** — array of `AdminBuddyResponse`
+
+---
+
+### Admin: `GET /admin/buddies/:id`
+Buddy detail with bookings and aggregations.
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminBuddyDetailResponse` (extends `AdminBuddyResponse` with):
+```json
+{
+  "buddyProfile": {
+    "bio": "string | null",
+    "contactInfo": "string | null",
+    "languages": ["string"],
+    "skills": ["string"]
+  } | null,
+  "bookings": [
+    {
+      "id": "uuid",
+      "tourId": "uuid",
+      "sessionId": "uuid",
+      "sessionOrder": 1,
+      "sessionLabel": "string | null",
+      "status": "confirmed | maybe | waitlist | declined",
+      "bookedAt": "ISO8601",
+      "cancellationReason": { "...": "CancellationReasonResponse" } | null,
+      "tour": {
+        "tourDate": "YYYY-MM-DD",
+        "location": "string",
+        "group": { "name": "string" },
+        "status": "draft | published | cancelled | completed"
+      }
+    }
+  ],
+  "cancellationSummary": {
+    "total": 0,
+    "unavoidable": 0,
+    "avoidable": 0,
+    "unreviewed": 0
+  },
+  "absenceSummary": { "absentWithoutReport": 0 }
+}
+```
+
+**Errors**
+- `404` — buddy not found
+
+---
+
+### Admin: `PUT /admin/buddies/:id`
+Update admin-managed fields. Both fields optional; pass `null` to clear.
+
+**Auth:** `admin`
+
+**Request** — `UpdateAdminBuddyProfileSchema`
+```json
+{
+  "tier": "junior | mid | senior | expert | instructor | organizer | null",
+  "internalNotes": "string | null"
+}
+```
+
+**Response `200`** — `AdminBuddyResponse`
+
+---
+
+### Admin: `PUT /admin/buddies/:id/status`
+Change buddy account status. The API accepts only `trainee` / `active` / `rejected`. `→ active` server-side auto-sets `tier = junior`.
+
+**Auth:** `admin`
+
+**Request** — `UpdateBuddyStatusSchema`
+```json
+{ "status": "trainee | active | rejected" }
+```
+
+**Response `200`** — `AdminBuddyResponse`
+
+> **⚠ Planned:** Setting status to `suspended` is not exposed via this endpoint. The enum value exists in `BuddyStatus`, but no API path transitions to it yet.
+
+---
+
+## Admin Profiles
+
+Admin profile management. `AdminProfile` is auto-created on first admin login via `ensureAdminProfile` middleware (uses Firebase `name` or email prefix as default).
+
+### Admin: `GET /admin/profile`
+Fetch the requesting admin's own profile. Returns 404 if soft-deleted.
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminProfileResponse`
+```json
+{
+  "id": "uuid",
+  "userId": "uuid",
+  "name": "string",
+  "createdAt": "ISO8601"
+}
+```
+
+---
+
+### Admin: `GET /admin/profiles`
+List all active admin profiles (excludes soft-deleted).
+
+**Auth:** `admin`
+
+**Response `200`** — array of `AdminProfileResponse`
+
+---
+
+### Admin: `PATCH /admin/profile`
+Update own display name.
+
+**Auth:** `admin`
+
+**Request**
+```json
+{ "name": "string" }
+```
+
+**Response `200`** — `AdminProfileResponse`
+
+---
+
+### Super-admin: `POST /admin/profiles`
+Create a new admin profile (provisions a new admin user from an existing `User` row).
+
+**Auth:** `super_admin`
+
+**Request** — `CreateAdminProfileSchema`
+```json
+{ "userId": "uuid", "name": "string" }
+```
+
+**Response `201`** — `AdminProfileResponse`
+
+**Errors**
+- `409` — admin profile already exists for that user
+
+---
+
+### Super-admin: `DELETE /admin/profiles/:userId`
+Soft-delete an admin profile (sets `deletedAt`). The admin's evaluations remain attributed to them as an immutable audit trail, but they vanish from `GET /admin/profiles`.
+
+**Auth:** `super_admin`
+
+**Response `200`** — soft-deleted `AdminProfileResponse`
+
+**Errors**
+- `400` — cannot soft-delete own profile
+- `409` — admin still has draft / published tour assignments (`HasActiveTourAssignmentsError`)
 
 ---
 

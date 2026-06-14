@@ -15,7 +15,7 @@ Next.js (App Router) — GCP Cloud Run   ← frontend only; no business logic
           │
           ├── Firebase Auth         (identity: Google / Apple OAuth)
           ├── GCP Cloud SQL         (Postgres via Prisma ORM)
-          ├── GCP Cloud Storage     (profile photos)
+          ├── Cloudflare R2         (profile photos)
           ├── Gmail API             (email — abstracted via sendEmail(); Google Workspace for Nonprofits)
           └── Slack Incoming Webhooks (admin notifications; single shared channel)
 
@@ -143,13 +143,17 @@ This applies to: `POST /admin/profiles` (create), `DELETE /admin/profiles/:userI
 
 ## File Upload Flow
 
+Profile photos are the only file type uploaded in v1. Storage: **Cloudflare R2** (S3-compatible). Single-step upload, not a signed-URL handoff:
+
 ```
-1. Client requests signed upload URL from Hono API
-2. API generates GCS signed URL (server-side, no credentials exposed)
-3. Client uploads directly to GCS
-4. Client notifies Hono API of completion
-5. API stores GCS object path in DB
+1. Client POSTs multipart/form-data to /me/profile/photo (field: photo)
+2. API validates size (≤ 2 MB), MIME (jpeg/png/webp), and magic bytes
+3. API writes object to R2 at buddy-photos/{profileId}/{uuid}.{ext}
+4. API updates BuddyProfile.photoUrl in DB
+5. Previous photo is deleted from R2 asynchronously (best-effort)
 ```
+
+Deletion: `DELETE /me/profile/photo` removes the R2 object and nulls `photoUrl`.
 
 ## Notification Flow
 
