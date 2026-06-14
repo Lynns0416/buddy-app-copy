@@ -423,39 +423,44 @@ There are two distinct evaluation types: **admin evaluations** (internal, hidden
 
 #### Types
 
-| Type | Trigger | Notes |
-|---|---|---|
-| **Per-tour evaluation** | After a specific tour | Linked to a tour record |
-| **General profile evaluation** | Anytime | Not tied to a specific tour |
+Backed by two distinct database models (see data-model.md):
+
+| Type | Model | Trigger | Notes |
+|---|---|---|---|
+| **Per-tour evaluation** | `AdminEvaluation` | After a specific tour | Linked to a tour record; `tourId` is required |
+| **General profile evaluation** | `AdminProfileEvaluation` | Anytime | Not tied to a specific tour |
 
 #### Fields
 
-All score fields use the scale: **1 = Needs Improvement / 2 = Developing / 3 = Proficient / 4 = Advanced / 5 = Exceptional**. All text fields are optional.
+All score fields use the scale: **1 = Poor / 2 = Below Average / 3 = Average / 4 = Good / 5 = Excellent** (matching shipped i18n labels). All text fields are optional. All score fields are nullable — admins can fill in any subset.
 
-| Field | Score | Text | Notes |
-|---|---|---|---|
-| Overall rating | 1–5 | ✅ | |
-| Reliability | 1–5 | ✅ | Admin eval only |
-| Communication | 1–5 | ✅ | |
-| Group engagement | 1–5 | ✅ | |
-| Memory | 1–5 | ✅ | Remembering names, details, preferences |
-| Knowledge | 1–5 | ✅ | Content accuracy and depth |
-| Dedication | 1–5 | ✅ | Effort and commitment |
-| Dialogue | 1–5 | ✅ | **Core differentiating skill** — buddies open a genuine dialogue with participants, not just a one-way tour |
-| Adaptability | 1–5 | ✅ | Handling unexpected situations |
-| Emotion | — | ✅ | Warmth, empathy, expressiveness — cannot be meaningfully scored |
-| Confidence | 1–5 | ✅ | |
-| Evaluator | — | — | Auto-filled from submitting admin's email (`createdByEmail`). Display name deferred — see §15. |
-| Date | — | — | Auto-filled |
+| Field | Score | Text | Per-tour | Profile | Notes |
+|---|---|---|---|---|---|
+| Overall rating | 1–5 | ✅ | ✅ | ✅ | |
+| Reliability | 1–5 | ✅ | ✅ | ✅ | Admin-only metric (not in self-eval) |
+| Communication | 1–5 | ✅ | ✅ | ✅ | |
+| Group engagement | 1–5 | ✅ | ✅ | ✅ | |
+| Memory | 1–5 | ✅ | ✅ | ✅ | Remembering names, details, preferences |
+| Knowledge | 1–5 | ✅ | ✅ | ✅ | Content accuracy and depth |
+| Dedication | 1–5 | ✅ | ✅ | ✅ | Effort and commitment |
+| Dialogue | 1–5 | ✅ | ✅ | ✅ | **Core differentiating skill** — buddies open a genuine dialogue with participants, not just a one-way tour |
+| Adaptability | 1–5 | ✅ | ✅ | ✅ | Handling unexpected situations |
+| Emotion | — | ✅ | ✅ | ✅ | Warmth, empathy, expressiveness — cannot be meaningfully scored (`emotionNote` only) |
+| Confidence | 1–5 | ✅ | ✅ | ✅ | |
+| Absent without report | boolean | — | ✅ | — | Per-tour only. Admin sets when a buddy missed the tour without advance notice. Surfaces as `absenceSummary.absentWithoutReport` count on the buddy detail page |
+| Evaluator | — | — | ✅ | ✅ | Auto-filled from submitting admin's `AdminProfile.name` (returned as `createdByName`) |
+| Date | — | — | ✅ | ✅ | Auto-filled |
 
 #### Access
 - Only admins can create, read, or edit admin evaluations
 - Buddies have no visibility into admin evaluations
 
 #### Multi-admin ownership
-- Each admin submits their own independent evaluation; uniqueness is `(buddyId, tourId, createdBy)`
-- An admin can only edit or delete their own evaluations; other admins see them as read-only
-- Display name for evaluator is deferred until admin profile is built (§15); `createdByEmail` is shown in the meantime
+- Each admin submits their own independent evaluation
+  - Per-tour: uniqueness is `(buddyId, tourId, createdBy)`
+  - Profile: uniqueness is `(buddyId, createdBy)`; profile evaluations are upserted via `PUT /admin/profile-evaluations/:buddyId`
+- An admin can only edit or delete their own evaluations; other admins see them as read-only (enforced server-side — 403 if requester is not the creator)
+- Evaluator display name is shipped: each `AdminProfile.name` is surfaced as `createdByName` in evaluation responses
 
 #### Post-completion prompt (UX)
 - When an admin clicks **Mark Complete**, a single confirmation modal appears showing the list of confirmed buddies
@@ -465,12 +470,13 @@ All score fields use the scale: **1 = Needs Improvement / 2 = Developing / 3 = P
 ### 9.3 Buddy Self-Evaluations
 
 #### Trigger
-- When a tour is marked **Completed**, buddies who had **Confirmed** status receive a prompt to submit a self-evaluation for that tour
-- Prompt is optional — buddy can skip
+- When a tour is marked **Completed**, buddies who had **Confirmed** status are eligible to submit a self-evaluation for that tour
+- Eligibility is enforced server-side: `POST /me/self-evaluations` rejects with 403 unless the buddy had a `confirmed` booking and the tour is in `completed` status
+- Self-evaluation is optional — buddy can skip
 
 #### Fields
 
-Same scale as admin evaluations: **1 = Needs Improvement / … / 5 = Exceptional**. All text fields are optional. Reliability is admin-only and does not appear here.
+Same scale as admin evaluations: **1 = Poor / 2 = Below Average / 3 = Average / 4 = Good / 5 = Excellent**. All text fields are optional. Reliability is admin-only and does not appear here.
 
 | Field | Score | Text |
 |---|---|---|
@@ -486,9 +492,15 @@ Same scale as admin evaluations: **1 = Needs Improvement / … / 5 = Exceptional
 | Confidence | 1–5 | ✅ |
 | Date | — | Auto-filled |
 
+#### Edit window
+- Buddies can edit their own self-evaluation via `PUT /me/self-evaluations/:id`
+- Edit window is **7 days from creation** (`SELF_EVAL_EDIT_WINDOW_DAYS = 7`); after that the evaluation is locked
+- The response includes `locked: Boolean` so UI can disable the edit form once the window has passed
+- One self-evaluation per buddy per tour (unique constraint `(buddyId, tourId)`)
+
 #### Access
 - Buddies can submit and view their own self-evaluations
-- Admins can view all buddy self-evaluations
+- Admins can view all buddy self-evaluations via `GET /admin/self-evaluations`
 - Buddies cannot see other buddies' self-evaluations
 
 ---
@@ -832,7 +844,7 @@ When GCP nonprofit credits run low:
 | v2+ | Reporting / export for admins |
 | v2+ | Advanced evaluation analytics |
 | v2+ | Structured availability input for buddy profiles |
-| v2+ | Admin profile page (display name, avatar) — enables showing evaluator name instead of email in evaluation records |
+| v2+ | Admin profile avatar upload (display name already shipped) |
 
 ---
 

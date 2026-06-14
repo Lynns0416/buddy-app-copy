@@ -675,144 +675,247 @@ Sets a per-buddy cancellation deadline override for a tour.
 
 ## Evaluations
 
-### `POST /evaluations/admin`
-Submits an admin evaluation for a buddy, optionally linked to a tour.
+Backed by three distinct database models (see data-model.md): `AdminEvaluation` (per-tour), `AdminProfileEvaluation` (overall profile), `SelfEvaluation` (buddy self). Routes are namespaced by audience: admin-authored evaluations live under `/admin/*`, buddy-authored self-evaluations under `/me/*`. Admin read-only access to self-evaluations lives under `/admin/self-evaluations`.
 
-**Auth:** `admin`
+Score range for all `*Rating` / score fields: **1–5** (`EvaluationScoreSchema`). Note fields are optional strings. `emotionNote` is text-only (no score).
 
-**Request**
+### Admin Per-Tour Evaluations
+
+#### `POST /admin/evaluations`
+Submits a per-tour evaluation. One per `(buddyId, tourId, createdBy)`.
+
+**Auth:** `admin` (requires `AdminProfile`)
+
+**Request** — `CreateAdminEvaluationSchema`
 ```json
 {
   "buddyId": "uuid",
-  "tourId": "uuid | null",
-  "overallRating": 1,
-  "overallRatingNote": "string",
-  "reliability": 1,
-  "reliabilityNote": "string",
-  "communication": 1,
-  "communicationNote": "string",
-  "groupEngagement": 1,
-  "groupEngagementNote": "string",
-  "memory": 1,
-  "memoryNote": "string",
-  "knowledge": 1,
-  "knowledgeNote": "string",
-  "dedication": 1,
-  "dedicationNote": "string",
-  "dialogue": 1,
-  "dialogueNote": "string",
-  "adaptability": 1,
-  "adaptabilityNote": "string",
+  "tourId": "uuid",
+  "absentWithoutReport": false,
+  "overallRating": 1, "overallRatingNote": "string",
+  "reliability": 1, "reliabilityNote": "string",
+  "communication": 1, "communicationNote": "string",
+  "groupEngagement": 1, "groupEngagementNote": "string",
+  "memory": 1, "memoryNote": "string",
+  "knowledge": 1, "knowledgeNote": "string",
+  "dedication": 1, "dedicationNote": "string",
+  "dialogue": 1, "dialogueNote": "string",
+  "adaptability": 1, "adaptabilityNote": "string",
   "emotionNote": "string",
-  "confidence": 1,
-  "confidenceNote": "string"
+  "confidence": 1, "confidenceNote": "string"
 }
 ```
 
-> All score and note fields are optional. Score range: 1–5.
+All score / note / `absentWithoutReport` fields are optional except `buddyId` and `tourId`.
 
-**Response `201`** — created evaluation with `id` and `createdAt`
+**Response `201`** — `AdminEvaluationResponse` (see below)
+
+**Errors**
+- `404` — buddy or tour not found
+- `409` — evaluation already exists for `(buddyId, tourId, createdBy)`
 
 ---
 
-### `GET /evaluations/admin/:buddyId`
-Returns all admin evaluations for a buddy.
+#### `GET /admin/evaluations`
+Lists admin per-tour evaluations. Filter by buddy and/or tour.
 
 **Auth:** `admin`
 
-**Response `200`**
+**Query params:** `?buddyId=uuid`, `?tourId=uuid` (both optional)
+
+**Response `200`** — array of `AdminEvaluationResponse`, ordered by `createdAt` descending
+
 ```json
 {
   "data": [
     {
       "id": "uuid",
-      "tourId": "uuid | null",
-      "evaluatorId": "uuid",
-      "evaluatorName": "string",
-      "overallRating": 1,
-      "overallRatingNote": "string | null",
-      "dialogue": 1,
-      "dialogueNote": "string | null",
+      "buddyId": "uuid",
+      "buddyDisplayName": "string",
+      "tourId": "uuid",
+      "tourDate": "YYYY-MM-DD",
+      "tourGroupName": "string",
+      "createdBy": "uuid",
+      "createdByName": "string",
+      "absentWithoutReport": false,
+      "overallRating": 1, "overallRatingNote": "string | null",
+      "reliability": 1, "reliabilityNote": "string | null",
+      "...": "all other score/note pairs",
       "emotionNote": "string | null",
-      "createdAt": "ISO8601"
+      "createdAt": "ISO8601",
+      "updatedAt": "ISO8601"
     }
   ]
 }
 ```
 
-> Full field list omitted for brevity — all score/note pairs are returned.
+---
+
+#### `GET /admin/evaluations/:id`
+Fetch a single admin evaluation.
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminEvaluationResponse`
+
+**Errors**
+- `404` — not found
 
 ---
 
-### `POST /evaluations/self`
+#### `PUT /admin/evaluations/:id`
+Update an admin evaluation. Only the original creator can edit; other admins receive 403.
+
+**Auth:** `admin` (must equal `createdBy`)
+
+**Request** — `UpdateAdminEvaluationSchema` (partial; same fields as create, minus `buddyId` / `tourId`)
+
+**Response `200`** — `AdminEvaluationResponse`
+
+**Errors**
+- `403` — requester is not the creator
+- `404` — not found
+
+---
+
+#### `DELETE /admin/evaluations/:id`
+Delete an admin evaluation. Only the original creator can delete.
+
+**Auth:** `admin` (must equal `createdBy`)
+
+**Response `204`** — no content
+
+**Errors**
+- `403` — requester is not the creator
+- `404` — not found
+
+---
+
+### Admin Profile Evaluations
+
+Profile evaluations are profile-level (not tied to a tour). One per `(buddyId, createdBy)` — upsert semantics.
+
+#### `PUT /admin/profile-evaluations/:buddyId`
+Upsert the requester's profile evaluation for a buddy.
+
+**Auth:** `admin`
+
+**Request** — `UpsertAdminProfileEvaluationSchema` (same score / note fields as admin per-tour, **no** `absentWithoutReport`, **no** `tourId`)
+
+**Response `200`** — `AdminProfileEvaluationResponse`
+```json
+{
+  "id": "uuid",
+  "buddyId": "uuid",
+  "createdBy": "uuid",
+  "createdByName": "string",
+  "overallRating": 1, "overallRatingNote": "string | null",
+  "...": "all other score/note pairs",
+  "emotionNote": "string | null",
+  "createdAt": "ISO8601",
+  "updatedAt": "ISO8601"
+}
+```
+
+**Errors**
+- `404` — buddy not found
+
+---
+
+#### `GET /admin/profile-evaluations/:buddyId/mine`
+Fetch the requester's own profile evaluation for a buddy.
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminProfileEvaluationResponse` or `404` if not yet submitted
+
+---
+
+#### `GET /admin/profile-evaluations/:buddyId`
+List all admins' profile evaluations for a buddy.
+
+**Auth:** `admin`
+
+**Response `200`** — array of `AdminProfileEvaluationResponse`, ordered by `createdAt` ascending
+
+---
+
+### Buddy Self-Evaluations
+
+#### `POST /me/self-evaluations`
 Buddy submits a self-evaluation for a completed tour.
 
 **Auth:** `buddy`
 
-**Request**
+**Request** — `CreateSelfEvaluationSchema` (same shape as admin per-tour minus `buddyId`, `reliability`, `reliabilityNote`, `absentWithoutReport`)
+
+**Response `201`** — `SelfEvaluationResponse`
 ```json
 {
+  "id": "uuid",
+  "buddyId": "uuid",
   "tourId": "uuid",
-  "overallRating": 1,
-  "overallRatingNote": "string",
-  "communication": 1,
-  "communicationNote": "string",
-  "groupEngagement": 1,
-  "groupEngagementNote": "string",
-  "memory": 1,
-  "memoryNote": "string",
-  "knowledge": 1,
-  "knowledgeNote": "string",
-  "dedication": 1,
-  "dedicationNote": "string",
-  "dialogue": 1,
-  "dialogueNote": "string",
-  "adaptability": 1,
-  "adaptabilityNote": "string",
-  "emotionNote": "string",
-  "confidence": 1,
-  "confidenceNote": "string"
+  "overallRating": 1, "overallRatingNote": "string | null",
+  "...": "all other score/note pairs (no reliability)",
+  "emotionNote": "string | null",
+  "locked": false,
+  "createdAt": "ISO8601",
+  "updatedAt": "ISO8601"
 }
 ```
 
-> All score and note fields are optional. No `reliability` field.
-
-**Response `201`** — created self-evaluation
-
 **Errors**
-- `403` — tour not completed, or buddy did not have Confirmed status
+- `403` — buddy did not have a `confirmed` booking, or tour is not in `completed` status
 - `409` — self-evaluation already exists for this tour
 
 ---
 
-### `GET /evaluations/self/me`
-Returns the authenticated buddy's own self-evaluations.
+#### `GET /me/self-evaluations`
+List the authenticated buddy's own self-evaluations.
 
 **Auth:** `buddy`
 
-**Response `200`**
-```json
-{
-  "data": [
-    {
-      "id": "uuid",
-      "tourId": "uuid",
-      "tourDate": "YYYY-MM-DD",
-      "overallRating": 1,
-      "createdAt": "ISO8601"
-    }
-  ]
-}
-```
+**Query params:** `?tourId=uuid` (optional)
+
+**Response `200`** — array of `SelfEvaluationResponse`, ordered by `createdAt` descending
 
 ---
 
-### `GET /evaluations/self/:buddyId` *(admin)*
-Returns all self-evaluations for a buddy.
+#### `PUT /me/self-evaluations/:id`
+Edit own self-evaluation within the 7-day edit window.
+
+**Auth:** `buddy` (must equal owner)
+
+**Request** — `UpdateSelfEvaluationSchema` (partial; same fields as create, no `tourId`)
+
+**Response `200`** — `SelfEvaluationResponse`
+
+**Errors**
+- `403` — requester is not the owner
+- `404` — not found
+- `409` — edit window (7 days from creation) has closed
+
+---
+
+### Self-Evaluations (admin read access)
+
+#### `GET /admin/self-evaluations`
+Admins read all buddy self-evaluations.
 
 **Auth:** `admin`
 
-**Response `200`** — same shape as above
+**Query params:** `?buddyId=uuid` (optional)
+
+**Response `200`** — array of `AdminSelfEvaluationResponse` (includes buddy display name), ordered by `createdAt` descending
+
+---
+
+#### `GET /admin/self-evaluations/:id`
+Fetch a single self-evaluation.
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminSelfEvaluationResponse` or `404`
 
 ---
 
