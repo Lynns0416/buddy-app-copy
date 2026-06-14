@@ -105,12 +105,13 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | cancellationDeadline | Date | |
 | maybeDeadline | Date? | |
 | notificationOffsets | Int[] | Days before tour date to send reminders; default `[3, 1]` |
+| staffInChargeId | UUID? | FK → AdminProfile (relation `StaffInCharge`). Optional. If set, must be one of the tour's assigned admins. |
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
 
 **Index:** `(status, tourDate)`
 
-Capacity and meeting times live on `TourSession`, not on Tour directly. A tour has one or more sessions.
+Capacity and meeting times live on `TourSession`, not on Tour directly. A tour has 1 or 2 sessions (the API rejects a third). Many-to-many admin assignment is via `TourAdminAssignment` (below).
 
 ### TourSession
 
@@ -126,12 +127,26 @@ Per-session capacity and timing record. A tour must have at least one session.
 | startTime | Time? | |
 | endTime | Time? | |
 | capacity | Int | Total seats for this session |
-| participantCount | Int | Default 0; cached count of participants (group size) |
+| minBuddies | Int? | Optional minimum-buddies threshold. When `participantCount < minBuddies` the session is flagged `belowMinimum` in API responses. |
+| participantCount | Int | Default 0; cached count of participants (group size — visitors, not buddies) |
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
 
 **Unique:** `(tourId, order)`  
 **Index:** `tourId`
+
+### TourAdminAssignment
+
+Many-to-many join between admins and tours. Independent of the `staffInChargeId` field on Tour.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| tourId | UUID | FK → Tour (`onDelete: Cascade`) |
+| adminId | UUID | FK → AdminProfile |
+| createdAt | Timestamp | |
+
+**Unique:** `(tourId, adminId)` — one assignment per admin per tour
 
 ### TierCapacity
 

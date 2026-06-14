@@ -348,67 +348,47 @@ Update an existing group. All fields optional; nullable fields can be cleared by
 
 ## Tours
 
-### `GET /tours`
-Returns tours visible to the caller.
-- Buddies (trainee+): Published tours only, no `adminMemo`
-- Admins: All tours including Draft, all fields
+Capacity, meeting time, and per-tier seat pools live on `TourSession` rows under the tour — a tour has 1 or 2 sessions. Buddy-facing routes are mounted under `/tours`; admin routes under `/admin/tours`. Field projections differ: buddies never receive `adminMemo`, `assignedAdmins`, `staffInChargeId`, or per-buddy booking details.
 
-**Auth:** `trainee+` or `admin`
+### Buddy: `GET /tours`
+List tours visible to the caller. Trainee buddies are excluded server-side.
 
-**Query params:** `?status=draft|published|cancelled|completed`, `?page=1`, `?limit=50`
+**Auth:** any authenticated active buddy
 
-**Response `200`**
+**Query params:** `?status=draft|published|cancelled|completed` (defaults to `published`), `?from=YYYY-MM-DD`, `?to=YYYY-MM-DD`
+
+**Response `200`** — array of `TourResponse`
 ```json
 {
   "data": [
     {
       "id": "uuid",
       "groupId": "uuid",
-      "groupName": "string",
-      "status": "string",
+      "group": { "id": "uuid", "name": "string", "type": "school | company | community | other" },
+      "status": "draft | published | cancelled | completed",
       "tourDate": "YYYY-MM-DD",
-      "meetingTime": "HH:MM",
+      "bookingOpen": true,
       "location": "string",
-      "capacity": 0,
-      "remainingSeats": 0,
-      "confirmedCount": 0,
-      "maybeCount": 0,
-      "waitlistCount": 0,
-      "declinedCount": 0,
+      "participantCount": 0,
       "description": "string | null",
-      "adminMemo": "string | null",
       "cancellationDeadline": "YYYY-MM-DD",
       "maybeDeadline": "YYYY-MM-DD | null",
-      "notificationOffsets": [0],
-      "createdAt": "ISO8601"
-    }
-  ],
-  "total": 0,
-  "page": 1,
-  "limit": 50
-}
-```
-
-> `adminMemo` is omitted for buddy callers.
-
----
-
-### `GET /tours/:id`
-Returns full tour detail. Same field visibility rules as `GET /tours`.
-
-**Auth:** `trainee+` or `admin`
-
-**Response `200`** — single tour object (same shape as above) + for admins, a `bookings` array:
-
-```json
-{
-  "bookings": [
-    {
-      "id": "uuid",
-      "buddyId": "uuid",
-      "buddyDisplayName": "string",
-      "status": "confirmed | maybe | waitlist | declined",
-      "bookedAt": "ISO8601",
+      "notificationOffsets": [3, 1],
+      "sessions": [
+        {
+          "id": "uuid",
+          "order": 1,
+          "label": "string | null",
+          "meetingTime": "HH:MM",
+          "startTime": "HH:MM | null",
+          "endTime": "HH:MM | null",
+          "capacity": 0,
+          "minBuddies": 0,
+          "participantCount": 0,
+          "belowMinimum": false
+        }
+      ],
+      "createdAt": "ISO8601",
       "updatedAt": "ISO8601"
     }
   ]
@@ -417,99 +397,288 @@ Returns full tour detail. Same field visibility rules as `GET /tours`.
 
 ---
 
-### `POST /tours`
+### Buddy: `GET /tours/:id`
+Tour detail with per-session seat counts and the caller's tier-aware capacity. Returns `null` / `404` if the tour is not visible to the caller.
+
+**Auth:** any authenticated active buddy
+
+**Response `200`** — `TourDetailResponse` (= `TourResponse` with `sessions[]` upgraded to `TourSessionDetailResponse`):
+```json
+{
+  "...": "TourResponse fields",
+  "sessions": [
+    {
+      "...": "TourSessionResponse fields",
+      "seatCounts": { "confirmed": 0, "maybe": 0, "waitlist": 0, "declined": 0 },
+      "remaining": 0,
+      "myCapacity": 0,
+      "myRemaining": 0,
+      "myBookingStatus": "confirmed | maybe | waitlist | declined | null"
+    }
+  ]
+}
+```
+
+`myCapacity` / `myRemaining` reflect the caller's tier pool (junior vs non-junior vs overflow into anyone).
+
+---
+
+### Admin: `GET /admin/tours`
+List all tours, including drafts.
 
 **Auth:** `admin`
 
-**Request**
+**Query params:** `?status=draft|published|cancelled|completed` (optional)
+
+**Response `200`** — array of `AdminTourSummaryResponse` (= `TourResponse` + `capacity`, `confirmedCount`)
+
+---
+
+### Admin: `POST /admin/tours`
+Create a tour. Status is initialised to `draft`.
+
+**Auth:** `admin`
+
+**Request** — `CreateTourSchema`
 ```json
 {
   "groupId": "uuid",
   "tourDate": "YYYY-MM-DD",
-  "meetingTime": "HH:MM",
+  "bookingOpen": false,
   "location": "string",
-  "capacity": 0,
   "description": "string",
   "adminMemo": "string",
   "cancellationDeadline": "YYYY-MM-DD",
   "maybeDeadline": "YYYY-MM-DD",
-  "notificationOffsets": [3, 1]
+  "notificationOffsets": [3, 1],
+  "sessions": [
+    {
+      "label": "string",
+      "meetingTime": "HH:MM",
+      "startTime": "HH:MM",
+      "endTime": "HH:MM",
+      "capacity": 0,
+      "minBuddies": 0,
+      "participantCount": 0
+    }
+  ]
 }
 ```
 
-**Response `201`** — created tour. Status defaults to `draft`.
+- `sessions` is required, length 1 or 2; additional sessions are added later via the session endpoints
+- Server validates `maybeDeadline < cancellationDeadline` when both are set
+
+**Response `201`** — `AdminTourDetailResponse`
 
 ---
 
-### `PATCH /tours/:id`
-Edits tour fields. Only allowed when status is `draft` or `published`.
+### Admin: `GET /admin/tours/:id`
+Tour detail with admin-only fields.
 
 **Auth:** `admin`
 
-**Request** (all fields optional)
+**Response `200`** — `AdminTourDetailResponse`
 ```json
 {
-  "groupId": "uuid",
-  "tourDate": "YYYY-MM-DD",
-  "meetingTime": "HH:MM",
-  "location": "string",
+  "...": "TourResponse fields",
+  "adminMemo": "string | null",
   "capacity": 0,
-  "description": "string",
-  "adminMemo": "string",
-  "cancellationDeadline": "YYYY-MM-DD",
-  "maybeDeadline": "YYYY-MM-DD",
-  "notificationOffsets": [3, 1]
+  "confirmedCount": 0,
+  "bookings": [
+    {
+      "id": "uuid",
+      "buddyId": "uuid",
+      "sessionId": "uuid",
+      "displayName": "string",
+      "status": "confirmed | maybe | waitlist | declined",
+      "bookedAt": "ISO8601",
+      "cancellationReason": {
+        "category": "health | emergency | personal | work | other",
+        "freeText": "string | null",
+        "unavoidable": true,
+        "recordedByEmail": "string"
+      }
+    }
+  ],
+  "assignedAdmins": [{ "adminId": "uuid", "name": "string" }],
+  "staffInChargeId": "uuid | null"
 }
 ```
 
-**Response `200`** — updated tour.
-
-> If `tourDate`, `meetingTime`, or `location` change on a Published tour, notifications are sent to all Confirmed / Maybe / Waitlist buddies.
+**Errors**
+- `404` — not found
 
 ---
 
-### `POST /tours/:id/publish`
-Transitions tour from `draft` → `published`. Sends new-tour notification to all Active buddies.
+### Admin: `PUT /admin/tours/:id`
+Update a tour. All fields optional; nullable fields can be cleared with `null`.
 
 **Auth:** `admin`
 
-**Response `200`**
-```json
-{ "status": "published" }
-```
+**Request** — `UpdateTourSchema` (same fields as create, no `sessions`)
+
+**Response `200`** — `AdminTourDetailResponse`
+
+**Errors**
+- `404` — not found
+- `409` — `TourImmutableError`: tour is `cancelled` or `completed` and cannot be edited
+- `400` — `maybeDeadline >= cancellationDeadline`
 
 ---
 
-### `POST /tours/:id/cancel`
-Transitions tour to `cancelled`. Notifies all Confirmed / Maybe / Waitlist buddies.
+### Admin: `PATCH /admin/tours/:id/status`
+Transition the tour status. Allowed transitions per §7.2 PRD: `draft → published`, `draft → cancelled`, `published → cancelled`, `published → completed`.
 
 **Auth:** `admin`
 
-**Response `200`**
+**Request** — `TourStatusActionSchema`
 ```json
-{ "status": "cancelled" }
+{ "action": "publish | cancel | complete" }
 ```
+
+**Response `200`** — `AdminTourDetailResponse`
+
+**Errors**
+- `404` — not found
+- `409` — transition not allowed from the current status
 
 ---
 
-### `POST /tours/:id/complete`
-Transitions tour to `completed`. Triggers evaluation prompts for admin and participating buddies.
-
-**Auth:** `admin`
-
-**Response `200`**
-```json
-{ "status": "completed" }
-```
-
----
-
-### `DELETE /tours/:id`
-Hard deletes a tour. Only allowed when status is `draft`.
+### Admin: `DELETE /admin/tours/:id`
+Hard-delete. Only permitted while the tour is in `draft`.
 
 **Auth:** `admin`
 
 **Response `204`**
+
+**Errors**
+- `404` — not found
+- `409` — `TourNotDraftError`: tour is not in `draft` status
+
+---
+
+### Admin: Sessions
+
+#### `POST /admin/tours/:id/sessions`
+Add a session to an existing tour. Tour must already exist with one session; the second one is added here.
+
+**Auth:** `admin`
+
+**Request** — `CreateTourSessionSchema` (`label?`, `meetingTime`, `startTime?`, `endTime?`, `capacity`, `minBuddies?`, `participantCount?`)
+
+**Response `201`** — `AdminTourDetailResponse`
+
+**Errors**
+- `404` — tour not found
+- `409` — `TourImmutableError` (cancelled / completed) or `TooManySessionsError` (already 2 sessions)
+
+---
+
+#### `PUT /admin/tours/:id/sessions/:sessionId`
+Update a session.
+
+**Auth:** `admin`
+
+**Request** — `UpdateTourSessionSchema` (all fields optional)
+
+**Response `200`** — `AdminTourDetailResponse`
+
+---
+
+#### `DELETE /admin/tours/:id/sessions/:sessionId`
+Delete a session. Remaining sessions are reordered. Blocked if the session has bookings or is the only session.
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminTourDetailResponse`
+
+**Errors**
+- `404` — session not found
+- `409` — `SessionHasBookingsError` or `LastSessionError`
+
+---
+
+### Admin: Tier Capacities
+
+Per-session percentages controlling pool allocation (`junior`, `non_junior`, `anyone`). Defaults `{ junior: 20, non_junior: 30, anyone: 50 }`.
+
+#### `GET /admin/tours/:id/sessions/:sessionId/tier-capacities`
+
+**Auth:** `admin`
+
+**Response `200`**
+```json
+{ "junior": 20, "non_junior": 30, "anyone": 50 }
+```
+
+---
+
+#### `PATCH /admin/tours/:id/sessions/:sessionId/tier-capacities`
+Upsert all three pools. The three percentages must sum to 100 — the server rejects partial overrides.
+
+**Auth:** `admin`
+
+**Request** — `TierCapacitiesSchema`
+```json
+{ "junior": 20, "non_junior": 30, "anyone": 50 }
+```
+
+**Response `200`** — same shape
+
+**Errors**
+- `400` — percentages do not sum to 100
+
+---
+
+### Admin: Admin Assignment
+
+#### `POST /admin/tours/:id/admins`
+Assign an admin to the tour.
+
+**Auth:** `admin`
+
+**Request** — `AssignTourAdminSchema`
+```json
+{ "adminId": "uuid" }
+```
+
+**Response `200`** — `AdminTourDetailResponse`
+
+**Errors**
+- `404` — `AdminNotFoundError` (admin does not exist or is soft-deleted)
+- `409` — `AdminAlreadyAssignedError`
+
+---
+
+#### `DELETE /admin/tours/:id/admins/:adminId`
+Unassign an admin. If the admin being removed is the current `staffInCharge` and other admins are still assigned, the request fails — the staff-in-charge must be reassigned first.
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminTourDetailResponse`
+
+**Errors**
+- `409` — `StaffInChargeRequiresReplacementError`
+
+---
+
+#### `PUT /admin/tours/:id/staff-in-charge`
+Set or clear the staff-in-charge designation.
+
+**Auth:** `admin`
+
+**Request** — `SetStaffInChargeSchema`
+```json
+{ "adminId": "uuid | null" }
+```
+
+- Passing a UUID requires that admin to already be assigned to the tour
+- Passing `null` is allowed only when no admins are assigned
+
+**Response `200`** — `AdminTourDetailResponse`
+
+**Errors**
+- `409` — `StaffInChargeNotAssignedError` (the named admin is not on the tour) or `StaffInChargeRequiredError` (clearing while admins remain)
 
 ---
 

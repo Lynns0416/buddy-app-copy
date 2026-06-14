@@ -205,29 +205,57 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 
 ### 7.1 Tour Fields
 
+A `Tour` carries metadata (date, location, deadlines, status, admin assignments). Capacity, meeting time and per-session timing live on `TourSession` rows under the tour — a tour has **1 or 2 sessions** (hard cap; the API rejects a third with `TooManySessionsError`).
+
+**Tour-level fields**
+
 | Field | Type | Notes |
 |---|---|---|
-| Tour ID | Auto | |
-| Group | Group ref | Linked to a managed group entity |
-| Tour date | Date | |
-| Meeting time | Time | |
-| Location | Text | |
-| Capacity | Integer | Max number of buddies for this tour |
-| Description / notes | Long text | Visible to buddies |
-| Admin memo | Long text | **Admin-only — not visible to buddies** |
-| Cancellation deadline | Date | Default: 7 days before tour; overridable per buddy by admin. Must be set after (closer to tour than) the Maybe deadline. |
-| Maybe confirmation deadline | Date | Default: 9 days before tour. Must be set before (further from tour than) the cancellation deadline. |
-| Notification schedule | List of offsets | `Tour.notificationOffsets: Int[]` — days before tour date to send reminders; default: `[3, 1]`; configurable per tour. Matches the shipped form label ("days before, comma-separated"). |
-| Status | Enum | Draft / Published / Cancelled / Completed |
-| Assigned admins | Admin refs (many) | Optional; admins responsible for this tour |
-| Staff in charge | Admin ref (one) | Required if at least one admin is assigned; must be one of the assigned admins |
+| `id` | UUID | Auto |
+| `groupId` | UUID FK | Linked to a managed Group |
+| `tourDate` | Date | |
+| `location` | Text | |
+| `description` | Long text? | Visible to buddies |
+| `adminMemo` | Long text? | **Admin-only** — never sent in buddy responses |
+| `bookingOpen` | Boolean | Default `false`. Admin toggles to open/close bookings for a Published tour. Buddies can only book while this is `true` (and tourDate is in the future). |
+| `cancellationDeadline` | Date | Default: 7 days before tour. Must be after (closer to tour than) the Maybe deadline. **Per-buddy override is Planned** — schema model (`BuddyCancellationDeadlineOverride`) exists but no admin API endpoint manages it yet. |
+| `maybeDeadline` | Date? | Default: 9 days before tour. Must be before the cancellation deadline. Validated server-side. |
+| `notificationOffsets` | Int[] | Days before tour date to send reminders; default `[3, 1]`. Matches the shipped form label ("days before, comma-separated"). |
+| `status` | Enum | `draft` / `published` / `cancelled` / `completed` |
+| Assigned admins | Many | Optional. Stored as `TourAdminAssignment(tourId, adminId)` rows — many-to-many with `AdminProfile`. |
+| `staffInChargeId` | UUID FK? | Optional FK to `AdminProfile`. Required to be one of the assigned admins; nullable only if no admins are assigned. |
+
+**Session-level fields** (`TourSession`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | UUID | Auto |
+| `tourId` | UUID FK | |
+| `order` | Int | Display order; unique within tour |
+| `label` | Text? | e.g. "Morning"; if absent the UI uses a default like "Session 1" |
+| `meetingTime` | Time | Required |
+| `startTime` | Time? | Schema field. Not rendered in the current create/edit form |
+| `endTime` | Time? | Schema field. Not rendered in the current create/edit form |
+| `capacity` | Int | Required. Total seats for the session |
+| `minBuddies` | Int? | Optional. When `participantCount < minBuddies` the session is flagged `belowMinimum` in responses and UI |
+| `participantCount` | Int | Default `0`. Cached group size (number of visitors, not buddies) used to compute `belowMinimum` |
+| `createdAt` / `updatedAt` | Timestamp | Auto |
 
 ### 7.2 Tour Status Lifecycle
 
-- **Draft:** Editable, not visible to buddies. Can be published or deleted.
-- **Published:** Visible to and bookable by Active buddies. Can be edited, cancelled, or completed.
-- **Cancelled:** Booking closed. All buddies with status Confirmed, Maybe, or Waitlist are notified automatically. No further edits.
-- **Completed:** Booking closed. Admin is prompted to submit evaluations for participating buddies.
+Transitions are gated server-side via `PATCH /admin/tours/:id/status` with `{action: 'publish' | 'cancel' | 'complete'}`. Allowed transitions:
+
+| From | To |
+|---|---|
+| `draft` | `published` (publish), `cancelled` (cancel) |
+| `published` | `cancelled` (cancel), `completed` (complete) |
+| `cancelled` | — (terminal) |
+| `completed` | — (terminal) |
+
+- **Draft:** Editable. Hard-delete allowed via `DELETE /admin/tours/:id` (draft only — other statuses reject with `TourNotDraftError`).
+- **Published:** Visible to Active buddies. Bookable while `bookingOpen = true`. Can be edited, cancelled, or completed.
+- **Cancelled:** Booking closed. All buddies with status Confirmed, Maybe, or Waitlist will be notified once the notification system ships (see §10 — Planned). **No further edits** — the API rejects updates with `TourImmutableError`.
+- **Completed:** Booking closed. The tour detail page surfaces the per-tour evaluation section as the natural prompt to add evaluations. **No further edits** — same `TourImmutableError`.
 
 ### 7.3 Rules
 - Only admins can create, edit, cancel, or complete tours
@@ -598,14 +626,32 @@ When a buddy logs in, they see:
 - Access to their profile and history
 
 ### 11.2 Tour Management
-- Create, edit, publish, cancel, complete tours
-- View all bookings per tour (buddy name, status, booking time)
-- Set / override cancellation deadlines (per tour and per buddy)
-- Set Maybe confirmation deadlines
-- Configure per-tour notification schedule
+
+**Pages & Routes** (admin only):
+
+| Route | Purpose |
+|---|---|
+| `/admin/tours` | List tours (filterable by status: draft / published / cancelled / completed; sortable by tourDate, group, status; "today" divider in list) |
+| `/admin/tours/new` | Create tour form |
+| `/admin/tours/:id` | Tour detail — metadata, sessions, tier capacities, bookings, admin assignments, evaluations |
+| `/admin/tours/:id/edit` | Edit tour form |
+
+**Capabilities:**
+- Create, edit tours; hard-delete restricted to `draft` tours
+- Status transitions via `PATCH /admin/tours/:id/status` with action `publish` / `cancel` / `complete` — gated by the table in §7.2
+- Toggle `bookingOpen` to open/close bookings while a tour is Draft or Published
+- Manage **1–2 sessions** per tour (`POST` / `PUT` / `DELETE /admin/tours/:id/sessions`); session deletion blocked if the session has bookings or is the last session
+- Set **tier capacity per session** (junior / non_junior / anyone percentages; must sum to 100%) via `PATCH /admin/tours/:id/sessions/:sessionId/tier-capacities`
 - Add / edit admin-only memo
-- Assign / unassign admins to a tour
-- Designate staff in charge from assigned admins
+- Set / change cancellation deadline and Maybe deadline on the tour (deadline order validated server-side)
+- Configure per-tour notification schedule (`Tour.notificationOffsets`, days before tour)
+- View all bookings per tour (buddy name, status, sessions booked, bookedAt, cancellation reason)
+- Assign / unassign admins via `POST` / `DELETE /admin/tours/:id/admins`
+- Designate staff in charge via `PUT /admin/tours/:id/staff-in-charge`. Server enforces: staff-in-charge must be one of the assigned admins; cannot null it out while admins are still assigned; unassigning the current staff-in-charge admin while others remain requires designating a replacement first
+- After a tour is `completed`, the per-tour evaluation section appears on the detail page; admins use it to record evaluations (see §9)
+
+**Planned (not shipped):**
+- Per-buddy cancellation deadline override — `BuddyCancellationDeadlineOverride` schema exists but no admin API or UI manages it yet
 
 ### 11.3 Group Management
 
