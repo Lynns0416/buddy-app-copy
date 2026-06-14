@@ -183,18 +183,21 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 
 | Field | Type | Notes |
 |---|---|---|
-| Group ID | Auto | |
-| Name | Text | e.g. "Sakura High School", "Acme Corp" |
-| Type | Enum | School / Company / Community / Other |
-| Contact name | Text | Primary contact person |
-| Contact email | Email | |
-| Contact phone | Text | |
-| Notes / history | Long text | Admin-maintained; visit history, special considerations, etc. |
+| `id` | UUID | Auto |
+| `name` | Text | Required, min 1 char. e.g. "Sakura High School", "Acme Corp" |
+| `type` | Enum | `GroupTypeSchema`: `school` / `company` / `community` / `other` (stored as lowercase; currently rendered raw — no per-value i18n label yet) |
+| `contactName` | Text | Optional |
+| `contactEmail` | Email | Optional. Validated as email format on create/update |
+| `contactPhone` | Text | Optional |
+| `notes` | Long text | Optional. Admin-maintained; visit history, special considerations, etc. |
+| `createdAt` / `updatedAt` | Timestamp | Auto |
 
 ### 6.2 Rules
-- Groups created and managed by admins only
-- Each tour is linked to exactly one group
-- Group history accumulates as tours are completed over time
+- Groups created and managed by admins only — all four endpoints under `/admin/groups`; no buddy-facing group routes
+- Each tour is linked to exactly one group via `Tour.groupId` (FK; non-nullable)
+- Groups cannot be deleted in v1 (no `DELETE` endpoint); tour history accumulates over time
+- Group name is not unique — duplicate names are permitted
+- Group detail (`GET /admin/groups/:id`) returns the full tour list nested under `tours: GroupTourSummary[]` (each with date, status, location, participant count, session summaries) for the linked tour history
 
 ---
 
@@ -605,9 +608,22 @@ When a buddy logs in, they see:
 - Designate staff in charge from assigned admins
 
 ### 11.3 Group Management
-- Create, edit groups
-- View group tour history
-- Manage contact info and notes
+
+**Pages & Routes** (admin only):
+
+| Route | Purpose |
+|---|---|
+| `/admin/groups` | List all groups (sortable by name and type) |
+| `/admin/groups/new` | Create new group form |
+| `/admin/groups/:id` | Detail view — metadata card + linked tour history table (sortable by tour date, status, location, capacity) |
+| `/admin/groups/:id/edit` | Edit group form |
+
+**Capabilities:**
+- Create, edit groups; no delete in v1
+- View group tour history on detail page — each row links to the tour detail
+- Manage contact info (name, email, phone) and free-text notes
+
+**Responsive layout:** Card-on-mobile, table-on-desktop per the convention in architecture.md.
 
 ### 11.4 Buddy Management
 

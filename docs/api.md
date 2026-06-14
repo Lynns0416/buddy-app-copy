@@ -231,12 +231,14 @@ Updates admin-managed fields on a buddy profile.
 
 ## Groups
 
-### `GET /groups`
-Returns all groups.
+All group endpoints are admin-only and mounted under `/admin/groups`. No public or buddy-facing group routes. Groups cannot be deleted in v1.
+
+### `GET /admin/groups`
+List all groups, ordered by `name` ascending.
 
 **Auth:** `admin`
 
-**Response `200`**
+**Response `200`** — array of `GroupResponse`
 ```json
 {
   "data": [
@@ -247,7 +249,9 @@ Returns all groups.
       "contactName": "string | null",
       "contactEmail": "string | null",
       "contactPhone": "string | null",
-      "createdAt": "ISO8601"
+      "notes": "string | null",
+      "createdAt": "ISO8601",
+      "updatedAt": "ISO8601"
     }
   ]
 }
@@ -255,65 +259,90 @@ Returns all groups.
 
 ---
 
-### `GET /groups/:id`
-Returns group detail including notes.
+### `GET /admin/groups/:id`
+Group detail including the linked tour history.
 
 **Auth:** `admin`
 
-**Response `200`**
+**Response `200`** — `GroupDetailResponse` (= `GroupResponse` + nested `tours[]`)
 ```json
 {
   "id": "uuid",
   "name": "string",
-  "type": "string",
+  "type": "school | company | community | other",
   "contactName": "string | null",
   "contactEmail": "string | null",
   "contactPhone": "string | null",
   "notes": "string | null",
   "createdAt": "ISO8601",
-  "updatedAt": "ISO8601"
+  "updatedAt": "ISO8601",
+  "tours": [
+    {
+      "id": "uuid",
+      "status": "draft | published | cancelled | completed",
+      "tourDate": "YYYY-MM-DD",
+      "bookingOpen": true,
+      "location": "string",
+      "participantCount": 0,
+      "description": "string | null",
+      "sessions": [{ "...": "TourSessionResponse" }],
+      "createdAt": "ISO8601"
+    }
+  ]
 }
 ```
 
+`tours` is ordered by `tourDate` descending. Each session in `tours[].sessions` carries a `belowMinimum` flag (`minBuddies != null && participantCount < minBuddies`).
+
+**Errors**
+- `404` — group not found
+
 ---
 
-### `POST /groups`
+### `POST /admin/groups`
+Create a new group.
 
 **Auth:** `admin`
 
-**Request**
+**Request** — `CreateGroupSchema`
 ```json
 {
-  "name": "string",
+  "name": "string (min 1)",
   "type": "school | company | community | other",
   "contactName": "string",
-  "contactEmail": "string",
+  "contactEmail": "string (email format)",
   "contactPhone": "string",
   "notes": "string"
 }
 ```
 
-**Response `201`** — created group (same shape as `GET /groups/:id`)
+`name` and `type` required; all other fields optional. `contactEmail` is validated as an email if provided.
+
+**Response `201`** — `GroupResponse`
 
 ---
 
-### `PATCH /groups/:id`
+### `PUT /admin/groups/:id`
+Update an existing group. All fields optional; nullable fields can be cleared by passing `null`.
 
 **Auth:** `admin`
 
-**Request** (all fields optional)
+**Request** — `UpdateGroupSchema`
 ```json
 {
-  "name": "string",
+  "name": "string (min 1)",
   "type": "school | company | community | other",
-  "contactName": "string",
-  "contactEmail": "string",
-  "contactPhone": "string",
-  "notes": "string"
+  "contactName": "string | null",
+  "contactEmail": "string (email format) | null",
+  "contactPhone": "string | null",
+  "notes": "string | null"
 }
 ```
 
-**Response `200`** — updated group
+**Response `200`** — `GroupResponse`
+
+**Errors**
+- `404` — group not found
 
 ---
 
