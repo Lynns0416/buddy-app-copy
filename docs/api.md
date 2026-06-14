@@ -684,190 +684,175 @@ Set or clear the staff-in-charge designation.
 
 ## Bookings
 
-### `GET /tours/:id/bookings/me`
-Returns the authenticated buddy's booking for a specific tour, if it exists.
+Bookings are scoped to a **session** (one booking per `(buddyId, sessionId)`). All buddy-facing endpoints sit under tour-shaped paths; admin overrides live under `/admin/bookings`. There is no separate booking-create vs status-change endpoint shape — `POST` creates, `PUT /me` updates the caller's own.
 
-**Auth:** `buddy`
+### Buddy: `POST /tours/:id/bookings`
+Create a booking for one session of the tour. The server decides `confirmed` vs `waitlist` from the session's tier pool state (see PRD §8.9).
 
-**Response `200`**
+**Auth:** any authenticated active buddy with a tier assigned
+
+**Request** — `CreateBookingBodySchema`
+```json
+{ "sessionId": "uuid" }
+```
+
+**Response `201`** — `BookingResponse`
 ```json
 {
   "id": "uuid",
   "tourId": "uuid",
-  "status": "confirmed | maybe | waitlist | declined",
+  "sessionId": "uuid",
+  "buddyTier": "junior | mid | senior | expert | instructor | organizer",
+  "status": "confirmed | waitlist",
   "bookedAt": "ISO8601",
   "updatedAt": "ISO8601"
 }
 ```
 
-**Response `404`** — no booking exists yet.
-
----
-
-### `POST /tours/:id/bookings`
-Creates a new booking for the authenticated buddy.
-
-**Auth:** `buddy`
-
-**Request**
-```json
-{
-  "status": "confirmed | maybe | waitlist"
-}
-```
-
-**Response `201`**
-```json
-{
-  "id": "uuid",
-  "tourId": "uuid",
-  "status": "string",
-  "bookedAt": "ISO8601"
-}
-```
+A previously declined booking is reused (upsert) — re-booking returns a fresh status based on current pool state.
 
 **Errors**
-- `409` — booking already exists (use PATCH to update)
-- `403` — tour not published, deadline passed, or buddy not active
-- `422` — capacity full (for `confirmed` when no seats remain)
+- `404` — tour, session, or buddy not found
+- `409` — `ALREADY_BOOKED` (a non-declined booking exists)
+- `403` — `NOT_ELIGIBLE` (buddy is trainee or inactive)
+- `422` — `NOT_BOOKABLE` (tour not published, `bookingOpen = false`, or tour date passed)
 
 ---
 
-### `PATCH /tours/:id/bookings/me`
-Updates the authenticated buddy's booking status.
+### Buddy: `PUT /tours/:tourId/sessions/:sessionId/bookings/me`
+Update the caller's own booking status for a session.
 
-**Auth:** `buddy`
+**Auth:** any authenticated active buddy
 
-**Request**
+**Request** — `UpdateBookingBodySchema`
 ```json
 {
   "status": "confirmed | maybe | waitlist | declined",
-  "cancellationReason": {
+  "reason": {
     "category": "health | emergency | personal | work | other",
     "freeText": "string"
   }
 }
 ```
 
-> `cancellationReason` is required when transitioning **to `declined` from `confirmed`**.
+`reason` is required when transitioning **`confirmed → declined`**; ignored otherwise. See §8.4 for the full transition matrix and the gating rules.
 
-**Response `200`** — updated booking
+**Response `200`** — `BookingResponse`
 
 **Errors**
-- `403` — deadline passed (admin override required)
-- `409` — concurrent confirmed seat claim lost (retry or stay on waitlist)
+- `404` — booking not found
+- `400` — `REASON_REQUIRED` (`confirmed → declined` without `reason`)
+- `409` — `TOUR_FULL` (transitioning to `confirmed` but no pool slot remains)
+- `422` — `DEADLINE_PASSED` (cancellation deadline has passed; use `/cant-go`), `MAYBE_DEADLINE_PASSED` (transitioning to `maybe` after `maybeDeadline`), or `BUDDY_NOT_FOUND`
 
 ---
 
-### `PATCH /tours/:id/bookings/:bookingId` *(admin)*
-Admin override for any booking status change, including after deadline.
+### Buddy: `POST /tours/:tourId/sessions/:sessionId/bookings/me/cant-go`
+Post-deadline "I can't go" report. Only available after `cancellationDeadline` has passed. Status moves to `declined` and a `CancellationReason` row is recorded with `recordedBy = caller`, `unavoidable = null` (unreviewed). Waitlist auto-promotion runs if the prior status was `confirmed`.
 
-**Auth:** `admin`
+**Auth:** any authenticated active buddy
 
-**Request**
+**Request** — `CancellationReasonBodySchema`
 ```json
 {
-  "status": "confirmed | maybe | waitlist | declined",
-  "cancellationReason": {
-    "category": "health | emergency | personal | work | other",
-    "freeText": "string",
-    "unavoidable": true
-  }
+  "category": "health | emergency | personal | work | other",
+  "freeText": "string"
 }
 ```
 
-**Response `200`** — updated booking
+`freeText` optional.
+
+**Response `200`** — `BookingResponse`
+
+**Errors**
+- `404` — booking or buddy not found
+- `422` — `DEADLINE_NOT_PASSED` (cancellation deadline still in the future — use the regular update endpoint instead), or `INVALID_STATUS` (booking is already `declined`)
 
 ---
 
-### `GET /buddies/:id/bookings` *(admin)*
-Returns full booking history for a buddy.
+### Buddy: `GET /me/bookings`
+List the caller's own bookings. **Declined bookings are excluded.** Results are grouped by tour and ordered by tour date descending.
 
-**Auth:** `admin`
+**Auth:** any authenticated active buddy
 
-**Query params:** `?page=1`, `?limit=50`
-
-**Response `200`**
+**Response `200`** — array of `MyTourBookingEntry`
 ```json
 {
   "data": [
     {
-      "id": "uuid",
       "tourId": "uuid",
       "tourDate": "YYYY-MM-DD",
-      "groupName": "string",
-      "status": "string",
-      "bookedAt": "ISO8601",
-      "updatedAt": "ISO8601",
-      "cancellationReason": {
-        "category": "string",
-        "freeText": "string | null",
-        "unavoidable": "boolean | null"
-      } | null
+      "location": "string",
+      "status": "draft | published | cancelled | completed",
+      "group": { "name": "string" },
+      "bookings": [
+        {
+          "bookingId": "uuid",
+          "sessionId": "uuid",
+          "sessionOrder": 1,
+          "sessionLabel": "string | null",
+          "meetingTime": "HH:MM",
+          "bookingStatus": "confirmed | maybe | waitlist",
+          "bookedAt": "ISO8601"
+        }
+      ]
     }
-  ],
-  "total": 0,
-  "page": 1,
-  "limit": 50
+  ]
 }
 ```
 
 ---
 
-### `GET /bookings/me`
-Returns the authenticated buddy's own booking history.
-
-**Auth:** `buddy`
-
-**Query params:** `?page=1`, `?limit=50`
-
-**Response `200`** — same shape as above, minus `cancellationReason.unavoidable` (admin-only field)
-
----
-
-### `PATCH /tours/:id/bookings/:bookingId/cancellation-reason` *(admin)*
-Updates the unavoidable flag on an existing cancellation reason.
+### Admin: `PATCH /admin/bookings/:bookingId/status`
+Override a booking's status directly. **No capacity or deadline checks** — admins are trusted to choose the correct status. Does not create or update a `CancellationReason` row; use the cancellation-reason endpoint separately if a reason should be recorded.
 
 **Auth:** `admin`
 
-**Request**
+**Request** — `AdminUpdateBookingStatusSchema`
 ```json
-{
-  "unavoidable": true
-}
+{ "status": "confirmed | maybe | waitlist | declined" }
 ```
 
-**Response `200`**
+**Response `200`** — `AdminBookingStatusResponse`
 ```json
-{
-  "unavoidable": true
-}
+{ "id": "uuid", "status": "..." }
 ```
+
+**Errors**
+- `404` — booking not found
 
 ---
 
-### `POST /tours/:id/deadline-overrides` *(admin)*
-Sets a per-buddy cancellation deadline override for a tour.
+### Admin: `PATCH /admin/bookings/:bookingId/cancellation-reason`
+Update the `unavoidable` flag on an existing `CancellationReason`. Setting `null` returns the row to "unreviewed".
 
 **Auth:** `admin`
 
-**Request**
+**Request** — `AdminUpdateCancellationSchema`
 ```json
-{
-  "buddyId": "uuid",
-  "deadline": "YYYY-MM-DD"
-}
+{ "unavoidable": true }
 ```
 
-**Response `201`**
+`unavoidable` can be `true`, `false`, or `null`.
+
+**Response `200`** — `CancellationReasonResponse`
 ```json
 {
   "id": "uuid",
-  "buddyId": "uuid",
-  "tourId": "uuid",
-  "deadline": "YYYY-MM-DD"
+  "category": "health | emergency | personal | work | other",
+  "freeText": "string | null",
+  "unavoidable": "boolean | null",
+  "recordedBy": { "email": "string" },
+  "createdAt": "ISO8601"
 }
 ```
+
+**Errors**
+- `404` — no `CancellationReason` exists for this booking
+
+---
+
+> **⚠ Planned (not shipped):** per-buddy cancellation-deadline override. `BuddyCancellationDeadlineOverride` schema model exists and is consulted by `updateBooking` when present, but no admin API endpoint creates or manages these rows yet.
 
 ---
 

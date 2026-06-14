@@ -308,29 +308,43 @@ If the admin being removed is the only assigned admin, removing them leaves the 
 
 ### 8.2 Seat Counts
 
-Buddies can see all status counts per tour (Confirmed / Maybe / Waitlist / Declined) but never see who else has booked.
+Capacity, pools, and seat counts live at the **session** level (see §7.1 — `TourSession`), not at the tour level. The buddy-facing detail response (`GET /tours/:id`) returns per-session:
+- `seatCounts: { confirmed, maybe, waitlist, declined }` — all four status counts, visible to every buddy
+- `remaining` — overall remaining seats based on confirmed
+- `myCapacity` / `myRemaining` — the caller's tier-pool-aware view: how many seats the caller could still claim given their tier and the session's `TierCapacity` allocation
+- `myBookingStatus` — the caller's own booking status for that session (null if not booked)
 
-**Remaining seats** = `capacity − confirmed`. Only Confirmed bookings count against capacity. Maybe and Waitlist do not consume a seat.
+Only **Confirmed** bookings count against capacity. Maybe and Waitlist do not consume a seat. Buddies never see who else has booked — only counts.
 
 ### 8.3 Booking Rules
 
-- One booking status per buddy per tour
-- Only **Active** buddies can book
-- Booking open while tour is Published and cancellation deadline has not passed
-- Admin can override cancellation deadline per buddy
-- **Cancellation deadline takes precedence:** Once the cancellation deadline passes, the "Maybe" status becomes unavailable (cannot be selected or changed to). Buddies in confirmed status may not transition to maybe. This is because after the cancellation deadline, buddies are expected to attend regardless of their prior maybe status — no cancellation is permitted.
-- **Post-deadline "I can't go":** After the cancellation deadline has passed, buddies can still report that they cannot attend via the system. The buddy submits a reason (category + optional free text), and the status is changed to Declined immediately — no admin confirmation required. Assigned admins are notified immediately via all configured channels (no digest delay). This is treated as high-priority due to likely operational impact.
+- **One booking per buddy per session.** Unique constraint `(buddyId, sessionId)`. A multi-session tour can have one booking row per buddy per session.
+- Only **Active** buddies **with a tier assigned** can book (trainees cannot — see §8.9 Eligibility)
+- Booking is open while:
+  1. Tour is `published` AND `bookingOpen = true`
+  2. `tourDate` is not in the past
+  3. Cancellation deadline has not passed (per buddy, after applying any `BuddyCancellationDeadlineOverride`)
+- Admin override of per-buddy cancellation deadline is **Planned** (schema model exists; no API endpoint manages it yet — see §7.1 and §11.2)
+- **Cancellation deadline takes precedence (server-side):** Once the cancellation deadline has passed for a buddy, **all status changes via the regular update endpoint are blocked** (`PUT /tours/:tourId/sessions/:sessionId/bookings/me` returns `DEADLINE_PASSED`). The only post-deadline buddy action is the "I can't go" endpoint below.
+- **Maybe deadline takes precedence for `→ maybe` transitions:** If the maybe deadline has passed, transitioning *into* Maybe is rejected (`MAYBE_DEADLINE_PASSED`). Transitions out of Maybe (to Confirmed, Declined, etc.) follow the cancellation-deadline rule.
+- **Post-deadline "I can't go":** After the cancellation deadline has passed, buddies can still report that they cannot attend via `POST /tours/:tourId/sessions/:sessionId/bookings/me/cant-go`. The buddy submits a reason (category + optional free text). The booking status is changed to `declined` immediately, a `CancellationReason` row is recorded with `unavoidable = NULL` (unreviewed) and `recordedBy = buddy.userId`, and if the original status was `confirmed`, waitlist auto-promotion runs (see §8.6). Admin notification is **Planned** (§10.2).
 
 ### 8.4 Status Transition Matrix
 
+The buddy-update endpoint (`PUT /tours/:tourId/sessions/:sessionId/bookings/me`) enforces:
+
 | From \ To | Confirmed | Maybe | Waitlist | Declined |
 |---|---|---|---|---|
-| Confirmed | — | ✅ | ✅ | ✅ (until deadline) |
-| Maybe | ✅ | — | ✅ | ✅ |
-| Waitlist | ✅ | ✅ | — | ✅ |
-| Declined | ✅ | ✅ | ✅ | — |
+| Confirmed | — | ✅ * | ✅ | ✅ † |
+| Maybe | ✅ ‡ | — | ✅ | ✅ |
+| Waitlist | ✅ ‡ | ✅ * | — | ✅ |
+| Declined | ✅ ‡ | ✅ * | ✅ | — |
 
-All transitions allowed before cancellation deadline. After deadline, buddies can only transition to Declined (via "I can't go" report). All other status changes after deadline require admin action.
+\* Blocked after `maybeDeadline` passes (`MAYBE_DEADLINE_PASSED`).  
+† Requires a `reason` payload (`REASON_REQUIRED`) — a `CancellationReason` row is created.  
+‡ Capacity-checked against the session's tier pools (`TOUR_FULL` if no slot available, taking the caller's tier and pool overflow into account).
+
+All transitions above are gated by `cancellationDeadline` — once it passes, the regular update endpoint rejects everything with `DEADLINE_PASSED`. Post-deadline, only the `/cant-go` endpoint works (→ `declined` only). Admins can override any booking status at any time via `PATCH /admin/bookings/:id/status` with no capacity or deadline checks.
 
 ### 8.5 Maybe Flow
 
@@ -343,35 +357,46 @@ All transitions allowed before cancellation deadline. After deadline, buddies ca
 
 ### 8.6 Waitlist Flow
 
-1. Buddy selects "Waitlist"
-2. When a cancellation opens a seat, all Waitlisted buddies are notified simultaneously
-3. Buddy manually updates to **Confirmed** to claim the seat
-4. First to confirm gets the seat — server handles concurrent attempts atomically; the second attempt fails and that buddy remains on Waitlist (promoted to first position in queue)
+Waitlist is created automatically (not chosen by the buddy) — `createBooking` assigns `confirmed` if a pool seat is available, else `waitlist` (see §8.9 assignment logic). A buddy on Waitlist sees their status on the session card.
+
+**Auto-promotion** runs server-side whenever a `confirmed` booking transitions to `declined` (via the regular update endpoint, the "I can't go" endpoint, or admin status override). The promotion is performed inside a serializable transaction:
+
+1. Identify the cancelled buddy's tier pool (junior → `junior` pool; everyone else → `non_junior` pool)
+2. Find the earliest `waitlist` candidate in that primary pool, ordered by `bookedAt` ascending
+3. If none exists, fall back to any `waitlist` candidate (anyone pool)
+4. Re-verify capacity for the candidate's pool, then promote them to `confirmed`
+
+Only one promotion runs per cancellation event — no cascading. If the freed seat was already absorbed by the overflow into the `anyone` pool, no promotion may occur.
+
+Buddies never need to manually claim a freed seat. The promoted buddy will be notified once the notification system ships (§10 — Planned).
 
 ### 8.7 Cancellation & Cancellation Reasons
 
-- Buddies can cancel (change status to Declined) up to the cancellation deadline
-- After the cancellation deadline, buddies can still submit an "I can't go" report — status changes to Declined immediately; assigned admins are notified urgently
-- When any status changes **to Declined from Confirmed** — whether initiated by the buddy or by an admin, before or after deadline — a **cancellation reason** must be recorded
-- Cancellation reason fields:
+- Buddies can cancel (change status to `declined`) up to the cancellation deadline via the regular update endpoint, or any time after via `/cant-go`
+- A `CancellationReason` row is created when a buddy cancels via either path. Server-side rule:
+  - `Confirmed → declined` via the regular update endpoint **requires** a reason payload (the server rejects with `REASON_REQUIRED` if missing)
+  - `Maybe → declined` and `Waitlist → declined` via the regular endpoint do **not** require a reason and create no `CancellationReason` row
+  - The `/cant-go` endpoint always creates a `CancellationReason` regardless of the prior status
+- Admin status overrides (`PATCH /admin/bookings/:id/status`) bypass the reason requirement — admins can set status directly with no checks; if a reason is needed for the record, it's set separately via the cancellation-reason endpoint
+- Cancellation reason fields (`CancellationReason` table):
 
 | Field | Type | Notes |
 |---|---|---|
-| Reason category | Enum | `health` / `emergency` / `personal` / `work` / `other` |
-| Free text | Text | Optional — buddy's own explanation |
-| Unavoidable flag | Boolean | Set by admin only; no auto-logic |
-| Recorded by | User ref | Auto-filled (buddy or admin) |
+| `category` | Enum | `health` / `emergency` / `personal` / `work` / `other` |
+| `freeText` | Text? | Optional — buddy's own explanation |
+| `unavoidable` | Boolean? | `null` = unreviewed; `true` / `false` set by admin via `PATCH /admin/bookings/:id/cancellation-reason` |
+| `recordedBy` | User ref | Auto-filled — the user who triggered the cancellation (buddy in buddy-initiated paths; admin in admin-initiated paths if extended later) |
 
 - No category is automatically flagged as unavoidable — it is always a human (admin) judgement
-- Buddies may provide a free-text explanation when cancelling; this is optional
-- Admin reviews context and sets the unavoidable flag accordingly; admin can update it at any time
+- Admin reviews context and sets the unavoidable flag accordingly; admin can update it at any time, including back to `null` (unreviewed)
+- The admin buddy-detail page surfaces a cancellation summary: total / unavoidable / avoidable / unreviewed counts
 
 ### 8.8 Booking History
 
-- All past bookings stored permanently per buddy — records are never deleted
-- History grows steadily — DB design must account for this
-- Admins view full booking history for any buddy
-- Buddies view their own history only
+- All past bookings stored permanently per buddy — records are never deleted (declined bookings are reused on re-book via upsert; see §8.9)
+- History grows steadily — DB design must account for this (indexes documented in data-model.md)
+- Admins view full booking history for any buddy via `GET /admin/buddies/:id` (`AdminBuddyBookingEntry[]` includes all statuses)
+- Buddies view their own bookings via `GET /me/bookings` — **declined bookings are excluded** from this listing; the buddy history page splits results into Upcoming and Past sections by tour date
 
 ### 8.9 Tier-Based Booking System
 
