@@ -818,6 +818,8 @@ Returns all self-evaluations for a buddy.
 
 ## Notifications
 
+> **⚠ Planned (not shipped).** Route file does not exist yet (`apps/api/src/routes/notifications.ts` is referenced but commented out in `routes/index.ts`). The shapes below describe the intended contract.
+
 ### `GET /notifications`
 Returns in-app notifications for the authenticated user.
 
@@ -863,6 +865,8 @@ Marks one or more notifications as read.
 ---
 
 ## Notification Preferences *(admin)*
+
+> **⚠ Planned (not shipped).** No route or service implementation exists yet. The `NotificationPreference` table and `NotifEventType` / `EmailMode` enums are defined in schema; per-event `slackEnabled` may be replaced by a single global Slack opt-in on `AdminProfile` pending the §10.3 decision.
 
 ### `GET /notification-preferences`
 Returns the authenticated admin's notification preferences.
@@ -1131,11 +1135,13 @@ Soft-deletes an admin profile (sets `deletedAt`). Cannot delete own profile.
 
 ## Scheduled Job Endpoints *(internal)*
 
+> **⚠ Planned (foundations only).** The `schedulerAuthMiddleware` (validates `X-Scheduler-Secret` against `SCHEDULER_SECRET` env var) exists in `apps/api/src/middleware/schedulerAuth.ts`, but no `/jobs/*` route file is mounted yet (commented out in `routes/index.ts`).
+
 Called by GCP Cloud Scheduler. Protected by a shared secret in the `X-Scheduler-Secret` header, not Firebase tokens.
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/jobs/notifications/reminders` | Send tour reminder notifications for today's offset matches |
-| `POST` | `/jobs/notifications/maybe-reminders` | Send Maybe deadline reminders |
-| `POST` | `/jobs/notifications/maybe-deadlines` | Check expired Maybe deadlines, notify admins |
-| `POST` | `/jobs/notifications/digest` | Flush daily digest emails at 9:00 AM JST |
+| Method | Path | Cadence | Description |
+|---|---|---|---|
+| `POST` | `/jobs/notifications/reminders` | Hourly | Send tour reminder notifications for offset matches |
+| `POST` | `/jobs/notifications/maybe-reminders` | Hourly | Send pre-deadline Maybe reminders |
+| `POST` | `/jobs/notifications/maybe-deadlines` | Hourly | Notify admins of expired unresolved Maybe |
+| `POST` | `/jobs/notifications/digest` | Daily 09:00 JST | Flush daily admin digest emails |

@@ -214,7 +214,7 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 | Admin memo | Long text | **Admin-only — not visible to buddies** |
 | Cancellation deadline | Date | Default: 7 days before tour; overridable per buddy by admin. Must be set after (closer to tour than) the Maybe deadline. |
 | Maybe confirmation deadline | Date | Default: 9 days before tour. Must be set before (further from tour than) the cancellation deadline. |
-| Notification schedule | List of offsets | Days-before-tour offsets; default: 3 days before and 1 day before; configurable per tour |
+| Notification schedule | List of offsets | `Tour.notificationOffsets: Int[]` — days before tour date to send reminders; default: `[3, 1]`; configurable per tour. Matches the shipped form label ("days before, comma-separated"). |
 | Status | Enum | Draft / Published / Cancelled / Completed |
 | Assigned admins | Admin refs (many) | Optional; admins responsible for this tour |
 | Staff in charge | Admin ref (one) | Required if at least one admin is assigned; must be one of the assigned admins |
@@ -305,7 +305,7 @@ All transitions allowed before cancellation deadline. After deadline, buddies ca
 
 1. Buddy selects "Maybe" (only available before cancellation deadline)
 2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 9 days before tour if not set; configurable globally)
-3. Buddy receives reminders at **3 days** and **1 day** before the deadline (configurable globally and per tour)
+3. Buddy receives reminders at **3 days** and **1 day** before the deadline (configurable globally via `/admin/config.maybeReminderOffsets`; no per-tour override in v1)
 4. Buddy must update to **Confirmed** or **Declined** before deadline
 5. If no action taken by deadline, booking status remains **Maybe** and assigned admins are notified to follow up manually
 6. **After cancellation deadline:** The maybe deadline becomes irrelevant. The "Maybe" status is no longer available, and buddies in confirmed status cannot transition to maybe (they are committed to attending). Buddies in maybe status who have not resolved must attend.
@@ -495,42 +495,81 @@ Same scale as admin evaluations: **1 = Needs Improvement / … / 5 = Exceptional
 
 ## 10. Notifications
 
+> **⚠ Planned (not shipped).** As of this document version, no notification delivery is wired up. Foundations that already exist in code: the `Notification` / `NotificationPreference` / `DigestQueue` tables (data-model.md), the `Tour.notificationOffsets` field, and a `X-Scheduler-Secret` middleware. Everything else in §10 describes intended behaviour to be built on the notification feature branch.
+
 ### 10.1 Buddy Notifications
 
-| Event | Channel | Timing |
+| Event | Channels | Timing |
 |---|---|---|
-| New tour published | In-app + email | Immediately on publish |
-| Tour details changed (date/time/location) | In-app + email | Immediately on edit; sent to all Confirmed/Maybe/Waitlist buddies |
-| Tour reminder | In-app + email | Configurable per tour; default: 3 days before and 1 day before |
-| Maybe deadline reminder | In-app + email | Configurable; before Maybe confirmation deadline |
-| Waitlist seat opened | In-app + email | Immediately on cancellation |
-| Account approved / rejected | Email | On admin decision |
+| New tour published | In-app + email | Immediate, to Active buddies |
+| Tour details changed (date / meeting time / location only) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist |
+| Tour cancelled | In-app + email | Immediate, to Confirmed / Maybe / Waitlist |
+| Tour reminder | In-app + email | Per-tour offsets (default: 3 days, 1 day before); evaluated hourly |
+| Maybe deadline reminder | In-app + email | Global offsets (default: 3 days, 1 day before deadline); evaluated hourly |
+| Waitlist seat opened (open call) | In-app + email | Immediate, to all buddies on the waitlist for the freed pool |
+| Waitlist auto-promotion | In-app + email | Immediate, to the promoted buddy |
+| Self-evaluation prompt | In-app only | On tour Completed, to Confirmed buddies |
+| Account approved / rejected | Email only | Immediate |
+
+Tour-edit notifications fire **only** when `tourDate`, a session's `meetingTime`, or `location` changes. Changes to `adminMemo`, assigned admins, staff in charge, or pool percentages are silent.
 
 ### 10.2 Admin Notifications
 
-Admins independently configure their preferred notification channel(s) and delivery mode per event type. Tour-specific events (booking changes, cancellations, post-deadline reports) are routed to **assigned admins only**. If no admins are assigned to a tour, no tour-specific notifications are sent.
+Admins independently configure their preferred notification channel(s) and delivery mode per event type. Tour-specific events (new booking, cancellation, post-deadline reports, Maybe resolution, Maybe deadline missed) are routed to **assigned admins only**. If no admins are assigned to a tour, no tour-specific notifications are sent for that tour.
 
-| Event | Available Channels | Default Timing |
+| Event | Channels | Default Timing |
 |---|---|---|
-| New buddy signup (pending) | Email and/or Slack | Immediate |
-| New booking | Email and/or Slack | See below |
-| Booking cancelled (Confirmed → Declined) — before deadline | Email and/or Slack | Immediate |
-| Post-deadline "I can't go" report | Email and/or Slack | **Always immediate — no digest option** |
-| Maybe → Confirmed or Declined | Email and/or Slack | Immediate |
-| Maybe deadline passed unresolved | Email and/or Slack | On deadline |
+| New buddy signup (pending) | In-app + email and/or Slack | Daily digest (email) / Immediate (Slack) |
+| New booking | In-app + email and/or Slack | Daily digest (email) / Immediate (Slack) |
+| Booking cancelled (Confirmed → Declined) before deadline | In-app + email and/or Slack | Immediate |
+| Post-deadline "I can't go" report | In-app + email and/or Slack | **Always immediate — not configurable** |
+| Maybe → Confirmed or Declined | In-app + email and/or Slack | Immediate |
+| Maybe deadline passed unresolved | In-app + email and/or Slack | On deadline (hourly evaluation) |
+
+`NotifEventType` enum values shipped in code: `new_signup`, `new_booking`, `cancellation`, `maybe_resolved`, `maybe_deadline_missed`. Post-deadline "I can't go" is handled by code as always-immediate and is intentionally not a configurable preference — it is not in the enum.
 
 **Email delivery modes (configurable per admin per event):**
-- **Immediate:** Email sent at time of event
-- **Daily digest:** Single email at 9:00 AM JST covering all activity from the previous day; only sent if there was activity
+- **Immediate:** email sent at time of event
+- **Daily digest:** single email at 09:00 JST covering all activity from the previous day; only sent if there was activity
 
 **Default email delivery modes:**
-- Cancellations and Maybe resolutions: Immediate
+- Cancellations, Maybe resolutions, Maybe deadline missed: Immediate
 - New bookings and new signups: Daily digest
 - Post-deadline "I can't go" reports: Always immediate (not configurable)
 
 Slack notifications are always immediate when enabled.
 
-**Channel config:** Each admin independently sets their preferred channels (email, Slack, or both) and delivery mode (immediate or digest) per event type in account settings.
+### 10.3 Slack Delivery Model
+
+One shared Slack channel (e.g. `#peace-buddy-ops`) configured via a single `SLACK_WEBHOOK_URL` env var. Each admin sets a global Slack opt-in in account settings; per-event Slack toggles are deferred to v1.1. Messages may `@mention` opted-in admins when an event affects them specifically.
+
+### 10.4 Channels and Storage
+
+- **In-app:** a `Notification` row is written for every event that lists "In-app" in the table above, for every recipient. Read via `GET /me/notifications`. Both buddies and admins receive in-app notifications.
+- **Email:** sent via the Gmail API (see §13). Recipient locale determines language; locale is read from `User.locale: 'ja' | 'en'` (default `'ja'`), surfaced to the user as a language toggle in profile settings.
+- **Slack:** sent via Slack Incoming Webhook to the shared channel (per §10.3).
+
+### 10.5 Scheduled Jobs
+
+Hourly cron, plus one 09:00 JST job. All four endpoints are protected by the existing `X-Scheduler-Secret` middleware.
+
+| Job | Endpoint | Cadence | Purpose |
+|---|---|---|---|
+| Tour reminders | `POST /jobs/notifications/reminders` | Hourly | Match `Tour.notificationOffsets` against now; send reminders to confirmed/maybe/waitlist buddies |
+| Maybe pre-reminders | `POST /jobs/notifications/maybe-reminders` | Hourly | Send pre-deadline reminders to buddies still in Maybe |
+| Maybe deadline expiry | `POST /jobs/notifications/maybe-deadlines` | Hourly | Notify assigned admins of unresolved Maybe |
+| Daily admin digest | `POST /jobs/notifications/digest` | 09:00 JST | Flush `DigestQueue` per admin; send one email per admin with activity |
+
+Hourly cadence is sufficient because all offsets are day-granular. Idempotency is enforced via a `NotificationDispatchLog(eventKey UNIQUE)` table — each scheduled job inserts a row keyed by `(eventType, scope, recipientUserId)` before sending; unique-constraint collisions mean the reminder was already dispatched. To be added to schema during implementation.
+
+### 10.6 Channel Config UI
+
+Each admin sets, per event type:
+- `emailEnabled: Boolean`
+- `emailMode: 'immediate' | 'digest'`
+- `slackEnabled: Boolean`
+
+via `GET / PUT /notification-preferences` (api.md). Slack target is governed by §10.3.
 
 ---
 
@@ -734,8 +773,9 @@ New additions:
 | Auth | Firebase Auth | Google + Apple OAuth; token validated in Hono middleware |
 | File storage | GCP Cloud Storage | Profile photos; via nonprofit credits |
 | Scheduled jobs | GCP Cloud Scheduler | Hits Hono API routes for reminders, deadline checks, digest flush |
-| Email | Resend or Gmail API (abstracted) | Single `sendEmail()` utility in `apps/api`; decide during build |
-| Slack notifications | Slack Incoming Webhooks | Admin notifications; fired from `apps/api` |
+| Email | Gmail API (Google Workspace for Nonprofits) | Single `sendEmail()` utility in `apps/api`; env: `GMAIL_*` credentials (provider-specific) |
+| Slack notifications | Slack Incoming Webhooks | Admin notifications; env: `SLACK_WEBHOOK_URL`; fired from `apps/api` |
+| Scheduler auth | Shared secret header | `X-Scheduler-Secret` matched against `SCHEDULER_SECRET` env; middleware exists in `apps/api/src/middleware/schedulerAuth.ts` |
 | Shared types | Zod + TypeScript (`packages/types`) | Shared between frontend and backend |
 | i18n | next-intl | Frontend only |
 | CI/CD | GitHub Actions | Via GitHub nonprofit free Team plan |
@@ -746,11 +786,11 @@ New additions:
 |---|---|
 | GCP / Firebase | Google for Nonprofits (via TechSoup) |
 | GitHub | GitHub for Nonprofits |
-| Twilio / SendGrid | Twilio.org (backup email option) |
+| Google Workspace | Google for Nonprofits — provides the Gmail API mailbox used for outbound email |
 
 ### 13.3 Email Abstraction
 
-A single `sendEmail()` utility wraps the email provider. Switching providers requires changes in one file only.
+A single `sendEmail()` utility wraps the email provider. v1 uses the Gmail API authenticated against the Google Workspace for Nonprofits mailbox; switching providers requires changes in one file only.
 
 ### 13.4 Migration Path
 
@@ -816,7 +856,7 @@ When GCP nonprofit credits run low:
 |---|---|---|---|
 | 1 | Final enum values for evaluation fields (admin and self-evaluation) | Team | **Resolved** — see §9 |
 | 2 | Exact fields to migrate from Google Sheets | Team | Open |
-| 3 | Slack workspace / webhook setup | Admin | Open |
+| 3 | Slack workspace / webhook setup | Admin | **Resolved** — single shared channel (e.g. `#peace-buddy-ops`) with one webhook URL in `SLACK_WEBHOOK_URL`; per-admin opt-in via account settings. See §10.3. |
 | 4 | Apple Developer account for Apple login | Dev | Open |
 | 5 | Default Maybe confirmation deadline offset (days before tour) | Team | **Resolved** — 9 days before tour; reminders at 3 days + 1 day before deadline. Cancellation deadline defaults to 7 days before (always after Maybe deadline). |
 | 6 | Cancellation reason category enum values | Team | **Resolved** — `health` / `emergency` / `personal` / `work` / `other` |
@@ -827,3 +867,5 @@ When GCP nonprofit credits run low:
 | 11 | Can a buddy re-book after cancelling? | Team | **Resolved** — yes, if a vacancy exists in their pool or the anyone pool. See §8.9. |
 | 12 | What happens when `mentorshipBalanced = false` and a buddy books? | Team | **Resolved** — `mentorshipBalanced` flag removed entirely. All tours always use the 3-pool system. Default percentages (20/30/50) apply when no `TierCapacity` rows exist for the tour. |
 | 13 | Should per-tour pool percentage overrides be partial or all-or-nothing? | Team | **Resolved** — all-or-nothing. A tour either uses all defaults (no rows) or provides all 3 pools summing to 100%. |
+| 14 | Email provider for v1 | Team | **Resolved** — Gmail API via Google Workspace for Nonprofits. See §13.1, §13.3. |
+| 15 | Cron cadence for notification jobs | Team | **Resolved** — hourly for reminder / Maybe pre-reminder / Maybe deadline expiry; once daily at 09:00 JST for admin digest. See §10.5. |

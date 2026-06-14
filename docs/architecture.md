@@ -16,11 +16,11 @@ Next.js (App Router) — GCP Cloud Run   ← frontend only; no business logic
           ├── Firebase Auth         (identity: Google / Apple OAuth)
           ├── GCP Cloud SQL         (Postgres via Prisma ORM)
           ├── GCP Cloud Storage     (profile photos)
-          ├── Resend / Gmail API    (email — abstracted via sendEmail())
-          └── Slack Incoming Webhooks (admin notifications)
+          ├── Gmail API             (email — abstracted via sendEmail(); Google Workspace for Nonprofits)
+          └── Slack Incoming Webhooks (admin notifications; single shared channel)
 
 GCP Cloud Scheduler
-     └── Hits Hono API routes for scheduled jobs
+     └── Hits Hono API routes for scheduled jobs (auth: X-Scheduler-Secret header)
 ```
 
 ## Repo Structure
@@ -153,14 +153,19 @@ This applies to: `POST /admin/profiles` (create), `DELETE /admin/profiles/:userI
 
 ## Notification Flow
 
+> **⚠ Planned (not shipped).** Foundations in code: `Notification` / `NotificationPreference` / `DigestQueue` tables, `Tour.notificationOffsets` field, `schedulerAuthMiddleware`, env vars (`SCHEDULER_SECRET`, `SLACK_WEBHOOK_URL`, Gmail credentials). No dispatch code wired yet.
+
 ```
 Event occurs (booking, cancellation, tour edit, etc.)
      │
-     ├── In-app: written to notifications table in DB
-     └── External:
-           ├── Immediate? → sendEmail() / Slack webhook fired now
-           └── Digest?    → written to digest queue; Cloud Scheduler flushes at 9:00 AM JST
+     ├── In-app: write Notification row for each recipient (buddies + admins)
+     ├── Email:
+     │     ├── Immediate? → sendEmail() now, via Gmail API, in recipient's locale
+     │     └── Digest?    → insert DigestQueue row; flushed daily at 09:00 JST
+     └── Slack: post to shared channel webhook now (if admin recipient is opted in)
 ```
+
+Scheduled jobs (hourly, plus 09:00 JST digest) all enter via `/jobs/*` endpoints guarded by `X-Scheduler-Secret`. Reminder idempotency is handled via a dispatch-log table (added during implementation — see PRD §10.5).
 
 See PRD §10 for event types, channels, and delivery mode defaults.
 

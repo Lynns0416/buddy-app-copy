@@ -37,6 +37,7 @@ Not in PRD. Core identity record shared by buddies and admins.
 | firebaseUid | String | Unique |
 | email | String | |
 | role | Enum | `buddy` / `admin` / `super_admin` |
+| locale | Enum | `ja` / `en`; default `ja`. Used as recipient locale for notification email + Slack content. **Planned — not yet in schema.** |
 | createdAt | Timestamp | |
 
 ### AdminProfile
@@ -103,7 +104,7 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | adminMemo | Text? | Admin-only |
 | cancellationDeadline | Date | |
 | maybeDeadline | Date? | |
-| notificationOffsets | Int[] | Hours before tour date to send reminders |
+| notificationOffsets | Int[] | Days before tour date to send reminders; default `[3, 1]` |
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
 
@@ -302,8 +303,12 @@ Not in PRD. Stores per-buddy overrides of a tour's cancellation deadline.
 
 **Unique:** `(buddyId, tourId)`
 
+### Notification Tables
+
+> **⚠ Planned (foundations only).** The three tables below exist in `prisma/schema.prisma` and the `NotifEventType` / `EmailMode` enums are exported from `packages/types`, but no service code reads or writes these tables yet. See PRD §10 for intended behaviour.
+
 ### NotificationPreference
-Not in PRD. Per-admin, per-event channel and delivery mode configuration.
+Per-admin, per-event channel and delivery mode configuration.
 
 | Field | Type | Constraints |
 |---|---|---|
@@ -317,7 +322,7 @@ Not in PRD. Per-admin, per-event channel and delivery mode configuration.
 **Unique:** `(adminId, eventType)`
 
 ### Notification
-Not in PRD. In-app notifications for buddies and admins.
+In-app notifications for buddies and admins.
 
 | Field | Type | Constraints |
 |---|---|---|
@@ -329,7 +334,7 @@ Not in PRD. In-app notifications for buddies and admins.
 | createdAt | Timestamp | |
 
 ### DigestQueue
-Not in PRD. Pending items for admin daily digest emails.
+Pending items for admin daily digest emails.
 
 | Field | Type | Constraints |
 |---|---|---|
@@ -338,6 +343,15 @@ Not in PRD. Pending items for admin daily digest emails.
 | eventType | Enum | |
 | payload | JSON | |
 | flushedAt | Timestamp? | |
+| createdAt | Timestamp | |
+
+### NotificationDispatchLog
+**Planned — not yet in schema.** Idempotency record for scheduled-job dispatches. A row is inserted before each scheduled send; a unique-constraint collision indicates the reminder was already dispatched, so the job no-ops.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| eventKey | String | Unique. Format `<eventType>:<scope>:<recipientUserId>`, e.g. `tour_reminder:<tourId>:<offsetDays>:<userId>` |
 | createdAt | Timestamp | |
 
 ## Indexes
