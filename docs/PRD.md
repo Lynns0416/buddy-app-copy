@@ -353,7 +353,7 @@ All transitions above are gated by `cancellationDeadline` — once it passes, th
 
 1. Buddy selects "Maybe" (only available before cancellation deadline)
 2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 9 days before tour if not set; configurable globally)
-3. Buddy receives reminders at **3 days** and **1 day** before the deadline (configurable globally via `/admin/config.maybeReminderOffsets`; no per-tour override in v1)
+3. Buddy receives reminders at **3 days** and **1 day** before the deadline (default offsets baked in code; `/admin/config` endpoint to make them globally configurable is Planned — see §11.5; no per-tour override in v1)
 4. Buddy must update to **Confirmed** or **Declined** before deadline
 5. If no action taken by deadline, booking status remains **Maybe** and assigned admins are notified to follow up manually
 6. **After cancellation deadline:** The maybe deadline becomes irrelevant. The "Maybe" status is no longer available, and buddies in confirmed status cannot transition to maybe (they are committed to attending). Buddies in maybe status who have not resolved must attend.
@@ -648,10 +648,13 @@ via `GET / PUT /notification-preferences` (api.md). Slack target is governed by 
 
 ### 11.1 Buddy Home Screen
 
-When a buddy logs in, they see:
-- Upcoming tours with current status counts and remaining seats
-- Their current bookings and statuses
-- Access to their profile and history
+Route: `/buddy`. Fetches `GET /tours?from=<today>` and renders a list of upcoming tour cards.
+
+**Per-tour card shows:** group name, status badge (`tourStatus.*`), tour date, meeting times (concatenated across sessions), location, total capacity (sum across sessions), participant count.
+
+**Non-active buddy:** if the caller's status isn't `active`, the page replaces the list with a "you're not registered" message (`tour.notRegistered`).
+
+**Per-buddy booking statuses are not shown on this page** — they live on `/buddy/history` (Upcoming / Past sections). Navigation to that page is via the "My bookings" link in the header. Profile is reached via the sidebar (`/dashboard/profile`).
 
 ### 11.2 Tour Management
 
@@ -785,9 +788,19 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 - Suspension flow: `BuddyStatus.suspended` exists in schema, but the status endpoint doesn't accept `suspended`. Admin promotion to / from suspended is not yet exposed.
 
 ### 11.5 System Configuration (Super Admin only)
-- Manage admin accounts and roles
-- Global defaults (cancellation deadline offset, Maybe deadline offset, notification schedule offsets)
-- Notification channel and delivery mode defaults
+
+**Shipped:**
+
+| Capability | Surface |
+|---|---|
+| Manage admin profiles (create, list, rename, soft-delete) | `/admin/profiles*` endpoints + `/admin/profile`, `/admin/profiles` pages |
+
+**Planned (not shipped):**
+
+| Capability | Status |
+|---|---|
+| Global defaults (cancellation deadline offset, Maybe deadline offset, notification schedule offsets) | No `/admin/config` route, service, or DB model exists yet. Per-tour deadlines are stored on each `Tour` row. Earlier doc references to `/admin/config.maybeReminderOffsets` are aspirational. |
+| Notification channel and delivery mode defaults | Tied to §10 (Notifications) — Planned. |
 
 ### 11.6 Buddy Profile Settings
 
