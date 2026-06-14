@@ -32,7 +32,7 @@
 
 ## 1. Overview
 
-A web-first internal booking application for managing group tour assignments. The app serves two user types: **Buddies** (tour guides) and **Admins** (our team). Buddies can view upcoming tours, book themselves with a status, manage their profile, submit self-evaluations, and track their history. Admins manage tours, groups, approve buddies, configure rules, and evaluate buddy performance.
+A web-first internal booking application for managing group tour assignments. The app serves two user types: **Buddies** (tour guides) and **Admins** (our team). Buddies can view upcoming tours, book a session (server auto-assigns Confirmed or Waitlist based on tier-pool capacity — see §8.9), manage their profile, submit self-evaluations, and track their history. Admins manage tours, groups, approve buddies, configure rules, and evaluate buddy performance.
 
 **Primary language:** Japanese
 **Supported languages:** Japanese, English (i18n from day one)
@@ -868,15 +868,22 @@ New additions:
 
 ## 12. Internationalisation
 
-- i18n from day one
-- **Default language:** Japanese (`ja`)
-- **Languages at launch:** Japanese (`ja`), English (`en`)
-- All UI strings in locale JSON files
-- Date, time, number formats respect locale
-- Language switching in user settings
-- Email templates localised
+**Shipped:**
 
-**Implementation:** `next-intl`
+| Capability | Notes |
+|---|---|
+| i18n framework | `next-intl` on the Next.js frontend |
+| Default language | Japanese (`ja`) |
+| Supported locales | `ja`, `en` |
+| UI strings | All in `apps/web/messages/{en,ja}.json` |
+| Date / time / number formatting | Respects locale via `next-intl` formatters |
+
+**Planned (not shipped):**
+
+| Capability | Status |
+|---|---|
+| Language switching in user settings | Tied to `User.locale` field (Planned — see §10.4). UI toggle to follow once the field is added. |
+| Email templates localised | Tied to §10 (Notifications) — Planned. Recipient locale will be `User.locale`. |
 
 ---
 
@@ -966,9 +973,10 @@ When GCP nonprofit credits run low:
 - Native mobile apps (post-v1.5)
 - Advanced analytics or reporting
 - Peer evaluations
-- Automated waitlist assignment
 - Payment or compensation tracking
 - Structured availability input (free text in v1)
+
+(Automated waitlist promotion *is* in scope and shipped — see §8.6.)
 
 ---
 
