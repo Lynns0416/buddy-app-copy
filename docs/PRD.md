@@ -80,9 +80,9 @@ A web-first internal booking application for managing group tour assignments. Th
   1. Buddy signs in via Google or Apple in the frontend (Firebase issues an ID token).
   2. Frontend calls `POST /auth/register` with an optional profile payload (`displayName`, `realName`, `languages`, `photoUrl`, `bio`). The server upserts a `User` (role `buddy`) and a `BuddyProfile` in `pending` state. If `displayName` is missing it falls back to the email prefix.
   3. Subsequent requests go through `authMiddleware`, which validates the Firebase token and looks the user up by `firebaseUid`.
-  4. Admin notification of new signup is **Planned** (§10).
+  4. Assigned admins receive an in-app notification on new signup (per-admin email mode honoured — default daily digest; digest flush itself is **Planned**, see §10.5).
   5. Admin approves or rejects via `PUT /admin/buddies/:id/status`. Allowed status values via the API: `trainee` / `active` / `rejected`. See §11.4 for the approval flow and §5.1 for status constraints.
-  6. Approved-buddy notification is **Planned** (§10).
+  6. On approval (`pending` → `trainee`) or rejection (`pending` → `rejected`), the buddy receives an in-app + immediate-email notification.
 - **Admin accounts:** A `User` with role `admin` or `super_admin` is created by a Super Admin (`POST /admin/profiles`). On first login, `ensureAdminProfile` middleware lazily creates an `AdminProfile` row if one is missing, using Firebase `name` or the email prefix as the initial display name.
 - **Session management:** Firebase Auth handles token lifecycle. Identity + role for the current user are obtained from `GET /me/profile` (buddies) or `GET /admin/profile` (admins).
 
@@ -257,7 +257,7 @@ Transitions are gated server-side via `PATCH /admin/tours/:id/status` with `{act
 
 - **Draft:** Editable. Hard-delete allowed via `DELETE /admin/tours/:id` (draft only — other statuses reject with `TourNotDraftError`).
 - **Published:** Visible to Active buddies. Bookable while `bookingOpen = true`. Can be edited, cancelled, or completed.
-- **Cancelled:** Booking closed. All buddies with status Confirmed, Maybe, or Waitlist will be notified once the notification system ships (see §10 — Planned). **No further edits** — the API rejects updates with `TourImmutableError`.
+- **Cancelled:** Booking closed. All buddies with status Confirmed, Maybe, or Waitlist receive an in-app + email notification (`tour_cancelled`). **No further edits** — the API rejects updates with `TourImmutableError`.
 - **Completed:** Booking closed. The tour detail page surfaces the per-tour evaluation section as the natural prompt to add evaluations. **No further edits** — same `TourImmutableError`.
 
 ### 7.3 Rules
@@ -330,7 +330,7 @@ Only **Confirmed** bookings count against capacity. Maybe and Waitlist do not co
 - Admin override of per-buddy cancellation deadline is **Planned** (schema model exists; no API endpoint manages it yet — see §7.1 and §11.2)
 - **Cancellation deadline takes precedence (server-side):** Once the cancellation deadline has passed for a buddy, **all status changes via the regular update endpoint are blocked** (`PUT /tours/:tourId/sessions/:sessionId/bookings/me` returns `DEADLINE_PASSED`). The only post-deadline buddy action is the "I can't go" endpoint below.
 - **Maybe deadline takes precedence for `→ maybe` transitions:** If the maybe deadline has passed, transitioning *into* Maybe is rejected (`MAYBE_DEADLINE_PASSED`). Transitions out of Maybe (to Confirmed, Declined, etc.) follow the cancellation-deadline rule.
-- **Post-deadline "I can't go":** After the cancellation deadline has passed, buddies can still report that they cannot attend via `POST /tours/:tourId/sessions/:sessionId/bookings/me/cant-go`. The buddy submits a reason (category + optional free text). The booking status is changed to `declined` immediately, a `CancellationReason` row is recorded with `unavoidable = NULL` (unreviewed) and `recordedBy = buddy.userId`, and if the original status was `confirmed`, waitlist auto-promotion runs (see §8.6). Admin notification is **Planned** (§10.2).
+- **Post-deadline "I can't go":** After the cancellation deadline has passed, buddies can still report that they cannot attend via `POST /tours/:tourId/sessions/:sessionId/bookings/me/cant-go`. The buddy submits a reason (category + optional free text). The booking status is changed to `declined` immediately, a `CancellationReason` row is recorded with `unavoidable = NULL` (unreviewed) and `recordedBy = buddy.userId`, and if the original status was `confirmed`, waitlist auto-promotion runs (see §8.6). Assigned admins receive an immediate in-app + email notification (`cant_go_post_deadline`); this event is intentionally not part of `NotifEventType` and is not user-configurable (always immediate).
 
 ### 8.4 Status Transition Matrix
 
@@ -353,9 +353,9 @@ All transitions above are gated by `cancellationDeadline` — once it passes, th
 
 1. Buddy selects "Maybe" (only available before cancellation deadline)
 2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 9 days before tour if not set; configurable globally)
-3. Buddy receives reminders at **3 days** and **1 day** before the deadline (default offsets baked in code; `/admin/config` endpoint to make them globally configurable is Planned — see §11.5; no per-tour override in v1)
+3. Buddy receives reminders at **3 days** and **1 day** before the deadline. Default offsets are baked in code; the hourly cron job that fires these reminders is **Planned** (see §10.5). `/admin/config` to make offsets globally configurable is Planned — see §11.5; no per-tour override in v1.
 4. Buddy must update to **Confirmed** or **Declined** before deadline
-5. If no action taken by deadline, booking status remains **Maybe** and assigned admins are notified to follow up manually
+5. If no action taken by deadline, booking status remains **Maybe** and assigned admins are notified to follow up manually (`maybe_deadline_missed`). The hourly cron job that detects expired Maybe deadlines is **Planned** (see §10.5).
 6. **After cancellation deadline:** The maybe deadline becomes irrelevant. The "Maybe" status is no longer available, and buddies in confirmed status cannot transition to maybe (they are committed to attending). Buddies in maybe status who have not resolved must attend.
 
 ### 8.6 Waitlist Flow
@@ -371,7 +371,7 @@ Waitlist is created automatically (not chosen by the buddy) — `createBooking` 
 
 Only one promotion runs per cancellation event — no cascading. If the freed seat was already absorbed by the overflow into the `anyone` pool, no promotion may occur.
 
-Buddies never need to manually claim a freed seat. The promoted buddy will be notified once the notification system ships (§10 — Planned).
+Buddies never need to manually claim a freed seat. The promoted buddy receives an in-app + email notification (`waitlist_promoted`).
 
 ### 8.7 Cancellation & Cancellation Reasons
 
@@ -566,36 +566,38 @@ Same scale as admin evaluations: **1 = Poor / 2 = Below Average / 3 = Average / 
 
 ## 10. Notifications
 
-> **⚠ Planned (not shipped).** As of this document version, no notification delivery is wired up. Foundations that already exist in code: the `Notification` / `NotificationPreference` / `DigestQueue` tables (data-model.md), the `Tour.notificationOffsets` field, and a `X-Scheduler-Secret` middleware. Everything else in §10 describes intended behaviour to be built on the notification feature branch.
+**Shipped:** Event-triggered in-app + email delivery via an outbox/dispatcher pattern. The `Notification` (read-model), `NotificationJob` (outbox queue), `NotificationPreference`, and `DigestQueue` tables are live; events are enqueued inside the originating transaction and a single cron endpoint (`POST /jobs/notifications/dispatch`) drains the queue. Email is sent via Gmail API; recipient locale comes from `User.locale` and templates are bundled per-locale.
+
+**Planned:** Time-based reminders (tour reminders, Maybe pre-/post-deadline), the daily admin digest flush, the dispatch-log idempotency table, and Slack delivery — see §10.5 and `docs/roadmap.md`.
 
 ### 10.1 Buddy Notifications
 
-| Event | Channels | Timing |
-|---|---|---|
-| New tour published | In-app + email | Immediate, to Active buddies |
-| Tour details changed (date / meeting time / location only) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist |
-| Tour cancelled | In-app + email | Immediate, to Confirmed / Maybe / Waitlist |
-| Tour reminder | In-app + email | Per-tour offsets (default: 3 days, 1 day before); evaluated hourly |
-| Maybe deadline reminder | In-app + email | Global offsets (default: 3 days, 1 day before deadline); evaluated hourly |
-| Waitlist seat opened (open call) | In-app + email | Immediate, to all buddies on the waitlist for the freed pool |
-| Waitlist auto-promotion | In-app + email | Immediate, to the promoted buddy |
-| Self-evaluation prompt | In-app only | On tour Completed, to Confirmed buddies |
-| Account approved / rejected | Email only | Immediate |
+| Event | Channels | Timing | Status |
+|---|---|---|---|
+| New tour published (`tour_published`) | In-app + email | Immediate, to Active buddies | Shipped |
+| Tour details changed (`tour_details_changed`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped (fires on `tourDate` or `location` change only — see note below) |
+| Tour cancelled (`tour_cancelled`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped |
+| Tour reminder (`tour_reminder`) | In-app + email | Per-tour offsets (default: 3 days, 1 day before); evaluated hourly | Planned (§10.5) |
+| Maybe deadline reminder (`maybe_reminder`) | In-app + email | Global offsets (default: 3 days, 1 day before deadline); evaluated hourly | Planned (§10.5) |
+| Waitlist seat opened (`waitlist_opened`) | In-app + email | Immediate, to all buddies on the waitlist for the freed pool | Planned (no enqueue site yet) |
+| Waitlist auto-promotion (`waitlist_promoted`) | In-app + email | Immediate, to the promoted buddy | Shipped |
+| Self-evaluation prompt (`self_eval_prompt`) | In-app only | On tour Completed, to Confirmed buddies | Planned (no enqueue site yet) |
+| Account approved / rejected (`account_approved` / `account_rejected`) | In-app + email | Immediate | Shipped |
 
-Tour-edit notifications fire **only** when `tourDate`, a session's `meetingTime`, or `location` changes. Changes to `adminMemo`, assigned admins, staff in charge, or pool percentages are silent.
+Tour-edit notifications fire **only** when `tourDate` or `location` changes on the tour. Changes to a session's `meetingTime`, to `adminMemo`, assigned admins, staff in charge, or pool percentages are silent today; wiring `meetingTime` to also trigger `tour_details_changed` is tracked in `docs/roadmap.md`.
 
 ### 10.2 Admin Notifications
 
 Admins independently configure their preferred notification channel(s) and delivery mode per event type. Tour-specific events (new booking, cancellation, post-deadline reports, Maybe resolution, Maybe deadline missed) are routed to **assigned admins only**. If no admins are assigned to a tour, no tour-specific notifications are sent for that tour.
 
-| Event | Channels | Default Timing |
-|---|---|---|
-| New buddy signup (pending) | In-app + email and/or Slack | Daily digest (email) / Immediate (Slack) |
-| New booking | In-app + email and/or Slack | Daily digest (email) / Immediate (Slack) |
-| Booking cancelled (Confirmed → Declined) before deadline | In-app + email and/or Slack | Immediate |
-| Post-deadline "I can't go" report | In-app + email and/or Slack | **Always immediate — not configurable** |
-| Maybe → Confirmed or Declined | In-app + email and/or Slack | Immediate |
-| Maybe deadline passed unresolved | In-app + email and/or Slack | On deadline (hourly evaluation) |
+| Event | Channels | Default Timing | Status |
+|---|---|---|---|
+| New buddy signup (`new_signup`) | In-app + email (Slack Planned) | Daily digest (email) | In-app shipped; email-immediate shipped; daily digest flush Planned (§10.5) |
+| New booking (`new_booking`) | In-app + email (Slack Planned) | Daily digest (email) | Same as above |
+| Booking cancelled before deadline (`cancellation`) | In-app + email (Slack Planned) | Immediate | Shipped |
+| Post-deadline "I can't go" report (`cant_go_post_deadline`) | In-app + email (Slack Planned) | **Always immediate — not configurable** | Shipped |
+| Maybe → Confirmed or Declined (`maybe_resolved`) | In-app + email (Slack Planned) | Immediate | Shipped |
+| Maybe deadline passed unresolved (`maybe_deadline_missed`) | In-app + email (Slack Planned) | On deadline (hourly evaluation) | Cron Planned (§10.5) |
 
 `NotifEventType` enum values shipped in code: `new_signup`, `new_booking`, `cancellation`, `maybe_resolved`, `maybe_deadline_missed`. Post-deadline "I can't go" is handled by code as always-immediate and is intentionally not a configurable preference — it is not in the enum.
 
@@ -612,26 +614,30 @@ Slack notifications are always immediate when enabled.
 
 ### 10.3 Slack Delivery Model
 
+> **Planned (not shipped).** The `NotificationPreference.slackEnabled` column exists and the dispatcher recognises `channel: 'slack'` jobs, but the slack channel currently fails fast with `"slack channel not yet implemented"`. No webhook is wired and no enqueue site emits Slack jobs.
+
 One shared Slack channel (e.g. `#peace-buddy-ops`) configured via a single `SLACK_WEBHOOK_URL` env var. Each admin sets a global Slack opt-in in account settings; per-event Slack toggles are deferred to v1.1. Messages may `@mention` opted-in admins when an event affects them specifically.
 
 ### 10.4 Channels and Storage
 
 - **In-app:** a `Notification` row is written for every event that lists "In-app" in the table above, for every recipient. Read via `GET /me/notifications`. Both buddies and admins receive in-app notifications.
 - **Email:** sent via the Gmail API (see §13). Recipient locale determines language; locale is read from `User.locale: 'ja' | 'en'` (default `'ja'`), surfaced to the user as a language toggle in profile settings.
-- **Slack:** sent via Slack Incoming Webhook to the shared channel (per §10.3).
+- **Slack:** Planned — see §10.3.
 
 ### 10.5 Scheduled Jobs
 
-Hourly cron, plus one 09:00 JST job. All four endpoints are protected by the existing `X-Scheduler-Secret` middleware.
+**Shipped:** `POST /jobs/notifications/dispatch` — drains pending `NotificationJob` rows (the outbox queue). Protected by the `X-Scheduler-Secret` middleware. Hooked into Cloud Scheduler at whatever cadence the queue requires.
 
-| Job | Endpoint | Cadence | Purpose |
-|---|---|---|---|
-| Tour reminders | `POST /jobs/notifications/reminders` | Hourly | Match `Tour.notificationOffsets` against now; send reminders to confirmed/maybe/waitlist buddies |
-| Maybe pre-reminders | `POST /jobs/notifications/maybe-reminders` | Hourly | Send pre-deadline reminders to buddies still in Maybe |
-| Maybe deadline expiry | `POST /jobs/notifications/maybe-deadlines` | Hourly | Notify assigned admins of unresolved Maybe |
-| Daily admin digest | `POST /jobs/notifications/digest` | 09:00 JST | Flush `DigestQueue` per admin; send one email per admin with activity |
+**Planned:** the four time-based jobs below. All endpoints are protected by the same middleware.
 
-Hourly cadence is sufficient because all offsets are day-granular. Idempotency is enforced via a `NotificationDispatchLog(eventKey UNIQUE)` table — each scheduled job inserts a row keyed by `(eventType, scope, recipientUserId)` before sending; unique-constraint collisions mean the reminder was already dispatched. To be added to schema during implementation.
+| Job | Endpoint | Cadence | Purpose | Status |
+|---|---|---|---|---|
+| Tour reminders | `POST /jobs/notifications/reminders` | Hourly | Match `Tour.notificationOffsets` against now; enqueue `tour_reminder` to confirmed / maybe / waitlist buddies | Planned |
+| Maybe pre-reminders | `POST /jobs/notifications/maybe-reminders` | Hourly | Enqueue `maybe_reminder` to buddies still in Maybe before their deadline | Planned |
+| Maybe deadline expiry | `POST /jobs/notifications/maybe-deadlines` | Hourly | Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe | Planned |
+| Daily admin digest | `POST /jobs/notifications/digest` | 09:00 JST | Flush `DigestQueue` per admin; send one email per admin with activity | Planned |
+
+Hourly cadence is sufficient because all offsets are day-granular. Idempotency for the planned jobs will be enforced via a `NotificationDispatchLog(eventKey UNIQUE)` table — each scheduled job inserts a row keyed by `(eventType, scope, recipientUserId)` before sending; unique-constraint collisions mean the reminder was already dispatched. **Not yet added to schema** — to be added alongside the first scheduled job that needs it.
 
 ### 10.6 Channel Config UI
 
@@ -794,13 +800,14 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 | Capability | Surface |
 |---|---|
 | Manage admin profiles (create, list, rename, soft-delete) | `/admin/profiles*` endpoints + `/admin/profile`, `/admin/profiles` pages |
+| Per-admin notification preferences | `/admin/notification-preferences` page + `GET / PUT /notification-preferences` API |
 
 **Planned (not shipped):**
 
 | Capability | Status |
 |---|---|
 | Global defaults (cancellation deadline offset, Maybe deadline offset, notification schedule offsets) | No `/admin/config` route, service, or DB model exists yet. Per-tour deadlines are stored on each `Tour` row. Earlier doc references to `/admin/config.maybeReminderOffsets` are aspirational. |
-| Notification channel and delivery mode defaults | Tied to §10 (Notifications) — Planned. |
+| Org-wide notification defaults applied to new admins | Today every admin starts from hard-coded defaults in `notificationPreference.service.ts`; no super-admin surface to change those defaults. |
 
 ### 11.6 Buddy Profile Settings
 
@@ -877,13 +884,8 @@ New additions:
 | Supported locales | `ja`, `en` |
 | UI strings | All in `apps/web/messages/{en,ja}.json` |
 | Date / time / number formatting | Respects locale via `next-intl` formatters |
-
-**Planned (not shipped):**
-
-| Capability | Status |
-|---|---|
-| Language switching in user settings | Tied to `User.locale` field (Planned — see §10.4). UI toggle to follow once the field is added. |
-| Email templates localised | Tied to §10 (Notifications) — Planned. Recipient locale will be `User.locale`. |
+| Language switching in user settings | `User.locale` (`ja` / `en`, default `ja`) is on the schema; toggle UI is `apps/web/src/components/language-switcher.tsx`. |
+| Email templates localised | Templates live under `apps/api/src/services/notificationTemplates/messages.{en,ja}.json`; dispatcher reads `User.locale` to pick the language. |
 
 ---
 
