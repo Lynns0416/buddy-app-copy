@@ -4,7 +4,12 @@ import { BookingStatusSchema, BuddyTierSchema, NotifEventKindSchema } from '@pea
 import type { BookingResponse, BookingStatus, BuddyTier, CancellationReasonBody, MyTourBookingEntry } from '@peace-buddy/types'
 import { getPoolCapacities, NON_JUNIOR_TIERS } from '../lib/pool'
 import type { Pool } from '../lib/pool'
-import { enqueueInApp, enqueueInAppForTourAdmins } from './notification.service'
+import {
+  enqueueEmail,
+  enqueueEmailForTourAdmins,
+  enqueueInApp,
+  enqueueInAppForTourAdmins,
+} from './notification.service'
 
 type CreateBookingResult =
   | { ok: true; booking: BookingResponse }
@@ -263,25 +268,21 @@ export async function updateBooking(
           },
         })
       }
-      await enqueueInAppForTourAdmins(
-        session.tourId,
-        {
-          eventType: NotifEventKindSchema.enum.booking_cancelled,
-          payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id },
-        },
-        tx,
-      )
+      const cancelArgs = {
+        eventType: NotifEventKindSchema.enum.booking_cancelled,
+        payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id },
+      }
+      await enqueueInAppForTourAdmins(session.tourId, cancelArgs, tx)
+      await enqueueEmailForTourAdmins(session.tourId, cancelArgs, tx)
     }
 
     if (wasMaybe && newStatus !== BookingStatusSchema.enum.maybe) {
-      await enqueueInAppForTourAdmins(
-        session.tourId,
-        {
-          eventType: NotifEventKindSchema.enum.maybe_resolved,
-          payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id, resolution: newStatus },
-        },
-        tx,
-      )
+      const resolvedArgs = {
+        eventType: NotifEventKindSchema.enum.maybe_resolved,
+        payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id, resolution: newStatus },
+      }
+      await enqueueInAppForTourAdmins(session.tourId, resolvedArgs, tx)
+      await enqueueEmailForTourAdmins(session.tourId, resolvedArgs, tx)
     }
 
     return u
@@ -351,14 +352,12 @@ export async function reportCantGo(
         recordedBy: userId,
       },
     })
-    await enqueueInAppForTourAdmins(
-      session.tourId,
-      {
-        eventType: NotifEventKindSchema.enum.cant_go_post_deadline,
-        payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id, category: body.category },
-      },
-      tx,
-    )
+    const cantGoArgs = {
+      eventType: NotifEventKindSchema.enum.cant_go_post_deadline,
+      payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id, category: body.category },
+    }
+    await enqueueInAppForTourAdmins(session.tourId, cantGoArgs, tx)
+    await enqueueEmailForTourAdmins(session.tourId, cantGoArgs, tx)
     return u
   })
 
@@ -413,14 +412,13 @@ async function promoteWaitlist(sessionId: string, capacity: number, cancelledTie
         select: { buddy: { select: { userId: true } } },
       })
       if (promoted) {
-        await enqueueInApp(
-          {
-            eventType: NotifEventKindSchema.enum.waitlist_promoted,
-            recipientUserId: promoted.buddy.userId,
-            payload: { bookingId: candidate.id, tourId, sessionId },
-          },
-          tx,
-        )
+        const promoArgs = {
+          eventType: NotifEventKindSchema.enum.waitlist_promoted,
+          recipientUserId: promoted.buddy.userId,
+          payload: { bookingId: candidate.id, tourId, sessionId },
+        }
+        await enqueueInApp(promoArgs, tx)
+        await enqueueEmail(promoArgs, tx)
       }
     }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })

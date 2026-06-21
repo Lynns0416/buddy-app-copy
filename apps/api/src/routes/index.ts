@@ -10,6 +10,7 @@ import { tourRoutes } from './tours'
 import { adminRoutes } from './admin'
 import { selfEvaluationRoutes } from './selfEvaluations'
 import { notificationRoutes } from './notifications'
+import { notificationPreferenceRoutes } from './notificationPreferences'
 import { jobRoutes } from './jobs'
 import type { FirebaseEnv, AuthEnv, SchedulerEnv } from '../types'
 
@@ -34,6 +35,7 @@ protectedApp.use('/admin/*', authMiddleware)
 protectedApp.use('/admin/*', adminAuthMiddleware)
 protectedApp.use('/admin/*', ensureAdminProfile)
 protectedApp.route('/admin', adminRoutes)
+protectedApp.route('/admin/notification-preferences', notificationPreferenceRoutes)
 
 // Scheduler routes: X-Scheduler-Secret header required
 const schedulerApp = new Hono<SchedulerEnv>()

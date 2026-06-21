@@ -19,6 +19,7 @@ export const routes = {
   adminEvaluationDetail: (locale: string, id: string) => `/${locale}/admin/evaluations/${id}`,
   adminProfile: (locale: string) => `/${locale}/admin/profile`,
   adminProfiles: (locale: string) => `/${locale}/admin/profiles`,
+  adminNotificationPreferences: (locale: string) => `/${locale}/admin/notification-preferences`,
   adminBuddyProfileEvaluation: (locale: string, buddyId: string) => `/${locale}/admin/buddies/${buddyId}/profile-evaluation`,
   buddyTour: (locale: string, id: string) => `/${locale}/buddy/tours/${id}`,
   buddyHistory: (locale: string) => `/${locale}/buddy/history`,

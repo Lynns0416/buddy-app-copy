@@ -1,0 +1,72 @@
+{
+  "account_approved": {
+    "subject": "【Peace Buddy】アカウントが承認されました",
+    "bodyText": "あなたのアカウントが承認されました。Peace Buddy にようこそ！\n\nダッシュボード: {url}",
+    "bodyHtml": "<p>あなたのアカウントが承認されました。Peace Buddy にようこそ！</p>",
+    "cta": "ダッシュボードを開く",
+    "path": "/buddy"
+  },
+  "account_rejected": {
+    "subject": "【Peace Buddy】アカウント登録について",
+    "bodyText": "今回のアカウント登録は承認されませんでした。詳しくは事務局までお問い合わせください。",
+    "bodyHtml": "<p>今回のアカウント登録は承認されませんでした。詳しくは事務局までお問い合わせください。</p>",
+    "cta": "Peace Buddy",
+    "path": "/login"
+  },
+  "tour_published": {
+    "subject": "【Peace Buddy】新しいツアーが公開されました",
+    "bodyText": "新しいツアーが公開されました。\n\n詳細: {url}",
+    "bodyHtml": "<p>新しいツアーが公開されました。</p>",
+    "cta": "ツアーを見る",
+    "path": "/buddy/tours/{tourId}"
+  },
+  "tour_details_changed": {
+    "subject": "【Peace Buddy】ツアー情報が更新されました",
+    "bodyText": "あなたが参加予定のツアーで、日付または場所が変更されました。\n\n{url}",
+    "bodyHtml": "<p>あなたが参加予定のツアーで、日付または場所が変更されました。</p>",
+    "cta": "最新の情報を確認する",
+    "path": "/buddy/tours/{tourId}"
+  },
+  "tour_cancelled": {
+    "subject": "【Peace Buddy】ツアーがキャンセルされました",
+    "bodyText": "あなたが参加予定のツアーがキャンセルされました。\n\n{url}",
+    "bodyHtml": "<p>あなたが参加予定のツアーがキャンセルされました。</p>",
+    "cta": "詳細を確認する",
+    "path": "/buddy/tours/{tourId}"
+  },
+  "waitlist_promoted": {
+    "subject": "【Peace Buddy】キャンセル待ちから繰り上がりました",
+    "bodyText": "キャンセル待ちから繰り上がり、参加確定となりました。\n\n{url}",
+    "bodyHtml": "<p>キャンセル待ちから繰り上がり、参加確定となりました。</p>",
+    "cta": "予約を確認する",
+    "path": "/buddy/tours/{tourId}"
+  },
+  "booking_cancelled": {
+    "subject": "【Peace Buddy】バディが予約をキャンセルしました",
+    "bodyText": "バディが予約をキャンセルしました。\n\n{url}",
+    "bodyHtml": "<p>バディが予約をキャンセルしました。</p>",
+    "cta": "ツアーを開く",
+    "path": "/admin/tours/{tourId}"
+  },
+  "cant_go_post_deadline": {
+    "subject": "【Peace Buddy】期限後の「行けない」報告",
+    "bodyText": "バディが期限後に「行けない」と報告しました。\n\n{url}",
+    "bodyHtml": "<p>バディが期限後に「行けない」と報告しました。</p>",
+    "cta": "ツアーを開く",
+    "path": "/admin/tours/{tourId}"
+  },
+  "maybe_resolved": {
+    "subject": "【Peace Buddy】「保留」の予約が確定または辞退になりました",
+    "bodyText": "「保留」の予約が確定または辞退に変わりました。\n\n{url}",
+    "bodyHtml": "<p>「保留」の予約が確定または辞退に変わりました。</p>",
+    "cta": "ツアーを開く",
+    "path": "/admin/tours/{tourId}"
+  },
+  "maybe_deadline_missed": {
+    "subject": "【Peace Buddy】「保留」の期限が過ぎました",
+    "bodyText": "「保留」の期限が、未確定のまま過ぎました。\n\n{url}",
+    "bodyHtml": "<p>「保留」の期限が、未確定のまま過ぎました。</p>",
+    "cta": "対応する",
+    "path": "/admin/tours/{tourId}"
+  }
+}

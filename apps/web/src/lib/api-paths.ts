@@ -44,6 +44,7 @@ export const apiPaths = {
   adminProfile: '/admin/profile',
   adminProfiles: '/admin/profiles',
   adminProfileById: (userId: string) => `/admin/profiles/${userId}`,
+  adminNotificationPreferences: '/admin/notification-preferences',
 
   selfEvaluations: '/me/self-evaluations',
   selfEvaluation: (id: string) => `/me/self-evaluations/${id}`,

@@ -53,6 +53,23 @@ export type NotifEventType = z.infer<typeof NotifEventTypeSchema>
 export const EmailModeSchema = z.enum(['immediate', 'digest'])
 export type EmailMode = z.infer<typeof EmailModeSchema>
 
+export const NotificationPreferenceItemSchema = z.object({
+  eventType: NotifEventTypeSchema,
+  emailEnabled: z.boolean(),
+  emailMode: EmailModeSchema,
+  slackEnabled: z.boolean(),
+})
+export type NotificationPreferenceItem = z.infer<typeof NotificationPreferenceItemSchema>
+
+export const UpdateNotificationPreferencesSchema = z.object({
+  preferences: z.array(NotificationPreferenceItemSchema),
+})
+export type UpdateNotificationPreferences = z.infer<typeof UpdateNotificationPreferencesSchema>
+
+export type NotificationPreferencesResponse = {
+  preferences: NotificationPreferenceItem[]
+}
+
 export const BookingPoolSchema = z.enum(['junior', 'non_junior', 'anyone'])
 export type BookingPool = z.infer<typeof BookingPoolSchema>
 

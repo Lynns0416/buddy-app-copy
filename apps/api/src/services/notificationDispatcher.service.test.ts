@@ -25,14 +25,21 @@ vi.mock('../lib/db', () => {
       update: vi.fn(),
     },
     notification: { create: vi.fn() },
+    user: { findUnique: vi.fn() },
     $transaction,
   }
   $transaction.mockImplementation((fn: (tx: unknown) => Promise<unknown>) => fn(mockDb))
   return { db: mockDb }
 })
 
+vi.mock('../lib/email', () => ({
+  sendEmail: vi.fn(),
+}))
+
 import { db } from '../lib/db'
-const mdb = db as unknown as MockDb
+import { sendEmail } from '../lib/email'
+const mdb = db as unknown as MockDb & { user: { findUnique: import('vitest').Mock<(...args: unknown[]) => unknown> } }
+const mockSendEmail = vi.mocked(sendEmail)
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -102,7 +109,8 @@ describe('dispatchPending', () => {
   })
 
   it('marks failed with backoff when dispatch throws and attempts < max', async () => {
-    const job = jobFixture({ attempts: 2, channel: 'email' })
+    // Use slack channel — still throws "not yet implemented" until Slice 4.
+    const job = jobFixture({ attempts: 2, channel: 'slack' })
     mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
     mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
     mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
@@ -111,7 +119,7 @@ describe('dispatchPending', () => {
 
     const update = (mdb.notificationJob.update.mock.calls[0][0] as any).data
     expect(update.status).toBe('pending')
-    expect(update.lastError).toMatch(/email channel not yet implemented/i)
+    expect(update.lastError).toMatch(/slack channel not yet implemented/i)
     expect(update.scheduledFor).toBeInstanceOf(Date)
     // scheduledFor should be in the future (now + backoff)
     expect((update.scheduledFor as Date).getTime()).toBeGreaterThan(Date.now())
@@ -167,5 +175,84 @@ describe('dispatchPending', () => {
     mdb.notificationJob.findMany.mockResolvedValueOnce([])
     await dispatchPending(7)
     expect((mdb.notificationJob.findMany.mock.calls[0][0] as any).take).toBe(7)
+  })
+
+  describe('email channel', () => {
+    it('renders the template, calls sendEmail with the recipient address, and marks sent', async () => {
+      const job = jobFixture({
+        id: 'job-email-1',
+        channel: 'email',
+        eventType: 'account_approved',
+        payload: {},
+      })
+      mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
+      mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
+      mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
+      mdb.user.findUnique.mockResolvedValueOnce({ email: 'buddy@example.com' })
+
+      const result = await dispatchPending()
+
+      expect(mockSendEmail).toHaveBeenCalledTimes(1)
+      const arg = mockSendEmail.mock.calls[0][0] as { to: string; subject: string; html: string; text: string }
+      expect(arg.to).toBe('buddy@example.com')
+      expect(arg.subject.length).toBeGreaterThan(0)
+      expect(arg.html.length).toBeGreaterThan(0)
+      expect(result).toMatchObject({ sent: 1 })
+    })
+
+    it('fails when the recipient user is missing', async () => {
+      const job = jobFixture({ channel: 'email', eventType: 'account_approved' })
+      mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
+      mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
+      mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
+      mdb.user.findUnique.mockResolvedValueOnce(null)
+
+      const result = await dispatchPending()
+
+      expect(mockSendEmail).not.toHaveBeenCalled()
+      expect((mdb.notificationJob.update.mock.calls[0][0] as any).data.lastError).toMatch(/recipient not found/i)
+      expect(result).toMatchObject({ failed: 1 })
+    })
+
+    it('fails when no email template is registered for the event', async () => {
+      const job = jobFixture({ channel: 'email', eventType: 'new_signup' })
+      mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
+      mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
+      mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
+      mdb.user.findUnique.mockResolvedValueOnce({ email: 'admin@example.com' })
+
+      const result = await dispatchPending()
+
+      expect(mockSendEmail).not.toHaveBeenCalled()
+      expect((mdb.notificationJob.update.mock.calls[0][0] as any).data.lastError).toMatch(/no email template/i)
+      expect(result).toMatchObject({ failed: 1 })
+    })
+
+    it('fails when recipientUserId is missing on the job', async () => {
+      const job = jobFixture({ channel: 'email', eventType: 'account_approved', recipientUserId: null })
+      mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
+      mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
+      mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
+
+      const result = await dispatchPending()
+
+      expect(mockSendEmail).not.toHaveBeenCalled()
+      expect((mdb.notificationJob.update.mock.calls[0][0] as any).data.lastError).toMatch(/missing recipientUserId/i)
+      expect(result).toMatchObject({ failed: 1 })
+    })
+
+    it('marks failed when sendEmail throws', async () => {
+      const job = jobFixture({ channel: 'email', eventType: 'account_approved' })
+      mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
+      mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
+      mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
+      mdb.user.findUnique.mockResolvedValueOnce({ email: 'buddy@example.com' })
+      mockSendEmail.mockRejectedValueOnce(new Error('Gmail send failed: 503'))
+
+      const result = await dispatchPending()
+
+      expect((mdb.notificationJob.update.mock.calls[0][0] as any).data.lastError).toMatch(/Gmail send failed/i)
+      expect(result).toMatchObject({ failed: 1, sent: 0 })
+    })
   })
 })

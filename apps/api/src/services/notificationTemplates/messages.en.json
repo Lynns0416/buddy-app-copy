@@ -1,0 +1,72 @@
+{
+  "account_approved": {
+    "subject": "[Peace Buddy] Your account was approved",
+    "bodyText": "Welcome! Your account was approved.\n\nDashboard: {url}",
+    "bodyHtml": "<p>Welcome! Your account was approved.</p>",
+    "cta": "Open dashboard",
+    "path": "/buddy"
+  },
+  "account_rejected": {
+    "subject": "[Peace Buddy] About your account registration",
+    "bodyText": "Your account registration was not approved. Please contact the team if you have questions.",
+    "bodyHtml": "<p>Your account registration was not approved. Please contact the team if you have questions.</p>",
+    "cta": "Peace Buddy",
+    "path": "/login"
+  },
+  "tour_published": {
+    "subject": "[Peace Buddy] A new tour is open",
+    "bodyText": "A new tour was published.\n\nDetails: {url}",
+    "bodyHtml": "<p>A new tour was published.</p>",
+    "cta": "View tour",
+    "path": "/buddy/tours/{tourId}"
+  },
+  "tour_details_changed": {
+    "subject": "[Peace Buddy] Tour details changed",
+    "bodyText": "A tour you joined had its date or location changed.\n\n{url}",
+    "bodyHtml": "<p>A tour you joined had its date or location changed.</p>",
+    "cta": "See the latest details",
+    "path": "/buddy/tours/{tourId}"
+  },
+  "tour_cancelled": {
+    "subject": "[Peace Buddy] A tour was cancelled",
+    "bodyText": "A tour you joined has been cancelled.\n\n{url}",
+    "bodyHtml": "<p>A tour you joined has been cancelled.</p>",
+    "cta": "See details",
+    "path": "/buddy/tours/{tourId}"
+  },
+  "waitlist_promoted": {
+    "subject": "[Peace Buddy] You're off the waitlist",
+    "bodyText": "A waitlist seat opened — you're now confirmed.\n\n{url}",
+    "bodyHtml": "<p>A waitlist seat opened — you're now confirmed.</p>",
+    "cta": "View your booking",
+    "path": "/buddy/tours/{tourId}"
+  },
+  "booking_cancelled": {
+    "subject": "[Peace Buddy] A buddy cancelled a booking",
+    "bodyText": "A buddy cancelled their booking.\n\n{url}",
+    "bodyHtml": "<p>A buddy cancelled their booking.</p>",
+    "cta": "Open tour",
+    "path": "/admin/tours/{tourId}"
+  },
+  "cant_go_post_deadline": {
+    "subject": "[Peace Buddy] Post-deadline can't-go report",
+    "bodyText": "A buddy reported they can't go after the deadline.\n\n{url}",
+    "bodyHtml": "<p>A buddy reported they can't go after the deadline.</p>",
+    "cta": "Open tour",
+    "path": "/admin/tours/{tourId}"
+  },
+  "maybe_resolved": {
+    "subject": "[Peace Buddy] A Maybe booking was resolved",
+    "bodyText": "A Maybe booking was resolved to confirmed or declined.\n\n{url}",
+    "bodyHtml": "<p>A Maybe booking was resolved to confirmed or declined.</p>",
+    "cta": "Open tour",
+    "path": "/admin/tours/{tourId}"
+  },
+  "maybe_deadline_missed": {
+    "subject": "[Peace Buddy] A Maybe deadline passed unresolved",
+    "bodyText": "A Maybe deadline passed without resolution.\n\n{url}",
+    "bodyHtml": "<p>A Maybe deadline passed without resolution.</p>",
+    "cta": "Follow up",
+    "path": "/admin/tours/{tourId}"
+  }
+}

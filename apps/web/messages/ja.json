@@ -2,6 +2,29 @@
   "app": {
     "name": "Peace Buddy"
   },
+  "adminNotificationPreferences": {
+    "title": "通知設定",
+    "intro": "メールおよび Slack 通知の受け取り方を設定します。Slack 配信は今後のリリースで対応予定です。",
+    "eventTypeHeader": "イベント",
+    "emailEnabledHeader": "メール",
+    "emailModeHeader": "配信",
+    "slackEnabledHeader": "Slack",
+    "modeImmediate": "即時",
+    "modeDigest": "1日まとめ",
+    "slackDisabledTooltip": "Slack 通知は今後のリリースで対応予定です",
+    "events": {
+      "new_signup": "新規バディ登録",
+      "new_booking": "新しい予約",
+      "cancellation": "予約キャンセル（期限前）",
+      "maybe_resolved": "保留 → 確定 / 辞退",
+      "maybe_deadline_missed": "保留期限が未確定のまま経過"
+    },
+    "save": "保存",
+    "saving": "保存中…",
+    "saveSuccess": "保存しました。",
+    "loadError": "設定の読み込みに失敗しました。",
+    "saveError": "保存に失敗しました。"
+  },
   "notifications": {
     "title": "通知",
     "empty": "通知はまだありません。",
@@ -356,7 +379,8 @@
       "groups": "グループ",
       "tours": "ツアー",
       "adminProfile": "マイプロフィール",
-      "adminRoster": "管理者一覧"
+      "adminRoster": "管理者一覧",
+      "adminNotificationPreferences": "通知設定"
     }
   },
   "pending": {

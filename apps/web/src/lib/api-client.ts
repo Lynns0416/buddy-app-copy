@@ -40,6 +40,8 @@ import type {
   AdminBookingStatusResponse,
   NotificationsListResponse,
   MarkNotificationsRead,
+  NotificationPreferencesResponse,
+  UpdateNotificationPreferences,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -288,5 +290,15 @@ export const apiClient = {
     apiRequest<{ ok: true }>(apiPaths.meNotificationsRead, {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+
+  // Admin — Notification preferences
+  getAdminNotificationPreferences: () =>
+    apiRequest<NotificationPreferencesResponse>(apiPaths.adminNotificationPreferences),
+
+  updateAdminNotificationPreferences: (data: UpdateNotificationPreferences) =>
+    apiRequest<NotificationPreferencesResponse>(apiPaths.adminNotificationPreferences, {
+      method: 'PUT',
+      body: JSON.stringify(data),
     }),
 }

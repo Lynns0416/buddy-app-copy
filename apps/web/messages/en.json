@@ -2,6 +2,29 @@
   "app": {
     "name": "Peace Buddy"
   },
+  "adminNotificationPreferences": {
+    "title": "Notification preferences",
+    "intro": "Configure when you want to receive email and Slack alerts. Slack delivery ships in a future release.",
+    "eventTypeHeader": "Event",
+    "emailEnabledHeader": "Email",
+    "emailModeHeader": "Delivery",
+    "slackEnabledHeader": "Slack",
+    "modeImmediate": "Immediate",
+    "modeDigest": "Daily digest",
+    "slackDisabledTooltip": "Slack delivery ships in a future release",
+    "events": {
+      "new_signup": "New buddy signup",
+      "new_booking": "New booking",
+      "cancellation": "Booking cancelled (before deadline)",
+      "maybe_resolved": "Maybe → Confirmed / Declined",
+      "maybe_deadline_missed": "Maybe deadline passed unresolved"
+    },
+    "save": "Save",
+    "saving": "Saving…",
+    "saveSuccess": "Saved.",
+    "loadError": "Failed to load preferences.",
+    "saveError": "Failed to save preferences."
+  },
   "notifications": {
     "title": "Notifications",
     "empty": "No notifications yet.",
@@ -356,7 +379,8 @@
       "groups": "Groups",
       "tours": "Tours",
       "adminProfile": "My Profile",
-      "adminRoster": "Admin Roster"
+      "adminRoster": "Admin Roster",
+      "adminNotificationPreferences": "Notifications"
     }
   },
   "pending": {

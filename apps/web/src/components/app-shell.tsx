@@ -39,6 +39,7 @@ export function AppShell({ variant, children }: Props) {
     { href: routes.adminGroups(locale), label: t('nav.groups') },
     { href: routes.adminTours(locale), label: t('nav.tours') },
     { href: routes.adminProfile(locale), label: t('nav.adminProfile') },
+    { href: routes.adminNotificationPreferences(locale), label: t('nav.adminNotificationPreferences') },
     ...(dbUser?.role === 'super_admin' ? [{ href: routes.adminProfiles(locale), label: t('nav.adminRoster') }] : []),
   ]
 

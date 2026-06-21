@@ -352,24 +352,29 @@ describe('updateBuddyStatus', () => {
     expect((result as Record<string, unknown> | null)?.user).toBeUndefined()
   })
 
-  it('enqueues account_approved when transitioning pending → trainee', async () => {
+  it('enqueues account_approved (in-app + email) when transitioning pending → trainee', async () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce({ status: 'pending', userId: 'user-1' })
     mdb.buddyProfile.update.mockResolvedValueOnce({ ...mockRaw, status: 'trainee' } as unknown)
     await updateBuddyStatus('profile-1', 'trainee')
 
-    expect(mdb.notificationJob.create).toHaveBeenCalledTimes(1)
-    expect((mdb.notificationJob.create.mock.calls[0][0] as { data: { eventType: string; recipientUserId: string } }).data).toMatchObject({
-      eventType: 'account_approved',
-      recipientUserId: 'user-1',
-    })
+    // One in-app job and one email job; both for account_approved → user-1.
+    expect(mdb.notificationJob.create).toHaveBeenCalledTimes(2)
+    const calls = mdb.notificationJob.create.mock.calls.map((c) => (c[0] as { data: { channel: string; eventType: string; recipientUserId: string } }).data)
+    expect(calls.map((d) => d.channel).sort()).toEqual(['email', 'in_app'])
+    for (const d of calls) {
+      expect(d.eventType).toBe('account_approved')
+      expect(d.recipientUserId).toBe('user-1')
+    }
   })
 
-  it('enqueues account_rejected when transitioning pending → rejected', async () => {
+  it('enqueues account_rejected (in-app + email) when transitioning pending → rejected', async () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce({ status: 'pending', userId: 'user-1' })
     mdb.buddyProfile.update.mockResolvedValueOnce({ ...mockRaw, status: 'rejected' } as unknown)
     await updateBuddyStatus('profile-1', 'rejected')
 
-    expect((mdb.notificationJob.create.mock.calls[0][0] as { data: { eventType: string } }).data.eventType).toBe('account_rejected')
+    expect(mdb.notificationJob.create).toHaveBeenCalledTimes(2)
+    const eventTypes = mdb.notificationJob.create.mock.calls.map((c) => (c[0] as { data: { eventType: string } }).data.eventType)
+    expect(new Set(eventTypes)).toEqual(new Set(['account_rejected']))
   })
 
   it('does not enqueue when status was not pending (e.g. trainee → active)', async () => {

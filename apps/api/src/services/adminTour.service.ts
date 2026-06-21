@@ -6,6 +6,8 @@ import {
   NotifEventKindSchema,
 } from '@peace-buddy/types'
 import {
+  enqueueEmailForActiveBuddies,
+  enqueueEmailForBookedBuddies,
   enqueueInAppForActiveBuddies,
   enqueueInAppForBookedBuddies,
 } from './notification.service'
@@ -368,11 +370,9 @@ export async function updateTour(id: string, data: UpdateTour): Promise<AdminTou
       })
 
       if (notifyDetailsChanged) {
-        await enqueueInAppForBookedBuddies(
-          id,
-          { eventType: NotifEventKindSchema.enum.tour_details_changed, payload: { tourId: id } },
-          tx,
-        )
+        const args = { eventType: NotifEventKindSchema.enum.tour_details_changed, payload: { tourId: id } }
+        await enqueueInAppForBookedBuddies(id, args, tx)
+        await enqueueEmailForBookedBuddies(id, args, tx)
       }
     })
   } catch (e) {
@@ -403,16 +403,13 @@ export async function transitionTourStatus(
     await tx.tour.update({ where: { id }, data: { status: targetStatus } })
 
     if (targetStatus === TourStatusSchema.enum.published) {
-      await enqueueInAppForActiveBuddies(
-        { eventType: NotifEventKindSchema.enum.tour_published, payload: { tourId: id } },
-        tx,
-      )
+      const args = { eventType: NotifEventKindSchema.enum.tour_published, payload: { tourId: id } }
+      await enqueueInAppForActiveBuddies(args, tx)
+      await enqueueEmailForActiveBuddies(args, tx)
     } else if (targetStatus === TourStatusSchema.enum.cancelled) {
-      await enqueueInAppForBookedBuddies(
-        id,
-        { eventType: NotifEventKindSchema.enum.tour_cancelled, payload: { tourId: id } },
-        tx,
-      )
+      const args = { eventType: NotifEventKindSchema.enum.tour_cancelled, payload: { tourId: id } }
+      await enqueueInAppForBookedBuddies(id, args, tx)
+      await enqueueEmailForBookedBuddies(id, args, tx)
     }
   })
 
