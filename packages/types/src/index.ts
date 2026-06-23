@@ -128,6 +128,15 @@ export type DispatchResult = {
   skipped: number
 }
 
+export type TourReminderResult = {
+  tours: number
+  // Total (recipient × matching-offset) pairs evaluated this run. By construction
+  // `considered === enqueued + alreadySent`.
+  considered: number
+  enqueued: number
+  alreadySent: number
+}
+
 export const MarkNotificationsReadSchema = z.union([
   z.object({ ids: z.array(z.string().uuid()).min(1) }),
   z.object({ all: z.literal(true) }),

@@ -16,9 +16,10 @@ type Entry = {
 
 const APP_NAME = 'Peace Buddy'
 
-// Events that intentionally have no email body in this slice:
-// - new_signup, new_booking: defaults to digest (PRD §10.2); ships in Slice 5.
-// - tour_reminder, maybe_reminder, waitlist_opened: scheduled; ships in Slice 6.
+// Events that intentionally have no email body yet:
+// - new_signup, new_booking: defaults to digest (PRD §10.2); ships with the
+//   daily digest cron.
+// - maybe_reminder, waitlist_opened: ship alongside their respective cron jobs.
 // - self_eval_prompt: in-app only per PRD §10.1.
 const messages: Record<Locale, Record<string, Entry>> = {
   en: messagesEn as Record<string, Entry>,

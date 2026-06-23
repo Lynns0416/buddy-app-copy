@@ -9,9 +9,15 @@ vi.mock('../services/notificationDispatcher.service', () => ({
   dispatchPending: vi.fn(),
 }))
 
+vi.mock('../services/tourReminder.service', () => ({
+  enqueueTourReminders: vi.fn(),
+}))
+
 import { dispatchPending } from '../services/notificationDispatcher.service'
+import { enqueueTourReminders } from '../services/tourReminder.service'
 
 const mockDispatch = vi.mocked(dispatchPending)
+const mockEnqueueReminders = vi.mocked(enqueueTourReminders)
 
 const ORIGINAL_SECRET = process.env.SCHEDULER_SECRET
 
@@ -61,5 +67,50 @@ describe('POST /jobs/notifications/dispatch', () => {
     const body = await res.json() as Record<string, number>
     expect(body).toEqual({ picked: 2, sent: 2, failed: 0, dead: 0, skipped: 0 })
     expect(mockDispatch).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('POST /jobs/notifications/reminders', () => {
+  it('returns 401 when X-Scheduler-Secret is missing', async () => {
+    const res = await routes.request('/jobs/notifications/reminders', { method: 'POST' })
+    expect(res.status).toBe(401)
+    expect(mockEnqueueReminders).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when X-Scheduler-Secret does not match', async () => {
+    const res = await routes.request('/jobs/notifications/reminders', {
+      method: 'POST',
+      headers: { 'X-Scheduler-Secret': 'wrong' },
+    })
+    expect(res.status).toBe(401)
+    expect(mockEnqueueReminders).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 even when a Bearer token is provided (this route is scheduler-only)', async () => {
+    const res = await routes.request('/jobs/notifications/reminders', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer some-firebase-token' },
+    })
+    expect(res.status).toBe(401)
+    expect(mockEnqueueReminders).not.toHaveBeenCalled()
+  })
+
+  it('returns 200 with the reminder result when secret matches', async () => {
+    mockEnqueueReminders.mockResolvedValueOnce({
+      tours: 1,
+      considered: 3,
+      enqueued: 3,
+      alreadySent: 0,
+    })
+
+    const res = await routes.request('/jobs/notifications/reminders', {
+      method: 'POST',
+      headers: { 'X-Scheduler-Secret': 'test-secret' },
+    })
+
+    expect(res.status).toBe(200)
+    const body = await res.json() as Record<string, number>
+    expect(body).toEqual({ tours: 1, considered: 3, enqueued: 3, alreadySent: 0 })
+    expect(mockEnqueueReminders).toHaveBeenCalledTimes(1)
   })
 })

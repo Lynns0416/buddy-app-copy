@@ -436,3 +436,16 @@ model NotificationJob {
   @@index([status, scheduledFor])
   @@index([recipientUserId])
 }
+
+// Idempotency log for scheduled notification jobs (PRD §10.5). Each scheduled
+// job inserts a row keyed by `{eventType}:{scope}:{recipientUserId}` inside the
+// same transaction that enqueues the NotificationJob. A unique-constraint
+// collision means the reminder was already dispatched for that recipient — the
+// transaction rolls back and no duplicate job is enqueued.
+model NotificationDispatchLog {
+  id        String   @id @default(uuid())
+  eventKey  String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

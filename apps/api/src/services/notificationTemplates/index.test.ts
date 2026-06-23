@@ -21,6 +21,7 @@ describe('renderEmail', () => {
     { event: 'tour_published', payload: tour },
     { event: 'tour_details_changed', payload: tour },
     { event: 'tour_cancelled', payload: tour },
+    { event: 'tour_reminder', payload: tour },
     { event: 'waitlist_promoted', payload: tour },
     { event: 'booking_cancelled', payload: tour },
     { event: 'cant_go_post_deadline', payload: tour },

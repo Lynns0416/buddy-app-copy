@@ -34,6 +34,13 @@
     "cta": "See details",
     "path": "/buddy/tours/{tourId}"
   },
+  "tour_reminder": {
+    "subject": "[Peace Buddy] Tour reminder",
+    "bodyText": "This is a reminder for an upcoming tour you signed up for.\n\n{url}",
+    "bodyHtml": "<p>This is a reminder for an upcoming tour you signed up for.</p>",
+    "cta": "Open tour",
+    "path": "/buddy/tours/{tourId}"
+  },
   "waitlist_promoted": {
     "subject": "[Peace Buddy] You're off the waitlist",
     "bodyText": "A waitlist seat opened — you're now confirmed.\n\n{url}",
