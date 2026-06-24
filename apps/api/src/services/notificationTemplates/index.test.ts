@@ -22,6 +22,7 @@ describe('renderEmail', () => {
     { event: 'tour_details_changed', payload: tour },
     { event: 'tour_cancelled', payload: tour },
     { event: 'tour_reminder', payload: tour },
+    { event: 'maybe_reminder', payload: tour },
     { event: 'waitlist_promoted', payload: tour },
     { event: 'booking_cancelled', payload: tour },
     { event: 'cant_go_post_deadline', payload: tour },
@@ -57,6 +58,7 @@ describe('hasEmailTemplate', () => {
   it('returns true for events shipped in slice 3', () => {
     expect(hasEmailTemplate('account_approved')).toBe(true)
     expect(hasEmailTemplate('cant_go_post_deadline')).toBe(true)
+    expect(hasEmailTemplate('maybe_reminder')).toBe(true)
   })
 
   it('returns false for digest-only and not-yet-shipped events', () => {

@@ -14,14 +14,14 @@ In-app delivery (#100) and email delivery (#101) shipped the queue, dispatcher, 
 
 All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/jobs/notifications/dispatch` endpoint.
 
-- [ ] `POST /jobs/notifications/reminders` — hourly. Match `Tour.notificationOffsets` (default `[3, 1]`) against now and enqueue `tour_reminder` to confirmed / maybe / waitlist buddies.
-- [ ] `POST /jobs/notifications/maybe-reminders` — hourly. Enqueue `maybe_reminder` to buddies still in Maybe before their session's `maybeDeadline` (default offsets `[3, 1]`).
+- [x] `POST /jobs/notifications/reminders` — hourly. Match `Tour.notificationOffsets` (default `[3, 1]`) against now and enqueue `tour_reminder` to confirmed / maybe / waitlist buddies. Shipped #103.
+- [x] `POST /jobs/notifications/maybe-reminders` — hourly. Enqueue `maybe_reminder` to buddies still in Maybe at offsets `[3, 1]` days before the tour's `maybeDeadline`. Shipped #104.
 - [ ] `POST /jobs/notifications/maybe-deadlines` — hourly. Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe past deadline.
 - [ ] `POST /jobs/notifications/digest` — 09:00 JST. Flush `DigestQueue` per admin; one email per admin per day; skip if no activity. Admins who chose `emailMode = 'digest'` for any event currently get nothing — this is the gap that unblocks the digest preference.
 
 ### Schema prerequisite
 
-- [ ] `NotificationDispatchLog(eventKey UNIQUE)` table — idempotency for the cron jobs above. Each scheduled job inserts a row keyed by `(eventType, scope, recipientUserId)` before sending; a unique-constraint collision means it was already dispatched. Add to `prisma/schema.prisma` alongside the first cron job that needs it.
+- [x] `NotificationDispatchLog(eventKey UNIQUE)` table — idempotency for the cron jobs above. Shipped #103.
 
 ### Missing enqueue sites (events declared in `NotifEventKindSchema` but never enqueued)
 

@@ -169,6 +169,7 @@ describe('enqueueTourReminders', () => {
 
     const where = (mdb.booking.findMany.mock.calls[0][0] as any).where
     expect(where.status.in).toEqual(['confirmed', 'maybe', 'waitlist'])
+    expect(where.buddy.status.notIn).toEqual(['suspended', 'rejected'])
   })
 
   it('fires reminders for multiple tours that each match today on a different offset', async () => {

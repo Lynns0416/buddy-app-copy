@@ -41,6 +41,13 @@
     "cta": "ツアーを開く",
     "path": "/buddy/tours/{tourId}"
   },
+  "maybe_reminder": {
+    "subject": "【Peace Buddy】「保留」の予約をご確認ください",
+    "bodyText": "「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。\n\n{url}",
+    "bodyHtml": "<p>「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。</p>",
+    "cta": "回答する",
+    "path": "/buddy/tours/{tourId}"
+  },
   "waitlist_promoted": {
     "subject": "【Peace Buddy】キャンセル待ちから繰り上がりました",
     "bodyText": "キャンセル待ちから繰り上がり、参加確定となりました。\n\n{url}",

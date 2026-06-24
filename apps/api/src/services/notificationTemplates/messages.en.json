@@ -41,6 +41,13 @@
     "cta": "Open tour",
     "path": "/buddy/tours/{tourId}"
   },
+  "maybe_reminder": {
+    "subject": "[Peace Buddy] Please confirm your Maybe booking",
+    "bodyText": "You have a tour booking still marked as Maybe. Please confirm or decline before the deadline.\n\n{url}",
+    "bodyHtml": "<p>You have a tour booking still marked as Maybe. Please confirm or decline before the deadline.</p>",
+    "cta": "Confirm or decline",
+    "path": "/buddy/tours/{tourId}"
+  },
   "waitlist_promoted": {
     "subject": "[Peace Buddy] You're off the waitlist",
     "bodyText": "A waitlist seat opened — you're now confirmed.\n\n{url}",

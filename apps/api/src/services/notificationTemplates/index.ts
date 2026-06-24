@@ -19,7 +19,7 @@ const APP_NAME = 'Peace Buddy'
 // Events that intentionally have no email body yet:
 // - new_signup, new_booking: defaults to digest (PRD §10.2); ships with the
 //   daily digest cron.
-// - maybe_reminder, waitlist_opened: ship alongside their respective cron jobs.
+// - waitlist_opened: ships alongside its respective cron job.
 // - self_eval_prompt: in-app only per PRD §10.1.
 const messages: Record<Locale, Record<string, Entry>> = {
   en: messagesEn as Record<string, Entry>,

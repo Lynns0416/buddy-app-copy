@@ -137,6 +137,8 @@ export type TourReminderResult = {
   alreadySent: number
 }
 
+export type MaybeReminderResult = TourReminderResult
+
 export const MarkNotificationsReadSchema = z.union([
   z.object({ ids: z.array(z.string().uuid()).min(1) }),
   z.object({ all: z.literal(true) }),

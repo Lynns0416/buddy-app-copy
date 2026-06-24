@@ -1,6 +1,7 @@
 import { db } from '../lib/db'
 import {
   BookingStatusSchema,
+  BuddyStatusSchema,
   NotifEventKindSchema,
   TourStatusSchema,
   type TourReminderResult,
@@ -79,6 +80,9 @@ async function findReminderRecipients(tourId: string): Promise<Recipient[]> {
           BookingStatusSchema.enum.maybe,
           BookingStatusSchema.enum.waitlist,
         ],
+      },
+      buddy: {
+        status: { notIn: [BuddyStatusSchema.enum.suspended, BuddyStatusSchema.enum.rejected] },
       },
     },
     select: { buddy: { select: { userId: true } } },
