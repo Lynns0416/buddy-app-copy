@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { dispatchPending } from '../services/notificationDispatcher.service'
 import { enqueueTourReminders } from '../services/tourReminder.service'
 import { enqueueMaybeReminders } from '../services/maybeReminder.service'
+import { enqueueMaybeDeadlineMissed } from '../services/maybeDeadline.service'
 import type { SchedulerEnv } from '../types'
 
 const jobRoutes = new Hono<SchedulerEnv>()
@@ -18,6 +19,11 @@ jobRoutes.post('/notifications/reminders', async (c) => {
 
 jobRoutes.post('/notifications/maybe-reminders', async (c) => {
   const result = await enqueueMaybeReminders()
+  return c.json(result)
+})
+
+jobRoutes.post('/notifications/maybe-deadlines', async (c) => {
+  const result = await enqueueMaybeDeadlineMissed()
   return c.json(result)
 })
 

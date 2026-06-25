@@ -17,13 +17,19 @@ vi.mock('../services/maybeReminder.service', () => ({
   enqueueMaybeReminders: vi.fn(),
 }))
 
+vi.mock('../services/maybeDeadline.service', () => ({
+  enqueueMaybeDeadlineMissed: vi.fn(),
+}))
+
 import { dispatchPending } from '../services/notificationDispatcher.service'
 import { enqueueTourReminders } from '../services/tourReminder.service'
 import { enqueueMaybeReminders } from '../services/maybeReminder.service'
+import { enqueueMaybeDeadlineMissed } from '../services/maybeDeadline.service'
 
 const mockDispatch = vi.mocked(dispatchPending)
 const mockEnqueueReminders = vi.mocked(enqueueTourReminders)
 const mockEnqueueMaybeReminders = vi.mocked(enqueueMaybeReminders)
+const mockEnqueueMaybeDeadlines = vi.mocked(enqueueMaybeDeadlineMissed)
 
 const ORIGINAL_SECRET = process.env.SCHEDULER_SECRET
 
@@ -163,5 +169,49 @@ describe('POST /jobs/notifications/maybe-reminders', () => {
     const body = await res.json() as Record<string, number>
     expect(body).toEqual({ tours: 2, considered: 4, enqueued: 4, alreadySent: 0 })
     expect(mockEnqueueMaybeReminders).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('POST /jobs/notifications/maybe-deadlines', () => {
+  it('returns 401 when X-Scheduler-Secret is missing', async () => {
+    const res = await routes.request('/jobs/notifications/maybe-deadlines', { method: 'POST' })
+    expect(res.status).toBe(401)
+    expect(mockEnqueueMaybeDeadlines).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 when X-Scheduler-Secret does not match', async () => {
+    const res = await routes.request('/jobs/notifications/maybe-deadlines', {
+      method: 'POST',
+      headers: { 'X-Scheduler-Secret': 'wrong' },
+    })
+    expect(res.status).toBe(401)
+    expect(mockEnqueueMaybeDeadlines).not.toHaveBeenCalled()
+  })
+
+  it('returns 401 even when a Bearer token is provided (this route is scheduler-only)', async () => {
+    const res = await routes.request('/jobs/notifications/maybe-deadlines', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer some-firebase-token' },
+    })
+    expect(res.status).toBe(401)
+    expect(mockEnqueueMaybeDeadlines).not.toHaveBeenCalled()
+  })
+
+  it('returns 200 with the maybe-deadline result when secret matches', async () => {
+    mockEnqueueMaybeDeadlines.mockResolvedValueOnce({
+      tours: 2,
+      enqueuedTours: 2,
+      alreadySent: 0,
+    })
+
+    const res = await routes.request('/jobs/notifications/maybe-deadlines', {
+      method: 'POST',
+      headers: { 'X-Scheduler-Secret': 'test-secret' },
+    })
+
+    expect(res.status).toBe(200)
+    const body = await res.json() as Record<string, number>
+    expect(body).toEqual({ tours: 2, enqueuedTours: 2, alreadySent: 0 })
+    expect(mockEnqueueMaybeDeadlines).toHaveBeenCalledTimes(1)
   })
 })

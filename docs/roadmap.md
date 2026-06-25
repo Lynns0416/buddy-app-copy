@@ -16,7 +16,7 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 
 - [x] `POST /jobs/notifications/reminders` — hourly. Match `Tour.notificationOffsets` (default `[3, 1]`) against now and enqueue `tour_reminder` to confirmed / maybe / waitlist buddies. Shipped #103.
 - [x] `POST /jobs/notifications/maybe-reminders` — hourly. Enqueue `maybe_reminder` to buddies still in Maybe at offsets `[3, 1]` days before the tour's `maybeDeadline`. Shipped #104.
-- [ ] `POST /jobs/notifications/maybe-deadlines` — hourly. Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe past deadline.
+- [x] `POST /jobs/notifications/maybe-deadlines` — hourly. Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe past deadline. Fires on the JST day after `maybeDeadline` only; idempotent per tour via `NotificationDispatchLog`.
 - [ ] `POST /jobs/notifications/digest` — 09:00 JST. Flush `DigestQueue` per admin; one email per admin per day; skip if no activity. Admins who chose `emailMode = 'digest'` for any event currently get nothing — this is the gap that unblocks the digest preference.
 
 ### Schema prerequisite

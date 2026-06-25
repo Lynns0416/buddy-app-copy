@@ -634,7 +634,7 @@ One shared Slack channel (e.g. `#peace-buddy-ops`) configured via a single `SLAC
 |---|---|---|---|---|
 | Tour reminders | `POST /jobs/notifications/reminders` | Hourly | Match `Tour.notificationOffsets` against now; enqueue `tour_reminder` to confirmed / maybe / waitlist buddies | Planned |
 | Maybe pre-reminders | `POST /jobs/notifications/maybe-reminders` | Hourly | Enqueue `maybe_reminder` to buddies still in Maybe before their deadline | Planned |
-| Maybe deadline expiry | `POST /jobs/notifications/maybe-deadlines` | Hourly | Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe | Planned |
+| Maybe deadline expiry | `POST /jobs/notifications/maybe-deadlines` | Hourly | Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe; fires only on the JST day after deadline | Shipped |
 | Daily admin digest | `POST /jobs/notifications/digest` | 09:00 JST | Flush `DigestQueue` per admin; send one email per admin with activity | Planned |
 
 Hourly cadence is sufficient because all offsets are day-granular. Idempotency for the planned jobs will be enforced via a `NotificationDispatchLog(eventKey UNIQUE)` table — each scheduled job inserts a row keyed by `(eventType, scope, recipientUserId)` before sending; unique-constraint collisions mean the reminder was already dispatched. **Not yet added to schema** — to be added alongside the first scheduled job that needs it.
