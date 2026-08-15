@@ -6,6 +6,20 @@ Source of truth for completed work is `git log` — do not duplicate ship dates 
 
 ---
 
+## Before launch
+
+Target: release in 1–2 weeks from 2026-08-15. Only these two block it.
+
+- [ ] **Flip `new_signup` and `new_booking` to `emailMode: immediate`** — `apps/api/src/services/notificationPreference.service.ts:14-15`. Both default to `digest`, and the digest flush job does not exist, so admins would receive **no email at all** when a buddy signs up. Buddies then sit in `pending` unapproved and PRD §4 stalls silently. One-line fix; it removes the digest job from the launch path entirely.
+- [ ] **Apple sign-in: Firebase console config** (Service ID + key) — the button ships today and errors until it is set. Either finish the config or hide the button; do not launch with a broken provider. See `docs/decisions.md` 2026-08-15.
+
+Deliberately **not** blocking launch — all are missing nudges rather than broken flows, and at ~50 buddies / 5–6 admins they surface within a day:
+
+- `self_eval_prompt` and `waitlist_opened` never enqueued (see below)
+- `upsertUser` duplicate-account risk from Apple Hide My Email (see `docs/decisions.md`)
+
+---
+
 ## Notifications
 
 In-app delivery (#100) and email delivery (#101) shipped the queue, dispatcher, per-admin preferences, email-mode handling (immediate today), and the event triggers listed as "Shipped" in PRD §10. What remains:
@@ -17,7 +31,7 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 - [x] `POST /jobs/notifications/reminders` — hourly. Match `Tour.notificationOffsets` (default `[3, 1]`) against now and enqueue `tour_reminder` to confirmed / maybe / waitlist buddies. Shipped #103.
 - [x] `POST /jobs/notifications/maybe-reminders` — hourly. Enqueue `maybe_reminder` to buddies still in Maybe at offsets `[3, 1]` days before the tour's `maybeDeadline`. Shipped #104.
 - [x] `POST /jobs/notifications/maybe-deadlines` — hourly. Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe past deadline. Fires on the JST day after `maybeDeadline` only; idempotent per tour via `NotificationDispatchLog`.
-- [ ] `POST /jobs/notifications/digest` — 09:00 JST. Flush `DigestQueue` per admin; one email per admin per day; skip if no activity. Admins who chose `emailMode = 'digest'` for any event currently get nothing — this is the gap that unblocks the digest preference.
+- [ ] `POST /jobs/notifications/digest` — 09:00 JST. Flush `DigestQueue` per admin; one email per admin per day; skip if no activity. Admins who choose `emailMode = 'digest'` for any event currently get nothing. **Not launch-blocking** once the defaults flip to `immediate` (see "Before launch") — build it when someone actually wants digest mode.
 
 ### Schema prerequisite
 
