@@ -248,12 +248,25 @@ A `Tour` carries metadata (date, location, deadlines, status, admin assignments)
 
 Transitions are gated server-side via `PATCH /admin/tours/:id/status` with `{action: 'publish' | 'cancel' | 'complete'}`. Allowed transitions:
 
-| From | To |
-|---|---|
-| `draft` | `published` (publish), `cancelled` (cancel) |
-| `published` | `cancelled` (cancel), `completed` (complete) |
-| `cancelled` | — (terminal) |
-| `completed` | — (terminal) |
+```mermaid
+stateDiagram-v2
+    [*] --> draft
+    draft --> published : publish
+    draft --> cancelled : cancel
+    published --> completed : complete
+    published --> cancelled : cancel
+    cancelled --> [*]
+    completed --> [*]
+
+    note right of draft
+        Editable. Hard-delete allowed
+        (draft only).
+    end note
+    note right of cancelled
+        Terminal — TourImmutableError
+        on any further edit.
+    end note
+```
 
 - **Draft:** Editable. Hard-delete allowed via `DELETE /admin/tours/:id` (draft only — other statuses reject with `TourNotDraftError`).
 - **Published:** Visible to Active buddies. Bookable while `bookingOpen = true`. Can be edited, cancelled, or completed.
@@ -368,6 +381,23 @@ Waitlist is created automatically (not chosen by the buddy) — `createBooking` 
 2. Find the earliest `waitlist` candidate in that primary pool, ordered by `bookedAt` ascending
 3. If none exists, fall back to any `waitlist` candidate (anyone pool)
 4. Re-verify capacity for the candidate's pool, then promote them to `confirmed`
+
+```mermaid
+flowchart TD
+    C["confirmed → declined"] --> P{"Cancelled buddy's tier?"}
+    P -->|junior| J["junior pool"]
+    P -->|other| N["non_junior pool"]
+    J --> F["Earliest waitlist candidate<br/>in that pool, by bookedAt"]
+    N --> F
+    F --> Q{"Candidate found?"}
+    Q -->|yes| CAP{"Re-verify capacity<br/>for candidate's pool"}
+    Q -->|no| FB["Fall back to any<br/>waitlist candidate — anyone pool"]
+    FB --> Q2{"Candidate found?"}
+    Q2 -->|yes| CAP
+    Q2 -->|no| STOP["No promotion"]
+    CAP -->|seat absorbed by overflow| STOP
+    CAP -->|seat available| PR["Promote to confirmed<br/>+ waitlist_promoted notification"]
+```
 
 Only one promotion runs per cancellation event — no cascading. If the freed seat was already absorbed by the overflow into the `anyone` pool, no promotion may occur.
 

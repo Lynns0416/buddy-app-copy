@@ -4,26 +4,52 @@ See PRD §5–9 for field definitions and business rules. This document covers D
 
 ## Entity Overview
 
-```
-User (role: buddy / admin / super_admin)
- │
- ├── BuddyProfile [1:1, buddy only]
- │     ├── Booking ──────────────── TourSession ──── Tour ──── Group
- │     │     ├── CancellationReason       │
- │     │     └── BuddyCancellationDeadlineOverride
- │     ├── SelfEvaluation ──────────────────────────┘
- │     ├── AdminEvaluation (subject) ───────────────┘
- │     └── AdminProfileEvaluation (subject)
- │
- ├── AdminProfile [1:1, admin only]
- │
- ├── AdminEvaluation (createdBy) [admin only]
- ├── AdminProfileEvaluation (createdBy) [admin only]
- ├── NotificationPreference       [admin only]
- ├── Notification
- └── DigestQueue                  [admin only]
+### Identity and evaluations
 
-TourSession ──── TierCapacity
+```mermaid
+erDiagram
+    User ||--o| BuddyProfile : "has [buddy only]"
+    User ||--o| AdminProfile : "has [admin only]"
+
+    BuddyProfile ||--o{ SelfEvaluation : "subject of"
+    BuddyProfile ||--o{ AdminEvaluation : "subject of"
+    BuddyProfile ||--o{ AdminProfileEvaluation : "subject of"
+
+    User ||--o{ AdminEvaluation : "createdBy [admin only]"
+    User ||--o{ AdminProfileEvaluation : "createdBy [admin only]"
+
+    Tour ||--o{ SelfEvaluation : "evaluated for"
+    Tour ||--o{ AdminEvaluation : "evaluated for"
+
+    User ||--o{ NotificationPreference : "configures [admin only]"
+    User ||--o{ Notification : receives
+    User ||--o{ NotificationJob : "recipient of"
+    User ||--o{ DigestQueue : "queued for [admin only]"
+```
+
+`NotificationDispatchLog` has no relations — it is a standalone idempotency log keyed by `eventKey`.
+
+### Tours and bookings
+
+```mermaid
+erDiagram
+    Group ||--o{ Tour : organizes
+    Tour ||--o{ TourSession : "split into"
+    TourSession ||--o{ TierCapacity : "capped per tier"
+
+    BuddyProfile ||--o{ Booking : places
+    Tour ||--o{ Booking : "booked for"
+    TourSession ||--o{ Booking : holds
+    Booking ||--o| CancellationReason : "cancelled with"
+    User ||--o{ CancellationReason : "recordedBy"
+
+    BuddyProfile ||--o{ BuddyCancellationDeadlineOverride : "granted"
+    Tour ||--o{ BuddyCancellationDeadlineOverride : "overridden for"
+    User ||--o{ BuddyCancellationDeadlineOverride : "setBy"
+
+    AdminProfile ||--o{ Tour : "staffInCharge of"
+    AdminProfile ||--o{ TourAdminAssignment : "assigned via"
+    Tour ||--o{ TourAdminAssignment : "staffed by"
 ```
 
 ## Schema

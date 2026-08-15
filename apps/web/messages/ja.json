@@ -180,11 +180,11 @@
     "location": "場所",
     "capacity": "バディ数",
     "participantCount": "参加者数",
-    "notRegistered": "申し訳ありませんが、バディとして登録されていないようです。ご不明な点がある場合は、plabスタッフまでお問い合わせください。",
-    "myBookingsLink": "あなたの活動記録・予定"
+    "notRegistered": "バディとして登録されていないようです。不明点がある場合は、PLABスタッフまでお問い合わせください。",
+    "myBookingsLink": "過去の記録とすべての予定"
   },
   "history": {
-    "title": "すべての活動",
+    "title": "ツアー記録",
     "back": "ツアーに戻る",
     "upcoming": "参加予定",
     "past": "参加済み",

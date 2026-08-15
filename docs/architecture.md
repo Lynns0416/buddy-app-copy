@@ -2,26 +2,33 @@
 
 ## System Overview
 
-```
-Browser / PWA
-     │
-     ▼
-Next.js (App Router) — GCP Cloud Run   ← frontend only; no business logic
-     │
-     └── REST API calls
-          │
-          ▼
-     Hono API — GCP Cloud Run           ← all business logic, DB access, auth validation
-          │
-          ├── Firebase Auth         (identity: Google / Apple OAuth)
-          ├── GCP Cloud SQL         (Postgres via Prisma ORM)
-          ├── Cloudflare R2         (profile photos)
-          ├── Gmail API             (email — abstracted via sendEmail(); Google Workspace for Nonprofits)
-          └── Slack Incoming Webhooks (admin notifications; single shared channel)
+```mermaid
+flowchart TD
+    Browser["Browser / PWA"]
+    Web["Next.js App Router<br/>frontend only — no business logic"]
+    API["Hono API<br/>business logic, DB access, auth validation"]
+    Sched["Cloud Scheduler"]
 
-GCP Cloud Scheduler
-     └── Hits Hono API routes for scheduled jobs (auth: X-Scheduler-Secret header)
+    Auth["Firebase Auth<br/>Google / Apple OAuth"]
+    DB[("Neon Postgres<br/>via Prisma ORM")]
+    R2["Cloudflare R2<br/>profile photos"]
+    Gmail["Gmail API<br/>email via sendEmail"]
+    Slack["Slack webhook<br/>not wired — see PRD 10.3"]
+
+    Browser --> Web
+    Web -->|"REST + Firebase ID token"| API
+    Sched -->|"POST /jobs/* with X-Scheduler-Secret"| API
+    API --> Auth
+    API --> DB
+    API --> R2
+    API --> Gmail
+    API -.->|planned| Slack
 ```
+
+**Nothing is deployed yet.** The hosting targets — Firebase Hosting for the web
+front end, Cloud Run for the API, Neon for Postgres — are decisions recorded in
+`DEPLOYMENT.md`, not live infrastructure. Note that the database is **Neon, not
+Cloud SQL**; see `DEPLOYMENT.md` for why.
 
 ## Repo Structure
 
@@ -42,8 +49,12 @@ Monorepo managed with pnpm workspaces:
 │   └── api/                    ← Hono backend (all business logic, Prisma, auth middleware)
 ├── packages/
 │   └── types/                  ← shared Zod schemas and TypeScript types
-└── prisma/                     ← shared Prisma schema; migrations live here
+└── prisma/                     ← shared Prisma schema + seed script
 ```
+
+Pre-release the schema is applied with `prisma db push` — there is no
+`prisma/migrations/` directory yet. It gets created when the project switches to
+`prisma migrate deploy` on first production deploy (`DEPLOYMENT.md`).
 
 ## UI Stack
 
@@ -71,27 +82,55 @@ Implementation: two sibling elements in the same component — `<div className="
 
 ## Request Flow
 
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant W as Next.js
+    participant M as Hono middleware
+    participant R as Route + service
+    participant D as Neon Postgres
+
+    B->>W: navigate
+    W->>M: REST call, Authorization Bearer ID token
+    M->>M: verify Firebase ID token
+    M->>D: look up user by firebaseUid
+    D-->>M: role buddy / admin / super_admin
+    M->>R: authenticated request
+    R->>D: Prisma query
+    D-->>R: rows
+    R-->>W: JSON response
+    W-->>B: rendered page
 ```
-1. Browser → Next.js (UI rendering)
-2. Next.js → Hono API (REST call with Firebase ID token in Authorization header)
-3. Hono middleware verifies Firebase ID token
-4. Token claims map to DB user (role: buddy / admin / super_admin)
-5. Hono route handler calls service layer
-6. Prisma query → Cloud SQL
-7. Response returned to Next.js → rendered to browser
-```
+
+Route composition lives in `apps/api/src/routes/index.ts`, which mounts three
+apps side by side: `publicApp` (Firebase token only), `protectedApp` (token +
+DB user record), and `schedulerApp` (`X-Scheduler-Secret` header).
 
 ## Auth Flow
 
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant W as Next.js
+    participant F as Firebase Auth
+    participant A as Hono API
+    participant D as Postgres
+
+    U->>W: Sign in with Google / Apple
+    W->>F: OAuth redirect
+    F-->>W: ID token
+    W->>A: POST /auth/register with token
+    A->>D: upsert User + BuddyProfile, status pending
+    A-->>W: registered
+    Note over W,A: every later call carries the ID token
+    W->>A: request + Authorization header
+    A->>F: verify token
+    A->>D: look up user by firebaseUid
+    A-->>W: response
 ```
-1. User clicks "Sign in with Google/Apple"
-2. Firebase Auth handles OAuth redirect
-3. Firebase issues ID token
-4. Next.js stores token; passes it in Authorization header on every API call
-5. Hono middleware validates token on every request
-6. On first login: user record created in DB with status = pending
-7. Admin approves → status updated → buddy notified
-```
+
+Approval is a separate admin action: `PUT /admin/buddies/:id/status` moves the
+buddy `pending → trainee` or `pending → rejected`, and the buddy is notified.
 
 See PRD §4 for the signup approval business rules.
 
@@ -145,51 +184,104 @@ This applies to: `POST /admin/profiles` (create), `DELETE /admin/profiles/:userI
 
 Profile photos are the only file type uploaded in v1. Storage: **Cloudflare R2** (S3-compatible). Single-step upload, not a signed-URL handoff:
 
-```
-1. Client POSTs multipart/form-data to /me/profile/photo (field: photo)
-2. API validates size (≤ 2 MB), MIME (jpeg/png/webp), and magic bytes
-3. API writes object to R2 at buddy-photos/{profileId}/{uuid}.{ext}
-4. API updates BuddyProfile.photoUrl in DB
-5. Previous photo is deleted from R2 asynchronously (best-effort)
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as Hono API
+    participant R as Cloudflare R2
+    participant D as Postgres
+
+    C->>A: POST /me/profile/photo, multipart field photo
+    A->>A: validate size 2 MB, MIME jpeg/png/webp, magic bytes
+    A->>R: PUT buddy-photos/profileId/uuid.ext
+    A->>D: update BuddyProfile.photoUrl
+    A-->>C: 200
+    A--)R: delete previous object, best-effort
 ```
 
 Deletion: `DELETE /me/profile/photo` removes the R2 object and nulls `photoUrl`.
 
 ## Notification Flow
 
-> **⚠ Planned (not shipped).** Foundations in code: `Notification` / `NotificationPreference` / `DigestQueue` tables, `Tour.notificationOffsets` field, `schedulerAuthMiddleware`, env vars (`SCHEDULER_SECRET`, `SLACK_WEBHOOK_URL`, Gmail credentials). No dispatch code wired yet.
+Notifications use an **outbox pattern**. Nothing is sent inline with the request
+that triggered it: the originating transaction writes `NotificationJob` rows, and
+a separate cron-driven dispatcher drains them. This means a failed email can never
+roll back a booking, and a committed booking can never lose its notification.
 
-```
-Event occurs (booking, cancellation, tour edit, etc.)
-     │
-     ├── In-app: write Notification row for each recipient (buddies + admins)
-     ├── Email:
-     │     ├── Immediate? → sendEmail() now, via Gmail API, in recipient's locale
-     │     └── Digest?    → insert DigestQueue row; flushed daily at 09:00 JST
-     └── Slack: post to shared channel webhook now (if admin recipient is opted in)
+```mermaid
+flowchart TD
+    E["Event in a service<br/>booking, cancellation, tour edit…"]
+    Q[("NotificationJob<br/>outbox queue")]
+    Disp["dispatchPending()<br/>POST /jobs/notifications/dispatch"]
+    N[("Notification<br/>in-app read model")]
+    G["Gmail API"]
+    S["Slack"]
+    Dead["status = dead<br/>after 5 attempts"]
+
+    E -->|"enqueue inside the same txn"| Q
+    Q --> Disp
+    Disp -->|channel in_app| N
+    Disp -->|channel email| G
+    Disp -.->|"channel slack — throws today"| S
+    Disp -->|"retry with backoff<br/>1m, 5m, 30m, 2h, 6h"| Q
+    Disp --> Dead
 ```
 
-Scheduled jobs (hourly, plus 09:00 JST digest) all enter via `/jobs/*` endpoints guarded by `X-Scheduler-Secret`. Reminder idempotency is handled via a dispatch-log table (added during implementation — see PRD §10.5).
+Enqueue time decides *whether* an email is queued at all. `decideAdminEmail()` in
+`notification.service.ts` reads the admin's `NotificationPreference` and returns
+`immediate` (queue an email job), `digest` (skip — see below), or `off`.
+
+> **⚠ `digest` mode drops the email.** `DigestQueue` exists in the schema but is
+> never written to and never flushed; `POST /jobs/notifications/digest` does not
+> exist. `new_signup` and `new_booking` default to `digest`, so by default those
+> two events reach admins **in-app only**. Tracked in `docs/roadmap.md`.
+
+### Scheduled jobs
+
+All `/jobs/*` endpoints are guarded by `X-Scheduler-Secret` (`schedulerAuth.ts`).
+
+| Endpoint | Cadence | Purpose |
+|---|---|---|
+| `/jobs/notifications/dispatch` | frequent | Drain the outbox — the only sender |
+| `/jobs/notifications/reminders` | hourly | Enqueue `tour_reminder` per `Tour.notificationOffsets` |
+| `/jobs/notifications/maybe-reminders` | hourly | Enqueue `maybe_reminder` before the Maybe deadline |
+| `/jobs/notifications/maybe-deadlines` | hourly | Enqueue `maybe_deadline_missed` for unresolved Maybes |
+
+The three enqueue jobs are idempotent via `NotificationDispatchLog(eventKey UNIQUE)`.
+The dispatcher claims each job with a compare-and-swap on `attempts`, so two
+concurrent workers can't send the same job twice.
+
+> `DEPLOYMENT.md` calls for consolidating these four into **one hourly tick** before
+> deploy — Cloud Scheduler's free tier is 3 jobs, and four separate schedules push
+> Neon past its free compute allowance.
 
 See PRD §10 for event types, channels, and delivery mode defaults.
 
 ## Environments
 
-| Env | Description |
-|---|---|
-| `development` | Local Next.js dev server + local Hono API; local Postgres (Docker) or Cloud SQL proxy |
-| `preview` | Auto-deployed PR previews via GitHub Actions; both services deployed; shared staging DB |
-| `production` | Both services on Cloud Run; Cloud SQL production instance |
+| Env | Status | Description |
+|---|---|---|
+| `development` | **Live** | Everything in Docker Compose — Next.js, Hono, local Postgres, Firebase Auth emulator. See `README.md` |
+| `preview` | **Not built** | No PR-preview environment exists. There is no deploy workflow |
+| `production` | **Not built** | Target is Firebase Hosting + Cloud Run + Neon, per `DEPLOYMENT.md`. Not provisioned |
 
 ## CI/CD
 
-```
-GitHub PR → GitHub Actions
-     ├── Type check (tsc) — web + api + types
-     ├── Lint
-     └── Tests (Vitest — api)
+`.github/workflows/ci.yml` is the only workflow. It runs on PRs and pushes to
+`main`. **There is no deploy pipeline** — deployment is manual and not yet set up.
 
-Merge to main → GitHub Actions
-     ├── Build & deploy web → Cloud Run
-     └── Build & deploy api → Cloud Run
+```mermaid
+flowchart LR
+    PR["PR or push to main"] --> CI["GitHub Actions — ci.yml"]
+    CI --> Types["build @peace-buddy/types"]
+    Types --> Prisma["prisma generate"]
+    Prisma --> Lint["lint"]
+    Lint --> TC["typecheck"]
+    TC --> TA["test — api, with coverage"]
+    TA --> TW["test — web"]
+    TW --> Slack["notify Slack"]
 ```
+
+Both `apps/api/Dockerfile` and `apps/web/Dockerfile` are **development images** —
+each ends in `CMD … dev` and installs devDependencies. Production images do not
+exist yet; building them is a prerequisite for the first deploy.
