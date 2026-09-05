@@ -36,10 +36,16 @@ vi.mock('../lib/email', () => ({
   sendEmail: vi.fn(),
 }))
 
+vi.mock('../lib/slack', () => ({
+  sendSlack: vi.fn(),
+}))
+
 import { db } from '../lib/db'
 import { sendEmail } from '../lib/email'
+import { sendSlack } from '../lib/slack'
 const mdb = db as unknown as MockDb & { user: { findUnique: import('vitest').Mock<(...args: unknown[]) => unknown> } }
 const mockSendEmail = vi.mocked(sendEmail)
+const mockSendSlack = vi.mocked(sendSlack)
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -109,8 +115,15 @@ describe('dispatchPending', () => {
   })
 
   it('marks failed with backoff when dispatch throws and attempts < max', async () => {
-    // Use slack channel — still throws "not yet implemented" until Slice 4.
-    const job = jobFixture({ attempts: 2, channel: 'slack' })
+    // Realistic failure: the webhook returns non-2xx and sendSlack throws.
+    const job = jobFixture({
+      attempts: 2,
+      channel: 'slack',
+      eventType: 'new_booking',
+      recipientUserId: null,
+      payload: { tourId: 't1' },
+    })
+    mockSendSlack.mockRejectedValueOnce(new Error('Slack send failed: 500 rollup_error'))
     mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
     mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
     mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
@@ -119,11 +132,53 @@ describe('dispatchPending', () => {
 
     const update = (mdb.notificationJob.update.mock.calls[0][0] as any).data
     expect(update.status).toBe('pending')
-    expect(update.lastError).toMatch(/slack channel not yet implemented/i)
+    expect(update.lastError).toMatch(/Slack send failed: 500/)
     expect(update.scheduledFor).toBeInstanceOf(Date)
     // scheduledFor should be in the future (now + backoff)
     expect((update.scheduledFor as Date).getTime()).toBeGreaterThan(Date.now())
     expect(result).toMatchObject({ failed: 1, dead: 0 })
+  })
+
+  it('renders and sends a slack job, then marks it sent', async () => {
+    const job = jobFixture({
+      channel: 'slack',
+      eventType: 'new_booking',
+      recipientUserId: null,
+      payload: { tourId: 't1' },
+    })
+    mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
+    mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
+    mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
+
+    const result = await dispatchPending()
+
+    expect(mockSendSlack).toHaveBeenCalledTimes(1)
+    const arg = mockSendSlack.mock.calls[0][0] as { text: string }
+    expect(arg.text).toContain('/admin/tours/t1')
+    // No recipient lookup — slack jobs target a channel, not a user.
+    expect(mdb.user.findUnique).not.toHaveBeenCalled()
+    const update = (mdb.notificationJob.update.mock.calls[0][0] as any).data
+    expect(update.status).toBe('sent')
+    expect(update.sentAt).toBeInstanceOf(Date)
+    expect(result.sent).toBe(1)
+  })
+
+  it('fails a slack job with no template instead of sending', async () => {
+    const job = jobFixture({
+      attempts: 2,
+      channel: 'slack',
+      eventType: 'tour_reminder',
+      recipientUserId: null,
+    })
+    mdb.notificationJob.findMany.mockResolvedValueOnce([{ id: job.id }])
+    mdb.notificationJob.updateMany.mockResolvedValueOnce({ count: 1 })
+    mdb.notificationJob.findUnique.mockResolvedValueOnce(job)
+
+    await dispatchPending()
+
+    expect(mockSendSlack).not.toHaveBeenCalled()
+    const update = (mdb.notificationJob.update.mock.calls[0][0] as any).data
+    expect(update.lastError).toMatch(/no slack template/i)
   })
 
   it('marks dead when attempts have already reached MAX_ATTEMPTS (5)', async () => {

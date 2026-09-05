@@ -9,7 +9,9 @@ import {
 } from '@peace-buddy/types'
 import type { Prisma } from '@prisma/client'
 import { sendEmail } from '../lib/email'
+import { sendSlack } from '../lib/slack'
 import { renderEmail } from './notificationTemplates'
+import { renderSlack } from './slackTemplates'
 
 const MAX_ATTEMPTS = 5
 const BACKOFF_MS = [60_000, 300_000, 1_800_000, 7_200_000, 21_600_000] // 1m, 5m, 30m, 2h, 6h
@@ -132,7 +134,10 @@ async function dispatchAndComplete(job: Job): Promise<void> {
       await db.notificationJob.update({ where: { id: job.id }, data: sentPatch })
       return
     case NotificationChannelSchema.enum.slack:
-      throw new Error('slack channel not yet implemented')
+      // Same ordering rationale as email: send first, then mark sent.
+      await dispatchSlack(job)
+      await db.notificationJob.update({ where: { id: job.id }, data: sentPatch })
+      return
   }
 }
 
@@ -171,4 +176,18 @@ async function dispatchEmail(job: Job): Promise<void> {
   }
 
   await sendEmail({ to: recipient.email, ...rendered })
+}
+
+// Slack jobs target a shared channel, not a user, so recipientUserId is
+// expected to be null and is deliberately not consulted.
+async function dispatchSlack(job: Job): Promise<void> {
+  const rendered = renderSlack(
+    job.eventType as NotifEventKind,
+    (job.payload ?? {}) as Record<string, unknown>,
+  )
+  if (!rendered) {
+    throw new Error(`no slack template for event '${job.eventType}'`)
+  }
+
+  await sendSlack(rendered)
 }

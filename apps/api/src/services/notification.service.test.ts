@@ -9,6 +9,7 @@ import {
   enqueueInApp,
   enqueueInAppForAllAdmins,
   enqueueInAppForTourAdmins,
+  enqueueSlackForAdmins,
   listNotifications,
   countUnread,
   markRead,
@@ -338,11 +339,46 @@ describe('enqueueEmailForTourAdmins', () => {
     expect(mdb.notificationJob.createMany).not.toHaveBeenCalled()
   })
 
-  it('treats missing pref row as PRD §10.2 default (cancellation → immediate)', async () => {
+  it('treats missing pref row as email-off — Slack is the admin channel now', async () => {
     mdb.tourAdminAssignment.findMany.mockResolvedValueOnce([assignment('a1', [])])
+    await enqueueEmailForTourAdmins(tourId, args, mdb as any)
+    expect(mdb.notificationJob.createMany).not.toHaveBeenCalled()
+  })
+
+  it('still emails an admin who explicitly re-enables it', async () => {
+    mdb.tourAdminAssignment.findMany.mockResolvedValueOnce([
+      assignment('a1', [{ eventType: 'cancellation', emailEnabled: true, emailMode: 'immediate' }]),
+    ])
     await enqueueEmailForTourAdmins(tourId, args, mdb as any)
     const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ recipientUserId: string }>
     expect(data.map((d) => d.recipientUserId)).toEqual(['a1'])
+  })
+
+  it('enqueues one channel-wide slack job with no recipient, not one per admin', async () => {
+    await enqueueSlackForAdmins({ eventType: 'new_signup', payload: { buddyUserId: 'u1' } }, mdb as any)
+
+    expect(mdb.notificationJob.create).toHaveBeenCalledTimes(1)
+    expect(mdb.notificationJob.createMany).not.toHaveBeenCalled()
+    const data = (mdb.notificationJob.create.mock.calls[0][0] as any).data
+    expect(data).toMatchObject({
+      channel: 'slack',
+      eventType: 'new_signup',
+      recipientUserId: null,
+      locale: 'ja',
+    })
+  })
+
+  it('does not consult admin rows at all — the channel has no per-admin targeting', async () => {
+    await enqueueSlackForAdmins({ eventType: 'new_signup', payload: {} }, mdb as any)
+
+    expect(mdb.user.findMany).not.toHaveBeenCalled()
+    expect(mdb.tourAdminAssignment.findMany).not.toHaveBeenCalled()
+  })
+
+  it('skips buddy-targeted events — they have no slack template', async () => {
+    await enqueueSlackForAdmins({ eventType: 'tour_reminder', payload: {} }, mdb as any)
+
+    expect(mdb.notificationJob.create).not.toHaveBeenCalled()
   })
 
   it('always emails for cant_go_post_deadline regardless of prefs (PRD §10.2)', async () => {

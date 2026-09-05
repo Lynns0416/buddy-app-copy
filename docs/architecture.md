@@ -13,7 +13,7 @@ flowchart TD
     DB[("Neon Postgres<br/>via Prisma ORM")]
     R2["Cloudflare R2<br/>profile photos"]
     Gmail["Gmail API<br/>email via sendEmail"]
-    Slack["Slack webhook<br/>not wired — see PRD 10.3"]
+    Slack["Slack incoming webhook<br/>admin channel via sendSlack"]
 
     Browser --> Web
     Web -->|"REST + Firebase ID token"| API
@@ -22,7 +22,7 @@ flowchart TD
     API --> DB
     API --> R2
     API --> Gmail
-    API -.->|planned| Slack
+    API --> Slack
 ```
 
 **Nothing is deployed yet.** The hosting targets — Firebase Hosting for the web
@@ -215,14 +215,14 @@ flowchart TD
     Disp["dispatchPending()<br/>POST /jobs/notifications/dispatch"]
     N[("Notification<br/>in-app read model")]
     G["Gmail API"]
-    S["Slack"]
+    S["Slack webhook<br/>shared admin channel"]
     Dead["status = dead<br/>after 5 attempts"]
 
     E -->|"enqueue inside the same txn"| Q
     Q --> Disp
     Disp -->|channel in_app| N
     Disp -->|channel email| G
-    Disp -.->|"channel slack — throws today"| S
+    Disp -->|channel slack| S
     Disp -->|"retry with backoff<br/>1m, 5m, 30m, 2h, 6h"| Q
     Disp --> Dead
 ```
@@ -231,10 +231,17 @@ Enqueue time decides *whether* an email is queued at all. `decideAdminEmail()` i
 `notification.service.ts` reads the admin's `NotificationPreference` and returns
 `immediate` (queue an email job), `digest` (skip — see below), or `off`.
 
+Slack is enqueued differently: `enqueueSlackForAdmins()` writes **one** job per
+event with `recipientUserId: null`, because delivery is channel-wide rather than
+per-recipient. It consults no `NotificationPreference` row and is gated only on a
+template existing for the event — `NotificationPreference.slackEnabled` is
+informational only (`docs/decisions.md` 2026-08-15).
+
 > **⚠ `digest` mode drops the email.** `DigestQueue` exists in the schema but is
 > never written to and never flushed; `POST /jobs/notifications/digest` does not
-> exist. `new_signup` and `new_booking` default to `digest`, so by default those
-> two events reach admins **in-app only**. Tracked in `docs/roadmap.md`.
+> exist. Admin email is **off by default** now that admin notifications go to
+> Slack, so nothing lands here by accident — but an admin who enables email and
+> selects `digest` receives nothing. Tracked in `docs/roadmap.md`.
 
 ### Scheduled jobs
 

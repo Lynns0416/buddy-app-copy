@@ -12,6 +12,42 @@ duplicate that state here.
 
 ---
 
+## 2026-08-15 — Admin notifications go to one Slack channel; admin email dropped
+
+**Decision:** Slack replaces email for admin notifications entirely. One open
+channel via incoming webhook — not per-admin DMs. Admins default to
+`emailEnabled: false`, `slackEnabled: true`.
+
+**Why:** All 5–6 admins are already in Slack, and a channel is the right medium
+for high-volume low-urgency operational events. The whole immediate-vs-digest
+tension exists only because email handles volume badly: eight booking
+notifications scroll past harmlessly in a channel and clog an inbox. A channel
+*is* the digest.
+
+**Rejected — build the admin email path** (templates for `new_signup` /
+`new_booking` in two locales, an `enqueueEmailForAllAdmins` helper, flipping both
+default tables): strictly more work than the Slack sender, and it would have
+shipped digest mode as a selectable UI option with no flush job behind it — a
+silent-failure trap for whoever picked it.
+
+**Rejected — per-admin DMs:** hides operational state from the team and makes
+individuals bottlenecks. A shared channel is the safer default even though it
+deviates from the PRD §10.2 "assigned admins" targeting for
+`maybe_deadline_missed` — at 5–6 admins, broadcast is acceptable and arguably
+better.
+
+**Open:** splitting into multiple channels by event type. Start with one; revisit
+if the single channel proves noisy.
+
+**Consequence:** a channel post has no recipient user, so these jobs carry
+`recipientUserId: null` and one job row is written per event rather than one per
+admin. Per-admin `NotificationPreference` rows stop being load-bearing for
+admin delivery.
+
+**Current state:** PRD §10.2–§10.4, `docs/roadmap.md`.
+
+---
+
 ## 2026-08-15 — Auth stays Firebase + Google + Apple; Slack rejected as identity provider
 
 **Decision:** Identity remains Firebase Auth with Google and Apple as the OAuth

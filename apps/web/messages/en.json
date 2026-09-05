@@ -11,7 +11,7 @@
     "slackEnabledHeader": "Slack",
     "modeImmediate": "Immediate",
     "modeDigest": "Daily digest",
-    "slackDisabledTooltip": "Slack delivery ships in a future release",
+    "slackDisabledTooltip": "Slack posts go to one shared admin channel — there is no per-admin toggle",
     "events": {
       "new_signup": "New buddy signup",
       "new_booking": "New booking",

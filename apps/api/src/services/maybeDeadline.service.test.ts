@@ -7,7 +7,7 @@ interface MockDb {
   tour: { findMany: MockFn }
   tourAdminAssignment: { findMany: MockFn }
   notificationDispatchLog: { create: MockFn }
-  notificationJob: { createMany: MockFn }
+  notificationJob: { createMany: MockFn; create: MockFn }
   $transaction: MockFn
 }
 
@@ -16,7 +16,7 @@ vi.mock('../lib/db', () => {
     tour: { findMany: vi.fn() },
     tourAdminAssignment: { findMany: vi.fn() },
     notificationDispatchLog: { create: vi.fn() },
-    notificationJob: { createMany: vi.fn() },
+    notificationJob: { createMany: vi.fn(), create: vi.fn() },
     $transaction: vi.fn(),
   }
   return { db: mockDb }
@@ -119,6 +119,10 @@ describe('enqueueMaybeDeadlineMissed', () => {
       (c) => (c[0] as { data: { channel: string }[] }).data.map((d) => d.channel),
     )
     expect(channels.sort()).toEqual(['email', 'email', 'in_app', 'in_app'])
+    // Slack is one row for the shared channel, not one per admin.
+    expect(mdb.notificationJob.create).toHaveBeenCalledTimes(1)
+    const slackRow = (mdb.notificationJob.create.mock.calls[0][0] as { data: Record<string, unknown> }).data
+    expect(slackRow).toMatchObject({ channel: 'slack', recipientUserId: null })
   })
 
   it('counts P2002 from the dispatch log as alreadySent and emits no jobs', async () => {
@@ -177,9 +181,14 @@ describe('enqueueMaybeDeadlineMissed', () => {
 
     await enqueueMaybeDeadlineMissed(NOW)
 
-    const rows = mdb.notificationJob.createMany.mock.calls.flatMap(
-      (c) => (c[0] as { data: { payload: Record<string, unknown>; eventType: string }[] }).data,
-    )
+    const rows = [
+      ...mdb.notificationJob.createMany.mock.calls.flatMap(
+        (c) => (c[0] as { data: { payload: Record<string, unknown>; eventType: string }[] }).data,
+      ),
+      ...mdb.notificationJob.create.mock.calls.map(
+        (c) => (c[0] as { data: { payload: Record<string, unknown>; eventType: string } }).data,
+      ),
+    ]
     for (const d of rows) {
       expect(d.eventType).toBe('maybe_deadline_missed')
       expect(d.payload).toEqual({ tourId: 't1' })

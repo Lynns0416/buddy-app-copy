@@ -1,7 +1,7 @@
 import { db } from '../lib/db'
 import type { Locale, UserResponse } from '@peace-buddy/types'
 import { UserRoleSchema, BuddyStatusSchema, NotifEventKindSchema } from '@peace-buddy/types'
-import { enqueueInAppForAllAdmins } from './notification.service'
+import { enqueueInAppForAllAdmins, enqueueSlackForAdmins } from './notification.service'
 
 // Explicit select — never fetches internalNotes, tier, adminEvaluations, or other admin-only fields
 const userSelect = {
@@ -63,13 +63,12 @@ export async function upsertUser(
     })
 
     if (!existing) {
-      await enqueueInAppForAllAdmins(
-        {
-          eventType: NotifEventKindSchema.enum.new_signup,
-          payload: { buddyUserId: row.id, email: row.email, displayName: row.buddyProfile?.displayName ?? null },
-        },
-        tx,
-      )
+      const signupArgs = {
+        eventType: NotifEventKindSchema.enum.new_signup,
+        payload: { buddyUserId: row.id, email: row.email, displayName: row.buddyProfile?.displayName ?? null },
+      }
+      await enqueueInAppForAllAdmins(signupArgs, tx)
+      await enqueueSlackForAdmins(signupArgs, tx)
     }
 
     return row

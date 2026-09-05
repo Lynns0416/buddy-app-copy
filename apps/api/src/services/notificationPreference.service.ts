@@ -1,22 +1,33 @@
 import { db } from '../lib/db'
 import {
-  EmailModeSchema,
   NotifEventTypeSchema,
   type NotifEventType,
   type NotificationPreferenceItem,
   type NotificationPreferencesResponse,
   type UpdateNotificationPreferences,
 } from '@peace-buddy/types'
+import { DEFAULT_ADMIN_EMAIL_PREFS } from './adminNotificationDefaults'
 
-// Defaults match the PRD §10.2 table. Used to backfill any event types the
-// admin hasn't explicitly configured yet.
-const DEFAULTS: Record<NotifEventType, Omit<NotificationPreferenceItem, 'eventType'>> = {
-  new_signup: { emailEnabled: true, emailMode: EmailModeSchema.enum.digest, slackEnabled: false },
-  new_booking: { emailEnabled: true, emailMode: EmailModeSchema.enum.digest, slackEnabled: false },
-  cancellation: { emailEnabled: true, emailMode: EmailModeSchema.enum.immediate, slackEnabled: false },
-  maybe_resolved: { emailEnabled: true, emailMode: EmailModeSchema.enum.immediate, slackEnabled: false },
-  maybe_deadline_missed: { emailEnabled: true, emailMode: EmailModeSchema.enum.immediate, slackEnabled: false },
-}
+// What the admin settings screen shows for event types the admin has not
+// explicitly configured. Email values are *derived* from
+// DEFAULT_ADMIN_EMAIL_PREFS in adminNotificationDefaults.ts — the table that decides
+// what actually sends — so the screen cannot drift from delivery behaviour.
+//
+// Slack is the admin channel (docs/decisions.md 2026-08-15), so email is off by
+// default. `slackEnabled` is always true and informational only: Slack posts to
+// one shared channel with no per-admin targeting, so nothing reads this flag at
+// enqueue time and the UI renders it as a disabled control.
+const DEFAULTS: Record<NotifEventType, Omit<NotificationPreferenceItem, 'eventType'>> =
+  Object.fromEntries(
+    NotifEventTypeSchema.options.map((eventType) => [
+      eventType,
+      {
+        emailEnabled: DEFAULT_ADMIN_EMAIL_PREFS[eventType].enabled,
+        emailMode: DEFAULT_ADMIN_EMAIL_PREFS[eventType].mode,
+        slackEnabled: true,
+      },
+    ]),
+  ) as Record<NotifEventType, Omit<NotificationPreferenceItem, 'eventType'>>
 
 export async function getAdminNotificationPreferences(
   adminId: string,

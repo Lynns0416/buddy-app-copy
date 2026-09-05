@@ -9,6 +9,7 @@ import {
   enqueueEmailForTourAdmins,
   enqueueInApp,
   enqueueInAppForTourAdmins,
+  enqueueSlackForAdmins,
 } from './notification.service'
 
 type CreateBookingResult =
@@ -136,14 +137,12 @@ export async function createBooking(
           select: bookingSelect,
         })
       }
-      await enqueueInAppForTourAdmins(
-        tourId,
-        {
-          eventType: NotifEventKindSchema.enum.new_booking,
-          payload: { bookingId: row.id, tourId, sessionId, buddyId: buddy.id, status: row.status },
-        },
-        tx,
-      )
+      const bookingArgs = {
+        eventType: NotifEventKindSchema.enum.new_booking,
+        payload: { bookingId: row.id, tourId, sessionId, buddyId: buddy.id, status: row.status },
+      }
+      await enqueueInAppForTourAdmins(tourId, bookingArgs, tx)
+      await enqueueSlackForAdmins(bookingArgs, tx)
       return row
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
@@ -274,6 +273,7 @@ export async function updateBooking(
       }
       await enqueueInAppForTourAdmins(session.tourId, cancelArgs, tx)
       await enqueueEmailForTourAdmins(session.tourId, cancelArgs, tx)
+      await enqueueSlackForAdmins(cancelArgs, tx)
     }
 
     if (wasMaybe && newStatus !== BookingStatusSchema.enum.maybe) {
@@ -283,6 +283,7 @@ export async function updateBooking(
       }
       await enqueueInAppForTourAdmins(session.tourId, resolvedArgs, tx)
       await enqueueEmailForTourAdmins(session.tourId, resolvedArgs, tx)
+      await enqueueSlackForAdmins(resolvedArgs, tx)
     }
 
     return u
@@ -358,6 +359,7 @@ export async function reportCantGo(
     }
     await enqueueInAppForTourAdmins(session.tourId, cantGoArgs, tx)
     await enqueueEmailForTourAdmins(session.tourId, cantGoArgs, tx)
+    await enqueueSlackForAdmins(cantGoArgs, tx)
     return u
   })
 

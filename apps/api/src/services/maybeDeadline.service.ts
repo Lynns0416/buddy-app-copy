@@ -6,7 +6,11 @@ import {
   type MaybeDeadlineResult,
 } from '@peace-buddy/types'
 import { Prisma } from '@prisma/client'
-import { enqueueEmailForTourAdmins, enqueueInAppForTourAdmins } from './notification.service'
+import {
+  enqueueEmailForTourAdmins,
+  enqueueInAppForTourAdmins,
+  enqueueSlackForAdmins,
+} from './notification.service'
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -68,6 +72,7 @@ async function tryEnqueueForTour(tourId: string): Promise<'enqueued' | 'already_
       }
       await enqueueInAppForTourAdmins(tourId, args, tx)
       await enqueueEmailForTourAdmins(tourId, args, tx)
+      await enqueueSlackForAdmins(args, tx)
     })
     return 'enqueued'
   } catch (e) {

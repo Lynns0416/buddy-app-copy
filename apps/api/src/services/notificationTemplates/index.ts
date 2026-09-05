@@ -1,4 +1,5 @@
 import type { Locale, NotifEventKind } from '@peace-buddy/types'
+import { webBase } from '../../lib/webBase'
 import messagesEn from './messages.en.json'
 import messagesJa from './messages.ja.json'
 
@@ -16,23 +17,14 @@ type Entry = {
 
 const APP_NAME = 'Peace Buddy'
 
-// Events that intentionally have no email body yet:
-// - new_signup, new_booking: defaults to digest (PRD §10.2); ships with the
-//   daily digest cron.
+// Events that intentionally have no email body:
+// - new_signup, new_booking: admin-targeted, delivered via Slack instead of
+//   email (docs/decisions.md 2026-08-15). See services/slackTemplates.
 // - waitlist_opened: ships alongside its respective cron job.
 // - self_eval_prompt: in-app only per PRD §10.1.
 const messages: Record<Locale, Record<string, Entry>> = {
   en: messagesEn as Record<string, Entry>,
   ja: messagesJa as Record<string, Entry>,
-}
-
-function webBase(): string {
-  const url = process.env.WEB_BASE_URL
-  if (url) return url
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('WEB_BASE_URL is required in production')
-  }
-  return 'http://localhost:3000'
 }
 
 const HTML_ESCAPE: Record<string, string> = {

@@ -3,6 +3,7 @@ import {
   BuddyStatusSchema,
   BookingStatusSchema,
   EmailModeSchema,
+  LocaleSchema,
   NotificationChannelSchema,
   UserRoleSchema,
   type EmailMode,
@@ -13,6 +14,8 @@ import {
 } from '@peace-buddy/types'
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { hasEmailTemplate } from './notificationTemplates'
+import { hasSlackTemplate } from './slackTemplates'
+import { DEFAULT_ADMIN_EMAIL_PREFS } from './adminNotificationDefaults'
 
 type Tx = PrismaClient | Prisma.TransactionClient
 
@@ -35,15 +38,6 @@ function adminPrefEnumFor(kind: NotifEventKind): NotifEventType | null {
     case 'maybe_deadline_missed': return 'maybe_deadline_missed'
     default: return null
   }
-}
-
-// Defaults per PRD §10.2 when no NotificationPreference row exists for an admin.
-const DEFAULT_ADMIN_EMAIL_PREFS: Record<NotifEventType, { enabled: boolean; mode: EmailMode }> = {
-  new_signup: { enabled: true, mode: EmailModeSchema.enum.digest },
-  new_booking: { enabled: true, mode: EmailModeSchema.enum.digest },
-  cancellation: { enabled: true, mode: EmailModeSchema.enum.immediate },
-  maybe_resolved: { enabled: true, mode: EmailModeSchema.enum.immediate },
-  maybe_deadline_missed: { enabled: true, mode: EmailModeSchema.enum.immediate },
 }
 
 type AdminPrefRow = { eventType: NotifEventType; emailEnabled: boolean; emailMode: EmailMode }
@@ -203,12 +197,40 @@ export async function enqueueInAppForBookedBuddies(
   })
 }
 
+// ---- Slack enqueue helper ----
+//
+// Admin notifications post to one shared channel (docs/decisions.md
+// 2026-08-15), so a single job covers every admin rather than one job per
+// recipient. There is no per-admin targeting and therefore no
+// NotificationPreference lookup — the channel is all-or-nothing, gated only by
+// whether a template exists for the event.
+export async function enqueueSlackForAdmins(
+  args: Omit<EnqueueArgs, 'recipientUserId'>,
+  tx: Tx,
+) {
+  if (!hasSlackTemplate(args.eventType)) return
+
+  await tx.notificationJob.create({
+    data: {
+      channel: NotificationChannelSchema.enum.slack,
+      eventType: args.eventType,
+      recipientUserId: null,
+      payload: args.payload as Prisma.InputJsonValue,
+      locale: LocaleSchema.enum.ja,
+      scheduledFor: args.scheduledFor ?? new Date(),
+    },
+    select: { id: true },
+  })
+}
+
 // ---- Email enqueue helpers ----
 //
 // Each mirrors its in-app counterpart and skips silently when no template is
 // registered for the event (slice-3 surface; later slices add more templates).
-// Admin-targeted helpers consult NotificationPreference; digest-mode admins
-// are skipped here and will be picked up by the slice-5 DigestQueue writer.
+// Admin-targeted helpers consult NotificationPreference. Digest-mode admins are
+// skipped and nothing buffers them — DigestQueue has no writer and no flush job
+// (docs/decisions.md 2026-08-15). Admin email is off by default, so this only
+// affects an admin who explicitly re-enables email and picks digest.
 
 export async function enqueueEmail(args: EnqueueArgs, tx: Tx) {
   if (!hasEmailTemplate(args.eventType)) return

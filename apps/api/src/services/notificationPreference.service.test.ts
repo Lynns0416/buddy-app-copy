@@ -36,9 +36,9 @@ describe('getAdminNotificationPreferences', () => {
     const result = await getAdminNotificationPreferences('admin-1')
     expect(result.preferences).toHaveLength(5)
     const map = new Map(result.preferences.map((p) => [p.eventType, p]))
-    // PRD §10.2 defaults
-    expect(map.get('new_signup')).toEqual({ eventType: 'new_signup', emailEnabled: true, emailMode: 'digest', slackEnabled: false })
-    expect(map.get('cancellation')).toEqual({ eventType: 'cancellation', emailEnabled: true, emailMode: 'immediate', slackEnabled: false })
+    // PRD §10.2 defaults — Slack is the admin channel, email off unless opted in.
+    expect(map.get('new_signup')).toEqual({ eventType: 'new_signup', emailEnabled: false, emailMode: 'immediate', slackEnabled: true })
+    expect(map.get('cancellation')).toEqual({ eventType: 'cancellation', emailEnabled: false, emailMode: 'immediate', slackEnabled: true })
   })
 
   it('overlays stored rows on top of defaults', async () => {

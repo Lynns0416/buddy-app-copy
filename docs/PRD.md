@@ -80,7 +80,7 @@ A web-first internal booking application for managing group tour assignments. Th
   1. Buddy signs in via Google or Apple in the frontend (Firebase issues an ID token).
   2. Frontend calls `POST /auth/register` with an optional profile payload (`displayName`, `realName`, `languages`, `photoUrl`, `bio`). The server upserts a `User` (role `buddy`) and a `BuddyProfile` in `pending` state. If `displayName` is missing it falls back to the email prefix.
   3. Subsequent requests go through `authMiddleware`, which validates the Firebase token and looks the user up by `firebaseUid`.
-  4. Assigned admins receive an in-app notification on new signup (per-admin email mode honoured — default daily digest; digest flush itself is **Planned**, see §10.5).
+  4. Admins receive an in-app notification and a post to the shared Slack channel on new signup. Admin email is off by default (§10.2).
   5. Admin approves or rejects via `PUT /admin/buddies/:id/status`. Allowed status values via the API: `trainee` / `active` / `rejected`. See §11.4 for the approval flow and §5.1 for status constraints.
   6. On approval (`pending` → `trainee`) or rejection (`pending` → `rejected`), the buddy receives an in-app + immediate-email notification.
 - **Admin accounts:** A `User` with role `admin` or `super_admin` is created by a Super Admin (`POST /admin/profiles`). On first login, `ensureAdminProfile` middleware lazily creates an `AdminProfile` row if one is missing, using Firebase `name` or the email prefix as the initial display name.
@@ -598,7 +598,7 @@ Same scale as admin evaluations: **1 = Poor / 2 = Below Average / 3 = Average / 
 
 **Shipped:** Event-triggered in-app + email delivery via an outbox/dispatcher pattern. The `Notification` (read-model), `NotificationJob` (outbox queue), `NotificationPreference`, and `DigestQueue` tables are live; events are enqueued inside the originating transaction and a single cron endpoint (`POST /jobs/notifications/dispatch`) drains the queue. Email is sent via Gmail API; recipient locale comes from `User.locale` and templates are bundled per-locale.
 
-**Planned:** Time-based reminders (tour reminders, Maybe pre-/post-deadline), the daily admin digest flush, the dispatch-log idempotency table, and Slack delivery — see §10.5 and `docs/roadmap.md`.
+**Planned:** The daily admin digest flush — see §10.5 and `docs/roadmap.md`. It is no longer on the launch path now that admin notifications go to Slack rather than email (`docs/decisions.md` 2026-08-15).
 
 ### 10.1 Buddy Notifications
 
@@ -620,33 +620,60 @@ Tour-edit notifications fire **only** when `tourDate` or `location` changes on t
 
 Admins independently configure their preferred notification channel(s) and delivery mode per event type. Tour-specific events (new booking, cancellation, post-deadline reports, Maybe resolution, Maybe deadline missed) are routed to **assigned admins only**. If no admins are assigned to a tour, no tour-specific notifications are sent for that tour.
 
+**Slack is the primary admin channel; email is off by default.** See
+`docs/decisions.md` 2026-08-15. Every admin event posts to one shared Slack
+channel, and an admin may opt back into email per event.
+
 | Event | Channels | Default Timing | Status |
 |---|---|---|---|
-| New buddy signup (`new_signup`) | In-app + email (Slack Planned) | Daily digest (email) | In-app shipped; email-immediate shipped; daily digest flush Planned (§10.5) |
-| New booking (`new_booking`) | In-app + email (Slack Planned) | Daily digest (email) | Same as above |
-| Booking cancelled before deadline (`cancellation`) | In-app + email (Slack Planned) | Immediate | Shipped |
-| Post-deadline "I can't go" report (`cant_go_post_deadline`) | In-app + email (Slack Planned) | **Always immediate — not configurable** | Shipped |
-| Maybe → Confirmed or Declined (`maybe_resolved`) | In-app + email (Slack Planned) | Immediate | Shipped |
-| Maybe deadline passed unresolved (`maybe_deadline_missed`) | In-app + email (Slack Planned) | On deadline (hourly evaluation) | Cron Planned (§10.5) |
+| New buddy signup (`new_signup`) | In-app + Slack (email opt-in) | Immediate | Shipped |
+| New booking (`new_booking`) | In-app + Slack (email opt-in) | Immediate | Shipped |
+| Booking cancelled before deadline (`cancellation`) | In-app + Slack (email opt-in) | Immediate | Shipped |
+| Post-deadline "I can't go" report (`cant_go_post_deadline`) | In-app + Slack + email | **Always immediate — not configurable** | Shipped |
+| Maybe → Confirmed or Declined (`maybe_resolved`) | In-app + Slack (email opt-in) | Immediate | Shipped |
+| Maybe deadline passed unresolved (`maybe_deadline_missed`) | In-app + Slack (email opt-in) | On deadline (hourly evaluation) | Shipped |
 
-`NotifEventType` enum values shipped in code: `new_signup`, `new_booking`, `cancellation`, `maybe_resolved`, `maybe_deadline_missed`. Post-deadline "I can't go" is handled by code as always-immediate and is intentionally not a configurable preference — it is not in the enum.
+`NotifEventType` enum values shipped in code: `new_signup`, `new_booking`, `cancellation`, `maybe_resolved`, `maybe_deadline_missed`. Post-deadline "I can't go" is handled by code as always-immediate and is intentionally not a configurable preference — it is not in the enum. It is the one admin event that still emails by default, deliberately: it is the most urgent and warrants a second channel.
+
+**Slack targeting caveat:** Slack posts go to one shared channel, so the
+"assigned admins only" routing above applies to the in-app and email channels
+only. Every admin in the channel sees every tour-specific event. At 5–6 admins
+this is acceptable and arguably better for shared visibility — see
+`docs/decisions.md`.
 
 **Email delivery modes (configurable per admin per event):**
 - **Immediate:** email sent at time of event
-- **Daily digest:** single email at 09:00 JST covering all activity from the previous day; only sent if there was activity
+- **Daily digest:** single email at 09:00 JST covering all activity from the previous day; only sent if there was activity. **Not implemented** — nothing writes to `DigestQueue` and there is no flush job. An admin who enables email and selects digest receives nothing. Tracked in `docs/roadmap.md`.
 
-**Default email delivery modes:**
-- Cancellations, Maybe resolutions, Maybe deadline missed: Immediate
-- New bookings and new signups: Daily digest
-- Post-deadline "I can't go" reports: Always immediate (not configurable)
+**Default delivery per admin:**
+- All five configurable events: Slack on, email off
+- Post-deadline "I can't go" reports: Always immediate in-app + Slack + email (not configurable)
 
-Slack notifications are always immediate when enabled.
+Slack notifications are always immediate.
 
 ### 10.3 Slack Delivery Model
 
-> **Planned (not shipped).** The `NotificationPreference.slackEnabled` column exists and the dispatcher recognises `channel: 'slack'` jobs, but the slack channel currently fails fast with `"slack channel not yet implemented"`. No webhook is wired and no enqueue site emits Slack jobs.
+One shared Slack channel (e.g. `#peace-buddy-ops`) configured via a single
+`SLACK_WEBHOOK_URL` env var, posted to with an incoming webhook.
 
-One shared Slack channel (e.g. `#peace-buddy-ops`) configured via a single `SLACK_WEBHOOK_URL` env var. Each admin sets a global Slack opt-in in account settings; per-event Slack toggles are deferred to v1.1. Messages may `@mention` opted-in admins when an event affects them specifically.
+Because delivery is channel-wide rather than per-recipient:
+
+- One `NotificationJob` row is written per event, not one per admin, and it
+  carries `recipientUserId: null`.
+- `NotificationPreference.slackEnabled` is **informational only** — nothing reads
+  it at enqueue time. Per-admin Slack toggles and `@mention` targeting are
+  deferred; they would require per-user Slack IDs and a bot token rather than a
+  webhook.
+- The channel is single-language (Japanese), since there is no per-recipient
+  locale to honour. Templates live in
+  `apps/api/src/services/slackTemplates/messages.ja.json`.
+
+Only admin-targeted events post to Slack. Buddy-targeted events stay on in-app +
+email — they have no place in an internal ops channel.
+
+Sending is gated the same way as email: `SLACK_ENABLED=true` or
+`NODE_ENV=production`, with `SLACK_DISABLED=true` as a kill switch. Failures land
+in `NotificationJob.lastError` and retry on the standard backoff.
 
 ### 10.4 Channels and Storage
 

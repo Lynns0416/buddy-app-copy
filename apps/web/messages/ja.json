@@ -11,7 +11,7 @@
     "slackEnabledHeader": "Slack",
     "modeImmediate": "即時",
     "modeDigest": "1日まとめ",
-    "slackDisabledTooltip": "Slack 通知は今後のリリースで対応予定です",
+    "slackDisabledTooltip": "Slack は共有の管理者チャンネルに投稿されます。管理者ごとの設定はありません",
     "events": {
       "new_signup": "新規バディ登録",
       "new_booking": "新しい予約",

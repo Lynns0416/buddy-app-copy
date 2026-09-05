@@ -10,13 +10,15 @@ Source of truth for completed work is `git log` — do not duplicate ship dates 
 
 Target: release in 1–2 weeks from 2026-08-15. Only these two block it.
 
-- [ ] **Flip `new_signup` and `new_booking` to `emailMode: immediate`** — `apps/api/src/services/notificationPreference.service.ts:14-15`. Both default to `digest`, and the digest flush job does not exist, so admins would receive **no email at all** when a buddy signs up. Buddies then sit in `pending` unapproved and PRD §4 stalls silently. One-line fix; it removes the digest job from the launch path entirely.
+- [x] **Admin notifications via Slack** — replaced the broken admin email path rather than building it. `new_signup` and `new_booking` had no email template and no email enqueue site at all, so the originally-planned "flip the defaults to immediate" would have changed nothing. See `docs/decisions.md` 2026-08-15.
+- [ ] **Create the Slack app and set `SLACK_WEBHOOK_URL`** — the code ships inert without it. Sending is gated on `SLACK_ENABLED=true` or `NODE_ENV=production`; until the webhook exists, admins get in-app only. **This is now the launch dependency.**
 - [ ] **Apple sign-in: Firebase console config** (Service ID + key) — the button ships today and errors until it is set. Either finish the config or hide the button; do not launch with a broken provider. See `docs/decisions.md` 2026-08-15.
 
 Deliberately **not** blocking launch — all are missing nudges rather than broken flows, and at ~50 buddies / 5–6 admins they surface within a day:
 
 - `self_eval_prompt` and `waitlist_opened` never enqueued (see below)
 - `upsertUser` duplicate-account risk from Apple Hide My Email (see `docs/decisions.md`)
+- Digest mode stays selectable in the admin UI with no flush job behind it. Admin email is off by default so nobody hits it by accident, but an admin who enables email *and* picks digest gets silence. Either build the job or remove the option.
 
 ---
 
@@ -31,7 +33,7 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 - [x] `POST /jobs/notifications/reminders` — hourly. Match `Tour.notificationOffsets` (default `[3, 1]`) against now and enqueue `tour_reminder` to confirmed / maybe / waitlist buddies. Shipped #103.
 - [x] `POST /jobs/notifications/maybe-reminders` — hourly. Enqueue `maybe_reminder` to buddies still in Maybe at offsets `[3, 1]` days before the tour's `maybeDeadline`. Shipped #104.
 - [x] `POST /jobs/notifications/maybe-deadlines` — hourly. Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe past deadline. Fires on the JST day after `maybeDeadline` only; idempotent per tour via `NotificationDispatchLog`.
-- [ ] `POST /jobs/notifications/digest` — 09:00 JST. Flush `DigestQueue` per admin; one email per admin per day; skip if no activity. Admins who choose `emailMode = 'digest'` for any event currently get nothing. **Not launch-blocking** once the defaults flip to `immediate` (see "Before launch") — build it when someone actually wants digest mode.
+- [ ] `POST /jobs/notifications/digest` — 09:00 JST. Flush `DigestQueue` per admin; one email per admin per day; skip if no activity. Admins who choose `emailMode = 'digest'` for any event currently get nothing — `DigestQueue` has no writer, so even building the flush job would find an empty table. **Not launch-blocking** now that admin notifications go to Slack and admin email is off by default — build it only if someone actually asks for digest email.
 
 ### Schema prerequisite
 
@@ -45,7 +47,8 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 
 ### Slack channel (PRD §10.3)
 
-- [ ] Wire Slack delivery. The dispatcher currently fails `channel: 'slack'` jobs with `"slack channel not yet implemented"`. Needs `SLACK_WEBHOOK_URL` env var, a sender, and enqueue sites that emit `channel: 'slack'` rows when an admin has `slackEnabled = true` for the event. Confirm whether Slack is still in v1 scope before building.
+- [x] Slack delivery shipped for all six admin events — `lib/slack.ts` sender, `services/slackTemplates/`, `enqueueSlackForAdmins`, and the dispatcher case. One shared channel via `SLACK_WEBHOOK_URL`; still needs the webhook created (see "Before launch").
+- [ ] Per-admin Slack targeting / `@mentions` — deferred. Requires per-user Slack IDs and a bot token instead of an incoming webhook. `slackEnabled` is informational only until then.
 
 ---
 

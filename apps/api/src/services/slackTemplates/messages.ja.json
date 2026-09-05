@@ -1,0 +1,32 @@
+{
+  "new_signup": {
+    "text": ":wave: *新規バディ登録* — 承認待ちです。",
+    "cta": "バディを確認する",
+    "path": "/admin/buddies/{buddyUserId}"
+  },
+  "new_booking": {
+    "text": ":calendar: *ツアーに参加希望* がありました。",
+    "cta": "ツアーを確認する",
+    "path": "/admin/tours/{tourId}"
+  },
+  "booking_cancelled": {
+    "text": ":x: *ツアー参加がキャンセル* されました。",
+    "cta": "ツアーを確認する",
+    "path": "/admin/tours/{tourId}"
+  },
+  "maybe_resolved": {
+    "text": ":white_check_mark: *「未定」が確定* しました。",
+    "cta": "ツアーを確認する",
+    "path": "/admin/tours/{tourId}"
+  },
+  "maybe_deadline_missed": {
+    "text": ":alarm_clock: *「未定」のまま期限を過ぎた* バディがいます。個別に確認してください。",
+    "cta": "ツアーを確認する",
+    "path": "/admin/tours/{tourId}"
+  },
+  "cant_go_post_deadline": {
+    "text": ":rotating_light: *期限後の欠席連絡* がありました。",
+    "cta": "ツアーを確認する",
+    "path": "/admin/tours/{tourId}"
+  }
+}
