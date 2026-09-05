@@ -60,8 +60,8 @@ describe('LoginPage', () => {
 
   it('renders sign-in buttons', () => {
     render(<LoginPage />)
-    expect(screen.getByText('google')).toBeInTheDocument()
-    expect(screen.getByText('apple')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'google' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'apple' })).toBeInTheDocument()
   })
 
   it('renders nothing while loading', () => {

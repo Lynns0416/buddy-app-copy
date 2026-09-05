@@ -65,7 +65,7 @@ describe('SelfEvaluationForm', () => {
         onCancel={vi.fn()}
       />,
     )
-    expect(screen.queryByText('actions.cancel')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'actions.cancel' })).toBeNull()
   })
 
   it('shows cancel button when existing is provided and onCancel is set', () => {
@@ -77,7 +77,7 @@ describe('SelfEvaluationForm', () => {
         onCancel={vi.fn()}
       />,
     )
-    expect(screen.getByText('actions.cancel')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'actions.cancel' })).toBeTruthy()
   })
 
   it('calls onCancel when cancel button clicked', () => {
@@ -90,7 +90,7 @@ describe('SelfEvaluationForm', () => {
         onCancel={onCancel}
       />,
     )
-    fireEvent.click(screen.getByText('actions.cancel'))
+    fireEvent.click(screen.getByRole('button', { name: 'actions.cancel' }))
     expect(onCancel).toHaveBeenCalledOnce()
   })
 
@@ -102,6 +102,6 @@ describe('SelfEvaluationForm', () => {
         onSaved={vi.fn()}
       />,
     )
-    expect(screen.queryByText('actions.cancel')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'actions.cancel' })).toBeNull()
   })
 })

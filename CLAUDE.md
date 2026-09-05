@@ -19,6 +19,7 @@ Source of truth for completed work is `git log`.
 - **Zod**: validate at all system boundaries (routes). Parse, never cast.
 - **i18n**: every UI string via `useTranslations`. Update `en.json` + `ja.json` together, always.
 - **Tests**: Vitest, colocated `*.test.ts`. Route tests use `buildApp()` with stub auth middleware. Mock Prisma + Firebase via `vi.mock`.
+- **Tests never hardcode user-facing text**: a copy edit must not break a logic test. Assert against the string resource, not a copy of it — import `messages.*.json` in `apps/api`, and in `apps/web` mock `useTranslations` to echo the key (`() => (key: string) => key`) so assertions read keys. Prefer `getByRole('button' | 'link', { name })` over `getByText` for anything interactive. Literals stay only for machine-readable values another system depends on: URLs and paths, encoding output, API error codes, and test data fixtures.
 - **Commits**: one concern per commit, no co-author signature.
 - **Web routing**: always use `routes.*` from `apps/web/src/lib/routes.ts`, never raw strings.
 - **Admin tables**: all columns must be client-side sortable. Use the `SortIcon` component from `apps/web/src/components/sort-icon.tsx` with `SortField`/`SortDir`/`handleSort`/`sorted` pattern (see `admin/groups/page.tsx` for reference).

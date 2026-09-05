@@ -52,7 +52,7 @@ describe('AppShell', () => {
 
   it('calls signOut and redirects to login on sign-out click', async () => {
     render(<AppShell variant="buddy"><div /></AppShell>)
-    const buttons = screen.getAllByText('signOut')
+    const buttons = screen.getAllByRole('button', { name: 'signOut' })
     buttons[0].click()
     await vi.waitFor(() => expect(mockSignOut).toHaveBeenCalled())
     await vi.waitFor(() => expect(mockPush).toHaveBeenCalledWith('/en/login'))

@@ -115,8 +115,8 @@ describe('BuddyHistoryPage', () => {
   it('renders view link pointing to tour detail', async () => {
     mockUseMyBookings.mockReturnValue({ bookings: [makeEntry()], error: false })
     render(<BuddyHistoryPage />)
-    await waitFor(() => expect(screen.getByText('viewTour')).toBeInTheDocument())
-    expect(screen.getByText('viewTour').closest('a')).toHaveAttribute('href', '/en/buddy/tours/t1')
+    await waitFor(() => expect(screen.getByRole('link', { name: 'viewTour' })).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'viewTour' })).toHaveAttribute('href', '/en/buddy/tours/t1')
   })
 
   it('passes ready=true when auth is loaded and user exists', () => {

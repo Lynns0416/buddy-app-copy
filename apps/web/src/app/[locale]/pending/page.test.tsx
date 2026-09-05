@@ -75,7 +75,7 @@ describe('PendingPage', () => {
 
   it('calls signOut and redirects to login on sign-out click', async () => {
     render(<PendingPage />)
-    screen.getByText('signOut').click()
+    screen.getByRole('button', { name: 'signOut' }).click()
     await vi.waitFor(() => expect(mockSignOut).toHaveBeenCalled())
     await vi.waitFor(() => expect(mockPush).toHaveBeenCalledWith('/en/login'))
   })
