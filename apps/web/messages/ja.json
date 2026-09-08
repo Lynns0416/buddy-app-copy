@@ -95,6 +95,7 @@
     }
   },
   "adminBuddies": {
+    "nameWithReal": "{displayName}（{realName}）",
     "title": "バディ一覧",
     "titlePending": "承認待ちバディ",
     "name": "名前",
@@ -162,6 +163,7 @@
     }
   },
   "adminTrainees": {
+    "nameWithReal": "{displayName}（{realName}）",
     "title": "研修中バディ",
     "name": "名前",
     "email": "メール",

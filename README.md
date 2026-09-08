@@ -26,6 +26,14 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 ```
 
+Both files are gitignored, so a new `git worktree add` starts without them and
+`docker-compose` fails with `env file ... not found`. Copy them from the main
+checkout instead of refilling them by hand:
+
+```bash
+./scripts/worktree-env.sh
+```
+
 ### `apps/api/.env`
 
 ```env

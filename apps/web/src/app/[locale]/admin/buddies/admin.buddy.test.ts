@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortBuddies, nextBuddySort, fetchBuddies, fetchTrainees, updateBuddyStatus, fetchBuddy, updateBuddy, sortBookingHistory, nextBookingSort } from './admin.buddy'
+import { sortBuddies, nextBuddySort, buddyName, fetchBuddies, fetchTrainees, updateBuddyStatus, fetchBuddy, updateBuddy, sortBookingHistory, nextBookingSort } from './admin.buddy'
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
@@ -333,5 +333,18 @@ describe('updateBuddyStatus', () => {
     mockUpdateBuddyStatus.mockRejectedValue(new TypeError('Failed to fetch'))
     const result = await updateBuddyStatus('b1', BuddyStatusSchema.enum.active)
     expect(result).toEqual({ ok: false, error: { code: 'network' } })
+  })
+})
+
+describe('buddyName', () => {
+  const t = (key: string, values?: Record<string, string>) =>
+    values ? `${key}:${values.displayName}/${values.realName}` : key
+
+  it('formats display name with real name', () => {
+    expect(buddyName(t, { displayName: 'ken', realName: '田中健一' })).toBe('nameWithReal:ken/田中健一')
+  })
+
+  it('falls back to display name when real name is empty', () => {
+    expect(buddyName(t, { displayName: 'ken', realName: '' })).toBe('ken')
   })
 })

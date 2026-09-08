@@ -95,6 +95,7 @@
     }
   },
   "adminBuddies": {
+    "nameWithReal": "{displayName} ({realName})",
     "title": "Buddies",
     "titlePending": "Pending Approval",
     "name": "Name",
@@ -162,6 +163,7 @@
     }
   },
   "adminTrainees": {
+    "nameWithReal": "{displayName} ({realName})",
     "title": "Trainees",
     "name": "Name",
     "email": "Email",

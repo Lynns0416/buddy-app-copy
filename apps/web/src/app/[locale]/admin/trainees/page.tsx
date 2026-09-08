@@ -9,7 +9,7 @@ import { AppShell } from '@/components/app-shell'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { routes } from '@/lib/routes'
-import { sortBuddies, nextBuddySort, type BuddySortField } from '../buddies/admin.buddy'
+import { sortBuddies, nextBuddySort, buddyName, type BuddySortField } from '../buddies/admin.buddy'
 import { useTrainees } from './use-trainees'
 import { BuddyAvatar } from '@/components/buddy-avatar'
 
@@ -71,7 +71,7 @@ export default function AdminTraineesPage() {
               >
                 <BuddyAvatar photoUrl={trainee.photoUrl} displayName={trainee.displayName} size="md" />
                 <div>
-                  <p className="font-medium">{trainee.displayName}</p>
+                  <p className="font-medium">{buddyName(t, trainee)}</p>
                   <p className="text-sm text-muted-foreground">{trainee.email}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {new Date(trainee.createdAt).toLocaleDateString(locale)}
@@ -117,7 +117,7 @@ export default function AdminTraineesPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <BuddyAvatar photoUrl={trainee.photoUrl} displayName={trainee.displayName} />
-                        <span className="font-medium">{trainee.displayName}</span>
+                        <span className="font-medium">{buddyName(t, trainee)}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{trainee.email}</TableCell>

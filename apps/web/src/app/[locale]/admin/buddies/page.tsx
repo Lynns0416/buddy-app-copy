@@ -10,7 +10,7 @@ import { AppShell } from '@/components/app-shell'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { routes } from '@/lib/routes'
-import { sortBuddies, nextBuddySort, mapBuddyError, type BuddySortField } from './admin.buddy'
+import { sortBuddies, nextBuddySort, mapBuddyError, buddyName, type BuddySortField } from './admin.buddy'
 import { useBuddies } from './use-buddies'
 import { BuddyAvatar } from '@/components/buddy-avatar'
 
@@ -83,7 +83,7 @@ export default function AdminBuddiesPage() {
                 onClick={() => router.push(routes.adminBuddyDetail(locale, buddy.id))}
               >
                 <div>
-                  <p className="font-medium">{buddy.displayName}</p>
+                  <p className="font-medium">{buddyName(t, buddy)}</p>
                   <p className="text-sm text-muted-foreground">{buddy.email}</p>
                   {buddy.tier && <p className="mt-1 text-xs text-muted-foreground">{tierLabel(buddy.tier)}</p>}
                 </div>
@@ -141,7 +141,7 @@ export default function AdminBuddiesPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{buddy.displayName}</span>
+                        <span className="font-medium">{buddyName(t, buddy)}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{buddy.email}</TableCell>

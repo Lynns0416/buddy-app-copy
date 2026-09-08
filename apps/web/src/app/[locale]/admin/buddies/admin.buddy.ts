@@ -19,6 +19,14 @@ export function mapBuddyError(t: (key: string) => string, error: AppError): stri
   }
 }
 
+export function buddyName(
+  t: (key: string, values?: Record<string, string>) => string,
+  buddy: { displayName: string; realName: string },
+): string {
+  if (!buddy.realName) return buddy.displayName
+  return t('nameWithReal', { displayName: buddy.displayName, realName: buddy.realName })
+}
+
 export function sortBuddies(
   buddies: AdminBuddyResponse[],
   field: BuddySortField,
