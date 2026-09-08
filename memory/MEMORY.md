@@ -16,3 +16,4 @@
 - [feedback_project_state.md](feedback_project_state.md) — Do not maintain project_state.md; git log is source of truth for completed work
 - [feedback_ask_before_concluding.md](feedback_ask_before_concluding.md) — Ask questions until confident; never state recommendations with false confidence
 - [feedback_review_discipline.md](feedback_review_discipline.md) — One review = one list. Cap ~5 items. Severity honest. Own regressions. Don't drip-feed findings across rounds.
+- [feedback_mistake_tally.md](feedback_mistake_tally.md) — Running count of repeated mistakes; increment there, never in chat.

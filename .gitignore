@@ -13,6 +13,7 @@ dist/
 .env.local
 apps/api/.env
 apps/web/.env.local
+deploy.env
 
 # firebase
 firebase-debug.log

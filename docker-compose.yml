@@ -19,46 +19,56 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      target: dev
     ports:
       - "8080:8080"
     env_file:
       - apps/api/.env
     environment:
       DATABASE_URL: postgresql://peacebuddy:peacebuddy@db:5432/peacebuddy
+      # Keep pnpm's store off the host bind mount — it defaults to
+      # /app/.pnpm-store there and grows without bound inside the repo.
+      npm_config_store_dir: /app/node_modules/.pnpm-store
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - .:/app
-      - /app/node_modules
-      - /app/packages/types/node_modules
-      - /app/apps/api/node_modules
+      # Named, not anonymous: `up --build` recreates containers, and every
+      # recreate orphans a fresh set of anonymous volumes.
+      - api_nm_root:/app/node_modules
+      - api_nm_types:/app/packages/types/node_modules
+      - api_nm_api:/app/apps/api/node_modules
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      target: dev
     ports:
       - "3000:3000"
     env_file:
       - apps/web/.env.local
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
+      npm_config_store_dir: /app/node_modules/.pnpm-store
     depends_on:
       - api
     volumes:
       - .:/app
-      - /app/node_modules
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
+      - web_nm_root:/app/node_modules
+      - web_nm_web:/app/apps/web/node_modules
+      - web_next:/app/apps/web/.next
 
   ci:
     profiles: [ci]
     build:
       context: .
-      dockerfile: apps/api/Dockerfile  # reuse any image that has all deps
+      dockerfile: apps/api/Dockerfile
+      target: dev  # reuse any image that has all deps
     environment:
       CI: "true"
+      npm_config_store_dir: /app/node_modules/.pnpm-store
     entrypoint: []
     command: sh -c "
       cd /app && pnpm install --frozen-lockfile &&
@@ -79,6 +89,12 @@ services:
 
 volumes:
   db_data:
+  api_nm_root:
+  api_nm_types:
+  api_nm_api:
+  web_nm_root:
+  web_nm_web:
+  web_next:
   ci_nm_root:
   ci_nm_types:
   ci_nm_api:

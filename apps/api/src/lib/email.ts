@@ -3,7 +3,13 @@ import { JWT } from 'google-auth-library'
 // Gmail send via service account + domain-wide delegation.
 // Setup: in the Workspace admin console, grant the service account the
 // scope `https://www.googleapis.com/auth/gmail.send` and authorize it to
-// impersonate `GMAIL_SENDER`. Reuses the Firebase service account creds.
+// impersonate `GMAIL_IMPERSONATE`. Reuses the Firebase service account creds.
+//
+// Two addresses so the visible sender and the impersonated identity can differ:
+// `GMAIL_IMPERSONATE` is the mailbox we act as, `GMAIL_SENDER` is the From:
+// address, which may be one of that mailbox's aliases. Splitting them means the
+// impersonation can move to another seat without changing the sender address
+// recipients have already seen. Defaults to `GMAIL_SENDER` when unset.
 
 export type SendEmailArgs = {
   to: string
@@ -19,9 +25,9 @@ function getClient(): JWT {
 
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-  const sender = process.env.GMAIL_SENDER
+  const subject = process.env.GMAIL_IMPERSONATE || process.env.GMAIL_SENDER
 
-  if (!clientEmail || !privateKey || !sender) {
+  if (!clientEmail || !privateKey || !subject) {
     throw new Error(
       'Gmail not configured: requires FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, GMAIL_SENDER',
     )
@@ -31,7 +37,7 @@ function getClient(): JWT {
     email: clientEmail,
     key: privateKey,
     scopes: ['https://www.googleapis.com/auth/gmail.send'],
-    subject: sender,
+    subject,
   })
 
   return cachedClient
@@ -101,7 +107,8 @@ export async function sendEmail(args: SendEmailArgs): Promise<void> {
     return
   }
 
-  const sender = process.env.GMAIL_SENDER!
+  const sender = process.env.GMAIL_SENDER
+  if (!sender) throw new Error('Gmail not configured: requires GMAIL_SENDER')
   const client = getClient()
   const { token } = await client.getAccessToken()
   if (!token) throw new Error('Gmail: failed to acquire access token')

@@ -12,6 +12,56 @@ duplicate that state here.
 
 ---
 
+## 2026-09-09 — Outbound email sends from an alias on an existing staff seat
+
+**Decision:** Two env vars, not one. `GMAIL_IMPERSONATE` is the mailbox
+domain-wide delegation impersonates; `GMAIL_SENDER` is the `From:` address,
+which may be an alias. `GMAIL_IMPERSONATE` defaults to `GMAIL_SENDER` when
+unset, so the single-address case still works.
+
+**Why:** Aliases are free (30 per user), a Workspace seat is not, and the budget
+does not have room for a dedicated sending seat. Splitting the two means the
+impersonation can move to another seat later without changing the sender address
+recipients have already seen. Staging runs both as `team-dev@plab.jp`; a token
+exchange against that address confirmed delegation resolves an alias to its
+underlying account, so the single-value case is not a special case.
+
+**Rejected — a dedicated Workspace seat for the sender:** ~$5/month for an
+account whose only job is to be impersonated. Correct once there is budget, and
+the split above is what makes that migration a config change rather than a
+visible change of sender.
+
+**Rejected — sending as the `hello@` contact address, or an alias on it:** An
+alias routes into the same mailbox, so every bounce and autoresponder from
+notification traffic would land in the inbox people use to reach the org.
+
+**Current state:** `apps/api/src/lib/email.ts`, `scripts/deploy.env.example`.
+
+---
+
+## 2026-09-08 — Deploy is a shell script, not Terraform
+
+**Decision:** `scripts/deploy.sh` drives the Cloud Run deploy. Configuration is a
+single untracked env file (`scripts/deploy.env.example` is the template).
+
+**Why:** The permanent hosting decision is deferred and the stated intent is to
+move the whole stack to Azure. GCP Terraform written now would be discarded at
+that migration. The surface is two Cloud Run services, one Artifact Registry
+repo, and three IAM grants.
+
+**Rejected — Terraform:** Adds a state backend, provider pinning, and another
+tool to install, against a target that is expected to change. Revisit when the
+real staging/prod split is built before real buddies — that is when codifying
+the IAM grants and having one `apply` per environment starts to pay.
+
+**Rejected — `gcloud run services replace service.yaml`:** Declarative without
+the state file, but it covers only the service definition, not the build and
+the ordering between the two services, which is where the actual complexity is.
+
+**Current state:** `scripts/deploy.sh`, `docs/architecture.md` deploy section.
+
+---
+
 ## 2026-08-15 — Admin notifications go to one Slack channel; admin email dropped
 
 **Decision:** Slack replaces email for admin notifications entirely. One open

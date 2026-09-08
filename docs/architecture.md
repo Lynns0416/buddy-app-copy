@@ -270,7 +270,8 @@ See PRD §10 for event types, channels, and delivery mode defaults.
 |---|---|---|
 | `development` | **Live** | Everything in Docker Compose — Next.js, Hono, local Postgres, Firebase Auth emulator. See `README.md` |
 | `preview` | **Not built** | No PR-preview environment exists. There is no deploy workflow |
-| `production` | **Not built** | Target is Firebase Hosting + Cloud Run + Neon, per `DEPLOYMENT.md`. Not provisioned |
+| `staging` | **Live** | Cloud Run (`asia-southeast1`) + Neon (`aws-ap-southeast-1`) + Firebase project `peace-buddy-staging`. Dogfooding only. See Deploy below |
+| `production` | **Not built** | Deferred — see `docs/deploy-plan.md`. Intent is to move the stack to Azure |
 
 ## CI/CD
 
@@ -289,6 +290,33 @@ flowchart LR
     TW --> Slack["notify Slack"]
 ```
 
-Both `apps/api/Dockerfile` and `apps/web/Dockerfile` are **development images** —
-each ends in `CMD … dev` and installs devDependencies. Production images do not
-exist yet; building them is a prerequisite for the first deploy.
+Both Dockerfiles are multi-stage. `--target dev` is what Docker Compose builds
+and still ends in `CMD … dev`; `--target runner` is the production image —
+`node dist/index.js` for the api, Next's standalone server for web.
+
+## Deploy
+
+Manual, driven by `scripts/deploy.sh` — no pipeline. Terraform was rejected;
+see `docs/decisions.md` (2026-09-08).
+
+```sh
+scripts/deploy.sh path/to/deploy.env   # template: scripts/deploy.env.example
+```
+
+Images are built on Cloud Build rather than locally, because Cloud Run needs
+`linux/amd64` and the dev machines are arm64.
+
+```mermaid
+flowchart TD
+    C["deploy.env — untracked"] --> B1
+    B1["Cloud Build: api"] --> D1["Cloud Run deploy: api"]
+    D1 -->|"api URL"| B2["Cloud Build: web<br/>NEXT_PUBLIC_* as build args"]
+    B2 --> D2["Cloud Run deploy: web"]
+    D2 -->|"web URL"| P["update api<br/>CORS_ORIGIN, WEB_BASE_URL"]
+    P --> M["manual: add web host to<br/>Firebase authorized domains"]
+```
+
+The order is forced: `NEXT_PUBLIC_*` is inlined into the web bundle at build
+time, so the api must be deployed before web is built — and the api's
+`CORS_ORIGIN` then needs web's URL, so the api is patched last. Both services
+run `--min-instances=0`; that flag is the difference between $0 and a real bill.
