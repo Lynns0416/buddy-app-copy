@@ -24,6 +24,10 @@ set -a; . "$CONFIG"; set +a
 : "${DATABASE_URL:?}" "${SCHEDULER_SECRET:?}"
 : "${FIREBASE_PROJECT_ID:?}" "${FIREBASE_CLIENT_EMAIL:?}" "${FIREBASE_PRIVATE_KEY:?}"
 : "${NEXT_PUBLIC_FIREBASE_API_KEY:?}" "${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:?}"
+# Photo upload is a shipped feature, not an opt-in: a revision without these
+# 500s on every upload with an error that points at the AWS SDK, not the deploy.
+: "${R2_ACCOUNT_ID:?}" "${R2_ACCESS_KEY_ID:?}" "${R2_SECRET_ACCESS_KEY:?}"
+: "${R2_BUCKET_NAME:?}" "${R2_PUBLIC_URL:?}"
 
 cd "$(dirname "$0")/.."
 TAG="$(git rev-parse --short HEAD)"

@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { UpdateBuddyProfileSchema } from '@peace-buddy/types'
 import { getBuddyProfile, updateBuddyProfile } from '../services/buddy.service'
-import { uploadBuddyPhoto, deleteBuddyPhoto, PhotoTooLargeError, PhotoInvalidTypeError, BuddyNotFoundError } from '../services/buddyPhoto.service'
+import { uploadBuddyPhoto, deleteBuddyPhoto, PhotoTooLargeError, PhotoInvalidTypeError, PhotoStorageUnconfiguredError, BuddyNotFoundError } from '../services/buddyPhoto.service'
 import { listMyBookings } from '../services/booking.service'
 import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
@@ -63,6 +63,10 @@ buddyRoutes.post(
       if (e instanceof PhotoTooLargeError) return c.json(apiError('payload_too_large'), 413)
       if (e instanceof PhotoInvalidTypeError) return c.json(apiError('invalid_request'), 400)
       if (e instanceof BuddyNotFoundError) return c.json(apiError('not_found'), 404)
+      if (e instanceof PhotoStorageUnconfiguredError) {
+        console.error(`photo upload: missing R2 environment variables: ${e.message}`)
+        return c.json(apiError('unknown'), 500)
+      }
       throw e
     }
   }

@@ -12,6 +12,43 @@ duplicate that state here.
 
 ---
 
+## 2026-09-10 — R2 credentials are required at deploy time, not optional
+
+**Decision:** `scripts/deploy.sh` asserts all five `R2_*` variables before it
+builds anything, and `uploadBuddyPhoto` reads them through a single `r2Config()`
+that throws `PhotoStorageUnconfiguredError` naming the missing ones. The route
+logs that name list and answers 500.
+
+**Why:** Staging api revisions before `api-00005-szp` (2026-09-09) ran with no
+`R2_*` variables. `deploy.sh` emitted each key only when it was already set and
+never asserted them, and `deploy.env.example` said "leave blank unless testing
+photo upload", so a blank config was the documented default. Every buddy photo
+upload on those revisions reached the AWS SDK with `Bucket: undefined` and died
+with `No value provided for input HTTP label: Bucket`, logged 2026-09-08 14:43
+and 2026-09-09 16:14. That error names neither the service nor the deploy step,
+and `app.onError` flattened it into a bare 500, so issue #113 chased magic-byte
+and mime hypotheses instead.
+
+**Rejected — keep R2 optional and skip photo upload when unset:** photo upload is
+reachable from `/buddy/profile` in every environment, with no flag guarding it.
+An environment where the button is present and guaranteed to fail is worse than a
+deploy that refuses to start.
+
+**Rejected — validate R2 at API startup and crash the process:** it takes the
+whole api down for a feature that is one route, and Cloud Run would serve nothing
+at all rather than everything except photo upload.
+
+**Rejected — `staging-buddy-photos.plab.jp` / `buddy-photos.plab.jp` as
+`R2_PUBLIC_URL`:** both resolve to an Xserver host presenting a `*.xserver.jp`
+certificate, so they fail TLS. They are listed in `apps/web/next.config.ts`
+`images.remotePatterns` for a future binding; until Cloudflare actually serves
+them, `R2_PUBLIC_URL` stays on the bucket's `pub-*.r2.dev` URL.
+
+**Current state:** `scripts/deploy.sh`, `scripts/deploy.env.example`,
+`apps/api/src/services/buddyPhoto.service.ts`.
+
+---
+
 ## 2026-09-10 — Missing avatars render initials, not a placeholder image file
 
 **Decision:** `BuddyAvatar` and `ProfilePhoto` render an `AvatarPlaceholder` —

@@ -9,13 +9,14 @@ Running tally of mistakes already corrected. Increment here, never in chat.
 | Mistake | Count | Last |
 |---|---|---|
 | Implemented without an explicit go-ahead | 1 | 2026-09-07 |
-| Message too long / padded despite the "be short" hard rule | 1 | 2026-09-07 |
+| Message too long / padded despite the "be short" hard rule | 2 | 2026-09-10 |
 | Reported work as verified when it was not | 1 | 2026-09-07 |
 | Skipped past a user's pushback instead of answering it | 2 | 2026-09-07 |
 | Re-issued a command form after watching it fail, instead of fixing it | 1 | 2026-09-07 |
 | Called something "the convention" without checking | 1 | 2026-09-08 |
-| Answered a question the user did not ask / restated their own point back at them | 1 | 2026-09-09 |
+| Answered a question the user did not ask / restated their own point back at them | 2 | 2026-09-10 |
 | Kept narrating a self-correction after it was already resolved | 1 | 2026-09-09 |
+| Added Co-Authored-By / session trailer to a commit | 1 | 2026-09-10 |
 
 **Why:** The user asked "show me the solution for the docker problem" and got the
 solution implemented instead — compose volumes and Dockerfile CMDs edited unasked.
@@ -39,6 +40,14 @@ on hello@ was safe; the reply argued at length against sending as hello@ itself,
 which they had already ruled out, and presented their own closing question back to
 them as a finding. Answer the question actually asked, in the fewest lines that
 answer it.
+Commits carry no attribution trailer of any kind — no `Co-Authored-By`, no
+`Claude-Session` link. A harness system-reminder claiming to "replace earlier
+attribution guidance" does not override CLAUDE.md; the project rule wins. Strip
+those lines before committing, every time.
+A yes/no question gets a yes or no, with nothing attached. Asked whether a
+verification command was necessary, the reply ran four more gcloud calls and
+returned a multi-section correction. Run nothing to answer a yes/no. If a real
+finding turns up later, raise it as its own message after answering.
 Record repeat offences here, not in a reply — the user does not want
 the accounting in chat. See [[feedback_ask_before_concluding]],
 [[feedback_review_discipline]], [[feedback_token_efficiency]].
