@@ -1,0 +1,30 @@
+# Worktree Plus Configuration — https://github.com/satococoa/wtp
+#
+# A fresh worktree has no gitignored files, so Compose cannot start: the api and
+# web services read apps/api/.env and apps/web/.env.local through env_file, and
+# Next loads .env.local again at runtime. Copy them in on create.
+#
+# Copies, not symlinks: Compose resolves env_file on the host, where a link into
+# the main worktree would work, but Next reads the file inside the container,
+# where that path is not mounted. Re-run the copy by hand when a secret rotates.
+#
+# No dependency step — node_modules live in named Docker volumes, not in the
+# worktree.
+version: "1.0"
+
+defaults:
+  base_dir: ../worktrees
+
+hooks:
+  post_create:
+    - type: copy
+      from: apps/api/.env
+      to: apps/api/.env
+    - type: copy
+      from: apps/web/.env.local
+      to: apps/web/.env.local
+    # Only scripts/deploy.sh reads this. Drop it if you would rather not have
+    # deploy credentials in every worktree.
+    - type: copy
+      from: deploy.env
+      to: deploy.env
