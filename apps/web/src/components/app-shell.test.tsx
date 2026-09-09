@@ -50,6 +50,28 @@ describe('AppShell', () => {
     expect(screen.getByText('content')).toBeInTheDocument()
   })
 
+  it('shows tour, history and profile for an active buddy', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      signOut: mockSignOut,
+      dbUser: { buddyProfile: { status: 'active' } },
+    } as never)
+    render(<AppShell variant="buddy"><div /></AppShell>)
+    expect(screen.getAllByRole('link', { name: 'nav.tour' })[0]).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'nav.history' })[0]).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'nav.profile' })[0]).toBeInTheDocument()
+  })
+
+  it('shows profile only for a trainee buddy', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      signOut: mockSignOut,
+      dbUser: { buddyProfile: { status: 'trainee' } },
+    } as never)
+    render(<AppShell variant="buddy"><div /></AppShell>)
+    expect(screen.getAllByRole('link', { name: 'nav.profile' })[0]).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'nav.tour' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'nav.history' })).not.toBeInTheDocument()
+  })
+
   it('calls signOut and redirects to login on sign-out click', async () => {
     render(<AppShell variant="buddy"><div /></AppShell>)
     const buttons = screen.getAllByRole('button', { name: 'signOut' })

@@ -12,6 +12,29 @@ duplicate that state here.
 
 ---
 
+## 2026-09-09 — Trainees get a training message and a Profile-only nav
+
+**Decision:** A buddy with `status = trainee` sees `tour.traineeMessage` on
+`/buddy` and only the Profile item in the buddy nav. `tour.notRegistered` is now
+reserved for rejected and suspended buddies.
+
+**Why:** Approval sets `pending` → `trainee` and the `account_approved` email
+links to `/buddy`, so every newly approved buddy was told they are not
+registered as a buddy (#117). Tour and History have nothing to show a trainee.
+
+**Rejected — keep all three nav items:** Two of the three dead-end, and the
+approval email is the first thing a trainee follows.
+
+**Open — whether `trainee` belongs in the signup flow at all.** Training
+schedules are run manually on spreadsheets, and trainees may never register in
+the first place; if so, the first approval should mean `active` + `junior` and
+`trainee` stops being a status a signed-in user can hold. Settle this before
+building anything else on the trainee status.
+
+**Current state:** PRD.md §5.1 "Trainee access".
+
+---
+
 ## 2026-09-09 — Outbound email sends from an alias on an existing staff seat
 
 **Decision:** Two env vars, not one. `GMAIL_IMPERSONATE` is the mailbox

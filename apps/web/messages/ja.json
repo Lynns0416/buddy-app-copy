@@ -183,6 +183,7 @@
     "capacity": "バディ数",
     "participantCount": "参加者数",
     "notRegistered": "バディとして登録されていないようです。不明点がある場合は、PLABスタッフまでお問い合わせください。",
+    "traineeMessage": "現在、研修中として登録されています。研修の予定は別途ご案内します。ご不明な点がある場合は、PLABスタッフまでお問い合わせください。",
     "myBookingsLink": "過去の記録とすべての予定"
   },
   "history": {

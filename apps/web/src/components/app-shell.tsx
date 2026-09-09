@@ -6,6 +6,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { BuddyStatusSchema } from '@peace-buddy/types'
 import { routes } from '@/lib/routes'
 import { Button } from '@/components/ui/button'
 import { LanguageSwitcher } from '@/components/language-switcher'
@@ -43,14 +44,18 @@ export function AppShell({ variant, children }: Props) {
     ...(dbUser?.role === 'super_admin' ? [{ href: routes.adminProfiles(locale), label: t('nav.adminRoster') }] : []),
   ]
 
-  const navItems: NavItem[] =
-    variant === 'admin'
-      ? adminNavItems
-      : [
+  // Only active buddies have tours and history; anyone else (trainee, rejected,
+  // suspended) would dead-end on those pages, so they see Profile only.
+  const buddyNavItems: NavItem[] =
+    dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active
+      ? [
           { href: routes.buddy(locale), label: t('nav.tour') },
           { href: routes.buddyHistory(locale), label: t('nav.history') },
           { href: routes.buddyProfile(locale), label: t('nav.profile') },
         ]
+      : [{ href: routes.buddyProfile(locale), label: t('nav.profile') }]
+
+  const navItems: NavItem[] = variant === 'admin' ? adminNavItems : buddyNavItems
 
   const allNavHrefs = navItems.map((item) => item.href)
 

@@ -105,7 +105,7 @@ Typical progression: Pending → Trainee (approve) → Active (promote — auto-
 
 Buddies are never deleted from the database. Status updates are the only lifecycle change.
 
-**Trainee access:** Trainees (status=active, tier=trainee) can log in but cannot see tours or make bookings. A dedicated training schedules section is planned for a future release. Admins manage trainees via `/admin/trainees`; promotion to junior is done through the buddy detail page (tier dropdown), which requires confirmation.
+**Trainee access:** Trainees (`status = trainee`, `tier = null`) can log in but cannot see tours or make bookings. Their nav shows Profile only — Tour and History would dead-end — and `/buddy` shows a training-status message (`tour.traineeMessage`), not the "not registered" message shown to rejected and suspended buddies. Training schedules are arranged outside the system; a dedicated section is planned for a future release. Admins manage trainees via `/admin/trainees`; promotion to junior is done through the buddy detail page (tier dropdown), which requires confirmation.
 
 ### 5.2 Internal Tier (admin-managed, hidden from buddies)
 

@@ -29,6 +29,10 @@ services:
       # Keep pnpm's store off the host bind mount — it defaults to
       # /app/.pnpm-store there and grows without bound inside the repo.
       npm_config_store_dir: /app/node_modules/.pnpm-store
+      # The node_modules volume is seeded from the image, which was built with a
+      # different store dir, so the first install wants to purge it and aborts
+      # with no TTY to confirm on. CI mode lets it purge without asking.
+      CI: "true"
     depends_on:
       db:
         condition: service_healthy
@@ -52,6 +56,7 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
       npm_config_store_dir: /app/node_modules/.pnpm-store
+      CI: "true"
     depends_on:
       - api
     volumes:

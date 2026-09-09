@@ -44,10 +44,12 @@ export default function BuddyTourPage() {
   if (loading || !dbUser) return null
 
   if (dbUser.buddyProfile?.status !== BuddyStatusSchema.enum.active) {
+    const message =
+      dbUser.buddyProfile?.status === BuddyStatusSchema.enum.trainee ? t('traineeMessage') : t('notRegistered')
     return (
       <AppShell variant="buddy">
         <div className="rounded-lg border bg-card p-6">
-          <p className="text-sm text-muted-foreground">{t('notRegistered')}</p>
+          <p className="text-sm text-muted-foreground">{message}</p>
         </div>
       </AppShell>
     )
