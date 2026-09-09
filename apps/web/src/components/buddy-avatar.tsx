@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { AvatarPlaceholder } from './avatar-placeholder'
 
 const SIZES = {
   sm: 32,
@@ -19,13 +20,17 @@ export function BuddyAvatar({ photoUrl, displayName, size = 'sm' }: BuddyAvatarP
       className="shrink-0 overflow-hidden rounded-full border bg-muted"
       style={{ width: px, height: px }}
     >
-      <Image
-        src={photoUrl ?? '/images/default-avatar.png'}
-        alt={displayName}
-        width={px}
-        height={px}
-        className="object-cover"
-      />
+      {photoUrl ? (
+        <Image
+          src={photoUrl}
+          alt={displayName}
+          width={px}
+          height={px}
+          className="object-cover"
+        />
+      ) : (
+        <AvatarPlaceholder displayName={displayName} label={displayName} size={px} />
+      )}
     </div>
   )
 }

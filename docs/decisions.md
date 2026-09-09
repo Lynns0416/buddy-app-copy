@@ -12,6 +12,29 @@ duplicate that state here.
 
 ---
 
+## 2026-09-10 — Missing avatars render initials, not a placeholder image file
+
+**Decision:** `BuddyAvatar` and `ProfilePhoto` render an `AvatarPlaceholder` —
+the first letter of the first and last word of the display name, on the existing
+`bg-muted` circle — whenever `photoUrl` is null. No image is requested at all in
+that case.
+
+**Why:** Both components pointed at `/images/default-avatar.png`, and
+`apps/web/public/` does not exist, so every buddy without a photo rendered a
+broken image. Initials are a single component that is sharp at all three
+`BuddyAvatar` sizes and at the 80px profile header, needs no i18n (the aria
+label reuses the alt text the callers already pass), and distinguishes buddies
+from one another in the admin lists, which a shared silhouette does not.
+
+**Rejected — commit a default avatar PNG:** creates `apps/web/public/` for one
+asset, ships bytes on every no-photo render, and needs 2x/3x variants to stay
+crisp across the 32/48/64/80px range. It also makes every avatar-less buddy look
+identical in the admin tables.
+
+**Current state:** `apps/web/src/components/avatar-placeholder.tsx`.
+
+---
+
 ## 2026-09-09 — Trainees get a training message and a Profile-only nav
 
 **Decision:** A buddy with `status = trainee` sees `tour.traineeMessage` on

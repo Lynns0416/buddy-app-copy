@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import type { BuddyProfileResponse } from '@peace-buddy/types'
 import { AppErrorCodeSchema } from '@peace-buddy/types'
+import { AvatarPlaceholder } from '@/components/avatar-placeholder'
 import { Button } from '@/components/ui/button'
 import { PhotoCropModal } from './photo-crop-modal'
 import { usePhotoUpload } from '../hooks/use-photo-upload'
@@ -83,13 +84,21 @@ export function ProfilePhoto({ photoUrl, displayName, readOnly = false, onUpload
   return (
     <div className="flex items-start gap-4">
       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-muted">
-        <Image
-          src={photoUrl ?? '/images/default-avatar.png'}
-          alt={t('photo.altText', { name: displayName })}
-          fill
-          className="object-cover"
-          sizes="80px"
-        />
+        {photoUrl ? (
+          <Image
+            src={photoUrl}
+            alt={t('photo.altText', { name: displayName })}
+            fill
+            className="object-cover"
+            sizes="80px"
+          />
+        ) : (
+          <AvatarPlaceholder
+            displayName={displayName}
+            label={t('photo.altText', { name: displayName })}
+            size={80}
+          />
+        )}
       </div>
 
       {!readOnly && (
