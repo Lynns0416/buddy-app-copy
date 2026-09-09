@@ -299,6 +299,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="notificationOffsets">{t('notificationOffsets')}</Label>
           <Input id="notificationOffsets" {...register('notificationOffsets')} />
+          <p className="text-xs text-muted-foreground">{t('notificationOffsetsHelp')}</p>
           {errors.notificationOffsets && <p className="text-xs text-destructive">{errors.notificationOffsets.message}</p>}
         </div>
 

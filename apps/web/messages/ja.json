@@ -220,6 +220,7 @@
     "cancellationDeadline": "バディキャンセル期限",
     "maybeDeadline": "仮参加確定期限",
     "notificationOffsets": "通知タイミング（日前、カンマ区切り）",
+    "notificationOffsetsHelp": "「7, 3, 1」と入力すると、ツアーの7日前・3日前・前日に参加バディへ通知が送られます。",
     "status": "ステータス",
     "confirmedCount": "参加希望者数",
     "bookings": "予約一覧",
@@ -393,7 +394,7 @@
   },
   "profile": {
     "title": "マイプロフィール",
-    "displayName": "表示名",
+    "displayName": "呼ばれたい名前（ツアーの名札）",
     "realName": "氏名",
     "bio": "自己紹介",
     "contactInfo": "連絡先",

@@ -220,6 +220,7 @@
     "cancellationDeadline": "Buddy Cancellation Deadline",
     "maybeDeadline": "Maybe Deadline",
     "notificationOffsets": "Notification Offsets (days before, comma-separated)",
+    "notificationOffsetsHelp": "Enter 7, 3, 1 to notify assigned buddies 7 days, 3 days, and 1 day before the tour.",
     "status": "Status",
     "confirmedCount": "Confirmed",
     "bookings": "Bookings",
@@ -393,7 +394,7 @@
   },
   "profile": {
     "title": "My Profile",
-    "displayName": "Display name",
+    "displayName": "Preferred name (tour name tag)",
     "realName": "Full name",
     "bio": "Bio",
     "contactInfo": "Contact info",
