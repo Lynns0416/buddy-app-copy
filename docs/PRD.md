@@ -725,8 +725,8 @@ Route: `/buddy`. Fetches `GET /tours?from=<today>` and renders a list of upcomin
 
 | Route | Purpose |
 |---|---|
-| `/admin/tours` | List tours (filterable by status: draft / published / cancelled / completed; sortable by tourDate, group, status; "today" divider in list) |
-| `/admin/tours/new` | Create tour form |
+| `/admin/tours` | List tours. Client-side search on group name and location; filters for status, date range (upcoming / past / all), group type and below-minimum-only, combined with AND and kept in the URL query string; sortable by every column; "today" divider in list |
+| `/admin/tours/new` | Create tour form. The group picker is a type-to-filter combobox |
 | `/admin/tours/:id` | Tour detail — metadata, sessions, tier capacities, bookings, admin assignments, evaluations |
 | `/admin/tours/:id/edit` | Edit tour form |
 

@@ -45,11 +45,16 @@ function renderForm(onSubmit = vi.fn()) {
   )
 }
 
+async function selectGroup(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByLabelText('group'))
+  await user.click(screen.getByRole('option', { name: groups[0].name }))
+}
+
 async function fillAndSubmit(overrides: Partial<typeof validFields> = {}, onSubmit = vi.fn()) {
   renderForm(onSubmit)
   const { user, fields } = fillForm(overrides)
 
-  await user.selectOptions(screen.getByLabelText('group'), fields.groupId)
+  await selectGroup(user)
   await user.type(screen.getByLabelText('tourDate'), fields.tourDate)
   await user.type(screen.getByLabelText('meetingTime'), fields.sessionMeetingTime)
   await user.type(screen.getByLabelText('location'), fields.location)
@@ -81,12 +86,30 @@ describe('TourForm', () => {
     expect(values.maybeDeadline).toBeNull()
   })
 
+  it('shows a translated error and does not submit when no group is picked', async () => {
+    const onSubmit = vi.fn()
+    renderForm(onSubmit)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
+    await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
+    await user.type(screen.getByLabelText('location'), validFields.location)
+    await user.clear(screen.getByLabelText('capacity'))
+    await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
+    await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
+
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    expect(await screen.findByText('groupRequired')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it('does not call onSubmit when maybeDeadline is after cancellationDeadline', async () => {
     const onSubmit = vi.fn()
     renderForm(onSubmit)
     const user = userEvent.setup()
 
-    await user.selectOptions(screen.getByLabelText('group'), validFields.groupId)
+    await selectGroup(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.type(screen.getByLabelText('location'), validFields.location)
@@ -144,7 +167,7 @@ describe('TourForm', () => {
     renderForm(onSubmit)
     const user = userEvent.setup()
 
-    await user.selectOptions(screen.getByLabelText('group'), validFields.groupId)
+    await selectGroup(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.type(screen.getByLabelText('location'), validFields.location)
@@ -174,7 +197,7 @@ describe('TourForm', () => {
     renderForm(onSubmit)
     const user = userEvent.setup()
 
-    await user.selectOptions(screen.getByLabelText('group'), validFields.groupId)
+    await selectGroup(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.type(screen.getByLabelText('location'), validFields.location)
@@ -194,7 +217,7 @@ describe('TourForm', () => {
     renderForm(onSubmit)
     const user = userEvent.setup()
 
-    await user.selectOptions(screen.getByLabelText('group'), validFields.groupId)
+    await selectGroup(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.type(screen.getByLabelText('location'), validFields.location)

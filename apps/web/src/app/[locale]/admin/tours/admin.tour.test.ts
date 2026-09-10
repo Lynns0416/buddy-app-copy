@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortTours, nextTourListSort, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchSessionTierCapacities, saveSessionTierCapacities } from './admin.tour'
-import type { AdminTourDetailResponse, AdminTourSummaryResponse, GroupResponse, TierCapacities } from '@peace-buddy/types'
+import { sortTours, nextTourListSort, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchSessionTierCapacities, saveSessionTierCapacities, filterTours, isTourFilterActive, emptyTourFilters, tourFiltersFromParams, tourFiltersToParams, type TourFilters } from './admin.tour'
+import type { AdminTourDetailResponse, AdminTourSummaryResponse, GroupResponse, TierCapacities, TourSessionResponse } from '@peace-buddy/types'
 
 vi.mock('@/lib/api-client', () => ({
   apiClient: {
@@ -520,5 +520,150 @@ describe('saveSessionTierCapacities', () => {
     mockSaveTierCapacities.mockRejectedValue(new TypeError('Failed to fetch'))
     const result = await saveSessionTierCapacities('t1', 's1', stubCapacities)
     expect(result).toEqual({ ok: false, error: { code: 'network' } })
+  })
+})
+
+// ── filterTours ────────────────────────────────────────────────────────────
+
+const TODAY = '2025-07-15'
+
+const session = (belowMinimum: boolean) => ({ belowMinimum } as TourSessionResponse)
+
+const f = (overrides: Partial<TourFilters> = {}): TourFilters => ({ ...emptyTourFilters, ...overrides })
+
+describe('filterTours', () => {
+  it('returns everything when no filter is active', () => {
+    expect(filterTours([t1, t2, t3], emptyTourFilters, TODAY)).toHaveLength(3)
+  })
+
+  it('matches the search term against the group name, case-insensitively', () => {
+    const result = filterTours([t1, t2, t3], f({ search: 'bet' }), TODAY)
+    expect(result.map((t) => t.id)).toEqual(['t2'])
+  })
+
+  it('matches the search term against the location', () => {
+    const result = filterTours([t1, t2, t3], f({ search: 'kyo' }), TODAY)
+    expect(result.map((t) => t.id)).toEqual(['t2', 't3'])
+  })
+
+  it('ignores surrounding whitespace in the search term', () => {
+    expect(filterTours([t1, t2, t3], f({ search: '  alpha  ' }), TODAY).map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('returns nothing when the search term matches neither field', () => {
+    expect(filterTours([t1, t2, t3], f({ search: 'nagoya' }), TODAY)).toEqual([])
+  })
+
+  it('does not match across the group name and location boundary', () => {
+    expect(filterTours([t1], f({ search: 'alphaosaka' }), TODAY)).toEqual([])
+  })
+
+  it('keeps only the selected statuses', () => {
+    const result = filterTours([t1, t2, t3], f({ statuses: ['draft', 'completed'] }), TODAY)
+    expect(result.map((t) => t.id)).toEqual(['t1', 't3'])
+  })
+
+  it('keeps only the selected group types', () => {
+    const result = filterTours([t1, t2, t3], f({ groupTypes: ['company'] }), TODAY)
+    expect(result.map((t) => t.id)).toEqual(['t2'])
+  })
+
+  it('keeps only upcoming tours, counting today as upcoming', () => {
+    const today = tour({ id: 'today', tourDate: TODAY })
+    const result = filterTours([t1, t2, t3, today], f({ dateRange: 'upcoming' }), TODAY)
+    expect(result.map((t) => t.id)).toEqual(['t3', 'today'])
+  })
+
+  it('keeps only past tours', () => {
+    const result = filterTours([t1, t2, t3], f({ dateRange: 'past' }), TODAY)
+    expect(result.map((t) => t.id)).toEqual(['t1', 't2'])
+  })
+
+  it('keeps only tours with a session below its minimum', () => {
+    const below = tour({ id: 'below', sessions: [session(false), session(true)] })
+    const fine = tour({ id: 'fine', sessions: [session(false)] })
+    const result = filterTours([below, fine], f({ belowMinimumOnly: true }), TODAY)
+    expect(result.map((t) => t.id)).toEqual(['below'])
+  })
+
+  it('combines search and filters with AND', () => {
+    const result = filterTours([t1, t2, t3], f({ search: 'kyo', statuses: ['completed'] }), TODAY)
+    expect(result.map((t) => t.id)).toEqual(['t3'])
+  })
+
+  it('returns nothing when filters that each match alone conflict', () => {
+    const result = filterTours([t1, t2, t3], f({ search: 'alpha', groupTypes: ['company'] }), TODAY)
+    expect(result).toEqual([])
+  })
+})
+
+// ── isTourFilterActive ─────────────────────────────────────────────────────
+
+describe('isTourFilterActive', () => {
+  it('is false for the empty filters', () => {
+    expect(isTourFilterActive(emptyTourFilters)).toBe(false)
+  })
+
+  it('is false for a whitespace-only search', () => {
+    expect(isTourFilterActive(f({ search: '   ' }))).toBe(false)
+  })
+
+  it.each([
+    ['search', f({ search: 'alpha' })],
+    ['statuses', f({ statuses: ['draft'] })],
+    ['dateRange', f({ dateRange: 'past' })],
+    ['groupTypes', f({ groupTypes: ['school'] })],
+    ['belowMinimumOnly', f({ belowMinimumOnly: true })],
+  ])('is true when %s is set', (_label, filters) => {
+    expect(isTourFilterActive(filters)).toBe(true)
+  })
+})
+
+// ── filter ⇄ URL query params ──────────────────────────────────────────────
+
+describe('tourFiltersToParams', () => {
+  it('writes nothing for the empty filters', () => {
+    expect(tourFiltersToParams(emptyTourFilters).toString()).toBe('')
+  })
+
+  it('writes every active filter', () => {
+    const params = tourFiltersToParams(f({
+      search: 'alpha',
+      statuses: ['draft', 'published'],
+      dateRange: 'upcoming',
+      groupTypes: ['school'],
+      belowMinimumOnly: true,
+    }))
+    expect(params.get('q')).toBe('alpha')
+    expect(params.get('status')).toBe('draft,published')
+    expect(params.get('range')).toBe('upcoming')
+    expect(params.get('groupType')).toBe('school')
+    expect(params.get('belowMin')).toBe('1')
+  })
+})
+
+describe('tourFiltersFromParams', () => {
+  it('reads back what toParams wrote', () => {
+    const filters = f({
+      search: 'alpha',
+      statuses: ['draft', 'published'],
+      dateRange: 'upcoming',
+      groupTypes: ['school'],
+      belowMinimumOnly: true,
+    })
+    expect(tourFiltersFromParams(tourFiltersToParams(filters))).toEqual(filters)
+  })
+
+  it('falls back to the empty filters for an empty query string', () => {
+    expect(tourFiltersFromParams(new URLSearchParams(''))).toEqual(emptyTourFilters)
+  })
+
+  it('drops values that are not valid enum members', () => {
+    const params = new URLSearchParams('status=draft,bogus&groupType=nope&range=sideways')
+    expect(tourFiltersFromParams(params)).toEqual(f({ statuses: ['draft'] }))
+  })
+
+  it('treats any belowMin value other than 1 as off', () => {
+    expect(tourFiltersFromParams(new URLSearchParams('belowMin=true')).belowMinimumOnly).toBe(false)
   })
 })

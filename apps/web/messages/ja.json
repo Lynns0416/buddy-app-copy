@@ -205,6 +205,35 @@
     "newTour": "新規ツアー",
     "noResults": "ツアーはありません",
     "todayDivider": "今日",
+    "noMatches": "条件に一致するツアーはありません",
+    "search": {
+      "label": "ツアーを検索",
+      "placeholder": "グループ名・場所で検索"
+    },
+    "filters": {
+      "status": "ステータス",
+      "groupType": "グループ種別",
+      "groupTypeOption": {
+        "school": "学校",
+        "company": "企業",
+        "community": "団体",
+        "other": "その他"
+      },
+      "dateRange": "日付",
+      "dateRangeOption": {
+        "all": "すべての日付",
+        "upcoming": "今後",
+        "past": "過去"
+      },
+      "belowMinimumOnly": "最小未満のみ",
+      "clearAll": "すべて解除",
+      "resultCount": "{total}件中{count}件"
+    },
+    "groupPicker": {
+      "placeholder": "入力してグループを検索",
+      "noGroups": "グループがまだありません。先に作成してください。",
+      "noResults": "一致するグループはありません"
+    },
     "group": "グループ",
     "tourDate": "ツアー日",
     "meetingTime": "集合時間",
@@ -213,6 +242,7 @@
     "capacity": "最大バディ数",
     "minBuddies": "最小バディ数",
     "minBuddiesExceedsCapacity": "最小バディ数は最大バディ数以下にしてください",
+    "groupRequired": "グループを選択してください",
     "belowMinimum": "最小未満",
     "participantCount": "参加者数",
     "description": "説明",

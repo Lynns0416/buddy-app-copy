@@ -47,6 +47,69 @@ sent them, not that they filled anything in.
 
 ---
 
+## 2026-09-10 — Tour list search and filtering stay client-side
+
+**Decision:** `/admin/tours` filters and searches the already-loaded list in the
+browser. `filterTours` in `admin.tour.ts` is a pure function next to `sortTours`,
+and the active filters live in the URL query string.
+
+**Why:** The list endpoint already returns every tour in one response, so the
+data is in memory before the user can type. A server round trip per keystroke
+would be slower than filtering an array, and it would need a new query contract
+for a list that is currently a few hundred rows at most.
+
+**Rejected — server-side search or pagination:** No endpoint change, no new
+query parameters, no cursor. Revisit when tour volume makes the full list
+response itself the problem; that is the same trigger for pagination, so the two
+should land together rather than one at a time.
+
+**Rejected — fuzzy or kana/romaji-insensitive matching:** Plain case-insensitive
+substring only. Kana/romaji folding needs a transliteration table and gets the
+edge cases wrong quietly, and admins searching their own tours know the group
+name they are looking for.
+
+**Rejected — debouncing the search input:** There is no request to debounce, and
+a timer interacts badly with IME composition timing.
+
+**Rejected — saved filter presets:** No one has asked, and the URL is already
+shareable and bookmarkable.
+
+**Current state:** `apps/web/src/app/[locale]/admin/tours/admin.tour.ts` and
+`_components/tour-filters.tsx`.
+
+---
+
+## 2026-09-10 — Below-minimum stays a display-only signal
+
+**Decision:** `minBuddies` only ever produces a `belowMinimum` flag: the badge on
+the admin tours list and detail page, and the "below minimum only" filter. It
+never affects a status transition. This closes #87.
+
+**Why:** The threshold is an operational heads-up for the staff member running
+the tour, not a rule of the system. A tour below its minimum a month out is
+normal and gets published anyway; the number that matters is the one on the
+morning of the tour. Everything #87 asked for beyond the open question was
+already delivered — the schema field, the `minBuddies <= capacity` refinement,
+both form inputs, the badge.
+
+**Rejected — block publish below minimum:** Publishing is exactly how a tour
+gets buddies, so blocking it below minimum blocks the fix for being below
+minimum. It also needs a new API error code and a server-side check for a rule
+staff would immediately want to override.
+
+**Rejected — warn the admin on publish:** A confirmation dialog that fires on
+almost every publish teaches people to dismiss it, and the badge already carries
+the same information without interrupting.
+
+**Revisit when** staff report publishing tours they would not have published had
+they noticed the count. The badge and the filter are the cheap version of that
+signal; measure whether they are being used first.
+
+**Current state:** `docs/PRD.md` §"Tour session fields", `docs/data-model.md`
+`minBuddies` row.
+
+---
+
 ## 2026-09-10 — R2 credentials are required at deploy time, not optional
 
 **Decision:** `scripts/deploy.sh` asserts all five `R2_*` variables before it

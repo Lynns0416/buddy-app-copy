@@ -205,6 +205,35 @@
     "newTour": "New Tour",
     "noResults": "No tours yet",
     "todayDivider": "Today",
+    "noMatches": "No tours match the current search or filters",
+    "search": {
+      "label": "Search tours",
+      "placeholder": "Search by group or location"
+    },
+    "filters": {
+      "status": "Status",
+      "groupType": "Group Type",
+      "groupTypeOption": {
+        "school": "School",
+        "company": "Company",
+        "community": "Community",
+        "other": "Other"
+      },
+      "dateRange": "Date",
+      "dateRangeOption": {
+        "all": "All dates",
+        "upcoming": "Upcoming",
+        "past": "Past"
+      },
+      "belowMinimumOnly": "Below minimum only",
+      "clearAll": "Clear all",
+      "resultCount": "{count} of {total} tours"
+    },
+    "groupPicker": {
+      "placeholder": "Type to search groups",
+      "noGroups": "No groups exist yet. Create one first.",
+      "noResults": "No groups match"
+    },
     "group": "Group",
     "tourDate": "Tour Date",
     "meetingTime": "Meeting Time",
@@ -213,6 +242,7 @@
     "capacity": "Max Buddies",
     "minBuddies": "Min Buddies",
     "minBuddiesExceedsCapacity": "Min Buddies must be less than or equal to Max Buddies",
+    "groupRequired": "Select a group",
     "belowMinimum": "Below min",
     "participantCount": "Participants",
     "description": "Description",

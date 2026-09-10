@@ -1,4 +1,6 @@
-import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession, CancellationReasonResponse, BookingStatus, AdminBookingStatusResponse, AdminProfileResponse } from '@peace-buddy/types'
+import { z } from 'zod'
+import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession, CancellationReasonResponse, BookingStatus, AdminBookingStatusResponse, AdminProfileResponse, TourStatus, GroupType } from '@peace-buddy/types'
+import { TourStatusSchema, GroupTypeSchema } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -39,6 +41,95 @@ export function nextTourListSort(
     return { field: current.field, dir: current.dir === ASC ? DESC : ASC }
   }
   return { field: clicked, dir: ASC }
+}
+
+// ── Tour list filtering ────────────────────────────────────────────────────
+
+export const TourDateRangeSchema = z.enum(['all', 'upcoming', 'past'])
+export type TourDateRange = z.infer<typeof TourDateRangeSchema>
+
+export type TourFilters = {
+  search: string
+  statuses: TourStatus[]
+  dateRange: TourDateRange
+  groupTypes: GroupType[]
+  belowMinimumOnly: boolean
+}
+
+export const emptyTourFilters: TourFilters = {
+  search: '',
+  statuses: [],
+  dateRange: TourDateRangeSchema.enum.all,
+  groupTypes: [],
+  belowMinimumOnly: false,
+}
+
+export function isTourFilterActive(filters: TourFilters): boolean {
+  return (
+    filters.search.trim() !== '' ||
+    filters.statuses.length > 0 ||
+    filters.dateRange !== TourDateRangeSchema.enum.all ||
+    filters.groupTypes.length > 0 ||
+    filters.belowMinimumOnly
+  )
+}
+
+/** Case-insensitive substring match on group name and location, then AND of every active filter. */
+export function filterTours(
+  tours: AdminTourSummaryResponse[],
+  filters: TourFilters,
+  today: string,
+): AdminTourSummaryResponse[] {
+  const term = filters.search.trim().toLowerCase()
+  return tours.filter((tour) => {
+    if (term && ![tour.group.name, tour.location].some((f) => f.toLowerCase().includes(term))) return false
+    if (filters.statuses.length > 0 && !filters.statuses.includes(tour.status)) return false
+    if (filters.groupTypes.length > 0 && !filters.groupTypes.includes(tour.group.type)) return false
+    if (filters.belowMinimumOnly && !tour.sessions.some((s) => s.belowMinimum)) return false
+    if (filters.dateRange !== TourDateRangeSchema.enum.all) {
+      const upcoming = tour.tourDate.slice(0, 10) >= today
+      if (upcoming !== (filters.dateRange === TourDateRangeSchema.enum.upcoming)) return false
+    }
+    return true
+  })
+}
+
+// ── Tour list filter ⇄ URL query params ────────────────────────────────────
+
+const SEARCH_PARAM = 'q'
+const STATUS_PARAM = 'status'
+const RANGE_PARAM = 'range'
+const GROUP_TYPE_PARAM = 'groupType'
+const BELOW_MIN_PARAM = 'belowMin'
+
+function parseList<T extends string>(raw: string | null, schema: z.ZodType<T>): T[] {
+  if (!raw) return []
+  return raw.split(',').flatMap((v) => {
+    const parsed = schema.safeParse(v)
+    return parsed.success ? [parsed.data] : []
+  })
+}
+
+/** Unrecognised values are dropped rather than throwing — the query string is user-editable. */
+export function tourFiltersFromParams(params: URLSearchParams): TourFilters {
+  const range = TourDateRangeSchema.safeParse(params.get(RANGE_PARAM))
+  return {
+    search: params.get(SEARCH_PARAM) ?? '',
+    statuses: parseList(params.get(STATUS_PARAM), TourStatusSchema),
+    dateRange: range.success ? range.data : TourDateRangeSchema.enum.all,
+    groupTypes: parseList(params.get(GROUP_TYPE_PARAM), GroupTypeSchema),
+    belowMinimumOnly: params.get(BELOW_MIN_PARAM) === '1',
+  }
+}
+
+export function tourFiltersToParams(filters: TourFilters): URLSearchParams {
+  const params = new URLSearchParams()
+  if (filters.search.trim()) params.set(SEARCH_PARAM, filters.search)
+  if (filters.statuses.length > 0) params.set(STATUS_PARAM, filters.statuses.join(','))
+  if (filters.dateRange !== TourDateRangeSchema.enum.all) params.set(RANGE_PARAM, filters.dateRange)
+  if (filters.groupTypes.length > 0) params.set(GROUP_TYPE_PARAM, filters.groupTypes.join(','))
+  if (filters.belowMinimumOnly) params.set(BELOW_MIN_PARAM, '1')
+  return params
 }
 
 // ── Booking sorting ────────────────────────────────────────────────────────

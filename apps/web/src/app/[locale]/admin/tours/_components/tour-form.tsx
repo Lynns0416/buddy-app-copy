@@ -1,6 +1,6 @@
 'use client'
 
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { GroupCombobox } from './group-combobox'
 
 const timeRegex = /^\d{2}:\d{2}$/
 
@@ -29,7 +30,7 @@ const SessionFormSchema = z
 
 const TourFormSchema = z
   .object({
-    groupId: z.string().uuid(),
+    groupId: z.string().uuid({ message: 'groupRequired' }),
     tourDate: z.string().min(1),
     bookingOpen: z.boolean(),
     location: z.string().min(1),
@@ -179,16 +180,27 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="groupId">{t('group')}</Label>
-          <select
-            id="groupId"
-            {...register('groupId')}
-            className="border-input bg-background ring-offset-background flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
-          {errors.groupId && <p className="text-xs text-destructive">{errors.groupId.message}</p>}
+          <Controller
+            control={control}
+            name="groupId"
+            render={({ field }) => (
+              <GroupCombobox
+                id="groupId"
+                groups={groups}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                inputRef={field.ref}
+              />
+            )}
+          />
+          {errors.groupId && (
+            <p className="text-xs text-destructive">
+              {errors.groupId.message === 'groupRequired'
+                ? t('groupRequired')
+                : errors.groupId.message}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-1.5">

@@ -1,8 +1,8 @@
 'use client'
 
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
@@ -13,21 +13,43 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
-import { fetchTours, sortTours, nextTourListSort, type TourListSortField } from './admin.tour'
+import {
+  fetchTours,
+  sortTours,
+  nextTourListSort,
+  filterTours,
+  isTourFilterActive,
+  tourFiltersFromParams,
+  tourFiltersToParams,
+  type TourFilters,
+  type TourListSortField,
+} from './admin.tour'
 import { BelowMinimumBadge } from './_components/below-minimum-badge'
+import { TourFilterBar } from './_components/tour-filters'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { getTodayLocal } from '@/lib/date'
 import { TodayDivider } from './_components/today-divider'
 
 export default function AdminToursPage() {
+  return (
+    <Suspense>
+      <AdminToursList />
+    </Suspense>
+  )
+}
+
+function AdminToursList() {
   const { ready, locale } = useAdminGuard()
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const t = useTranslations('adminTours')
   const tTourStatus = useTranslations('tourStatus')
   const [tours, setTours] = useState<AdminTourSummaryResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [sortField, setSortField] = useState<TourListSortField>('tourDate')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [filters, setFilters] = useState<TourFilters>(() => tourFiltersFromParams(new URLSearchParams(searchParams.toString())))
 
   function errorMessage(error: AppError): string {
     switch (error.code) {
@@ -53,8 +75,18 @@ export default function AdminToursPage() {
     setSortDir(next.dir)
   }
 
-  const sorted = sortTours(tours, sortField, sortDir)
   const todayStr = getTodayLocal()
+
+  // Replace rather than push: a history entry per keystroke would make Back unusable.
+  function applyFilters(next: TourFilters) {
+    setFilters(next)
+    const query = tourFiltersToParams(next).toString()
+    window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname)
+  }
+
+  const filtered = filterTours(tours, filters, todayStr)
+  const sorted = sortTours(filtered, sortField, sortDir)
+  const filtersActive = isTourFilterActive(filters)
   const isUpcoming = (tour: AdminTourSummaryResponse) => tour.tourDate.slice(0, 10) >= todayStr
   const dividerEnabled = sortField === 'tourDate'
 
@@ -86,8 +118,15 @@ export default function AdminToursPage() {
         </p>
       )}
 
+      <TourFilterBar
+        filters={filters}
+        onChange={applyFilters}
+        resultCount={sorted.length}
+        totalCount={tours.length}
+      />
+
       {sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('noResults')}</p>
+        <p className="text-sm text-muted-foreground">{filtersActive ? t('noMatches') : t('noResults')}</p>
       ) : (
         <>
           {/* Mobile cards */}
