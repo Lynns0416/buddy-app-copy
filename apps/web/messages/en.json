@@ -394,6 +394,7 @@
   },
   "profile": {
     "title": "My Profile",
+    "onboardingNotice": "Welcome. Set the name buddies and staff will see on tour, add your full name, and a photo if you have one.",
     "displayName": "Preferred name (tour name tag)",
     "realName": "Full name",
     "bio": "Bio",

@@ -18,7 +18,7 @@ import {
 } from 'firebase/auth'
 import { firebaseAuth } from './firebase'
 import { apiRequest, ApiError } from './api'
-import type { UserResponse } from '@peace-buddy/types'
+import type { BuddyProfileResponse, UserResponse } from '@peace-buddy/types'
 
 // Alias for UserResponse — keeps call sites using useAuth().dbUser stable
 export type DbUser = UserResponse
@@ -30,6 +30,7 @@ type AuthContextValue = {
   signInWithGoogle: () => Promise<void>
   signInWithApple: () => Promise<void>
   signOut: () => Promise<void>
+  setBuddyProfile: (profile: BuddyProfileResponse) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -124,6 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFirebaseUser(result.user)
   }, [])
 
+  // Lets a page that changed the buddy profile through the API keep dbUser in
+  // step without a second /auth/me round trip.
+  const setBuddyProfile = useCallback((profile: BuddyProfileResponse) => {
+    setDbUser((current) => (current ? { ...current, buddyProfile: profile } : current))
+  }, [])
+
   const signOut = useCallback(async () => {
     await firebaseSignOut(firebaseAuth)
     clearTokenCookie()
@@ -132,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, dbUser, loading, signInWithGoogle, signInWithApple, signOut }}>
+    <AuthContext.Provider value={{ firebaseUser, dbUser, loading, signInWithGoogle, signInWithApple, signOut, setBuddyProfile }}>
       {children}
     </AuthContext.Provider>
   )

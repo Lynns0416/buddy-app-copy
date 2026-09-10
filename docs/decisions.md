@@ -12,6 +12,41 @@ duplicate that state here.
 
 ---
 
+## 2026-09-10 — Buddy onboarding is one redirect, stamped in the database
+
+**Decision:** `BuddyProfile.onboardingSeenAt` is a nullable timestamp. The first
+time an approved buddy (`trainee` or `active`) loads `/buddy`, the page sends
+them to `/buddy/profile?onboarding=1` and calls
+`POST /me/profile/onboarding-seen`, which stamps the column. Arriving on the page
+is the whole flow. Whether they change their name or add a photo is their
+decision, and the tour list is theirs from then on either way.
+
+**Why:** `upsertUser` seeds `displayName` from the email local part and
+`realName` as an empty string, and nothing prompted a buddy to correct either, so
+admin tables showed a machine-generated string as a person's identity (#116). A
+redirect that happens once needs a record that it happened once, and nothing in
+the existing data carried that.
+
+**Rejected — infer "not onboarded" from `realName === ''`:** the signal is
+implicit and disagrees with the rule. A buddy who deliberately leaves their real
+name blank is finished by the rule above but unfinished by the inference, so they
+would be redirected on every visit to the tour list.
+
+**Rejected — remember the visit in `localStorage`:** per-device and per-browser.
+The same buddy is sent to the profile again from their phone, and again after
+clearing site data.
+
+**Rejected — a wizard with per-step progress stored:** the team may add steps
+later, but there is one step now. A steps table or a step column written by a
+one-step flow is schema and service code maintained for a design nobody has
+agreed on. `onboardingSeenAt` does not block that later — it keeps meaning what
+it means, and a step column can be added beside it.
+
+**Naming:** `onboardingSeenAt`, not `onboardingCompletedAt`. It records that we
+sent them, not that they filled anything in.
+
+---
+
 ## 2026-09-10 — R2 credentials are required at deploy time, not optional
 
 **Decision:** `scripts/deploy.sh` asserts all five `R2_*` variables before it

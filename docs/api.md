@@ -81,6 +81,7 @@ Fetch own profile.
   "contactInfo": "string | null",
   "languages": ["string"],
   "skills": ["string"],
+  "onboardingSeenAt": "ISO8601 | null",
   "createdAt": "ISO8601",
   "updatedAt": "ISO8601"
 }
@@ -112,6 +113,23 @@ Update self-managed fields.
 `languages` must be unique values from `LanguageSchema`. `availability` is not currently in the update schema — the field is unused in the shipped form.
 
 **Response `200`** — `BuddyProfileResponse`
+
+---
+
+### Buddy: `POST /me/profile/onboarding-seen`
+Stamp `onboardingSeenAt` the first time an approved buddy is sent to their
+profile. The web app calls this as it redirects; it does not mean the buddy
+edited anything. Idempotent — a profile that already carries a timestamp keeps
+the original one.
+
+**Auth:** any authenticated buddy
+
+**Request** — no body
+
+**Response `200`** — `BuddyProfileResponse`
+
+**Errors**
+- `404` — buddy profile not found
 
 ---
 

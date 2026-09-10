@@ -12,6 +12,7 @@ export const buddyProfileSelect = {
   contactInfo: true,
   languages: true,
   skills: true,
+  onboardingSeenAt: true,
   createdAt: true,
   updatedAt: true,
 } as const
@@ -40,4 +41,23 @@ export async function updateBuddyProfile(
     if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e
   }
+}
+
+// Records that the buddy has been sent to their profile once after approval.
+// Stamped on the redirect, not on save: reaching the page is the whole flow,
+// and whether they change anything there is their decision.
+export async function markOnboardingSeen(userId: string): Promise<BuddyProfileResponse | null> {
+  const existing = await db.buddyProfile.findUnique({
+    where: { userId },
+    select: { onboardingSeenAt: true },
+  })
+  if (!existing) return null
+  if (existing.onboardingSeenAt) return getBuddyProfile(userId)
+
+  const updated = await db.buddyProfile.update({
+    where: { userId },
+    data: { onboardingSeenAt: new Date() },
+    select: buddyProfileSelect,
+  })
+  return updated as unknown as BuddyProfileResponse
 }

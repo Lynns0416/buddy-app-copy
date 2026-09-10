@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { UpdateBuddyProfileSchema } from '@peace-buddy/types'
-import { getBuddyProfile, updateBuddyProfile } from '../services/buddy.service'
+import { getBuddyProfile, updateBuddyProfile, markOnboardingSeen } from '../services/buddy.service'
 import { uploadBuddyPhoto, deleteBuddyPhoto, PhotoTooLargeError, PhotoInvalidTypeError, PhotoStorageUnconfiguredError, BuddyNotFoundError } from '../services/buddyPhoto.service'
 import { listMyBookings } from '../services/booking.service'
 import { apiError } from '../lib/api-error'
@@ -39,6 +39,15 @@ buddyRoutes.put('/profile', async (c) => {
   }
 
   const profile = await updateBuddyProfile(id, data)
+  if (!profile) return c.json({ error: 'Profile not found' }, 404)
+
+  return c.json(profile)
+})
+
+buddyRoutes.post('/profile/onboarding-seen', async (c) => {
+  const { id } = c.get('user')
+
+  const profile = await markOnboardingSeen(id)
   if (!profile) return c.json({ error: 'Profile not found' }, 404)
 
   return c.json(profile)

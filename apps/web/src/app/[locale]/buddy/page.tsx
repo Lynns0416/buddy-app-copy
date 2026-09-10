@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { CalendarDays, MapPin, Users, Clock } from 'lucide-react'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
+import { apiClient } from '@/lib/api-client'
 import type { TourResponse } from '@peace-buddy/types'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
@@ -15,22 +16,48 @@ import { fetchUpcomingTours } from './buddy.tour'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 
 export default function BuddyTourPage() {
-  const { firebaseUser, dbUser, loading } = useAuth()
+  const { firebaseUser, dbUser, loading, setBuddyProfile } = useAuth()
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('tour')
   const tTourStatus = useTranslations('tourStatus')
   const [tours, setTours] = useState<TourResponse[]>([])
+  const sentToOnboarding = useRef(false)
 
   useEffect(() => {
-    if (!loading) {
-      if (!firebaseUser) {
-        router.replace(routes.login(locale))
-      } else if (dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.pending) {
-        router.replace(routes.pending(locale))
-      }
+    if (loading) return
+
+    if (!firebaseUser) {
+      router.replace(routes.login(locale))
+      return
     }
-  }, [loading, firebaseUser, dbUser, locale, router])
+
+    const profile = dbUser?.buddyProfile
+    if (!profile) return
+
+    if (profile.status === BuddyStatusSchema.enum.pending) {
+      router.replace(routes.pending(locale))
+      return
+    }
+
+    // An approved buddy still carries the display name upsertUser derived from
+    // their email and an empty real name. Send them to their profile once, then
+    // stamp the visit so the tour list is theirs from then on whether or not
+    // they changed anything.
+    const approved =
+      profile.status === BuddyStatusSchema.enum.trainee || profile.status === BuddyStatusSchema.enum.active
+    if (approved && !profile.onboardingSeenAt && !sentToOnboarding.current) {
+      sentToOnboarding.current = true
+      void apiClient
+        .markOnboardingSeen()
+        .then(setBuddyProfile)
+        .catch(() => {
+          // Leaving onboardingSeenAt unset sends them here again next visit,
+          // which is the safe direction to fail in.
+        })
+      router.replace(routes.buddyProfileOnboarding(locale))
+    }
+  }, [loading, firebaseUser, dbUser, locale, router, setBuddyProfile])
 
   useEffect(() => {
     if (!loading && firebaseUser && dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active) {

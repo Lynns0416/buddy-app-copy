@@ -356,6 +356,7 @@ export type BuddyProfileResponse = {
   contactInfo: string | null
   languages: Language[]
   skills: string[]
+  onboardingSeenAt: string | null
   createdAt: string
   updatedAt: string
 }

@@ -12,12 +12,14 @@ vi.mock('../lib/firebase', () => ({
 vi.mock('../services/buddy.service', () => ({
   getBuddyProfile: vi.fn(),
   updateBuddyProfile: vi.fn(),
+  markOnboardingSeen: vi.fn(),
 }))
 
-import { getBuddyProfile, updateBuddyProfile } from '../services/buddy.service'
+import { getBuddyProfile, updateBuddyProfile, markOnboardingSeen } from '../services/buddy.service'
 
 const mockGetBuddyProfile = vi.mocked(getBuddyProfile)
 const mockUpdateBuddyProfile = vi.mocked(updateBuddyProfile)
+const mockMarkOnboardingSeen = vi.mocked(markOnboardingSeen)
 
 const dbUser = { id: 'user-1', firebaseUid: 'uid-123', email: 'test@example.com', role: 'buddy' }
 const mockProfile = {
@@ -30,6 +32,7 @@ const mockProfile = {
   contactInfo: null,
   languages: ['english'],
   skills: ['sign language'],
+  onboardingSeenAt: null,
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
 }
@@ -158,5 +161,34 @@ describe('PUT /me/profile', () => {
       body: JSON.stringify({}),
     })
     expect(res.status).toBe(200)
+  })
+})
+
+describe('POST /me/profile/onboarding-seen', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await routes.request('/me/profile/onboarding-seen', { method: 'POST' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 404 when profile does not exist', async () => {
+    mockMarkOnboardingSeen.mockResolvedValueOnce(null)
+    const res = await buildApp().request('/me/profile/onboarding-seen', { method: 'POST' })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 200 with the stamped profile', async () => {
+    mockMarkOnboardingSeen.mockResolvedValueOnce({
+      ...mockProfile,
+      onboardingSeenAt: new Date('2026-02-01'),
+    } as unknown as BuddyProfileResponse)
+
+    const res = await buildApp().request('/me/profile/onboarding-seen', { method: 'POST' })
+
+    expect(res.status).toBe(200)
+    expect(mockMarkOnboardingSeen).toHaveBeenCalledWith('user-1')
+    const body = await res.json() as BuddyProfileResponse
+    expect(body.onboardingSeenAt).not.toBeNull()
   })
 })

@@ -96,6 +96,7 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | skills | String[] | |
 | availability | Text? | |
 | internalNotes | Text? | Admin-only; never exposed to buddy |
+| onboardingSeenAt | Timestamp? | Set the first time an approved buddy is sent to their profile; NULL means they have not been sent yet |
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
 

@@ -4,6 +4,7 @@ export const apiPaths = {
   authMeLocale: '/auth/me/locale',
 
   meProfile: '/me/profile',
+  meProfileOnboardingSeen: '/me/profile/onboarding-seen',
   meProfilePhoto: '/me/profile/photo',
   meBookings: '/me/bookings',
   meNotifications: '/me/notifications',

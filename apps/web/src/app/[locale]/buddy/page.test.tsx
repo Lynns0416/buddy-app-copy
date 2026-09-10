@@ -6,8 +6,10 @@ vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }))
 
+const replace = vi.fn()
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace }),
   useParams: () => ({ locale: 'en' }),
 }))
 
@@ -29,19 +31,68 @@ vi.mock('./buddy.tour', () => ({
   fetchUpcomingTours: vi.fn().mockResolvedValue({ ok: true, data: [] }),
 }))
 
-import { useAuth } from '../../../lib/auth'
+vi.mock('@/lib/api-client', () => ({
+  apiClient: { markOnboardingSeen: vi.fn() },
+}))
 
-function mockStatus(status: string) {
+import { useAuth } from '../../../lib/auth'
+import { apiClient } from '@/lib/api-client'
+import { routes } from '@/lib/routes'
+
+const setBuddyProfile = vi.fn()
+
+// Buddies in these tests have already been sent to their profile once, unless a
+// test says otherwise — that is the steady state the page renders in.
+function mockStatus(status: string, onboardingSeenAt: string | null = '2026-01-01T00:00:00.000Z') {
   vi.mocked(useAuth).mockReturnValue({
     firebaseUser: { uid: 'u1' },
-    dbUser: { buddyProfile: { status } },
+    dbUser: { buddyProfile: { status, onboardingSeenAt } },
     loading: false,
+    setBuddyProfile,
   } as never)
 }
 
 describe('BuddyTourPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('sends an approved buddy who has not been to their profile yet', async () => {
+    vi.mocked(apiClient.markOnboardingSeen).mockResolvedValue({ onboardingSeenAt: 'now' } as never)
+    mockStatus('trainee', null)
+
+    render(<BuddyTourPage />)
+
+    expect(replace).toHaveBeenCalledWith(routes.buddyProfileOnboarding('en'))
+    await vi.waitFor(() => expect(apiClient.markOnboardingSeen).toHaveBeenCalled())
+    expect(setBuddyProfile).toHaveBeenCalled()
+  })
+
+  it('sends an active buddy who has not been to their profile yet', () => {
+    vi.mocked(apiClient.markOnboardingSeen).mockResolvedValue({} as never)
+    mockStatus('active', null)
+
+    render(<BuddyTourPage />)
+
+    expect(replace).toHaveBeenCalledWith(routes.buddyProfileOnboarding('en'))
+  })
+
+  it('leaves a buddy on the tour list once the visit is stamped', () => {
+    mockStatus('active')
+
+    render(<BuddyTourPage />)
+
+    expect(replace).not.toHaveBeenCalled()
+    expect(apiClient.markOnboardingSeen).not.toHaveBeenCalled()
+  })
+
+  it('sends a pending buddy to the pending page, not to onboarding', () => {
+    mockStatus('pending', null)
+
+    render(<BuddyTourPage />)
+
+    expect(replace).toHaveBeenCalledWith(routes.pending('en'))
+    expect(apiClient.markOnboardingSeen).not.toHaveBeenCalled()
   })
 
   it('tells a trainee they are in training, not unregistered', () => {

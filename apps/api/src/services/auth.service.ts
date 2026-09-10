@@ -21,6 +21,7 @@ const userSelect = {
       contactInfo: true,
       languages: true,
       skills: true,
+      onboardingSeenAt: true,
       createdAt: true,
       updatedAt: true,
     },

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getBuddyProfile, updateBuddyProfile } from './buddy.service'
+import { getBuddyProfile, updateBuddyProfile, markOnboardingSeen } from './buddy.service'
 
 vi.mock('../lib/db', () => ({
   db: {
@@ -28,6 +28,7 @@ const mockProfile = {
   contactInfo: null,
   languages: ['english'],
   skills: ['sign language'],
+  onboardingSeenAt: null,
   createdAt: new Date('2026-01-01'),
   updatedAt: new Date('2026-01-01'),
 }
@@ -101,5 +102,42 @@ describe('updateBuddyProfile', () => {
     const call = mockUpdate.mock.calls[0][0] as any
     expect(call.select.internalNotes).toBeUndefined()
     expect(call.select.tier).toBeUndefined()
+  })
+})
+
+describe('markOnboardingSeen', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns null when profile is not found', async () => {
+    mockFindUnique.mockResolvedValueOnce(null as any)
+    const result = await markOnboardingSeen('user-1')
+    expect(result).toBeNull()
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it('stamps onboardingSeenAt when it is unset', async () => {
+    mockFindUnique.mockResolvedValueOnce({ onboardingSeenAt: null } as any)
+    mockUpdate.mockResolvedValueOnce({ ...mockProfile, onboardingSeenAt: new Date('2026-02-01') } as any)
+
+    const result = await markOnboardingSeen('user-1')
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'user-1' },
+        data: { onboardingSeenAt: expect.any(Date) },
+      })
+    )
+    expect(result?.onboardingSeenAt).toEqual(new Date('2026-02-01'))
+  })
+
+  it('keeps the first timestamp when it is already set', async () => {
+    const seenAt = new Date('2026-01-15')
+    mockFindUnique.mockResolvedValueOnce({ onboardingSeenAt: seenAt } as any)
+    mockFindUnique.mockResolvedValueOnce({ ...mockProfile, onboardingSeenAt: seenAt } as any)
+
+    const result = await markOnboardingSeen('user-1')
+
+    expect(mockUpdate).not.toHaveBeenCalled()
+    expect(result?.onboardingSeenAt).toEqual(seenAt)
   })
 })

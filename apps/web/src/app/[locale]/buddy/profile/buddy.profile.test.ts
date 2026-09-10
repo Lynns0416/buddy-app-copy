@@ -33,6 +33,7 @@ const stubProfile: BuddyProfileResponse = {
   contactInfo: null,
   languages: ['english', 'japanese'],
   skills: ['sign language'],
+  onboardingSeenAt: null,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 }

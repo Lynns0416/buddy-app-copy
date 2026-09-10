@@ -274,6 +274,8 @@ export const apiClient = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  markOnboardingSeen: () =>
+    apiRequest<BuddyProfileResponse>(apiPaths.meProfileOnboardingSeen, { method: 'POST' }),
   uploadMyPhoto: (file: Blob, filename: string) => {
     const form = new FormData()
     form.append('photo', file, filename)
