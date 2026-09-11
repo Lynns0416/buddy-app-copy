@@ -14,6 +14,7 @@ dist/
 apps/api/.env
 apps/web/.env.local
 deploy.env
+azure.env
 
 # firebase
 firebase-debug.log

@@ -25,10 +25,12 @@ flowchart TD
     API --> Slack
 ```
 
-**Nothing is deployed yet.** The hosting targets — Firebase Hosting for the web
-front end, Cloud Run for the API, Neon for Postgres — are decisions recorded in
-`DEPLOYMENT.md`, not live infrastructure. Note that the database is **Neon, not
-Cloud SQL**; see `DEPLOYMENT.md` for why.
+**Staging runs on Cloud Run and Neon; both are being replaced.** As of
+2026-09-10 the permanent target is **Azure Container Apps + PG Flexible Server
+in Japan East**, funded by the Microsoft for Nonprofits grant — see
+`docs/decisions.md` (2026-09-10) and `docs/deploy-plan.md`. `DEPLOYMENT.md`
+predates that decision and its hosting sections are stale; read it only for the
+reasoning it records, not as current state.
 
 ## Repo Structure
 
@@ -260,7 +262,10 @@ concurrent workers can't send the same job twice.
 
 > `DEPLOYMENT.md` calls for consolidating these four into **one hourly tick** before
 > deploy — Cloud Scheduler's free tier is 3 jobs, and four separate schedules push
-> Neon past its free compute allowance.
+> Neon past its free compute allowance. **That pressure disappears on Azure**
+> (`docs/decisions.md`, 2026-09-10): Container Apps Jobs bill per execution
+> against the same free monthly grant and impose no job-count limit, and B1ms is
+> an always-on instance. Keep the four endpoints as they are.
 
 See PRD §10 for event types, channels, and delivery mode defaults.
 
@@ -271,7 +276,7 @@ See PRD §10 for event types, channels, and delivery mode defaults.
 | `development` | **Live** | Everything in Docker Compose — Next.js, Hono, local Postgres, Firebase Auth emulator. See `README.md` |
 | `preview` | **Not built** | No PR-preview environment exists. There is no deploy workflow |
 | `staging` | **Live** | Cloud Run (`asia-southeast1`) + Neon (`aws-ap-southeast-1`) + Firebase project `peace-buddy-staging`. Dogfooding only. See Deploy below |
-| `production` | **Not built** | Deferred — see `docs/deploy-plan.md`. Intent is to move the stack to Azure |
+| `production` | **Being built** | Azure Container Apps + PG Flexible Server B1ms, Japan East, on the Microsoft for Nonprofits grant — decided 2026-09-10, see `docs/decisions.md`. Database is private to a VNet with no public endpoint. Provisioning is `scripts/azure-provision.sh`; progress is tracked in `docs/deploy-plan.md`. Staging migrates off Cloud Run and Neon once it stands up |
 
 ## CI/CD
 
@@ -297,7 +302,14 @@ and still ends in `CMD … dev`; `--target runner` is the production image —
 ## Deploy
 
 Manual, driven by `scripts/deploy.sh` — no pipeline. Terraform was rejected;
-see `docs/decisions.md` (2026-09-08).
+see `docs/decisions.md` (2026-09-08, revisited 2026-09-10).
+
+> **This section describes the live Cloud Run deploy, which is being replaced.**
+> The Azure equivalent keeps the same ordering — `az acr build` in place of
+> Cloud Build, `az containerapp update` in place of `gcloud run deploy` — because
+> the ordering exists to solve the build-arg and CORS dependency shown below, not
+> anything GCP-specific. Infrastructure is provisioned separately by
+> `scripts/azure-provision.sh`. See `docs/deploy-plan.md` §5.
 
 ```sh
 scripts/deploy.sh path/to/deploy.env   # template: scripts/deploy.env.example

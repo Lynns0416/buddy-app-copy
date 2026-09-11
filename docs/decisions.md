@@ -12,6 +12,105 @@ duplicate that state here.
 
 ---
 
+## 2026-09-10 — Hosting is Azure Japan East, funded by the nonprofit grant
+
+**Decision:** The permanent stack is **Azure Container Apps (workload-profiles
+environment, Consumption profile) + Azure Database for PostgreSQL Flexible
+Server B1ms, both in Japan East**. The live GCP staging environment (Cloud Run
+`asia-southeast1` + Neon `aws-ap-southeast-1`) migrates there. Firebase Auth is
+unaffected and stays.
+
+**Why:** The Microsoft for Nonprofits application was approved on 2026-09-10.
+The grant is $2,000/yr of Azure credit against a stack that lists at roughly
+$200/yr, and Japan East puts the database in Japan — which removes the APPI
+外的環境の把握 paperwork the Singapore Neon region required. `deploy-plan.md`
+had made this conditional on the grant landing. It landed.
+
+**Why Container Apps and not App Service:** Container Apps publishes the same
+monthly free grant as Cloud Run (180,000 vCPU-seconds, 360,000 GiB-seconds,
+2M requests, per subscription) and charges nothing for a revision scaled to
+zero. The environment is created with workload profiles enabled, which is what
+requires the `Microsoft.App/environments` subnet delegation. No management fee
+applies while only the Consumption profile is in use; one starts only with a
+Dedicated profile. App Service has no scale-to-zero on paid tiers, so it would
+consume credit continuously for a workload that is idle most of the month.
+
+**Rejected — staying on Neon:** Neon has no Tokyo region, so it keeps the APPI
+paperwork permanently, and it costs real money ($25–48/yr estimated at ~70
+members) against a credit that expires unused each year.
+
+**Rejected — staying on Cloud Run:** No credit applies. Google Cloud publishes
+no nonprofit credit amount. Egress from Tokyo is billed from the first byte.
+
+**Rejected — Prisma Postgres Starter (Tokyo, $120/yr) and a Japanese VPS
+(~$60–85/yr):** Both were priced as the best options *without* the grant. With
+$2,000/yr of credit, paying anything for hosting is strictly worse.
+
+**Rejected — Azure Reserved Instances for the database:** The sponsorship credit
+explicitly excludes reserved instances, marketplace offers, and support plans.
+A reservation would be billed to a real card.
+
+**Not solved by this:** Firebase Auth remains US-only and still holds every
+member's email and display name in the United States. "Full Japan residency" is
+a separate and much larger decision about dropping Google as the identity
+provider — see the 2026-08-15 auth entry.
+
+**Rejected — Japan West (Osaka), despite being closer to users:** Nearly all
+members are in Kyushu, and Osaka is roughly 15ms closer than Tokyo. Container
+Apps went generally available in Japan West in March 2025, so the region is
+viable. Rejected because 15ms is imperceptible against a server-rendered page
+load of hundreds of milliseconds, this is an internal business tool rather than
+a consumer app, and Japan East is Microsoft's primary Japanese region — it
+receives new capabilities first and Japan West lags it.
+
+**Rejected — public network access for the database:** The first proposal was
+`--public-access 0.0.0.0`, Azure's "allow other Azure services" mode, on the
+assumption that private networking required a NAT gateway for outbound traffic
+and would therefore cost around $400/yr. That assumption was wrong. Container
+Apps gives every environment a default outbound public IP, and a NAT gateway
+only buys a *static* outbound address, which nothing here needs. VNet
+integration for Postgres is free and private endpoints are not required. Private
+access therefore costs $0 and is strictly safer, since the database has no
+public endpoint and a leaked password alone cannot reach it.
+
+**Note — this choice is permanent.** A Postgres Flexible Server cannot be
+converted between public and private access after creation, and a Container Apps
+environment's network type is fixed at creation. Changing either later means
+rebuilding the resource and restoring from a dump.
+
+**Current state:** `docs/deploy-plan.md`, `scripts/azure-provision.sh`,
+`scripts/azure.env.example`.
+
+---
+
+## 2026-09-10 — Provisioning is a shell script; Bicep deferred, Terraform still rejected
+
+**Decision:** Azure infrastructure is created by `scripts/azure-provision.sh`
+reading an untracked `scripts/azure.env`. It mirrors the existing
+`scripts/deploy.sh` + `scripts/deploy.env` pattern, and is idempotent so a
+partial run resumes by rerunning. Provisioning and deploying stay two separate
+scripts, because one runs rarely and the other runs constantly.
+
+**Why not infrastructure-as-code first:** Starting in a templating language
+means learning Azure's resource model and the tool at the same time, so a
+failure is ambiguous between the two. Doing it by hand first means each resource
+teaches what it is, and the commands that work become the script.
+
+**Rejected for now — Bicep:** It is the right eventual target, and preferred
+over Terraform for this project because it needs no state file and no storage
+account to hold that state. Revisit once the resource shape is proven and the
+staging/prod split is real.
+
+**Rejected — Terraform:** Still rejected, but the reasoning has changed. The
+2026-09-08 entry rejected it because GCP infrastructure code would be discarded
+in the Azure move; that reason has now expired. The current reason is that
+Terraform requires provisioning a state backend before it can provision
+anything, which is overhead Bicep does not carry on a solo project.
+
+**Current state:** `scripts/azure-provision.sh`, `scripts/azure.env.example`.
+
+---
+
 ## 2026-09-10 — Buddy onboarding is one redirect, stamped in the database
 
 **Decision:** `BuddyProfile.onboardingSeenAt` is a nullable timestamp. The first
