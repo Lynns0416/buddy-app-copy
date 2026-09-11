@@ -1,8 +1,33 @@
+import type { BuddyTier } from '@peace-buddy/types'
 import { db } from './db'
 
 export type Pool = 'junior' | 'non_junior' | 'anyone'
 
-export const NON_JUNIOR_TIERS: string[] = ['mid', 'senior', 'expert', 'instructor', 'organizer']
+/** The pool a tier claims its seat from. `anyone` is overflow, not membership. */
+export type TierPool = Exclude<Pool, 'anyone'>
+
+// The one place a tier is mapped to a pool. Exhaustive by type: add a value to
+// BuddyTierSchema without adding it here and the build fails, rather than the
+// new tier silently joining non_junior and taking seats no capacity query counts.
+export const TIER_POOL: Record<BuddyTier, TierPool> = {
+  junior: 'junior',
+  buddy: 'non_junior',
+  star: 'non_junior',
+  blackstar: 'non_junior',
+}
+
+export function poolForTier(tier: BuddyTier): TierPool {
+  return TIER_POOL[tier]
+}
+
+/** Every tier whose seats come from the given pool. */
+export function tiersInPool(pool: TierPool): string[] {
+  return Object.entries(TIER_POOL)
+    .filter(([, p]) => p === pool)
+    .map(([tier]) => tier)
+}
+
+export const NON_JUNIOR_TIERS: string[] = tiersInPool('non_junior')
 
 const DEFAULT_JUNIOR_PCT = 20
 const DEFAULT_NON_JUNIOR_PCT = 30

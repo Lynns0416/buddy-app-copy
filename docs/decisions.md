@@ -111,6 +111,76 @@ anything, which is overhead Bicep does not carry on a solo project.
 
 ---
 
+## 2026-09-10 — BuddyTier is four role values; employment is a separate axis
+
+**Decision:** `BuddyTier` is `junior` / `buddy` / `star` / `blackstar`. `mid` and
+`senior` collapse into `buddy`, `expert` becomes `star`, `instructor` and
+`organizer` become `blackstar`. 浮き and 統括 are capabilities the tier grants, not
+values and not a per-tour role assignment: a star can act as 浮き, a blackstar as
+統括 including 浮き. `BookingPool` deliberately stays `junior` / `non_junior` /
+`anyone` — the split reads `tier === junior` and nothing else, so the pool enum
+has no reason to track the role enum.
+
+**Why:** The old six values mixed two questions. `junior` through `instructor`
+answered "what can this person do"; `organizer` answered "who employs this
+person". The requirements for the blackstar role are identical whether the person
+is a part-time buddy or a PLAB member, so a PLAB member meeting them had no
+representable value — `organizer` occupied the slot on the wrong axis.
+
+**Rejected — a five-value enum keeping `organiser`:** the original plan in #121.
+It preserves the conflation and leaves "blackstar PLAB member" unrepresentable.
+Employment moves to a `memberType` field (`buddy` / `plab_member`) in #136.
+
+**Rejected — modelling 浮き / 統括 as a per-tour role on `Booking`:** they are not
+assigned per tour. They are things a tier is qualified to do. A column would
+duplicate the tier and drift from it.
+
+**Rejected — 管理者 as the Japanese label for the top tier:** the app already uses
+管理者 for Admin (`担当管理者`, `管理者一覧`, `adminMemo`). Two unrelated concepts
+would read identically. 社員 and アルバイト are rejected too — the team's own
+vocabulary is バディ and PLABメンバー, and that is what #136 will use.
+
+**Current state:** PRD §5.2, `data-model.md` `BuddyProfile`, `api.md`.
+
+---
+
+## 2026-09-10 — A buddy may see their own tier
+
+**Decision:** Tier is no longer admin-only. A buddy may see which of the four
+roles they hold. They still cannot see another buddy's tier, and `internalNotes`
+and `adminMemo` remain admin-only. The API does not expose it yet; #137 carries
+the change, including dropping `tier` from the CLAUDE.md never-expose rule.
+
+**Why:** The roles now have clear published requirements, so hiding a buddy's own
+role hides the thing they are working toward.
+
+**Rejected — exposing it in #121:** #121 is a rename. Changing an API contract
+and a standing project rule in the same commit makes the diff unreviewable and
+the revert unscopable.
+
+**Current state:** PRD §5.2, #137.
+
+---
+
+## 2026-09-10 — Tier descriptions live in i18n, not the database
+
+**Decision:** The public page describing what each tier can do is planned but not
+built. When it lands, its copy lives in `apps/web/messages/en.json` and
+`ja.json`, like every other UI string.
+
+**Why:** Nobody has written that copy yet. A table, an endpoint, and an admin
+editor for it are speculative, and JSON to database later is a migration and a
+seed while database to JSON is a migration, a seed, a deleted endpoint, and dead
+admin UI.
+
+**Rejected — a `TierDescription` table with per-locale rows:** revisit only if
+the team needs to edit that copy without a deploy. That is the single condition
+that flips this.
+
+**Current state:** `apps/web/messages/*.json`, PRD §5.2.
+
+---
+
 ## 2026-09-10 — Buddy onboarding is one redirect, stamped in the database
 
 **Decision:** `BuddyProfile.onboardingSeenAt` is a nullable timestamp. The first

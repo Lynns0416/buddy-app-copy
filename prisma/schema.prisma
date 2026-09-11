@@ -23,11 +23,9 @@ enum BuddyStatus {
 
 enum BuddyTier {
   junior
-  mid
-  senior
-  expert
-  instructor
-  organizer
+  buddy
+  star
+  blackstar
 }
 
 enum GroupType {

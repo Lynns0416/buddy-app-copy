@@ -1,8 +1,8 @@
 import { TourStatus, BookingStatus as PrismaBookingStatus, BuddyTier as PrismaBuddyTier, CancellationCategory as PrismaCancellationCategory, Prisma } from '@prisma/client'
 import { db } from '../lib/db'
-import { BookingStatusSchema, BuddyTierSchema, NotifEventKindSchema } from '@peace-buddy/types'
+import { BookingStatusSchema, NotifEventKindSchema } from '@peace-buddy/types'
 import type { BookingResponse, BookingStatus, BuddyTier, CancellationReasonBody, MyTourBookingEntry } from '@peace-buddy/types'
-import { getPoolCapacities, NON_JUNIOR_TIERS } from '../lib/pool'
+import { getPoolCapacities, poolForTier, NON_JUNIOR_TIERS } from '../lib/pool'
 import type { Pool } from '../lib/pool'
 import {
   enqueueEmail,
@@ -56,10 +56,6 @@ function mapBooking(row: {
     bookedAt: row.bookedAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
-}
-
-function poolForTier(tier: BuddyTier): 'junior' | 'non_junior' {
-  return tier === BuddyTierSchema.enum.junior ? 'junior' : 'non_junior'
 }
 
 async function getConfirmedCountByPool(sessionId: string, pool: Pool): Promise<number> {

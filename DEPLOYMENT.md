@@ -179,6 +179,66 @@ Assume **no** Google Cloud nonprofit credit offsets this (see above).
 - Use `prisma db push` — no migration framework needed
 - Delete `memory/project_prerelease.md` on first prod deploy and switch to `prisma migrate deploy`
 
+### No deploy step applies DDL
+
+`scripts/deploy.sh` builds images and runs `gcloud run deploy`. It issues no
+schema command, and the production `runner` stage in `apps/api/Dockerfile` does
+not ship the Prisma CLI. Only the dev stage pushes on start. So a deploy never
+alters the database: someone runs `prisma db push` by hand, never from a
+container `CMD`, because Cloud Run runs several replicas at once.
+
+The consequence is that code and schema move independently. A release whose
+code expects a schema the server does not have will run, and fail at the rows
+that disagree rather than at boot.
+
+### What `db push` does when data blocks the change
+
+Verified against a scratch database on 2026-09-12, removing enum values that a
+row still used:
+
+| Command | Result |
+|---|---|
+| `prisma db push` | Refuses. Names the values that would be removed. |
+| `prisma db push --accept-data-loss` | Postgres rejects the cast, the transaction rolls back, the row and the enum are unchanged. |
+
+**This safety is specific to enum values.** Dropping a column or a table with
+`--accept-data-loss` succeeds and the data is gone. Do not read the table above
+as "`db push` is safe against a populated database".
+
+### Renaming enum values on a populated database
+
+Postgres cannot drop an enum value, so `db push` rebuilds the type. Three steps,
+in this order, because the new values must exist before rows can point at them:
+
+```sql
+-- 1. each its own statement, outside a transaction
+ALTER TYPE "BuddyTier" ADD VALUE IF NOT EXISTS 'buddy';
+
+-- 2. remap every column of that type (BuddyProfile.tier, Booking.buddyTier)
+UPDATE "BuddyProfile" SET tier = 'buddy' WHERE tier IN ('mid', 'senior');
+
+-- 3. prisma db push, which can now drop the dead values
+```
+
+For a database holding only seed data, dropping it and running `pnpm seed` is
+faster.
+
+### When to adopt Prisma Migrate
+
+The trigger is the first row nobody would agree to delete. Baselining an
+existing `db push` database is two commands and does not get harder with time,
+so there is no penalty for waiting:
+
+```
+prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script \
+  > prisma/migrations/0_init/migration.sql
+prisma migrate resolve --applied 0_init
+```
+
+Adopting it also means a shadow database for `migrate dev`, a migration file per
+schema edit, a change to the dev container `CMD`, and a job that runs
+`migrate deploy` before the new revision takes traffic.
+
 ## Deployment Flow (when ready)
 
 1. Apply for Google Cloud Nonprofit credits via Google for Nonprofits admin console

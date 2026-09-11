@@ -13,7 +13,10 @@ Running tally of mistakes already corrected. Increment here, never in chat.
 | Reported work as verified when it was not | 1 | 2026-09-07 |
 | Skipped past a user's pushback instead of answering it | 2 | 2026-09-07 |
 | Re-issued a command form after watching it fail, instead of fixing it | 1 | 2026-09-07 |
-| Called something "the convention" without checking | 1 | 2026-09-08 |
+| Called something "the convention" without checking | 2 | 2026-09-12 |
+| Asserted costs/trade-offs without checking them against this repo | 1 | 2026-09-12 |
+| Held a position under pushback, then reversed once I finally checked | 1 | 2026-09-12 |
+| Trusted a memory note as current fact instead of re-verifying it | 1 | 2026-09-12 |
 | Answered a question the user did not ask / restated their own point back at them | 2 | 2026-09-10 |
 | Kept narrating a self-correction after it was already resolved | 1 | 2026-09-09 |
 | Added Co-Authored-By / session trailer to a commit | 1 | 2026-09-10 |
@@ -48,6 +51,19 @@ A yes/no question gets a yes or no, with nothing attached. Asked whether a
 verification command was necessary, the reply ran four more gcloud calls and
 returned a multi-section correction. Run nothing to answer a yes/no. If a real
 finding turns up later, raise it as its own message after answering.
+Confidence must track evidence, not fluency. Asked whether to adopt Prisma
+Migrate, the reply gave a four-row cost table — shadow database, per-edit
+migration files, dev CMD change, a CI deploy job — none of it checked against
+this repo. Three of the four were wrong or trivial here, and the repo already
+held the disproof: a database had been created and dropped freely in the same
+session, and there is no CI deploy at all. The position only changed after the
+user pushed a third time. Two failures, not one: asserting unverified generics in
+a confident register, and needing user scepticism to trigger the check.
+Before stating a cost, a trade-off or a best practice, mark each item as
+verified here or assumed in general, and check the ones that decide the answer.
+Memory notes are claims with a date, not standing facts — `project_prerelease`
+said "never raise migration concerns" long after staging began holding data.
+
 Record repeat offences here, not in a reply — the user does not want
 the accounting in chat. See [[feedback_ask_before_concluding]],
 [[feedback_review_discipline]], [[feedback_token_efficiency]].

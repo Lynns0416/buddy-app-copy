@@ -1,6 +1,7 @@
-import { TourStatus, BuddyTier as PrismaBuddyTier, BuddyStatus as PrismaBuddyStatus } from '@prisma/client'
+import { TourStatus, BuddyStatus as PrismaBuddyStatus } from '@prisma/client'
 import { db } from '../lib/db'
-import { getPoolCapacities, NON_JUNIOR_TIERS } from '../lib/pool'
+import { getPoolCapacities, poolForTier, tiersInPool } from '../lib/pool'
+import type { TierPool } from '../lib/pool'
 import type { TourResponse, TourDetailResponse, TourSessionDetailResponse, TourSeatCounts, GroupType, BookingStatus, TourSessionResponse } from '@peace-buddy/types'
 import type { ToursQuery } from '../types'
 
@@ -203,18 +204,15 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
     let myRemaining: number | null = null
     if (buddyProfile?.tier) {
       const capacities = capacitiesMap.get(sess.id)!
-      const isJunior = buddyProfile.tier === PrismaBuddyTier.junior
-      const primaryPool = isJunior ? 'junior' : 'non_junior'
-      const otherPool = isJunior ? 'non_junior' : 'junior'
+      const primaryPool = poolForTier(buddyProfile.tier)
+      const otherPool: TierPool = primaryPool === 'junior' ? 'non_junior' : 'junior'
       myCapacity = capacities[primaryPool] + capacities.anyone
 
       const byTier = confirmedByTier.get(sess.id) ?? new Map<string, number>()
-      const primaryConfirmed = isJunior
-        ? (byTier.get(PrismaBuddyTier.junior) ?? 0)
-        : NON_JUNIOR_TIERS.reduce((sum, t) => sum + (byTier.get(t) ?? 0), 0)
-      const otherConfirmed = isJunior
-        ? NON_JUNIOR_TIERS.reduce((sum, t) => sum + (byTier.get(t) ?? 0), 0)
-        : (byTier.get(PrismaBuddyTier.junior) ?? 0)
+      const confirmedIn = (pool: TierPool) =>
+        tiersInPool(pool).reduce((sum, t) => sum + (byTier.get(t) ?? 0), 0)
+      const primaryConfirmed = confirmedIn(primaryPool)
+      const otherConfirmed = confirmedIn(otherPool)
       const totalConfirmed = seatCounts.confirmed
       const anyoneConfirmed = Math.max(
         0,

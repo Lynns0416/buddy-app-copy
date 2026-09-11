@@ -107,22 +107,24 @@ Buddies are never deleted from the database. Status updates are the only lifecyc
 
 **Trainee access:** Trainees (`status = trainee`, `tier = null`) can log in but cannot see tours or make bookings. Their nav shows Profile only — Tour and History would dead-end — and `/buddy` shows a training-status message (`tour.traineeMessage`), not the "not registered" message shown to rejected and suspended buddies. Training schedules are arranged outside the system; a dedicated section is planned for a future release. Admins manage trainees via `/admin/trainees`; promotion to junior is done through the buddy detail page (tier dropdown), which requires confirmation.
 
-### 5.2 Internal Tier (admin-managed, hidden from buddies)
+### 5.2 Tier (admin-managed)
 
 Once Active, an internal tier is assigned and updated manually by admin:
 
 | Tier | Description |
 |---|---|
 | **Junior** | Recently activated, limited experience |
-| **Mid** | Comfortable with regular tours |
-| **Senior** | Experienced, handles complex groups |
-| **Expert** | Top-tier, can mentor and guide others |
-| **Instructor** | Can teach and train buddies; must reach Expert first |
-| **Organizer** | Oversees full sessions, manages time and handles emergencies; must reach Instructor first. Can still participate as a buddy. |
+| **Buddy** | Comfortable with regular tours, handles complex groups |
+| **Star** | Can act as roving supervisor (浮き), covering all groups on a tour rather than one. Can run offline training sessions as trainer |
+| **Blackstar** | Can act as session lead (統括): roving supervision, plus counterpart for the group and the back-office work. Can run online and offline training sessions |
 
-Tier is for internal reference only — buddies have no visibility.
+浮き and 統括 are capabilities of a tier, not a separate field and not a per-tour role assignment.
 
-Typical progression: Junior → Mid → Senior → Expert → Instructor → Organizer.
+A buddy may see which tier they hold. The API does not expose it yet — see #137. `internalNotes` and `adminMemo` stay admin-only. A buddy never sees another buddy's tier.
+
+Typical progression: Junior → Buddy → Star → Blackstar.
+
+Employment is a separate axis and is not encoded here. A person who is a PLAB member rather than a part-time buddy holds a tier like anyone else; see #136.
 
 ### 5.3 Self-Managed Fields (edited by buddy)
 
@@ -167,7 +169,7 @@ Ordered for UI display — priority tier shown first:
 | Field | Type | Notes |
 |---|---|---|
 | Account status | Enum | See §5.1 |
-| Internal tier | Enum | See §5.2 — hidden from buddy |
+| Tier | Enum | See §5.2 — visible to the buddy it belongs to, not yet exposed by the API (#137) |
 | Internal notes | Free text | Admins only |
 | Admin evaluation records | See §9 | Admins only |
 
@@ -450,7 +452,7 @@ Total tour capacity is split into three pools:
 | Pool | Who fills it | Default % |
 |---|---|---|
 | **Junior** | `junior` tier only | 20% |
-| **Non-junior** | `mid`, `senior`, `expert`, `instructor`, `organizer` | 30% |
+| **Non-junior** | `buddy`, `star`, `blackstar` | 30% |
 | **Anyone** | Any eligible tier (overflow from either pool) | 50% |
 
 Percentages default to 20/30/50 for all tours. Per-tour overrides are supported via the `TierCapacity` table (`pool: BookingPool, percent: Int`). Override rules:
@@ -796,7 +798,7 @@ Route: `/buddy`. Fetches `GET /tours?from=<today>` and renders a list of upcomin
 **Display section:**
 - Real name, email, photo
 - Status (`trainee` / `active` / `rejected` — `suspended` planned)
-- Tier (`junior` / `mid` / `senior` / `expert` / `instructor` / `organizer`; null for trainees)
+- Tier (`junior` / `buddy` / `star` / `blackstar`; null for trainees)
 - Internal notes
 - Created date
 - **Cancellation summary** — total / unavoidable / avoidable / unreviewed counts derived from the buddy's `CancellationReason` rows
@@ -843,7 +845,7 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 | Promotion | Trainee → Active via the same status endpoint with `{status: 'active'}`. Server auto-sets `tier = junior` on that transition. |
 | Tier updates | Admin can change tier any time after promotion via `PUT /admin/buddies/:id`. |
 | Internal notes | Admins only; never visible to buddies (excluded from buddy responses by `select`). |
-| Tier values | `junior` / `mid` / `senior` / `expert` / `instructor` / `organizer`. Trainees have `tier = null`. |
+| Tier values | `junior` / `buddy` / `star` / `blackstar`. Trainees have `tier = null`. |
 | Data retention | Buddies are never deleted; all history retained. |
 
 #### Planned
@@ -1050,7 +1052,7 @@ When GCP nonprofit credits run low:
 | 5 | Default Maybe confirmation deadline offset (days before tour) | Team | **Resolved** — 9 days before tour; reminders at 3 days + 1 day before deadline. Cancellation deadline defaults to 7 days before (always after Maybe deadline). |
 | 6 | Cancellation reason category enum values | Team | **Resolved** — `health` / `emergency` / `personal` / `work` / `other` |
 | 7 | Group type enum values — School / Company / Community / Other sufficient? | Team | **Resolved** — confirmed as-is |
-| 8 | Internal tier names | Team | **Resolved** — `junior` / `mid` / `senior` / `expert` / `instructor` / `organizer` |
+| 8 | Internal tier names | Team | **Resolved** — `junior` / `buddy` / `star` / `blackstar`. `organizer` was employment, not capability, and moved out (#136). Tier is no longer hidden from the buddy who holds it (#137). |
 | 9 | When no admins are assigned to a tour, should post-deadline "I can't go" reports notify all admins as a fallback? | Team | **Resolved** — no fallback; notification only goes to assigned admins. Tours without assigned admins flagged visually in UI as unresolved. |
 | 10 | Tier-based booking pool split percentages | Team | **Resolved** — junior 20%, non-junior 30%, anyone 50%. See §8.9. |
 | 11 | Can a buddy re-book after cancelling? | Team | **Resolved** — yes, if a vacancy exists in their pool or the anyone pool. See §8.9. |

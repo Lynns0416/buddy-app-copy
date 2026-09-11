@@ -49,8 +49,8 @@ const buddy = (overrides: Partial<AdminBuddyResponse> = {}): AdminBuddyResponse 
 } as AdminBuddyResponse)
 
 const alice   = buddy({ id: 'b1', displayName: 'Alice',   email: 'alice@example.com',   tier: 'junior' })
-const bob     = buddy({ id: 'b2', displayName: 'Bob',     email: 'bob@example.com',     tier: 'senior' })
-const charlie = buddy({ id: 'b3', displayName: 'Charlie', email: 'charlie@example.com', tier: 'mid' })
+const bob     = buddy({ id: 'b2', displayName: 'Bob',     email: 'bob@example.com',     tier: 'star' })
+const charlie = buddy({ id: 'b3', displayName: 'Charlie', email: 'charlie@example.com', tier: 'buddy' })
 
 describe('sortBuddies', () => {
   describe('by displayName', () => {
@@ -86,15 +86,21 @@ describe('sortBuddies', () => {
   describe('by tier', () => {
     it('sorts asc', () => {
       const result = sortBuddies([bob, alice, charlie], 'tier', 'asc')
-      expect(result.map((b) => b.tier)).toEqual(['junior', 'mid', 'senior'])
+      expect(result.map((b) => b.tier)).toEqual(['junior', 'buddy', 'star'])
     })
 
     it('sorts desc', () => {
       const result = sortBuddies([bob, alice, charlie], 'tier', 'desc')
-      expect(result.map((b) => b.tier)).toEqual(['senior', 'mid', 'junior'])
+      expect(result.map((b) => b.tier)).toEqual(['star', 'buddy', 'junior'])
     })
 
-    it('sorts null tier as empty string (before others) asc', () => {
+    it('orders by tier rank, not alphabetically', () => {
+      const dave = buddy({ id: 'b5', displayName: 'Dave', email: 'dave@example.com', tier: 'blackstar' })
+      const result = sortBuddies([dave, bob, alice, charlie], 'tier', 'asc')
+      expect(result.map((b) => b.tier)).toEqual(['junior', 'buddy', 'star', 'blackstar'])
+    })
+
+    it('sorts null tier before every tier asc', () => {
       const noTier = buddy({ id: 'b4', tier: null })
       const result = sortBuddies([alice, noTier], 'tier', 'asc')
       expect(result[0].id).toBe('b4')

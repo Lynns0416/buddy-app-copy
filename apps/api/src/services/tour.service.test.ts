@@ -276,7 +276,7 @@ describe('getTour', () => {
     // 2 confirmed non-junior bookings
     mdb.booking.groupBy
       .mockResolvedValueOnce([{ sessionId: 'session-1', status: 'confirmed', _count: { status: 2 } }])
-      .mockResolvedValueOnce([{ sessionId: 'session-1', buddyTier: 'mid', _count: { buddyTier: 2 } }])
+      .mockResolvedValueOnce([{ sessionId: 'session-1', buddyTier: 'buddy', _count: { buddyTier: 2 } }])
     mdb.booking.findMany.mockResolvedValueOnce([])
     mdb.tierCapacity.findMany.mockResolvedValueOnce([])
 
@@ -288,12 +288,12 @@ describe('getTour', () => {
 
   it('computes myCapacity and myRemaining for non-junior buddy with pool full', async () => {
     mdb.tour.findUnique.mockResolvedValueOnce(mockRow)
-    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ tier: 'senior' })
-    // 4 confirmed total: 3 senior (non_junior), 1 junior
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ tier: 'star' })
+    // 4 confirmed total: 3 star (non_junior), 1 junior
     mdb.booking.groupBy
       .mockResolvedValueOnce([{ sessionId: 'session-1', status: 'confirmed', _count: { status: 4 } }])
       .mockResolvedValueOnce([
-        { sessionId: 'session-1', buddyTier: 'senior', _count: { buddyTier: 3 } },
+        { sessionId: 'session-1', buddyTier: 'star', _count: { buddyTier: 3 } },
         { sessionId: 'session-1', buddyTier: 'junior', _count: { buddyTier: 1 } },
       ])
     mdb.booking.findMany.mockResolvedValueOnce([])

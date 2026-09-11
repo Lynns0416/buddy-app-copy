@@ -170,7 +170,7 @@ List buddies. Returns `AdminBuddyResponse[]` (includes `tier`, `internalNotes`, 
 
 **Auth:** `admin`
 
-**Query params:** `?status=pending|trainee|active|rejected|suspended`, `?tier=junior|mid|senior|expert|instructor|organizer`
+**Query params:** `?status=pending|trainee|active|rejected|suspended`, `?tier=junior|buddy|star|blackstar`
 
 **Response `200`** — array of `AdminBuddyResponse`
 
@@ -231,7 +231,7 @@ Update admin-managed fields. Both fields optional; pass `null` to clear.
 **Request** — `UpdateAdminBuddyProfileSchema`
 ```json
 {
-  "tier": "junior | mid | senior | expert | instructor | organizer | null",
+  "tier": "junior | buddy | star | blackstar | null",
   "internalNotes": "string | null"
 }
 ```
@@ -803,7 +803,7 @@ Create a booking for one session of the tour. The server decides `confirmed` vs 
   "id": "uuid",
   "tourId": "uuid",
   "sessionId": "uuid",
-  "buddyTier": "junior | mid | senior | expert | instructor | organizer",
+  "buddyTier": "junior | buddy | star | blackstar",
   "status": "confirmed | waitlist",
   "bookedAt": "ISO8601",
   "updatedAt": "ISO8601"

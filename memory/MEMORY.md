@@ -1,7 +1,7 @@
 # Memory Index
 
 ## Project
-- [project_prerelease.md](project_prerelease.md) — Pre-release: schema changes = `prisma db push`, never raise migration concerns. DELETE on first prod deploy.
+- [project_prerelease.md](project_prerelease.md) — Pre-release: `prisma db push`, no migrations dir. But staging holds data and no deploy step applies DDL, so schema changes still need a plan. DELETE on first prod deploy.
 
 ## User
 - [user_profile.md](user_profile.md) — Org context (Google Workspace for Nonprofits, Apple sign-in deferred)

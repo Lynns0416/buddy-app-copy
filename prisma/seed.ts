@@ -26,8 +26,67 @@ const buddyAccounts = authExport.users.filter(
 )
 // Synthetic second admin (always seeded, cannot log in — display only for multi-admin eval demo)
 const SEED_ADMIN2_UID = 'seed-admin2-00000000000000000000000'
-const FIREBASE_UIDS = [...authExport.users.map((u: any) => u.localId), SEED_ADMIN2_UID]
-// ↑ includes trainee UIDs — excludes them from dynamic "me" detection
+
+// Synthetic roster buddies (always seeded, cannot log in — display only).
+// The admin roster, its filters and its sorting need more rows than the
+// handful of Firebase accounts provide. These have no auth account, like
+// Seed Admin 2 above: only the Firebase accounts and the dynamic "me" user
+// can actually log in.
+//
+// Tier is a pyramid on purpose — few stars, fewer blackstars. Only active
+// and suspended buddies carry a tier; trainee, pending and rejected are
+// always null.
+type RosterEntry = {
+  realName: string
+  displayName: string
+  status: BuddyStatus
+  tier: BuddyTier | null
+  languages: string[]
+  daysAgo: number
+  internalNotes?: string
+}
+
+const ROSTER: RosterEntry[] = [
+  { realName: '田中 美咲',   displayName: 'みさき',   status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese'],                        daysAgo: 40 },
+  { realName: '佐藤 健太',   displayName: 'けんた',   status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese', 'english'],             daysAgo: 44 },
+  { realName: '鈴木 陽子',   displayName: 'ようこ',   status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese'],                        daysAgo: 51 },
+  { realName: '高橋 大輔',   displayName: 'だいすけ', status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese', 'english'],             daysAgo: 58 },
+  { realName: '伊藤 さくら', displayName: 'さくら',   status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese', 'korean'],              daysAgo: 63 },
+  { realName: '渡辺 翔',     displayName: 'しょう',   status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese'],                        daysAgo: 70 },
+  { realName: '山本 結衣',   displayName: 'ゆい',     status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese', 'english'],             daysAgo: 77 },
+  { realName: '中村 拓海',   displayName: 'たくみ',   status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese'],                        daysAgo: 84 },
+  { realName: '小林 愛',     displayName: 'あい',     status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'english'],             daysAgo: 120 },
+  { realName: '加藤 直樹',   displayName: 'なおき',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese'],                        daysAgo: 128 },
+  { realName: '吉田 遥',     displayName: 'はるか',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'english'],             daysAgo: 135 },
+  { realName: '山田 涼太',   displayName: 'りょうた', status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'chinese_simplified'],  daysAgo: 142 },
+  { realName: '佐々木 千尋', displayName: 'ちひろ',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'english'],             daysAgo: 150 },
+  { realName: '山口 悠斗',   displayName: 'ゆうと',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese'],                        daysAgo: 158 },
+  { realName: '松本 楓',     displayName: 'かえで',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'english'],             daysAgo: 165 },
+  { realName: '井上 蓮',     displayName: 'れん',     status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'korean'],              daysAgo: 172 },
+  { realName: '木村 綾乃',   displayName: 'あやの',   status: BuddyStatus.active,    tier: BuddyTier.star,      languages: ['japanese', 'english'],             daysAgo: 300 },
+  { realName: '林 隼人',     displayName: 'はやと',   status: BuddyStatus.active,    tier: BuddyTier.star,      languages: ['japanese', 'english', 'french'],   daysAgo: 340 },
+  { realName: '清水 芽衣',   displayName: 'めい',     status: BuddyStatus.active,    tier: BuddyTier.blackstar, languages: ['japanese', 'english'],             daysAgo: 520, internalNotes: '研修セッションの担当可。オンライン・オフラインとも対応。' },
+  { realName: '斎藤 光',     displayName: 'ひかる',   status: BuddyStatus.active,    tier: BuddyTier.blackstar, languages: ['japanese', 'english', 'spanish'],  daysAgo: 610, internalNotes: '統括担当。緊急時の連絡先。' },
+  { realName: '森田 奈々',   displayName: 'なな',     status: BuddyStatus.suspended, tier: BuddyTier.junior,    languages: ['japanese'],                        daysAgo: 95,  internalNotes: '本人希望により一時停止中。' },
+  { realName: '池田 亮',     displayName: 'りょう',   status: BuddyStatus.suspended, tier: BuddyTier.star,      languages: ['japanese', 'english'],             daysAgo: 380, internalNotes: '留学のため休止。復帰時期は未定。' },
+  { realName: '橋本 詩織',   displayName: 'しおり',   status: BuddyStatus.trainee,   tier: null,                languages: ['japanese'],                        daysAgo: 12 },
+  { realName: '石川 湊',     displayName: 'みなと',   status: BuddyStatus.trainee,   tier: null,                languages: ['japanese', 'english'],             daysAgo: 15 },
+  { realName: '前田 心春',   displayName: 'こはる',   status: BuddyStatus.trainee,   tier: null,                languages: ['japanese'],                        daysAgo: 19 },
+  { realName: '藤田 悠真',   displayName: 'ゆうま',   status: BuddyStatus.trainee,   tier: null,                languages: ['japanese', 'english'],             daysAgo: 24 },
+  { realName: '岡田 莉子',   displayName: 'りこ',     status: BuddyStatus.pending,   tier: null,                languages: ['japanese'],                        daysAgo: 2 },
+  { realName: '後藤 陽向',   displayName: 'ひなた',   status: BuddyStatus.pending,   tier: null,                languages: ['japanese', 'english'],             daysAgo: 4 },
+  { realName: '村上 結菜',   displayName: 'ゆな',     status: BuddyStatus.pending,   tier: null,                languages: ['japanese', 'thai'],                daysAgo: 6 },
+  { realName: '近藤 大和',   displayName: 'やまと',   status: BuddyStatus.rejected,  tier: null,                languages: ['japanese'],                        daysAgo: 30, internalNotes: '面談に来られず。再応募は可。' },
+]
+
+const rosterUid = (i: number) => `seed-buddy-${String(i + 1).padStart(2, '0')}`
+
+const FIREBASE_UIDS = [
+  ...authExport.users.map((u: any) => u.localId),
+  SEED_ADMIN2_UID,
+  ...ROSTER.map((_, i) => rosterUid(i)),
+]
+// ↑ includes trainee and roster UIDs — excludes them from dynamic "me" detection
 
 // Fixed IDs for groups, tours, sessions (never auto-created via login)
 const ID = {
@@ -102,8 +161,8 @@ async function main() {
   })
 
   // ── Buddy users and profiles (dynamic from accounts.json) ─────
-  // Assign tiers so the application system works: b(0)=junior, b(1)=senior, b(2+)=mid
-  const BUDDY_TIER_CYCLE: BuddyTier[] = [BuddyTier.junior, BuddyTier.senior, BuddyTier.mid]
+  // Assign tiers so the application system works: b(0)=junior, b(1)=star, b(2+)=buddy
+  const BUDDY_TIER_CYCLE: BuddyTier[] = [BuddyTier.junior, BuddyTier.star, BuddyTier.buddy]
   const buddies: string[] = []
   for (let i = 0; i < buddyAccounts.length; i++) {
     const account = buddyAccounts[i]
@@ -167,8 +226,52 @@ async function main() {
     })
   }
 
+  // ── Synthetic roster buddies (display-only, cannot log in) ───
+  const rosterIds: string[] = []
+  for (let i = 0; i < ROSTER.length; i++) {
+    const entry = ROSTER[i]
+    const uid = rosterUid(i)
+    const createdAt = daysFromNow(-entry.daysAgo)
+
+    const user = await prisma.user.upsert({
+      where: { firebaseUid: uid },
+      update: {},
+      create: { firebaseUid: uid, email: `${uid}@seed.local`, role: UserRole.buddy },
+    })
+
+    const profile = await prisma.buddyProfile.upsert({
+      where: { userId: user.id },
+      update: {
+        displayName: entry.displayName,
+        realName: entry.realName,
+        status: entry.status,
+        tier: entry.tier,
+        languages: entry.languages,
+        skills: [],
+        internalNotes: entry.internalNotes ?? null,
+        createdAt,
+      },
+      create: {
+        userId: user.id,
+        displayName: entry.displayName,
+        realName: entry.realName,
+        status: entry.status,
+        tier: entry.tier,
+        languages: entry.languages,
+        skills: [],
+        internalNotes: entry.internalNotes ?? null,
+        createdAt,
+      },
+    })
+
+    rosterIds.push(profile.id)
+  }
+
   // Helper: cycle through buddy IDs for booking distribution
   const b = (i: number) => buddies.length > 0 ? buddies[i % buddies.length] : null
+
+  // Helper: roster profile ID by index into ROSTER
+  const r = (i: number) => rosterIds[i]
 
   // ── Groups ──────────────────────────────────────────────────
   await prisma.group.upsert({
@@ -465,9 +568,9 @@ async function main() {
     const existingBookings = [
       { buddyId: b(0)!, tourId: ID.tourUrgent,    sessionId: ID.sessionUrgent,    status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
       { buddyId: b(0)!, tourId: ID.tourMidterm,   sessionId: ID.sessionMidterm,   status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: b(1)!, tourId: ID.tourMidterm,   sessionId: ID.sessionMidterm,   status: BookingStatus.maybe,     buddyTier: BuddyTier.senior },
+      { buddyId: b(1)!, tourId: ID.tourMidterm,   sessionId: ID.sessionMidterm,   status: BookingStatus.maybe,     buddyTier: BuddyTier.star },
       { buddyId: b(0)!, tourId: ID.tourPast,      sessionId: ID.sessionPast,      status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: b(1)!, tourId: ID.tourCancelled, sessionId: ID.sessionCancelled, status: BookingStatus.confirmed, buddyTier: BuddyTier.senior },
+      { buddyId: b(1)!, tourId: ID.tourCancelled, sessionId: ID.sessionCancelled, status: BookingStatus.confirmed, buddyTier: BuddyTier.star },
     ]
     for (const booking of existingBookings) {
       await prisma.booking.upsert({
@@ -487,7 +590,7 @@ async function main() {
     const declinedBooking = await prisma.booking.upsert({
       where: { buddyId_sessionId: { buddyId: b(1)!, sessionId: ID.sessionPeace1 } },
       update: {},
-      create: { buddyId: b(1)!, tourId: ID.tourPeace1, sessionId: ID.sessionPeace1, status: BookingStatus.declined, buddyTier: BuddyTier.senior },
+      create: { buddyId: b(1)!, tourId: ID.tourPeace1, sessionId: ID.sessionPeace1, status: BookingStatus.declined, buddyTier: BuddyTier.star },
     })
     await prisma.cancellationReason.upsert({
       where: { bookingId: declinedBooking.id },
@@ -504,7 +607,7 @@ async function main() {
     // peace-002 (direct/legacy bookings — no application)
     const peace2Bookings = [
       { buddyId: b(0)!, tourId: ID.tourPeace2, sessionId: ID.sessionPeace2, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: b(1)!, tourId: ID.tourPeace2, sessionId: ID.sessionPeace2, status: BookingStatus.maybe,     buddyTier: BuddyTier.senior },
+      { buddyId: b(1)!, tourId: ID.tourPeace2, sessionId: ID.sessionPeace2, status: BookingStatus.maybe,     buddyTier: BuddyTier.star },
     ]
     for (const booking of peace2Bookings) {
       await prisma.booking.upsert({
@@ -523,7 +626,7 @@ async function main() {
       await prisma.booking.upsert({
         where: { buddyId_sessionId: { buddyId: b(1)!, sessionId: ID.sessionPast } },
         update: {},
-        create: { buddyId: b(1)!, tourId: ID.tourPast, sessionId: ID.sessionPast, status: BookingStatus.confirmed, buddyTier: BuddyTier.senior },
+        create: { buddyId: b(1)!, tourId: ID.tourPast, sessionId: ID.sessionPast, status: BookingStatus.confirmed, buddyTier: BuddyTier.star },
       })
     }
 
@@ -688,9 +791,57 @@ async function main() {
       await prisma.booking.upsert({
         where: { buddyId_sessionId: { buddyId: b(1)!, sessionId: ID.sessionPeace3 } },
         update: {},
-        create: { buddyId: b(1)!, tourId: ID.tourPeace3, sessionId: ID.sessionPeace3, status: BookingStatus.waitlist, buddyTier: BuddyTier.senior },
+        create: { buddyId: b(1)!, tourId: ID.tourPeace3, sessionId: ID.sessionPeace3, status: BookingStatus.waitlist, buddyTier: BuddyTier.star },
       })
     }
+  }
+
+  // ── Roster bookings ─────────────────────────────────────────
+  // A light spread so the tier pools hold real numbers. Only active roster
+  // buddies book. sessionPeace3's junior pool is left clear so the dynamic
+  // "me" buddy (junior) can still apply there.
+  // buddyTier is taken from ROSTER[index].tier — never restated here, so a
+  // roster entry and its bookings cannot drift apart.
+  const rosterBookings: {
+    index: number
+    tourId: string
+    sessionId: string
+    status: BookingStatus
+  }[] = [
+    // tourPeace4 / sessionPeace4 — capacity 8, previously empty
+    { index: 0,  tourId: ID.tourPeace4, sessionId: ID.sessionPeace4, status: BookingStatus.confirmed },
+    { index: 8,  tourId: ID.tourPeace4, sessionId: ID.sessionPeace4, status: BookingStatus.confirmed },
+    { index: 9,  tourId: ID.tourPeace4, sessionId: ID.sessionPeace4, status: BookingStatus.confirmed },
+    { index: 16, tourId: ID.tourPeace4, sessionId: ID.sessionPeace4, status: BookingStatus.confirmed },
+    { index: 18, tourId: ID.tourPeace4, sessionId: ID.sessionPeace4, status: BookingStatus.confirmed },
+    { index: 10, tourId: ID.tourPeace4, sessionId: ID.sessionPeace4, status: BookingStatus.waitlist },
+    { index: 1,  tourId: ID.tourPeace4, sessionId: ID.sessionPeace4, status: BookingStatus.waitlist },
+    // tourOpen / sessionOpen — capacity 8, previously empty
+    { index: 2,  tourId: ID.tourOpen,   sessionId: ID.sessionOpen,   status: BookingStatus.confirmed },
+    { index: 11, tourId: ID.tourOpen,   sessionId: ID.sessionOpen,   status: BookingStatus.confirmed },
+    { index: 12, tourId: ID.tourOpen,   sessionId: ID.sessionOpen,   status: BookingStatus.confirmed },
+    { index: 17, tourId: ID.tourOpen,   sessionId: ID.sessionOpen,   status: BookingStatus.confirmed },
+    // tourPeace3 / sessionPeace3 — non-junior only, junior pool stays clear
+    { index: 13, tourId: ID.tourPeace3, sessionId: ID.sessionPeace3, status: BookingStatus.confirmed },
+    { index: 14, tourId: ID.tourPeace3, sessionId: ID.sessionPeace3, status: BookingStatus.confirmed },
+    { index: 19, tourId: ID.tourPeace3, sessionId: ID.sessionPeace3, status: BookingStatus.confirmed },
+  ]
+
+  for (const booking of rosterBookings) {
+    const buddyId = r(booking.index)
+    const buddyTier = ROSTER[booking.index].tier
+    if (!buddyId || !buddyTier) continue
+    await prisma.booking.upsert({
+      where: { buddyId_sessionId: { buddyId, sessionId: booking.sessionId } },
+      update: {},
+      create: {
+        buddyId,
+        tourId: booking.tourId,
+        sessionId: booking.sessionId,
+        status: booking.status,
+        buddyTier,
+      },
+    })
   }
 
   // ── Dynamic "me" ────────────────────────────────────────────
@@ -720,7 +871,8 @@ async function main() {
         create: booking,
       })
     }
-    // tourPeace3 and tourOpen have no booking → Apply button shows on those tours
+    // "me" has no booking on tourPeace3 or tourOpen → Apply button shows there.
+    // Both sessions do carry roster bookings, with pool seats still free.
     console.log(`  動的バディ: ${dynamicUser.email} → ブッキング追加済み、tier=junior`)
   }
 
@@ -729,8 +881,9 @@ async function main() {
   console.log('  合成admin2: admin2@seed.local (ログイン不可 — マルチ管理者評価デモ用)')
   console.log('  ツアー: 平和公園 4件（締切済み・中期・遠日程・下書き）')
   console.log('  peace-001: 参加中(buddy0) + キャンセル済み+理由あり(buddy1)')
-  console.log('  peace-003: 参加済み(buddy0=junior) + キャンセル待ち(buddy1=senior)')
+  console.log('  peace-003: 参加済み(buddy0=junior) + キャンセル待ち(buddy1=star)')
   console.log('  tourOpen / tourPeace3: 動的バディ(me)が応募ボタンを確認できるツアー')
+  console.log(`  合成ロスター: ${ROSTER.length}名 (@seed.local — ログイン不可、一覧・絞り込み・並び替え確認用)`)
 }
 
 main()

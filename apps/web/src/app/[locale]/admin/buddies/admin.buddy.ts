@@ -1,5 +1,5 @@
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry, BuddyStatus, BuddyTier, UpdateAdminBuddyProfile, AppError, CancellationReasonResponse, BookingStatus, AdminBookingStatusResponse } from '@peace-buddy/types'
-import { AppErrorCodeSchema, BuddyStatusSchema } from '@peace-buddy/types'
+import { AppErrorCodeSchema, BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
@@ -8,6 +8,14 @@ import { classifyApiError } from '../../../../lib/api-error'
 import { ASC, DESC } from '../../../../lib/constants'
 
 export type BuddySortField = 'displayName' | 'email' | 'tier'
+
+// Tiers sort by the order they are declared in BuddyTierSchema — junior first,
+// blackstar last — not alphabetically. Null (trainees and unpromoted buddies)
+// sorts before every tier.
+function tierRank(tier: BuddyTier | null): number {
+  if (!tier) return -1
+  return BuddyTierSchema.options.indexOf(tier)
+}
 
 export function mapBuddyError(t: (key: string) => string, error: AppError): string {
   switch (error.code) {
@@ -39,9 +47,7 @@ export function sortBuddies(
     } else if (field === 'email') {
       cmp = a.email.localeCompare(b.email)
     } else if (field === 'tier') {
-      const aTier = a.tier || ''
-      const bTier = b.tier || ''
-      cmp = aTier.localeCompare(bTier)
+      cmp = tierRank(a.tier) - tierRank(b.tier)
     }
     return dir === ASC ? cmp : -cmp
   })

@@ -86,7 +86,7 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | id | UUID | PK |
 | userId | UUID | FK → User, Unique |
 | status | Enum | `pending` / `trainee` / `active` / `rejected` / `suspended` |
-| tier | Enum? | `junior` / `mid` / `senior` / `expert` / `instructor` / `organizer` — NULL for trainees |
+| tier | Enum? | `junior` / `buddy` / `star` / `blackstar` — NULL for trainees |
 | displayName | String | |
 | realName | String | |
 | photoUrl | String? | |

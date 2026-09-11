@@ -251,10 +251,10 @@ describe('updateBuddyProfile', () => {
   })
 
   it('updates only tier when internalNotes is undefined', async () => {
-    mdb.buddyProfile.update.mockResolvedValueOnce({ ...mockRaw, tier: 'senior' } as unknown)
-    await updateBuddyProfile('profile-1', 'senior', undefined)
+    mdb.buddyProfile.update.mockResolvedValueOnce({ ...mockRaw, tier: 'star' } as unknown)
+    await updateBuddyProfile('profile-1', 'star', undefined)
     expect(mdb.buddyProfile.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { tier: 'senior' } })
+      expect.objectContaining({ data: { tier: 'star' } })
     )
   })
 
