@@ -172,19 +172,22 @@ Neon anywhere in `apps/`, `packages/`, or `prisma/`. **Keep it that way.**
 
 ## 4. Provisioning
 
-Infrastructure is `scripts/azure-provision.sh`, reading an untracked
-`scripts/azure.env` (template: `scripts/azure.env.example`, gitignored
+Infrastructure is `scripts/azure-provision.sh`, taking an untracked env file
+as its argument — `scripts/azure.env` for prod, `scripts/azure.stg.env` for
+staging (template: `scripts/azure.env.example`; `azure*.env` is gitignored
 alongside the existing `deploy.env`). It is idempotent — every step checks for
 existence first, so a partial run resumes by rerunning.
 
+Numbered as the script's own sections are:
+
 ```mermaid
 flowchart TB
-    RG["1 · resource group<br/>the undo button"] --> PROV["2 · register providers<br/>App · ContainerRegistry<br/>DBforPostgreSQL · OperationalInsights"]
+    CONF["0 · confirm the target<br/>coloured banner, red for prod"] --> RG["1 · resource group<br/>the undo button"]
+    RG --> PROV["2 · register providers<br/>App · ContainerRegistry<br/>DBforPostgreSQL · OperationalInsights"]
     PROV --> ACR["3 · container registry<br/>Basic"]
     ACR --> VNET["4 · VNet + 2 subnets<br/>+ private DNS zone"]
     VNET --> ENV["5 · Container Apps env<br/>network type fixed at creation"]
-    ENV --> PG["6 · Postgres × 2<br/>prod + staging, VNet-injected<br/>private access is PERMANENT"]
-    PG --> ST["7 · Storage accounts × 2<br/>prod + staging, buddy photos"]
+    ENV --> PG["6 · Postgres server<br/>VNet-injected, private access is PERMANENT<br/>then the peacebuddy database, its own call"]
 ```
 
 Two steps are one-way doors. A Container Apps environment's network type cannot
@@ -198,11 +201,18 @@ a second VNet, a second pair of public IPs at ~$88/yr, and a second load
 balancer. Four apps in one environment cost the same as two, because idle
 revisions scale to zero. See `decisions.md` 2026-09-12.
 
-**The script predates the two-environment decision.** As written it provisions a
-single Postgres server and no storage account. It needs an environment parameter
-so that steps 6 and 7 run twice, once for prod and once for staging, against the
-shared resource group, VNet and Container Apps environment. Steps 1 through 5
-stay single-instance.
+**The script is run once per environment, with that environment's env file.**
+It takes `ENVIRONMENT`, names the target in a coloured confirmation banner — red
+for prod, anything else blue — and refuses to create anything until someone
+agrees to it. Steps 1 through 5 are the shared resource group, VNet and
+Container Apps environment; they are idempotent, so the second run skips them
+and only step 6 produces a second server and database.
+
+**The script stops there. It creates no storage account**, for either
+environment. The diagram above is the whole of it, so the per-environment Blob
+storage that §2 describes and the Progress table tracks has not been created by
+anything. That is #151, and it is why the two-environment work is not finished
+by the provisioning merge.
 
 ## 5. Deploy pipeline
 
@@ -251,6 +261,12 @@ actually annoys people. It is one flag and reversible.
 ## 6. Database cutover
 
 **Prod and staging cut over differently**, because only one of them has data.
+
+The server does not arrive with the application database on it. az 2.90 accepts
+`--database-name` on `flexible-server create` only for elastic clusters, so
+`peacebuddy` is created by its own `flexible-server db create` call, the tail of
+step 6 in §4, and it is that database rather than the server's defaults that
+`DATABASE_URL` points at.
 
 **Prod has never existed.** Build it with `prisma migrate deploy` from
 `0_init` against an empty server. No dump, no baseline, no enum problem.
@@ -329,10 +345,11 @@ az postgres flexible-server stop  -g rg-peace-buddy -n psql-peace-buddy-stg
 
 **Azure restarts a stopped server by itself after seven days.** With no
 scheduler enforcing the stopped state, staging will quietly come back during
-every dormant stretch and bill compute until someone notices. That is the
-accepted cost of not building a scheduler. The budget alert in §9 is the only
-thing that will catch it, which makes that checklist item load-bearing rather
-than nice to have.
+every dormant stretch and bill compute until someone notices. It was stopped on
+**2026-09-12**, so it comes back on its own around **2026-09-19** unless stopped
+again. That is the accepted cost of not building a scheduler. The budget alert
+in §9 is the only thing that will catch it, which makes that checklist item
+load-bearing rather than nice to have.
 
 Starting takes minutes, not seconds, so start it before people need it.
 
@@ -408,10 +425,11 @@ authority.*
 | Providers registered | ✅ |
 | Registry `crpeacebuddy`, Basic | ✅ |
 | Costs verified against the Retail Prices API | ✅ 2026-09-12, see `azure-costs.md` |
-| Container Apps environment | ⬜ an earlier VNet-less attempt is gone; verified 2026-09-11 that no environment exists |
-| VNet, subnets, private DNS | ⬜ |
-| Postgres — **prod** | ⬜ |
-| Postgres — **staging** | ⬜ |
+| VNet, subnets, private DNS | ✅ 2026-09-12 — `snet-apps` `10.0.0.0/23`, `snet-db` `10.0.4.0/24`, zone `peace-buddy.private.postgres.database.azure.com` |
+| Container Apps environment | ✅ 2026-09-12 — VNet-injected into `snet-apps` |
+| Postgres — **staging** | ✅ 2026-09-12 — `psql-peace-buddy-stg`, B1ms, 32 GiB, public access disabled, HA disabled. Stopped by hand after creation |
+| Database `peacebuddy` on staging | ✅ 2026-09-12 — its own `flexible-server db create` step, see §6 |
+| Postgres — **prod** | ⬜ not provisioned, deliberately — the server does not exist; see `decisions.md` 2026-09-12, "Staging is provisioned first" |
 | Application database role, replacing the admin account in `DATABASE_URL` | ⬜ both servers |
 | Storage accounts, one per environment | ⬜ |
 | Photo service ported from the S3 SDK to Azure Blob | ⬜ `apps/api/src/services/buddyPhoto.service.ts`, its test, `deploy.sh`, `deploy.env.example`, `next.config.ts` remote patterns |
@@ -434,25 +452,29 @@ the VNet, which does not exist until the script has run. Create that role as the
 first step of the deploy work and put the restricted credentials in the deploy
 config. The admin account should not end up in `DATABASE_URL`.
 
-Left over in `rg-peace-buddy` from the earlier attempt: a Log Analytics
-workspace named `workspace-rgpeacebuddyyg8h`. Creating the environment makes a
-new one, so this can be deleted.
+Left over in `rg-peace-buddy` from a VNet-less Container Apps environment
+attempted before 2026-09-11 and since deleted: a Log Analytics workspace named
+`workspace-rgpeacebuddyyg8h`. Creating the environment on 2026-09-12 made a new
+one, so the old workspace is now orphaned and can be deleted. Not yet checked
+against the subscription.
 
 ## Unverified — check these before trusting the plan
 
-Written down explicitly because they are the load-bearing assumptions, and none
-of them has been confirmed against a live subscription.
+Written down explicitly because they are the load-bearing assumptions. Struck
+entries are settled — 1 and 2 against the Azure Retail Prices API, 3 and 4
+against the live subscription. The rest are still open.
 
 1. ~~**B1ms and storage pricing for Japan East.**~~ **Resolved 2026-09-12.**
    $0.026/hr and $0.138/GiB/mo from the Retail Prices API. The old $12.41/mo
    figure was ~35% low.
 2. ~~**Container Registry Basic at ~$5/mo.**~~ **Resolved 2026-09-12.**
    $0.1666/day, so $5.07/mo. The estimate was right.
-3. **`scripts/azure-provision.sh` has never been executed.** Syntax-checked
-   only. No `shellcheck` available on this machine.
-4. **Private DNS zone naming.** Azure constrains the zone suffix for
-   VNet-injected Postgres. `peace-buddy.private.postgres.database.azure.com`
-   follows the documented pattern but has not been created.
+3. ~~**`scripts/azure-provision.sh` has never been executed.**~~ **Resolved
+   2026-09-12.** Run end to end against staging, #165. Still no `shellcheck` on
+   this machine, and the prod path has not been run.
+4. ~~**Private DNS zone naming.**~~ **Resolved 2026-09-12.**
+   `peace-buddy.private.postgres.database.azure.com` was accepted and the
+   staging server is linked to it.
 5. **Cold start duration.** "A few seconds" is an estimate for a Node image, not
    a measurement of these images.
 6. **Regionalized Firebase Auth**, roadmapped for end-2025, status still

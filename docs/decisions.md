@@ -162,6 +162,34 @@ same to within cents and the extra three weeks is free insurance.
 
 ---
 
+## 2026-09-12 — Staging is provisioned first; prod waits until release
+
+**Decision:** The Azure staging server was created first and prod was left
+unprovisioned. Steps 1 through 5 — resource group, providers, registry, VNet and
+Container Apps environment — are shared and exist already, so what prod still
+needs is one `scripts/azure-provision.sh` run against `scripts/azure.env`, the
+restricted application role created with `psql` from inside the VNet, and
+`prisma migrate deploy`. Done whenever release is actually wanted.
+
+**Why:** Staging is where the work is — it carries Neon's data and the whole
+cutover in `deploy-plan.md` §6. Prod has no data, no cutover, and nothing to
+deploy yet, so provisioning it early buys nothing. A prod server is always-on by
+design, which is **$281/yr** of grant credit serving nobody. Parking it stopped
+instead is not a saving worth having: storage still bills at $53/yr, and Azure
+restarts a stopped server after seven days (`deploy-plan.md` §7), so it would
+need the same manual attention as staging for an environment nobody is using.
+
+**Rejected — provisioning both servers in one sitting:** the tidier reading of
+#150, which is scoped to both servers. Rejected because the one-way doors are
+all in steps 4 and 5, which are shared and now proven; nothing about creating
+prod later is harder than creating it now. #150 therefore stays open after the
+staging provisioning merge, holding the prod server and the restricted
+application roles for both.
+
+**Current state:** the Progress table in `deploy-plan.md`.
+
+---
+
 ## 2026-09-12 — Two Azure environments, prod and staging; nothing else deployed
 
 **Decision:** Azure gets **prod** and **staging**, each with its own Postgres
