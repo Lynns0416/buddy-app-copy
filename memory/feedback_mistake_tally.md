@@ -17,6 +17,8 @@ Running tally of mistakes already corrected. Increment here, never in chat.
 | Asserted costs/trade-offs without checking them against this repo | 1 | 2026-09-12 |
 | Held a position under pushback, then reversed once I finally checked | 1 | 2026-09-12 |
 | Trusted a memory note as current fact instead of re-verifying it | 1 | 2026-09-12 |
+| Introduced a new defect while fixing review findings | 1 | 2026-09-12 |
+| Presented my own edit as finished without checking it against the source | 1 | 2026-09-12 |
 | Answered a question the user did not ask / restated their own point back at them | 2 | 2026-09-10 |
 | Kept narrating a self-correction after it was already resolved | 1 | 2026-09-09 |
 | Added Co-Authored-By / session trailer to a commit | 1 | 2026-09-10 |
@@ -63,6 +65,20 @@ Before stating a cost, a trade-off or a best practice, mark each item as
 verified here or assumed in general, and check the ones that decide the answer.
 Memory notes are claims with a date, not standing facts — `project_prerelease`
 said "never raise migration concerns" long after staging began holding data.
+
+A fix is not done when it is written. Reviewing PR #168, the finding was that
+`deploy-plan.md` §4 named `ENVIRONMENT` as the per-environment parameter without
+saying which values actually differ. The fix then enumerated "four lines:
+ENVIRONMENT, PG_SERVER, and the two app names" — the count quoted from a script
+comment, the identities invented. Neither env file exists on this machine, and
+the list was probably wrong twice over. The next review round caught it, so the
+review cycle only ever found defects I had just planted. The user is right that
+this is the loop to break.
+Before presenting any edit as done, re-read what was written against the file it
+claims to describe, exactly as if someone else had written it. Never write a
+specific — a count, a filename, a list of fields — that cannot be pointed at a
+line in this repo. When the source is unavailable, say the source is unavailable
+in the text itself rather than filling the gap.
 
 Record repeat offences here, not in a reply — the user does not want
 the accounting in chat. See [[feedback_ask_before_concluding]],

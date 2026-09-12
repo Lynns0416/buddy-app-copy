@@ -183,7 +183,7 @@ Numbered as the script's own sections are:
 ```mermaid
 flowchart TB
     CONF["0 · confirm the target<br/>coloured banner, red for prod"] --> RG["1 · resource group<br/>the undo button"]
-    RG --> PROV["2 · register providers<br/>App · ContainerRegistry<br/>DBforPostgreSQL · OperationalInsights"]
+    RG --> PROV["2 · register providers<br/>App · ContainerRegistry<br/>DBforPostgreSQL · OperationalInsights<br/>Network"]
     PROV --> ACR["3 · container registry<br/>Basic"]
     ACR --> VNET["4 · VNet + 2 subnets<br/>+ private DNS zone"]
     VNET --> ENV["5 · Container Apps env<br/>network type fixed at creation"]
@@ -204,9 +204,12 @@ revisions scale to zero. See `decisions.md` 2026-09-12.
 **The script is run once per environment, with that environment's env file.**
 It takes `ENVIRONMENT`, names the target in a coloured confirmation banner — red
 for prod, anything else blue — and refuses to create anything until someone
-agrees to it. Steps 1 through 5 are the shared resource group, VNet and
-Container Apps environment; they are idempotent, so the second run skips them
-and only step 6 produces a second server and database.
+agrees to it. `ENVIRONMENT` reaches nothing but that banner; the value that
+decides which server step 6 creates is `PG_SERVER` — `psql-peace-buddy` for
+prod, `psql-peace-buddy-stg` for staging — and the banner prints that name
+before anything is created. Steps 1 through 5 are the shared resource group,
+VNet and Container Apps environment; they are idempotent, so the second run
+skips them and only step 6 produces a second server and database.
 
 **The script stops there. It creates no storage account**, for either
 environment. The diagram above is the whole of it, so the per-environment Blob
