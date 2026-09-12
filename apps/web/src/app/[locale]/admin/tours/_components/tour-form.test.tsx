@@ -36,10 +36,11 @@ function fillForm(overrides: Partial<typeof validFields> = {}) {
   return { user, fields }
 }
 
-function renderForm(onSubmit = vi.fn()) {
+function renderForm(onSubmit = vi.fn(), initialGroupId?: string) {
   render(
     <TourForm
       groups={groups}
+      initialGroupId={initialGroupId}
       cancelHref="/admin/tours"
       onSubmit={onSubmit}
     />,
@@ -98,6 +99,39 @@ describe('TourForm', () => {
     expect(screen.getByText(groups[0].contactName!)).toBeInTheDocument()
     expect(screen.getByText(groups[0].contactEmail!)).toBeInTheDocument()
     expect(screen.getByText(groups[0].notes!)).toBeInTheDocument()
+  })
+
+  it('preselects the group and shows its summary when initialGroupId is given', () => {
+    renderForm(vi.fn(), groups[0].id)
+
+    expect(screen.getByLabelText('group')).toHaveValue(groups[0].name)
+    expect(screen.getByText(groups[0].contactName!)).toBeInTheDocument()
+    expect(screen.getByText(groups[0].contactEmail!)).toBeInTheDocument()
+  })
+
+  it('submits the preselected group without the picker being touched', async () => {
+    const onSubmit = vi.fn()
+    renderForm(onSubmit, groups[0].id)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
+    await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
+    await user.type(screen.getByLabelText('location'), validFields.location)
+    await user.clear(screen.getByLabelText('capacity'))
+    await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
+    await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
+
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled())
+    expect(onSubmit.mock.calls[0][0].groupId).toBe(groups[0].id)
+  })
+
+  it('leaves the picker empty when initialGroupId matches no group', () => {
+    renderForm(vi.fn(), '00000000-0000-4000-8000-000000000000')
+
+    expect(screen.getByLabelText('group')).toHaveValue('')
+    expect(screen.queryByText(groups[0].contactName!)).not.toBeInTheDocument()
   })
 
   it('shows a translated error and does not submit when no group is picked', async () => {

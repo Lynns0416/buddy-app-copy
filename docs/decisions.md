@@ -12,6 +12,39 @@ duplicate that state here.
 
 ---
 
+## 2026-09-12 — Group prefill on the tour form is a separate `initialGroupId` prop
+
+**Decision:** `/admin/tours/new` accepts `?groupId=`, and `TourForm` takes
+`initialGroupId?: string` alongside its existing `defaultValues?:
+AdminTourDetailResponse`. `defaultValues` wins when both are present. Arriving
+with a `groupId` also changes where the screen exits to: back link and Cancel
+return to that group, and the post-submit redirect returns to the group the tour
+was actually created for, which is not the same thing once the picker has been
+changed. With no `groupId`, all three go to the tour list as before.
+
+**Why:** #172 adds "new tour for this group" buttons to the group list and detail
+pages. The only thing prefilled is the group, which is not a tour.
+
+**Rejected — widening `defaultValues` to a partial tour:** every field read off
+it (`defaultValues?.tourDate.slice(0, 10)`, the session mapping) would have to
+become optional-aware, and the edit page, which passes a real tour, would carry
+that looseness for a case it never hits.
+
+**Rejected — sending Cancel to the tour list while Save returns to the group:**
+the issue only named the success redirect, but two exits from the same screen
+landing in different places is a bug waiting to be filed.
+
+**Rejected — resolving the id against the loaded group list before prefilling:**
+groups load after mount, so the form would have to re-seed itself. An id that
+matches nothing simply leaves the picker empty, which is the same state as not
+passing one.
+
+**Current state:** `apps/web/src/lib/routes.ts`,
+`apps/web/src/app/[locale]/admin/tours/new/page.tsx`,
+`apps/web/src/app/[locale]/admin/tours/_components/tour-form.tsx`.
+
+---
+
 ## 2026-09-12 — Staging's baseline repair is hand-run SQL, not a migration
 
 **Decision:** The SQL that brought Neon staging up to `schema.prisma` before

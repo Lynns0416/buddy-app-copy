@@ -72,13 +72,15 @@ export type TourFormValues = {
 
 type Props = {
   defaultValues?: AdminTourDetailResponse
+  /** Preselects the group when the form is opened from a group page. Ignored when `defaultValues` is given. */
+  initialGroupId?: string
   groups: GroupResponse[]
   cancelHref: string
   onSubmit: (values: TourFormValues) => Promise<void>
   hideSessionManagement?: boolean
 }
 
-export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSessionManagement = false }: Props) {
+export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, onSubmit, hideSessionManagement = false }: Props) {
   const t = useTranslations('adminTours')
 
   const firstSession = defaultValues?.sessions[0]
@@ -93,7 +95,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
   } = useForm<TourFormFields>({
     resolver: zodResolver(TourFormSchema),
     defaultValues: {
-      groupId: defaultValues?.group.id ?? '',
+      groupId: defaultValues?.group.id ?? initialGroupId ?? '',
       tourDate: defaultValues?.tourDate.slice(0, 10) ?? '',
       bookingOpen: defaultValues?.bookingOpen ?? false,
       location: defaultValues?.location ?? '',

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortTours, nextTourListSort, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchSessionTierCapacities, saveSessionTierCapacities, filterTours, isTourFilterActive, emptyTourFilters, tourFiltersFromParams, tourFiltersToParams, type TourFilters } from './admin.tour'
+import { sortTours, nextTourListSort, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchSessionTierCapacities, saveSessionTierCapacities, filterTours, isTourFilterActive, emptyTourFilters, tourFiltersFromParams, tourFiltersToParams, groupIdFromParams, type TourFilters } from './admin.tour'
 import type { AdminTourDetailResponse, AdminTourSummaryResponse, GroupResponse, TierCapacities, TourSessionResponse } from '@peace-buddy/types'
 
 vi.mock('@/lib/api-client', () => ({
@@ -665,5 +665,21 @@ describe('tourFiltersFromParams', () => {
 
   it('treats any belowMin value other than 1 as off', () => {
     expect(tourFiltersFromParams(new URLSearchParams('belowMin=true')).belowMinimumOnly).toBe(false)
+  })
+})
+
+describe('groupIdFromParams', () => {
+  const groupId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+
+  it('returns the group id when the param is a uuid', () => {
+    expect(groupIdFromParams(new URLSearchParams(`groupId=${groupId}`))).toBe(groupId)
+  })
+
+  it('returns undefined when the param is absent', () => {
+    expect(groupIdFromParams(new URLSearchParams(''))).toBeUndefined()
+  })
+
+  it('returns undefined when the param is not a uuid', () => {
+    expect(groupIdFromParams(new URLSearchParams('groupId=not-a-uuid'))).toBeUndefined()
   })
 })

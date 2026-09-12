@@ -132,6 +132,20 @@ export function tourFiltersToParams(filters: TourFilters): URLSearchParams {
   return params
 }
 
+// ── New tour group prefill ⇄ URL query param ───────────────────────────────
+
+const GROUP_ID_PARAM = 'groupId'
+const GroupIdParamSchema = z.string().uuid()
+
+/**
+ * Group preselected for a new tour, from `?groupId=`. A malformed value is the
+ * same as none — the form falls back to an empty picker rather than breaking.
+ */
+export function groupIdFromParams(params: URLSearchParams): string | undefined {
+  const result = GroupIdParamSchema.safeParse(params.get(GROUP_ID_PARAM))
+  return result.success ? result.data : undefined
+}
+
 // ── Booking sorting ────────────────────────────────────────────────────────
 
 export function sortBookings(

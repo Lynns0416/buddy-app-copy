@@ -12,6 +12,20 @@ describe('routes', () => {
     })
   })
 
+  describe('adminTourNew', () => {
+    it('returns the bare path when no group is given', () => {
+      expect(routes.adminTourNew('en')).toBe('/en/admin/tours/new')
+    })
+
+    it('appends the group id when given', () => {
+      expect(routes.adminTourNew('ja', 'group-123')).toBe('/ja/admin/tours/new?groupId=group-123')
+    })
+
+    it('encodes the group id', () => {
+      expect(routes.adminTourNew('en', 'a b&c')).toBe('/en/admin/tours/new?groupId=a%20b%26c')
+    })
+  })
+
   describe('adminBuddyProfileEvaluation', () => {
     it('returns correct path', () => {
       expect(routes.adminBuddyProfileEvaluation('en', 'buddy-123')).toBe(

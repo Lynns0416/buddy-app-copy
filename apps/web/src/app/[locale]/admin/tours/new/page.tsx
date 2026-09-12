@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
@@ -11,12 +11,22 @@ import { AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { TourForm } from '../_components/tour-form'
 import type { TourFormValues } from '../_components/tour-form'
-import { fetchGroups, createTour } from '../admin.tour'
+import { fetchGroups, createTour, groupIdFromParams } from '../admin.tour'
 
 export default function AdminTourNewPage() {
   const { ready, locale } = useAdminGuard()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations('adminTours')
+  const tGroups = useTranslations('adminGroups')
+  const initialGroupId = groupIdFromParams(new URLSearchParams(searchParams.toString()))
+  // Arriving from a group means leaving back to it; arriving from the tour list means the tour list.
+  const cancelHref = initialGroupId
+    ? routes.adminGroupDetail(locale, initialGroupId)
+    : routes.adminTours(locale)
+  // The picker may have been changed after arrival, so the created tour's own group is the target.
+  const successHref = (groupId: string) =>
+    initialGroupId ? routes.adminGroupDetail(locale, groupId) : routes.adminTours(locale)
   const [groups, setGroups] = useState<GroupResponse[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +56,7 @@ export default function AdminTourNewPage() {
       adminMemo: values.adminMemo ?? undefined,
       maybeDeadline: values.maybeDeadline ?? undefined,
     } as Record<string, unknown>)
-    if (result.ok) router.push(routes.adminTours(locale))
+    if (result.ok) router.push(successHref(values.groupId))
     else setError(errorMessage(result.error))
   }
 
@@ -55,8 +65,8 @@ export default function AdminTourNewPage() {
   return (
     <AppShell variant="admin">
       <div className="mb-6 flex items-center gap-3">
-        <Link href={routes.adminTours(locale)} className="text-sm text-muted-foreground hover:text-foreground">
-          ← {t('back')}
+        <Link href={cancelHref} className="text-sm text-muted-foreground hover:text-foreground">
+          ← {initialGroupId ? tGroups('backToDetail') : t('back')}
         </Link>
       </div>
       <div className="mx-auto max-w-lg">
@@ -68,7 +78,8 @@ export default function AdminTourNewPage() {
 
         <TourForm
           groups={groups}
-          cancelHref={routes.adminTours(locale)}
+          initialGroupId={initialGroupId}
+          cancelHref={cancelHref}
           onSubmit={handleSubmit}
         />
       </div>

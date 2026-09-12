@@ -73,9 +73,14 @@ export default function AdminGroupDetailPage() {
         <Link href={routes.adminGroups(locale)} className="text-sm text-muted-foreground hover:text-foreground">
           ← {t('back')}
         </Link>
-        <Button asChild size="sm">
-          <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm">
+            <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={routes.adminTourNew(locale, group.id)}>{t('newTour')}</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6 rounded-lg border bg-card p-6">

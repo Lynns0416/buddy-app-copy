@@ -142,9 +142,14 @@ export default function AdminGroupsPage() {
                       <Badge className={groupTypeBadgeClass[group.type]}>{getGroupTypeLabel(tGroupType, group.type)}</Badge>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={routes.adminGroupEdit(locale, group.id)}>{t('edit')}</Link>
+                        </Button>
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={routes.adminTourNew(locale, group.id)}>{t('newTour')}</Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
