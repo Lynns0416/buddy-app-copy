@@ -324,8 +324,9 @@ Done 2026-09-13, #152:
 - [x] `migrate` stage in `apps/api/Dockerfile`, carrying the Prisma CLI and the
       migration history that the `runner` stage deliberately does not.
 
-Not yet run against anything. The first real deploy is staging, and it needs
-§6's cutover first: the database it would migrate is still on Neon.
+Not yet run against anything. The first real deploy is staging, and as of
+2026-09-13 nothing stands in front of it: §6's restore moved the data, so the
+database it would migrate is the Azure one.
 
 Images are pulled with a system-assigned identity holding `AcrPull`, so no
 registry password is stored in an app or a job. The registry has no admin user
@@ -367,25 +368,21 @@ just a restore:
       the remaining drift and the baseline itself, so Neon now matches
       `schema.prisma` and carries a `_prisma_migrations` table with both
       directories marked applied.
-- [ ] `pg_dump` from Neon, `pg_restore` into Azure. `psql` and `pg_dump` are
-      **not installed** on this machine — run them from a Postgres container.
-- [ ] The private hostname resolves only inside the VNet, so the restore must
-      run from something inside it, not from a laptop.
-- [ ] Reconcile migration history on the restored server. A full `pg_dump` and
-      `pg_restore` carries `_prisma_migrations` across, since it is an ordinary
-      table in the public schema, so this should be a check rather than work:
-      run `migrate status` against the Azure server and expect no pending
-      migrations. `DATABASE_URL` is only repointed in the next step, so pass it
-      inline for this one check. Only if the Azure database is built some other
-      way does it need baselining, and then for every directory in
-      `prisma/migrations/`, not just `0_init`.
-- [ ] Re-run `scripts/azure-db-roles.sh` after the restore. The restored tables
-      arrive owned by whoever ran `pg_restore`, so the default privileges do not
-      cover them and `pb_app` gets `permission denied` until the catch-up grant
-      runs. Run the `migrate status` check above as `pb_migrate`, not as the
-      admin.
-- [ ] Point `DATABASE_URL` at Azure, redeploy the api, smoke test.
-- [ ] Keep the Neon project for a week, then delete it.
+- [x] `scripts/azure-db-restore.sh scripts/azure.stg.env deploy.env` does the
+      move and checks it, in one Container Apps job. See §6.1. Run **2026-09-13**
+      in #153, against an empty target: 20 tables, row counts agreeing on both
+      ends, history matching `prisma/migrations/`, `pb_app` verified. The server
+      was stopped again afterwards.
+- [ ] Point `DATABASE_URL` at Azure, redeploy the api, smoke test. **Not part
+      of #153.** Nothing on Azure serves the app yet — no image has been built
+      and neither container app exists — and the api that does serve staging
+      runs on Cloud Run, which has no route into the VNet. So there is nothing
+      to repoint yet: this step *is* the first Azure deploy, and it belongs
+      with §5. The restore is what unblocks it.
+- [ ] Keep the Neon project for a week, then delete it — **not before
+      2026-09-20**, and not until the api actually runs against Azure, since
+      until then Neon is still the database staging serves from. Deleting it is
+      part of retiring the GCP stack (#156).
 
 Schema changes go through `prisma migrate deploy` (see `DEPLOYMENT.md`,
 "Schema Changes"). Run it by hand once against each new server, never from a
@@ -400,9 +397,50 @@ the same job, so the only difference was whether someone had to remember it.
 See `docs/decisions.md` 2026-09-13, "`migrate deploy` runs as a one-shot
 Container Apps Job".
 
-The paragraph above still holds for the cutover itself: the one-off
-`migrate status` check on the restored server is run by hand, against a
-`DATABASE_URL` passed inline, before `scripts/deploy.sh` ever points at Azure.
+The cutover itself needed no hand-run `migrate deploy` and no hand-run
+`migrate status`: the dump carried `_prisma_migrations` across and the restore
+job asserted it against `prisma/migrations/`, so the first deploy's migration
+job will find nothing pending. See §6.1.
+
+### 6.1 The restore job
+
+One `pg_dump | psql` through a pipe, inside a one-shot Container Apps job that
+is created, run and deleted — the same shape and the same reasoning as §4.1,
+because the target hostname still resolves only inside the VNet and `psql` is
+still not installed on the dev machine. Nothing is written to disk at either
+end, and the source is only ever read from.
+
+**The client is `postgres:18`, not `postgres:16`.** Neon runs Postgres 18 and
+the Azure server is 16, and `pg_dump` refuses to read a server newer than
+itself. Dumping 18 for a 16 target is not a supported direction, so the two
+lines of output that 16 rejects are filtered in the pipe and named at the
+filter: `SET transaction_timeout`, a GUC that does not exist before 17, and
+`CREATE SCHEMA public`, which is already there and owned by the server admin.
+A dump of this schema contains nothing else version-specific — no extensions
+beyond `plpgsql`, no generated columns.
+
+**It loads as `pb_migrate`, and that is what removes a step.** Tables arrive
+owned by whoever loads them. Loading as the migration role is the ownership
+`prisma migrate deploy` needs anyway, and it puts the restored tables under the
+default privileges `azure-db-roles.sh` granted *for that role*, so `pb_app`
+needs no catch-up grant and **`azure-db-roles.sh` does not have to be re-run**.
+Load as the admin instead and it does. The job asserts the privilege rather
+than trusting this.
+
+Three assertions, any of which fails the job:
+
+| Check | Fails when |
+|---|---|
+| Per-table row counts, source against target | any table disagrees; exact `count(*)`, not `n_live_tup`, which reads zero on a freshly loaded table |
+| `_prisma_migrations` against `prisma/migrations/` | a directory has no row (pending), a row has no directory (drift), or a row is unfinished or rolled back |
+| `pb_app` privileges on every restored table and sequence | the catch-up grant is actually needed after all |
+
+The migration check is SQL, not `prisma migrate status` — it compares the same
+two things, and it costs no second job and no Prisma inside the VNet. See
+`decisions.md` 2026-09-13.
+
+`--reset` drops the target's tables, sequences and enums before loading, which
+is how a partial load is retried. It refuses to run when `ENVIRONMENT` is prod.
 
 ## 7. Cost against the credit
 
@@ -451,9 +489,9 @@ az postgres flexible-server stop  -g rg-peace-buddy -n psql-peace-buddy-stg
 
 **Azure restarts a stopped server by itself after seven days.** With no
 scheduler enforcing the stopped state, staging will quietly come back during
-every dormant stretch and bill compute until someone notices. It was stopped on
-**2026-09-12**, so it comes back on its own around **2026-09-19** unless stopped
-again. That is the accepted cost of not building a scheduler. The budget alert
+every dormant stretch and bill compute until someone notices. It was last stopped on
+**2026-09-13**, after the restore in §6.1 started it, so it comes back on its
+own around **2026-09-20** unless stopped again. That is the accepted cost of not building a scheduler. The budget alert
 in §9 is the only thing that will catch it, which makes that checklist item
 load-bearing rather than nice to have.
 
@@ -545,10 +583,12 @@ authority.*
 | Azurite in `docker-compose` for local photo upload | ⬜ |
 | `scripts/deploy.sh` rewritten for Azure, parameterised by environment | ✅ 2026-09-13, #152 — written, not yet run against Azure |
 | Neon baselined onto Prisma Migrate — enum remap, then drift, then `migrate resolve` for both directories | ✅ 2026-09-12, #142 |
+| `azure-db-restore.sh`, the dump-and-load job | ✅ 2026-09-13 — rehearsed against a local Postgres 16 target, then run against Azure; see §6.1 |
 | Prod built from `0_init` with `migrate deploy` | ⬜ |
-| Staging migration history reconciled after restore | ⬜ |
+| Staging migration history reconciled after restore | ✅ 2026-09-13 — nothing to reconcile; the dump carried `_prisma_migrations` and the restore job asserted it against `prisma/migrations/` |
 | Where `migrate deploy` runs on release, decided | ✅ 2026-09-13, #152 — one-shot Container Apps Job, run by `scripts/deploy.sh` as `pb_migrate` |
-| Data migrated off Neon | ⬜ staging only; prod has no data to move |
+| Data migrated off Neon | ✅ 2026-09-13, #153 — staging only; prod has no data to move |
+| `DATABASE_URL` repointed at Azure, api redeployed, smoke tested | ⬜ this is the first real deploy, which the restore unblocks; tracked with §5, not #153 |
 | Photos migrated off R2 | ⬜ sequence **after** the cutover; not on its critical path |
 | Nightly `pg_dump` job + 30-day lifecycle rule, prod | ⬜ second Container Apps Job, in `snet-apps`, image carrying `pg_dump` |
 | One tested restore from a dump | ⬜ the checklist item that actually proves the backup |

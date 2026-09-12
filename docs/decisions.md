@@ -68,6 +68,63 @@ scripts do.
 
 ---
 
+## 2026-09-13 — Staging's data moves in one piped job, loaded as `pb_migrate`
+
+**Decision:** `scripts/azure-db-restore.sh` moves a database between servers as
+a single `pg_dump | psql` pipe inside a one-shot Container Apps job, connected
+to the target as `pb_migrate`, with the dump never written to disk at either
+end. The job then asserts three things before it will report success: per-table
+row counts agreeing on both ends, `_prisma_migrations` matching
+`prisma/migrations/`, and `pb_app` holding read and write on every restored
+table and sequence.
+
+**Why:** Loading as the migration role is what removes a documented step. Tables
+arrive owned by whoever loads them, so loading as the server admin leaves them
+outside the default privileges `azure-db-roles.sh` granted for `pb_migrate`, and
+`pb_app` then gets `permission denied` until that script is re-run as a catch-up
+grant — which is what `deploy-plan.md` §6 assumed would be necessary. Loading as
+`pb_migrate` instead gives the tables the owner `prisma migrate deploy` needs
+anyway and brings the default privileges with it. Verified against a local
+Postgres 16 before the job ran against Azure.
+
+The pipe is not a micro-optimisation. There is nowhere good to put a dump file:
+the storage accounts do not exist yet (#151), the dev machine is outside the
+VNet, and a dump of member data sitting on a laptop is the kind of copy nobody
+remembers to delete. Neon stays alive for a week after the move, which is the
+rollback.
+
+**Rejected — `prisma migrate status` for the history check:** what #153 asked
+for, and it is the tool that owns this question. Rejected because running it
+inside the VNet means a second job on a Node image with `schema.prisma` and
+every migration directory shipped in as a secret, to read one table. The SQL
+assertion compares the same two things — directories against rows — and fails
+with the same three verdicts: pending, drift, and unfinished. If Prisma ever
+needs to run in there for its own sake, the job exists to be written then.
+
+**Rejected — dumping with `postgres:16` to match the target:** it cannot be
+done. Neon runs Postgres 18 and `pg_dump` refuses to read a server newer than
+itself. The client is therefore `postgres:18` dumping for a 16 target, which is
+not a supported direction; the two lines of output 16 rejects are filtered in
+the pipe and named there. Verified against a real 16 server, not assumed.
+
+**Rejected — upgrading the Azure server to 18 to match Neon:** removes the
+unsupported direction entirely. Rejected because `docker-compose.yml` runs
+Postgres 16 and local development matching the deployed server is worth more
+than avoiding a two-line filter on a migration that happens once.
+
+**Rejected — `pg_dump --data-only` onto a schema built by `migrate deploy`:**
+avoids the version-mismatch question, since Prisma would author the DDL.
+Rejected because a data-only load has no ordering that satisfies foreign keys
+without disabling triggers, and `session_replication_role` needs the admin
+account — trading a filtered pipe for a privilege escalation and a topological
+sort.
+
+**Current state:** `deploy-plan.md` §6.1. Run against Azure staging on
+2026-09-13: 20 tables, row counts agreeing on both ends, history matching, and
+`pb_app` able to read and write everything restored.
+
+---
+
 ## 2026-09-12 — Two database roles per server, neither of them the admin
 
 **Decision:** Each Postgres server gets **two** login roles, created by
