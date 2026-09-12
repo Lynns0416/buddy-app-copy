@@ -291,6 +291,12 @@ are in `docs/azure-costs.md`. The GCP/Neon side is decommissioned once Azure
 staging is trusted, and nothing replaces it; `development` above stays as local
 Docker Compose.
 
+On Azure each server carries two restricted login roles, created by
+`scripts/azure-db-roles.sh` right after provisioning. `pb_app` reads and writes
+rows and is what `DATABASE_URL` holds; `pb_migrate` owns the tables and runs
+`prisma migrate deploy` and nothing else. The server admin account is used only
+to rotate them. See `docs/deploy-plan.md` §4.1.
+
 ## CI/CD
 
 `.github/workflows/ci.yml` is the only workflow. It runs on PRs and pushes to

@@ -216,6 +216,17 @@ code expects a schema the server does not have will run, and fail at the rows
 that disagree rather than at boot. `prisma migrate status` against the target
 answers whether that gap exists.
 
+**On Azure, `migrate deploy` connects as `pb_migrate`, never as the api's own
+`DATABASE_URL` and never as the server admin.** The api connects as `pb_app`,
+which has no `CREATE` on schema `public`, so a migration run with its
+connection string fails outright. A migration run as the **admin** is worse: it
+succeeds, and produces tables owned by the admin that `pb_app` cannot read,
+because `ALTER DEFAULT PRIVILEGES FOR ROLE pb_migrate` only covers what that
+role creates. The fix is to re-run `scripts/azure-db-roles.sh`, whose catch-up
+grant covers existing objects. Both connection strings come from
+`scripts/azure.env`; see `docs/deploy-plan.md` §4.1 and `docs/decisions.md`
+2026-09-12, "Two database roles per server".
+
 **Open:** where `migrate deploy` runs on release. Deferred until the move to
 Azure Container Apps lands (`docs/deploy-plan.md`), because the answer is
 host-specific and `scripts/deploy.sh` is being replaced.

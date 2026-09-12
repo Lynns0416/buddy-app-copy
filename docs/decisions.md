@@ -12,6 +12,73 @@ duplicate that state here.
 
 ---
 
+## 2026-09-12 — Two database roles per server, neither of them the admin
+
+**Decision:** Each Postgres server gets **two** login roles, created by
+`scripts/azure-db-roles.sh` running `scripts/azure-db-roles.sql` as the server
+admin, once per server, immediately after provisioning.
+
+- `pb_migrate` holds `CREATE` on schema `public` and therefore owns every table
+  Prisma creates. It runs `prisma migrate deploy` and nothing else.
+- `pb_app` holds `USAGE` on the schema and `SELECT`/`INSERT`/`UPDATE`/`DELETE`
+  on its tables. It cannot `CREATE`, `ALTER` or `DROP`. This is the role in
+  `DATABASE_URL` on the deployed api.
+
+`CONNECT` on `peacebuddy` is revoked from `PUBLIC` and granted to those two
+plus the admin. Neither role has `SUPERUSER`, `CREATEDB`, `CREATEROLE` or
+`BYPASSRLS`, and neither is a member of `azure_pg_admin`. The admin account is
+now only used to rotate them.
+
+**Why two and not one:** the api and the migration step need different powers,
+and that is the only axis worth splitting on. A single restricted role would
+still hand the always-running, internet-facing api the ability to drop the
+tables holding buddy personal data. Splitting costs one extra password per
+environment and one line of setup, `ALTER DEFAULT PRIVILEGES FOR ROLE
+pb_migrate`, which is what stops the next migration from shipping a table the
+api gets `permission denied` on.
+
+**Why not more than two:** a third role is standard only for a read-only
+consumer such as analytics, which does not exist here. A role per service or
+per feature multiplies credentials and buys nothing.
+
+**Rejected — keeping the admin account in `DATABASE_URL`:** what
+`azure-provision.sh` prints, because a restricted role cannot be created until
+the VNet exists. It is the whole of #150. That account can administer every
+database on the server, so a leaked container environment variable would be a
+server compromise rather than an application one.
+
+**Rejected — one application role owning its own schema:** simpler to operate,
+one credential, and a real improvement on the admin account. Rejected because
+it leaves DDL in the hands of the process most likely to be compromised, and
+the ongoing cost of the split turned out to be one password rather than a
+workflow change.
+
+**Consequence — every migration must run as `pb_migrate`.** `ALTER DEFAULT
+PRIVILEGES FOR ROLE` applies to objects that role creates, not to objects
+anyone else creates. A migration or a restore run as the admin produces tables
+`pb_app` cannot read. Section 4 of the SQL grants on whatever already exists,
+so re-running the script is the fix, and that is why it is idempotent.
+
+**Known residual — `pb_app` can still connect to the `postgres` maintenance
+database** and read the catalog there. It cannot reach application data. Left
+alone rather than revoked, because revoking `CONNECT` on `postgres` from
+`PUBLIC` risks Azure's own management connections on a server with no public
+endpoint, against a benefit that is close to nil.
+
+**How it reaches the server.** The server has no public endpoint, its hostname
+resolves only inside the VNet, nothing is deployed yet to `exec` into, and
+`psql` is not on the dev machine. The script creates a Manual Container Apps
+Job in `cae-peace-buddy` running `postgres:16`, runs it, and deletes it, since
+the job holds all three passwords as secrets for as long as it exists. This is
+the same shape the deferred question about where `migrate deploy` runs on
+release will need, so it is now proven rather than theoretical.
+
+**Current state:** `scripts/azure-db-roles.sh`, `scripts/azure-db-roles.sql`,
+`scripts/azure.env.example`, `deploy-plan.md` §4.1 and the Progress table,
+`DEPLOYMENT.md` "Schema Changes".
+
+---
+
 ## 2026-09-12 — Group prefill on the tour form is a separate `initialGroupId` prop
 
 **Decision:** `/admin/tours/new` accepts `?groupId=`, and `TourForm` takes

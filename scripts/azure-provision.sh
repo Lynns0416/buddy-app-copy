@@ -160,6 +160,29 @@ if ! exists az network private-dns zone show -n "$DNS_ZONE" -g "$RESOURCE_GROUP"
     --resource-group "$RESOURCE_GROUP" --name "$DNS_ZONE" --output none
 fi
 
+# A zone with no link to a VNet answers nobody, and this is not a gap step 6
+# fills in. `flexible-server create --private-dns-zone` creates the link only
+# when it also creates the zone; handed one that already exists — the path
+# this script takes, because the zone is its own guarded step above — it
+# registers the server's A record and stops there.
+#
+# The failure that follows is silent and very late: every resource looks
+# correct, the record is present with the right private IP, and the first
+# thing to connect from inside the VNet fails with NXDOMAIN. Staging hit
+# exactly that on 2026-09-12, in the first job run of azure-db-roles.sh.
+#
+# Registration stays off: this zone holds one record that Azure writes itself,
+# and auto-registering every VM in the VNet into it is not wanted.
+DNS_LINK="link-$VNET_NAME"
+step "Link $DNS_ZONE to $VNET_NAME"
+if ! exists az network private-dns link vnet show -n "$DNS_LINK" -g "$RESOURCE_GROUP" \
+     -z "$DNS_ZONE" --query name -o tsv; then
+  az network private-dns link vnet create \
+    --resource-group "$RESOURCE_GROUP" --name "$DNS_LINK" \
+    --zone-name "$DNS_ZONE" --virtual-network "$VNET_NAME" \
+    --registration-enabled false --output none
+fi
+
 # --- 5. Container Apps environment -------------------------------------
 # The network type is fixed at creation and cannot be changed afterwards, so
 # the VNet has to exist first. Ingress stays External because staff reach the
@@ -235,10 +258,19 @@ cat <<SUMMARY
   Apps environment $ACA_ENV
   Database         $PG_SERVER, private to $VNET_NAME
 
-  DATABASE_URL for the api, using the private hostname:
+  Private hostname, as the server reports it:
 
-    postgresql://$PG_ADMIN_USER:<password>@$PG_SERVER.$DNS_ZONE:5432/$PG_DB_NAME?sslmode=require
+    $(az postgres flexible-server show -n "$PG_SERVER" -g "$RESOURCE_GROUP" \
+        --query fullyQualifiedDomainName -o tsv)
 
-  That hostname resolves only inside the VNet. It will not work from a laptop.
+  Read it from the server; do not build it from PG_SERVER and DNS_ZONE. Azure
+  names the A record in the private zone with a generated token rather than
+  the server name, and publishes this CNAME onto it. The name resolves only
+  inside the VNet, so it will not work from a laptop.
+
+  Next: scripts/azure-db-roles.sh $ENV_FILE
+
+  That creates the two restricted roles and prints the DATABASE_URL to deploy
+  with. The admin account above is not it — see docs/deploy-plan.md 4.1.
 
 SUMMARY

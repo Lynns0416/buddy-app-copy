@@ -185,7 +185,7 @@ flowchart TB
     CONF["0 · confirm the target<br/>coloured banner, red for prod"] --> RG["1 · resource group<br/>the undo button"]
     RG --> PROV["2 · register providers<br/>App · ContainerRegistry<br/>DBforPostgreSQL · OperationalInsights<br/>Network"]
     PROV --> ACR["3 · container registry<br/>Basic"]
-    ACR --> VNET["4 · VNet + 2 subnets<br/>+ private DNS zone"]
+    ACR --> VNET["4 · VNet + 2 subnets<br/>+ private DNS zone<br/>+ the zone→VNet link"]
     VNET --> ENV["5 · Container Apps env<br/>network type fixed at creation"]
     ENV --> PG["6 · Postgres server<br/>VNet-injected, private access is PERMANENT<br/>then the peacebuddy database, its own call"]
 ```
@@ -193,6 +193,24 @@ flowchart TB
 Two steps are one-way doors. A Container Apps environment's network type cannot
 be changed after creation, and a Postgres server cannot be converted between
 public and private access. Both are cheap to get right and expensive to undo.
+
+**Step 4 must link the private DNS zone to the VNet itself.** This is easy to
+leave out, because `flexible-server create --private-dns-zone` creates the link
+when it also creates the zone. Handed a zone that already exists, which is what
+this script does, it registers the server's A record and does nothing else. The
+result passes every inspection: the zone is there, the record is there with the
+right private IP, and the server reports the right configuration. Only the
+first connection from inside the VNet fails, with NXDOMAIN. Staging hit exactly
+that on 2026-09-12, in the first job run of `azure-db-roles.sh`, and the link
+step was added to the script in the same change.
+
+**The private hostname is read from the server, never composed.** Azure names
+the A record in the zone with a generated token rather than the server name —
+staging's is `efd7adde3020` — and publishes
+`<server>.postgres.database.azure.com` as a public CNAME onto it, which answers
+only inside the linked VNet. That CNAME is what `fullyQualifiedDomainName`
+returns and it is the name to connect with. `<server>.<DNS_ZONE>`, which both
+scripts used to print, is a name that never existed.
 
 One environment holds **four apps** — `ca-api` / `ca-web` for prod and
 `ca-api-stg` / `ca-web-stg` for staging. A second Container Apps environment per
@@ -216,6 +234,48 @@ environment. The diagram above is the whole of it, so the per-environment Blob
 storage that §2 describes and the Progress table tracks has not been created by
 anything. That is #151, and it is why the two-environment work is not finished
 by the provisioning merge.
+
+### 4.1 Database roles — the step straight after provisioning
+
+`azure-provision.sh` can only print a `DATABASE_URL` built from the server
+admin account, because a restricted role has to be created with `psql` from
+inside the VNet, which does not exist until the script has run. That account
+can administer every database on the server, so it must not be what the api
+connects as.
+
+`scripts/azure-db-roles.sh <env-file>` closes that gap, once per server,
+before anything is deployed against it. It creates two roles and asserts the
+result rather than assuming it. See `decisions.md` 2026-09-12, "Two database
+roles per server".
+
+| Role | Holds | Used by |
+|---|---|---|
+| `pb_migrate` | `CREATE` on schema `public`, owns every table | `prisma migrate deploy`, by hand, nothing else |
+| `pb_app` | `USAGE`, plus `SELECT`/`INSERT`/`UPDATE`/`DELETE` | the deployed api — this is `DATABASE_URL` |
+
+Neither has `SUPERUSER`, `CREATEDB`, `CREATEROLE` or `BYPASSRLS`, neither is a
+member of `azure_pg_admin`, and `CONNECT` on `peacebuddy` is revoked from
+`PUBLIC`.
+
+```mermaid
+flowchart TB
+    P["azure-provision.sh<br/>server exists, admin account only"] --> S["azure-db-roles.sh env-file"]
+    S --> ST["start the server if stopped<br/>staging is stopped by default"]
+    ST --> J["create Manual Container Apps Job<br/>postgres:16 in snet-apps<br/>SQL + passwords as secrets"]
+    J --> R["run it — psql, ON_ERROR_STOP<br/>the SQL asserts and raises"]
+    R --> D["delete the job<br/>it holds the passwords"]
+    D --> U["DATABASE_URL = pb_app<br/>migrate URL = pb_migrate"]
+```
+
+The job exists because the server has no public endpoint, its hostname
+resolves only inside the VNet, nothing is deployed yet to `exec` into, and
+`psql` is not installed on the dev machine. It is deleted after the run because
+it stores all three passwords as secrets for as long as it exists.
+
+The SQL is idempotent, so re-running is how a password is rotated. **Re-run it
+after any restore.** `ALTER DEFAULT PRIVILEGES FOR ROLE pb_migrate` covers
+tables that role creates, not tables restored under another owner, and the
+catch-up grant on existing objects is in the same file.
 
 ## 5. Deploy pipeline
 
@@ -271,6 +331,11 @@ The server does not arrive with the application database on it. az 2.90 accepts
 step 6 in §4, and it is that database rather than the server's defaults that
 `DATABASE_URL` points at.
 
+**Both need their roles first.** `scripts/azure-db-roles.sh` (§4.1) runs
+before either path below, and every `migrate deploy` here connects as
+`pb_migrate`, never as the admin. A migration applied by the admin produces
+tables the api cannot read.
+
 **Prod has never existed.** Build it with `prisma migrate deploy` from
 `0_init` against an empty server. No dump, no baseline, no enum problem.
 
@@ -295,6 +360,11 @@ just a restore:
       inline for this one check. Only if the Azure database is built some other
       way does it need baselining, and then for every directory in
       `prisma/migrations/`, not just `0_init`.
+- [ ] Re-run `scripts/azure-db-roles.sh` after the restore. The restored tables
+      arrive owned by whoever ran `pg_restore`, so the default privileges do not
+      cover them and `pb_app` gets `permission denied` until the catch-up grant
+      runs. Run the `migrate status` check above as `pb_migrate`, not as the
+      admin.
 - [ ] Point `DATABASE_URL` at Azure, redeploy the api, smoke test.
 - [ ] Keep the Neon project for a week, then delete it.
 
@@ -436,11 +506,14 @@ authority.*
 | Registry `crpeacebuddy`, Basic | ✅ |
 | Costs verified against the Retail Prices API | ✅ 2026-09-12, see `azure-costs.md` |
 | VNet, subnets, private DNS | ✅ 2026-09-12 — `snet-apps` `10.0.0.0/23`, `snet-db` `10.0.4.0/24`, zone `peace-buddy.private.postgres.database.azure.com` |
+| Private DNS zone linked to the VNet | ✅ 2026-09-12 — missing until the first job run failed on NXDOMAIN; `link-vnet-peace-buddy`, and `azure-provision.sh` now creates it |
 | Container Apps environment | ✅ 2026-09-12 — VNet-injected into `snet-apps` |
 | Postgres — **staging** | ✅ 2026-09-12 — `psql-peace-buddy-stg`, B1ms, 32 GiB, public access disabled, HA disabled. Stopped by hand after creation |
 | Database `peacebuddy` on staging | ✅ 2026-09-12 — its own `flexible-server db create` step, see §6 |
-| Postgres — **prod** | ⬜ not provisioned, deliberately — the server does not exist; see `decisions.md` 2026-09-12, "Staging is provisioned first" |
-| Application database role, replacing the admin account in `DATABASE_URL` | ⬜ both servers |
+| Postgres — **prod** | ⬜ #175 — not provisioned, deliberately; see `decisions.md` 2026-09-12, "Staging is provisioned first" |
+| `azure-db-roles.sh` + `azure-db-roles.sql`, the two-role setup | ✅ 2026-09-12 — run end to end against staging; see §4.1 |
+| Roles created on **staging** | ✅ 2026-09-12 — `pb_migrate` and `pb_app` on `psql-peace-buddy-stg`, every grant asserted by the SQL |
+| Roles created on **prod** | ⬜ #175 — blocked on the prod server not existing |
 | Storage accounts, one per environment | ⬜ |
 | Photo service ported from the S3 SDK to Azure Blob | ⬜ `apps/api/src/services/buddyPhoto.service.ts`, its test, `deploy.sh`, `deploy.env.example`, `next.config.ts` remote patterns |
 | Azurite in `docker-compose` for local photo upload | ⬜ |
@@ -458,9 +531,10 @@ authority.*
 
 The provisioning script prints a `DATABASE_URL` built from the server admin
 account, because a restricted role can only be created with `psql` from inside
-the VNet, which does not exist until the script has run. Create that role as the
-first step of the deploy work and put the restricted credentials in the deploy
-config. The admin account should not end up in `DATABASE_URL`.
+the VNet, which does not exist until the script has run. `scripts/azure-db-roles.sh`
+is that step; see §4.1. Run it against a server before deploying anything to it,
+and put `pb_app` in the deploy config. The admin account should not end up in
+`DATABASE_URL`.
 
 Left over in `rg-peace-buddy` from a VNet-less Container Apps environment
 attempted before 2026-09-11 and since deleted: a Log Analytics workspace named
@@ -481,7 +555,9 @@ against the live subscription. The rest are still open.
    $0.1666/day, so $5.07/mo. The estimate was right.
 3. ~~**`scripts/azure-provision.sh` has never been executed.**~~ **Resolved
    2026-09-12.** Run end to end against staging, #165. Still no `shellcheck` on
-   this machine, and the prod path has not been run.
+   this machine, and the prod path has not been run. Its DNS-link and hostname
+   fixes (§4) were made after that run and have themselves not been executed by
+   the script — staging's link was created by hand.
 4. ~~**Private DNS zone naming.**~~ **Resolved 2026-09-12.**
    `peace-buddy.private.postgres.database.azure.com` was accepted and the
    staging server is linked to it.
