@@ -274,17 +274,24 @@ step 6 in §4, and it is that database rather than the server's defaults that
 **Staging carries Neon's data**, and that data is the reason the cutover is not
 just a restore:
 
-- [ ] Run the enum remap in `DEPLOYMENT.md` against Neon **first**. Staging
-      still holds the pre-#140 enum state, its baseline diff does not come back
-      clean, and it must not be baselined before that is fixed.
+- [x] Run the enum remap against Neon **first** — the technique is in
+      `DEPLOYMENT.md`, the SQL actually executed is
+      `scripts/staging-enum-remap.sql`. Done 2026-09-12 in #142, together with
+      the remaining drift and the baseline itself, so Neon now matches
+      `schema.prisma` and carries a `_prisma_migrations` table with both
+      directories marked applied.
 - [ ] `pg_dump` from Neon, `pg_restore` into Azure. `psql` and `pg_dump` are
       **not installed** on this machine — run them from a Postgres container.
 - [ ] The private hostname resolves only inside the VNet, so the restore must
       run from something inside it, not from a laptop.
-- [ ] Reconcile migration history on the restored server: either the dump
-      carries a `_prisma_migrations` table that matches `prisma/migrations/`, or
-      baseline it with `migrate resolve --applied 0_init` after confirming
-      `migrate diff` prints no changes.
+- [ ] Reconcile migration history on the restored server. A full `pg_dump` and
+      `pg_restore` carries `_prisma_migrations` across, since it is an ordinary
+      table in the public schema, so this should be a check rather than work:
+      run `migrate status` against the Azure server and expect no pending
+      migrations. `DATABASE_URL` is only repointed in the next step, so pass it
+      inline for this one check. Only if the Azure database is built some other
+      way does it need baselining, and then for every directory in
+      `prisma/migrations/`, not just `0_init`.
 - [ ] Point `DATABASE_URL` at Azure, redeploy the api, smoke test.
 - [ ] Keep the Neon project for a week, then delete it.
 
@@ -435,7 +442,7 @@ authority.*
 | Photo service ported from the S3 SDK to Azure Blob | ⬜ `apps/api/src/services/buddyPhoto.service.ts`, its test, `deploy.sh`, `deploy.env.example`, `next.config.ts` remote patterns |
 | Azurite in `docker-compose` for local photo upload | ⬜ |
 | `scripts/deploy.sh` rewritten for Azure, parameterised by environment | ⬜ |
-| Enum remap run against Neon, before any baseline | ⬜ blocks the staging cutover |
+| Neon baselined onto Prisma Migrate — enum remap, then drift, then `migrate resolve` for both directories | ✅ 2026-09-12, #142 |
 | Prod built from `0_init` with `migrate deploy` | ⬜ |
 | Staging migration history reconciled after restore | ⬜ |
 | Where `migrate deploy` runs on release, decided | ⬜ deferred here by the Prisma Migrate adoption |

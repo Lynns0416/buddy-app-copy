@@ -20,21 +20,20 @@ The reasoning, the rejected alternatives, and the current state now live in
 - [x] Dev container command (`apps/api/Dockerfile`) runs `migrate deploy`.
 - [x] CI drift check: `.github/workflows/ci.yml` replays `prisma/migrations/`
       into a throwaway Postgres and fails if it differs from `schema.prisma`.
-      Written but not yet observed passing — no local Docker daemon.
+      Observed passing in Actions runs `34683242242` (`main`) and
+      `34693275555` (#142's branch).
 - [x] Docs: `DEPLOYMENT.md`, `README.md`, `docs/architecture.md`,
       `docs/deploy-plan.md`, `docs/decisions.md`. Deleted
       `memory/project_prerelease.md`.
+- [x] **Staging (#142).** Enum remapped, drift applied, `migrate diff
+      --exit-code` confirmed 0, then `migrate resolve --applied` run for both
+      directories. The live type held six values, not the four the rename
+      assumed, and exactly two columns depended on it — both confirmed against
+      the database rather than the schema before the swap. The SQL is in
+      `scripts/staging-enum-remap.sql` and `scripts/staging-drift.sql`.
 
 ## Left
 
-- [ ] **Staging.** Not reachable from the dev machine, so nothing here touched
-      it. In order: remap the `BuddyTier` enum with the SQL in `DEPLOYMENT.md`,
-      confirm `migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel
-      prisma/schema.prisma --exit-code` exits 0, and only then run
-      `migrate resolve --applied` once per directory in `prisma/migrations/`.
-      Baselining a database that does not match makes every later migration
-      apply on a false assumption; resolving only `0_init` when later
-      migrations exist makes `migrate deploy` re-apply them.
 - [ ] **Where `migrate deploy` runs on release.** Deferred to the Azure
       Container Apps move (`docs/deploy-plan.md` §6), because the answer is
       host-specific and `scripts/deploy.sh` is being replaced. Until then it is
@@ -42,8 +41,6 @@ The reasoning, the rejected alternatives, and the current state now live in
 
 ## Still unverified
 
-- `migrate resolve --applied` against Neon. Never run there.
-- Staging's actual enum state and row counts.
 - Whether the Neon role can create a shadow database. Only `migrate dev` needs
   one; `migrate deploy` does not.
 - Other worktrees' local databases predate `prisma/migrations/`, so their

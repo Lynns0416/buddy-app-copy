@@ -244,9 +244,18 @@ There are two directories as of 2026-09-12 — `0_init` and
 `20260912032858_add_member_type` — so this is no longer hypothetical. Read the
 directory, do not work from this list.
 
-Local databases were baselined on 2026-09-12. Staging was not — it is not
-reachable from the dev machine, and it still needs the enum remap below before
-the diff comes back clean.
+Local databases and Neon staging were both baselined on 2026-09-12, staging in
+#142. Staging needed the enum remap below first — it still held the pre-#140
+type — and one column from `0_init` plus the whole of the `memberType`
+migration, because it predated both. The SQL actually run against it is kept in
+`scripts/staging-enum-remap.sql` and `scripts/staging-drift.sql`.
+
+Neither file belongs in `prisma/migrations/`. A **non-empty** database with no
+`_prisma_migrations` table cannot be reached by `migrate deploy` at all — that
+is the `P3005` above — so the repair that makes baselining possible has to run
+outside Migrate by hand. An empty server has no such problem, which is why prod
+is built by `migrate deploy` from `0_init` with no repair step at all
+(`docs/deploy-plan.md` §6). See `docs/decisions.md`.
 
 ### Renaming enum values on a populated database
 

@@ -12,6 +12,41 @@ duplicate that state here.
 
 ---
 
+## 2026-09-12 — Staging's baseline repair is hand-run SQL, not a migration
+
+**Decision:** The SQL that brought Neon staging up to `schema.prisma` before
+baselining it — the `BuddyTier` remap and the missing-column drift — lives in
+`scripts/staging-enum-remap.sql` and `scripts/staging-drift.sql`, run once by
+hand. It is not in `prisma/migrations/`.
+
+**Why:** the two constraints are circular. `migrate resolve --applied 0_init`
+asserts the database already contains everything `0_init` creates, including
+`BuddyTier` with its four final values, so it cannot run before the remap. And
+`migrate deploy` refuses a non-empty database with no `_prisma_migrations`
+table with `P3005`, so a migration file cannot reach that database before it is
+baselined. Something has to run outside Migrate to break the circle.
+
+**Rejected — writing the remap as a Prisma migration.** Beyond the circularity,
+a migration is replayed on every database forever. Local databases were
+baselined already holding the correct enum and the Azure servers are fresh, so
+on all of them this is a no-op that permanently records one database's
+historical drift as if it were a schema change. `prisma/migrations/` is a linear
+rebuild from empty, checked as such by the CI drift replay in
+`.github/workflows/ci.yml`, not a log of repairs.
+
+**Rejected — running it straight from the terminal with no file.** Nothing then
+records what was executed against a live database. The `_prisma_migrations`
+table covers the migrations, but not the repair that preceded them.
+
+**What the files are not:** they are the reviewable artifact, not proof of
+execution. That is the progress row in `docs/deploy-plan.md` and the database's
+own state.
+
+**Current state:** `DEPLOYMENT.md` "Baselining an existing database",
+`docs/prisma-migrate-adoption.md`, `docs/deploy-plan.md` §6.
+
+---
+
 ## 2026-09-12 — Tier value labels live in a shared `buddyTier` namespace
 
 **Decision:** The four tier labels moved from `adminBuddies.tier{Junior,Buddy,Star,Blackstar}`
@@ -107,11 +142,10 @@ would otherwise pass every check and only fail at a query after deploy, so
 Postgres and fails the branch if the result differs from `schema.prisma`.
 `CLAUDE.md` carries the matching rule.
 
-**Not verified:** `migrate resolve --applied` against Neon, and staging's actual
-enum state. Staging is not reachable from the dev machine. It still needs the
-enum remap in `DEPLOYMENT.md` before the baseline diff comes back clean, and it
-must not be baselined before it does. The CI drift check has not run yet — it
-was written without a local Docker daemon.
+**Since verified:** staging was baselined on 2026-09-12 in #142; see the entry
+above. The drift replay has been observed passing — on `main` in Actions run
+`34683242242`, the first run after #144 merged, and again on #142's branch in
+`34693275555`.
 
 **Current state:** `DEPLOYMENT.md` "Schema Changes", `README.md` "Schema
 changes", `docs/architecture.md`, `.github/workflows/ci.yml`.
