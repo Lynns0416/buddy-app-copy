@@ -28,3 +28,11 @@ hooks:
     - type: copy
       from: deploy.env
       to: deploy.env
+    # Firebase Auth emulator data. Without it a new worktree starts with an
+    # empty user table and every seeded login fails. The emulator rewrites this
+    # directory on export, so a worktree's copy diverges from the main
+    # checkout's — that is fine, each worktree keeps its own accounts.
+    - type: copy
+      from: .firebase/emulators
+      to: .firebase/emulators
+
