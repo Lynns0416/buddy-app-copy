@@ -109,7 +109,7 @@ Buddies are never deleted from the database. Status updates are the only lifecyc
 
 ### 5.2 Tier (admin-managed)
 
-Once Active, an internal tier is assigned and updated manually by admin:
+Once Active, a tier is assigned and updated manually by admin:
 
 | Tier | Description |
 |---|---|
@@ -120,7 +120,7 @@ Once Active, an internal tier is assigned and updated manually by admin:
 
 浮き and 統括 are capabilities of a tier, not a separate field and not a per-tour role assignment.
 
-A buddy may see which tier they hold. The API does not expose it yet — see #137. `internalNotes` and `adminMemo` stay admin-only. A buddy never sees another buddy's tier.
+A buddy sees the tier they hold on their own profile page; `GET /me/profile` returns it. `internalNotes` and `adminMemo` stay admin-only. A buddy never sees another buddy's tier. A buddy with no tier assigned — a trainee, or an active buddy whose tier an admin cleared — gets no tier row at all rather than an empty one.
 
 Typical progression: Junior → Buddy → Star → Blackstar.
 

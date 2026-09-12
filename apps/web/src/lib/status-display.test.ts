@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   getBuddyStatusLabel,
+  getBuddyTierLabel,
   getTourStatusLabel,
   getBookingStatusLabel,
   getGroupTypeLabel,
@@ -9,7 +10,7 @@ import {
   bookingStatusBadgeVariant,
   groupTypeBadgeClass,
 } from './status-display'
-import { BuddyStatusSchema, TourStatusSchema, BookingStatusSchema, GroupTypeSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, BuddyTierSchema, TourStatusSchema, BookingStatusSchema, GroupTypeSchema } from '@peace-buddy/types'
 
 const t = (key: string) => key
 
@@ -17,6 +18,14 @@ describe('getBuddyStatusLabel', () => {
   it('returns t(status) for each BuddyStatus', () => {
     for (const s of BuddyStatusSchema.options) {
       expect(getBuddyStatusLabel(t, s)).toBe(s)
+    }
+  })
+})
+
+describe('getBuddyTierLabel', () => {
+  it('returns t(tier) for each BuddyTier', () => {
+    for (const tier of BuddyTierSchema.options) {
+      expect(getBuddyTierLabel(t, tier)).toBe(tier)
     }
   })
 })

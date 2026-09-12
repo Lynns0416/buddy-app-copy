@@ -12,6 +12,26 @@ duplicate that state here.
 
 ---
 
+## 2026-09-12 — Tier value labels live in a shared `buddyTier` namespace
+
+**Decision:** The four tier labels moved from `adminBuddies.tier{Junior,Buddy,Star,Blackstar}`
+to a top-level `buddyTier` namespace keyed by the enum value, read through
+`getBuddyTierLabel` in `lib/status-display.ts`. `adminBuddies` keeps `tier`,
+`tierPlaceholder` and `tierNone` — those are form chrome, not value labels.
+
+**Why:** #137 puts tier on a buddy-facing screen. The labels already existed;
+matching the `buddyStatus` / `tourStatus` / `bookingStatus` namespaces gives one
+set both sides read, and replaces the `tier${capitalize(value)}` key-building
+that was duplicated in two admin files.
+
+**Rejected — having the buddy profile page call `useTranslations('adminBuddies')`:**
+no admin churn, but a buddy-facing screen reading the admin namespace invites the
+next person to put buddy-facing copy there.
+
+**Current state:** `apps/web/messages/*.json`, `apps/web/src/lib/status-display.ts`.
+
+---
+
 ## 2026-09-12 — `memberType` is non-nullable with a `buddy` default
 
 **Decision:** `BuddyProfile.memberType` is `MemberType` (`buddy` / `plab_member`),
@@ -439,8 +459,9 @@ vocabulary is バディ and PLABメンバー, and that is what #136 will use.
 
 **Decision:** Tier is no longer admin-only. A buddy may see which of the four
 roles they hold. They still cannot see another buddy's tier, and `internalNotes`
-and `adminMemo` remain admin-only. The API does not expose it yet; #137 carries
-the change, including dropping `tier` from the CLAUDE.md never-expose rule.
+and `adminMemo` remain admin-only. Shipped in #137: `BuddyProfileResponse`
+carries `tier`, the buddy profile page shows it, and `tier` is dropped from the
+CLAUDE.md never-expose rule.
 
 **Why:** The roles now have clear published requirements, so hiding a buddy's own
 role hides the thing they are working toward.
@@ -449,7 +470,7 @@ role hides the thing they are working toward.
 and a standing project rule in the same commit makes the diff unreviewable and
 the revert unscopable.
 
-**Current state:** PRD §5.2, #137.
+**Current state:** PRD §5.2, `api.md`, `buddy.service.ts`, `profile-header.tsx`.
 
 ---
 

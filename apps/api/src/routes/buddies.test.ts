@@ -4,6 +4,7 @@ import { routes } from './index'
 import { buddyRoutes } from './buddies'
 import type { AuthEnv } from '../types'
 import type { BuddyProfileResponse } from '@peace-buddy/types'
+import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -24,7 +25,8 @@ const mockMarkOnboardingSeen = vi.mocked(markOnboardingSeen)
 const dbUser = { id: 'user-1', firebaseUid: 'uid-123', email: 'test@example.com', role: 'buddy' }
 const mockProfile = {
   id: 'profile-1',
-  status: 'active',
+  status: BuddyStatusSchema.enum.active,
+  tier: BuddyTierSchema.enum.buddy,
   displayName: 'Test Buddy',
   realName: 'Real Name',
   photoUrl: null,
@@ -77,7 +79,14 @@ describe('GET /me/profile', () => {
     const res = await buildApp().request('/me/profile')
     const body = await res.json() as Record<string, unknown>
     expect(body.internalNotes).toBeUndefined()
-    expect(body.tier).toBeUndefined()
+    expect(body.memberType).toBeUndefined()
+  })
+
+  it("exposes the buddy's own tier", async () => {
+    mockGetBuddyProfile.mockResolvedValueOnce(mockProfile as unknown as BuddyProfileResponse)
+    const res = await buildApp().request('/me/profile')
+    const body = await res.json() as BuddyProfileResponse
+    expect(body.tier).toBe(BuddyTierSchema.enum.buddy)
   })
 
   it('calls getBuddyProfile with the db user id', async () => {

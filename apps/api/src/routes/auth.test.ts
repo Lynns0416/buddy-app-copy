@@ -46,6 +46,7 @@ const userResponse = {
   buddyProfile: {
     id: 'profile-1',
     status: 'pending',
+    tier: null,
     displayName: 'Test',
     realName: '',
     photoUrl: null,
@@ -187,7 +188,8 @@ describe('GET /auth/me', () => {
     expect(body.id).toBe('user-1')
     expect(body.buddyProfile?.status).toBe('pending')
     expect(body.firebaseUid).toBeUndefined()
-    expect((body.buddyProfile as Record<string, unknown> | null | undefined)?.tier).toBeUndefined()
+    expect(body.buddyProfile?.tier).toBeNull()
+    expect((body.buddyProfile as Record<string, unknown> | null | undefined)?.memberType).toBeUndefined()
     expect((body.buddyProfile as Record<string, unknown> | null | undefined)?.internalNotes).toBeUndefined()
   })
 })

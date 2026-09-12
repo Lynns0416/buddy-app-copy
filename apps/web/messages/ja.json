@@ -108,10 +108,6 @@
     "internalNotesPlaceholder": "内部参照用のメモを追加",
     "tierPlaceholder": "ロールを選択",
     "tierNone": "未設定",
-    "tierJunior": "ジュニア",
-    "tierBuddy": "バディ",
-    "tierStar": "スター",
-    "tierBlackstar": "ブラックスター",
     "memberType": "メンバータイプ",
     "memberTypeBuddy": "バディ",
     "memberTypePlabMember": "PLABメンバー",
@@ -446,6 +442,7 @@
       }
     },
     "statusLabel": "アカウントステータス",
+    "tierLabel": "ロール",
     "memberSince": "登録日",
     "save": "保存",
     "cancel": "キャンセル",
@@ -592,6 +589,12 @@
       "network": "接続エラーです。ネットワークを確認してください。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
+  },
+  "buddyTier": {
+    "junior": "ジュニア",
+    "buddy": "バディ",
+    "star": "スター",
+    "blackstar": "ブラックスター"
   },
   "buddyStatus": {
     "pending": "承認待ち",

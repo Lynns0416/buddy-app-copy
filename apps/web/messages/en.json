@@ -108,10 +108,6 @@
     "internalNotesPlaceholder": "Add notes for internal reference",
     "tierPlaceholder": "Select tier",
     "tierNone": "None (not set)",
-    "tierJunior": "Junior",
-    "tierBuddy": "Buddy",
-    "tierStar": "Star",
-    "tierBlackstar": "Black Star",
     "memberType": "Member Type",
     "memberTypeBuddy": "Buddy",
     "memberTypePlabMember": "PLAB Member",
@@ -446,6 +442,7 @@
       }
     },
     "statusLabel": "Account status",
+    "tierLabel": "Tier",
     "memberSince": "Member since",
     "save": "Save",
     "cancel": "Cancel",
@@ -592,6 +589,12 @@
       "network": "Network error. Please check your connection.",
       "unknown": "An error occurred. Please try again."
     }
+  },
+  "buddyTier": {
+    "junior": "Junior",
+    "buddy": "Buddy",
+    "star": "Star",
+    "blackstar": "Black Star"
   },
   "buddyStatus": {
     "pending": "Pending",

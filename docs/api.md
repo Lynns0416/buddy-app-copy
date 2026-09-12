@@ -37,12 +37,14 @@ Called on first login. Validates the Firebase ID token (no DB user required yet)
 ```json
 {
   "id": "uuid",
-  "firebaseUid": "string",
   "email": "string",
   "role": "buddy | admin | super_admin",
+  "locale": "ja | en",
+  "createdAt": "ISO8601",
   "buddyProfile": {
     "id": "uuid",
     "status": "pending | trainee | active | rejected | suspended",
+    "tier": "junior | buddy | star | blackstar | null",
     "displayName": "string",
     "realName": "string",
     "photoUrl": "string | null",
@@ -50,19 +52,20 @@ Called on first login. Validates the Firebase ID token (no DB user required yet)
     "contactInfo": "string | null",
     "languages": ["string"],
     "skills": ["string"],
+    "onboardingSeenAt": "ISO8601 | null",
     "createdAt": "ISO8601",
     "updatedAt": "ISO8601"
   } | null
 }
 ```
 
-`tier`, `memberType` and `internalNotes` are never included in buddy-side responses. There is no `GET /auth/me` — buddies use `GET /me/profile`, admins use `GET /admin/profile`.
+`memberType` and `internalNotes` are never included in buddy-side responses. `tier` is — a buddy may see their own. There is no `GET /auth/me` — buddies use `GET /me/profile`, admins use `GET /admin/profile`.
 
 ---
 
 ## Buddy Profile
 
-Buddy-side endpoints sit under `/me/profile`. Admin reads/writes use `/admin/buddies/*`. The buddy-side response shape (`BuddyProfileResponse`) never includes `tier`, `memberType`, `internalNotes`, or the underlying `userId`.
+Buddy-side endpoints sit under `/me/profile`. Admin reads/writes use `/admin/buddies/*`. The buddy-side response shape (`BuddyProfileResponse`) includes `tier` — a buddy may see the role they hold — and never includes `memberType`, `internalNotes`, or the underlying `userId`.
 
 ### Buddy: `GET /me/profile`
 Fetch own profile.
@@ -74,6 +77,7 @@ Fetch own profile.
 {
   "id": "uuid",
   "status": "pending | trainee | active | rejected | suspended",
+  "tier": "junior | buddy | star | blackstar | null",
   "displayName": "string",
   "realName": "string",
   "photoUrl": "string | null",

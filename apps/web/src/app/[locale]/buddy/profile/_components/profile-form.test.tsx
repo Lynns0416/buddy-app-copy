@@ -23,6 +23,7 @@ const mockUpdate = vi.mocked(updateMyProfile)
 const stubProfile: BuddyProfileResponse = {
   id: 'p1',
   status: 'active',
+  tier: null,
   displayName: 'Test Buddy',
   realName: 'Real Name',
   photoUrl: null,

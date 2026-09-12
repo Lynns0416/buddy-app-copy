@@ -16,6 +16,7 @@ const mockGetMyProfile = vi.mocked(apiClient.getMyProfile)
 const stubProfile: BuddyProfileResponse = {
   id: 'p1',
   status: 'active',
+  tier: null,
   displayName: 'Test Buddy',
   realName: 'Real Name',
   photoUrl: null,

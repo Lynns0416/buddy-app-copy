@@ -356,6 +356,7 @@ export type AdminProfileResponse = {
 export type BuddyProfileResponse = {
   id: string
   status: BuddyStatus
+  tier: BuddyTier | null
   displayName: string
   realName: string
   photoUrl: string | null

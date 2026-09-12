@@ -3,7 +3,8 @@ import type { Locale, UserResponse } from '@peace-buddy/types'
 import { UserRoleSchema, BuddyStatusSchema, NotifEventKindSchema } from '@peace-buddy/types'
 import { enqueueInAppForAllAdmins, enqueueSlackForAdmins } from './notification.service'
 
-// Explicit select — never fetches internalNotes, tier, adminEvaluations, or other admin-only fields
+// Explicit select — tier is buddy-visible on their own profile (#137); never
+// fetches internalNotes, memberType, adminEvaluations, or other admin-only fields
 const userSelect = {
   id: true,
   email: true,
@@ -14,6 +15,7 @@ const userSelect = {
     select: {
       id: true,
       status: true,
+      tier: true,
       displayName: true,
       realName: true,
       photoUrl: true,

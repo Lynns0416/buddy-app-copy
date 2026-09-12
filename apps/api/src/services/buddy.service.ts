@@ -1,10 +1,12 @@
 import { db } from '../lib/db'
 import type { BuddyProfileResponse, UpdateBuddyProfile } from '@peace-buddy/types'
 
-// Explicit select — never fetches internalNotes, tier, or other admin-only fields
+// Explicit select — tier is buddy-visible (#137); never fetches internalNotes,
+// memberType, or other admin-only fields
 export const buddyProfileSelect = {
   id: true,
   status: true,
+  tier: true,
   displayName: true,
   realName: true,
   photoUrl: true,

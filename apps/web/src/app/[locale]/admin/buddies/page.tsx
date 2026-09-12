@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { MemberType } from '@peace-buddy/types'
+import type { BuddyTier, MemberType } from '@peace-buddy/types'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -14,12 +14,14 @@ import { routes } from '@/lib/routes'
 import { sortBuddies, nextBuddySort, mapBuddyError, buddyName, memberTypeLabelKey, type BuddySortField } from './admin.buddy'
 import { useBuddies } from './use-buddies'
 import { BuddyAvatar } from '@/components/buddy-avatar'
+import { getBuddyTierLabel } from '@/lib/status-display'
 
 export default function AdminBuddiesPage() {
   const { ready } = useAdminGuard()
   const locale = useLocale()
   const router = useRouter()
   const t = useTranslations('adminBuddies')
+  const tBuddyTier = useTranslations('buddyTier')
   const { buddies, fetchError } = useBuddies(ready)
   const [sortField, setSortField] = useState<BuddySortField>('displayName')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -32,9 +34,9 @@ export default function AdminBuddiesPage() {
 
   const sorted = sortBuddies(buddies, sortField, sortDir)
 
-  function tierLabel(tier: string | null): string {
+  function tierLabel(tier: BuddyTier | null): string {
     if (!tier) return '—'
-    return t(`tier${tier.charAt(0).toUpperCase() + tier.slice(1)}` as Parameters<typeof t>[0])
+    return getBuddyTierLabel(tBuddyTier, tier)
   }
 
   function memberTypeLabel(memberType: MemberType): string {

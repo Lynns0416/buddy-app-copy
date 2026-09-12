@@ -63,7 +63,7 @@ describe('AdminBuddiesPage mobile cards', () => {
 
     expect(card.getByText('tier')).toBeInTheDocument()
     expect(card.getByText('memberType')).toBeInTheDocument()
-    expect(card.getByText('tierBuddy')).toBeInTheDocument()
+    expect(card.getByText('buddy')).toBeInTheDocument()
     expect(card.getByText('memberTypeBuddy')).toBeInTheDocument()
   })
 
@@ -71,7 +71,7 @@ describe('AdminBuddiesPage mobile cards', () => {
     const { container } = render(<AdminBuddiesPage />)
     const text = mobileCard(container).textContent ?? ''
 
-    expect(text).toContain('tier tierBuddy')
+    expect(text).toContain('tier buddy')
     expect(text).toContain('memberType memberTypeBuddy')
   })
 

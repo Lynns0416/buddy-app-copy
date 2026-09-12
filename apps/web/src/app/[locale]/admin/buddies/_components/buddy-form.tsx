@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { routes } from '@/lib/routes'
 import { updateBuddy, updateBuddyStatus, memberTypeLabelKey } from '../admin.buddy'
 import { PromoteTierModal } from './promote-tier-modal'
+import { getBuddyTierLabel } from '@/lib/status-display'
 
 const TIER_NONE = '__none__'
 
@@ -24,6 +25,7 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('adminBuddies')
+  const tBuddyTier = useTranslations('buddyTier')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedTier, setSelectedTier] = useState<BuddyTier | ''>((buddy.tier as BuddyTier) || '')
@@ -125,7 +127,7 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
                 <SelectItem value={TIER_NONE}>{t('tierNone')}</SelectItem>
                 {BuddyTierSchema.options.map((tier: BuddyTier) => (
                   <SelectItem key={tier} value={tier}>
-                    {t(`tier${tier.charAt(0).toUpperCase() + tier.slice(1)}`)}
+                    {getBuddyTierLabel(tBuddyTier, tier)}
                   </SelectItem>
                 ))}
               </SelectContent>

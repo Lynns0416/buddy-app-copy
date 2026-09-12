@@ -26,6 +26,7 @@ const mockUpdateMyProfile = vi.mocked(apiClient.updateMyProfile)
 const stubProfile: BuddyProfileResponse = {
   id: 'p1',
   status: BuddyStatusSchema.enum.active,
+  tier: null,
   displayName: 'Test Buddy',
   realName: 'Real Name',
   photoUrl: null,

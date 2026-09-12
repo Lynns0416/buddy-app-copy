@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getBuddyProfile, updateBuddyProfile, markOnboardingSeen } from './buddy.service'
+import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
 
 vi.mock('../lib/db', () => ({
   db: {
@@ -20,7 +21,8 @@ const mockUpdate = vi.mocked(db.buddyProfile).update
 
 const mockProfile = {
   id: 'profile-1',
-  status: 'active',
+  status: BuddyStatusSchema.enum.active,
+  tier: BuddyTierSchema.enum.buddy,
   displayName: 'Test Buddy',
   realName: 'Real Name',
   photoUrl: null,
@@ -61,7 +63,14 @@ describe('getBuddyProfile', () => {
     await getBuddyProfile('user-1')
     const call = mockFindUnique.mock.calls[0][0] as any
     expect(call.select.internalNotes).toBeUndefined()
-    expect(call.select.tier).toBeUndefined()
+    expect(call.select.memberType).toBeUndefined()
+  })
+
+  it('includes the tier, which the buddy may see', async () => {
+    mockFindUnique.mockResolvedValueOnce(mockProfile as any)
+    await getBuddyProfile('user-1')
+    const call = mockFindUnique.mock.calls[0][0] as any
+    expect(call.select.tier).toBe(true)
   })
 })
 
@@ -101,7 +110,7 @@ describe('updateBuddyProfile', () => {
     await updateBuddyProfile('user-1', {})
     const call = mockUpdate.mock.calls[0][0] as any
     expect(call.select.internalNotes).toBeUndefined()
-    expect(call.select.tier).toBeUndefined()
+    expect(call.select.memberType).toBeUndefined()
   })
 })
 

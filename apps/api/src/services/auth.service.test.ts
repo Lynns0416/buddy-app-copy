@@ -121,7 +121,7 @@ describe('upsertUser', () => {
     const call = mdb.user.upsert.mock.calls[0][0] as { select: Record<string, unknown> & { buddyProfile: { select: Record<string, unknown> } } }
     expect(call.select).toBeDefined()
     expect(call.select.buddyProfile.select.internalNotes).toBeUndefined()
-    expect(call.select.buddyProfile.select.tier).toBeUndefined()
+    expect(call.select.buddyProfile.select.memberType).toBeUndefined()
     expect(call.select.firebaseUid).toBeUndefined()
   })
 })
@@ -162,7 +162,16 @@ describe('getUser', () => {
 
     const call = mdb.user.findUnique.mock.calls[0][0] as { select: Record<string, unknown> & { buddyProfile: { select: Record<string, unknown> } } }
     expect(call.select.buddyProfile.select.internalNotes).toBeUndefined()
-    expect(call.select.buddyProfile.select.tier).toBeUndefined()
+    expect(call.select.buddyProfile.select.memberType).toBeUndefined()
     expect(call.select.firebaseUid).toBeUndefined()
+  })
+
+  it('includes the tier, which the buddy may see', async () => {
+    mdb.user.findUnique.mockResolvedValueOnce(mockUserRow)
+
+    await getUser('user-1')
+
+    const call = mdb.user.findUnique.mock.calls[0][0] as { select: { buddyProfile: { select: Record<string, unknown> } } }
+    expect(call.select.buddyProfile.select.tier).toBe(true)
   })
 })

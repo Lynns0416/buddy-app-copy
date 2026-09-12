@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl'
 import type { BuddyProfileResponse } from '@peace-buddy/types'
 import { Badge } from '@/components/ui/badge'
-import { getBuddyStatusLabel, buddyStatusBadgeVariant } from '@/lib/status-display'
+import { getBuddyStatusLabel, getBuddyTierLabel, buddyStatusBadgeVariant } from '@/lib/status-display'
 import { ProfilePhoto } from './profile-photo'
 
 interface ProfileHeaderProps {
@@ -14,6 +14,7 @@ interface ProfileHeaderProps {
 export function ProfileHeader({ profile, onPhotoSaved }: ProfileHeaderProps) {
   const t = useTranslations('profile')
   const tBuddyStatus = useTranslations('buddyStatus')
+  const tBuddyTier = useTranslations('buddyTier')
   const locale = useLocale()
 
   const memberSince = new Intl.DateTimeFormat(locale, {
@@ -38,6 +39,12 @@ export function ProfileHeader({ profile, onPhotoSaved }: ProfileHeaderProps) {
             {getBuddyStatusLabel(tBuddyStatus, profile.status)}
           </Badge>
         </div>
+        {profile.tier && (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">{t('tierLabel')}</span>
+            <Badge variant="secondary">{getBuddyTierLabel(tBuddyTier, profile.tier)}</Badge>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">{t('memberSince')}</span>
           <span className="font-medium">{memberSince}</span>

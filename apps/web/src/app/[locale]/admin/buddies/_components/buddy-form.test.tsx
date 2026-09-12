@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BuddyForm } from './buddy-form'
 import type { AdminBuddyResponse } from '@peace-buddy/types'
+import { BuddyTierSchema } from '@peace-buddy/types'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -58,6 +59,23 @@ describe('BuddyForm', () => {
     await user.click(screen.getByRole('combobox', { name: /memberType/i }))
     await user.click(screen.getByRole('option', { name: labelKey }))
   }
+
+  describe('tier field', () => {
+    // The option labels come from the shared buddyTier namespace, not from
+    // adminBuddies. Nothing else asserts they render, so a broken label here
+    // would ship silently.
+    it('offers every BuddyTier plus the unset option', async () => {
+      const user = userEvent.setup()
+      render(<BuddyForm buddy={buddy()} />)
+
+      await user.click(screen.getByRole('combobox', { name: 'tier' }))
+
+      expect(screen.getByRole('option', { name: 'tierNone' })).toBeInTheDocument()
+      for (const tier of BuddyTierSchema.options) {
+        expect(screen.getByRole('option', { name: tier })).toBeInTheDocument()
+      }
+    })
+  })
 
   describe('member type field', () => {
     it('renders for an active buddy', () => {

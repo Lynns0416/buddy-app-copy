@@ -13,7 +13,7 @@ Source of truth for completed work is `git log`.
 
 ## Patterns (never deviate)
 - **API**: route → service → Prisma. Business logic in service only.
-- **Prisma**: explicit `select` always. Never expose `internalNotes`, `tier`, `adminMemo`.
+- **Prisma**: explicit `select` always. Never expose `internalNotes`, `adminMemo`. `tier` is buddy-visible on their own profile only — never another buddy's.
 - **Types**: Zod schemas, enums, and all response types → `packages/types`. `apps/api/src/types.ts` holds Hono env types only (`FirebaseEnv`, `AuthEnv`, etc.) and internal API types (`ToursQuery`). HTTP transport/validation schemas → route file.
 - **Enum values**: always use `SchemaName.enum.value` (e.g. `BuddyStatusSchema.enum.active`), never magic strings.
 - **Zod**: validate at all system boundaries (routes). Parse, never cast.

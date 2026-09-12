@@ -1,10 +1,14 @@
-import type { BuddyStatus, TourStatus, BookingStatus, GroupType } from '@peace-buddy/types'
+import type { BuddyStatus, BuddyTier, TourStatus, BookingStatus, GroupType } from '@peace-buddy/types'
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline'
 type TFn = (key: string) => string
 
 export function getBuddyStatusLabel(t: TFn, status: BuddyStatus): string {
   return t(status)
+}
+
+export function getBuddyTierLabel(t: TFn, tier: BuddyTier): string {
+  return t(tier)
 }
 
 export function getTourStatusLabel(t: TFn, status: TourStatus): string {
