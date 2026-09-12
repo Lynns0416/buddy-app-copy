@@ -37,6 +37,42 @@ source "$ENV_FILE"
 : "${SUBNET_APPS:?}" "${SUBNET_APPS_CIDR:?}" "${SUBNET_DB:?}" "${SUBNET_DB_CIDR:?}"
 : "${PG_SERVER:?}" "${PG_VERSION:?}" "${PG_TIER:?}" "${PG_SKU:?}" "${PG_STORAGE_GB:?}"
 : "${PG_DB_NAME:?}" "${PG_ADMIN_USER:?}" "${PG_ADMIN_PASSWORD:?}"
+: "${ENVIRONMENT:?}"
+
+# --- 0. Confirm the target ---------------------------------------------
+# The prod and staging env files differ by four lines, and two of the resources
+# below cannot be converted after creation. Name the target out loud and make
+# someone agree to it before anything is created.
+# Colour is the fastest way to notice the wrong target. Red is production,
+# blue is anything else. Dropped entirely when output is not a terminal.
+if [ -t 1 ]; then
+  case "$ENVIRONMENT" in
+    prod | production) BANNER=$'\033[1;97;41m' ;;
+    *) BANNER=$'\033[1;97;44m' ;;
+  esac
+  BOLD=$'\033[1m'; RESET=$'\033[0m'
+else
+  BANNER=""; BOLD=""; RESET=""
+fi
+ENV_UPPER="$(printf '%s' "$ENVIRONMENT" | tr '[:lower:]' '[:upper:]')"
+
+printf '\n%s                                                  %s\n' "$BANNER" "$RESET"
+printf '%s   PROVISIONING  ->  %-30s%s\n' "$BANNER" "$ENV_UPPER" "$RESET"
+printf '%s                                                  %s\n\n' "$BANNER" "$RESET"
+cat <<CONFIRM
+  Config file      $ENV_FILE
+  Subscription     $(az account show --query name -o tsv)
+  Resource group   $RESOURCE_GROUP ($LOCATION)
+  Apps environment $ACA_ENV
+  Database         $PG_SERVER ($PG_SKU, ${PG_STORAGE_GB}GB)
+
+CONFIRM
+printf '%sProvision to %s?%s [y/N] ' "$BOLD" "$ENV_UPPER" "$RESET"
+read -r REPLY
+case "$REPLY" in
+  y | Y | yes | YES) ;;
+  *) echo "aborted, nothing created." >&2; exit 1 ;;
+esac
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 # Takes the command as separate arguments rather than one string, so a value
@@ -176,8 +212,19 @@ if ! exists az postgres flexible-server show -n "$PG_SERVER" -g "$RESOURCE_GROUP
     --storage-size "$PG_STORAGE_GB" --version "$PG_VERSION" \
     --admin-user "$PG_ADMIN_USER" --admin-password "$PG_ADMIN_PASSWORD" \
     --vnet "$VNET_NAME" --subnet "$SUBNET_DB" --private-dns-zone "$DNS_ZONE" \
-    --database-name "$PG_DB_NAME" \
     --yes --output none
+fi
+
+# The application database is created separately. `flexible-server create`
+# takes --database-name only for elastic clusters (az 2.90), and a single
+# server is left with Azure's own defaults, none of which are this one.
+# This runs over the management API, so it does not need VNet access.
+step "Database $PG_DB_NAME on $PG_SERVER"
+if ! exists az postgres flexible-server db show --name "$PG_DB_NAME" \
+     --server-name "$PG_SERVER" -g "$RESOURCE_GROUP" --query name -o tsv; then
+  az postgres flexible-server db create \
+    --resource-group "$RESOURCE_GROUP" --server-name "$PG_SERVER" \
+    --name "$PG_DB_NAME" --output none
 fi
 
 step "Done"
