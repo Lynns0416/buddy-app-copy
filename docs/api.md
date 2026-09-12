@@ -56,13 +56,13 @@ Called on first login. Validates the Firebase ID token (no DB user required yet)
 }
 ```
 
-`tier` and `internalNotes` are never included in buddy-side responses. There is no `GET /auth/me` — buddies use `GET /me/profile`, admins use `GET /admin/profile`.
+`tier`, `memberType` and `internalNotes` are never included in buddy-side responses. There is no `GET /auth/me` — buddies use `GET /me/profile`, admins use `GET /admin/profile`.
 
 ---
 
 ## Buddy Profile
 
-Buddy-side endpoints sit under `/me/profile`. Admin reads/writes use `/admin/buddies/*`. The buddy-side response shape (`BuddyProfileResponse`) never includes `tier`, `internalNotes`, or the underlying `userId`.
+Buddy-side endpoints sit under `/me/profile`. Admin reads/writes use `/admin/buddies/*`. The buddy-side response shape (`BuddyProfileResponse`) never includes `tier`, `memberType`, `internalNotes`, or the underlying `userId`.
 
 ### Buddy: `GET /me/profile`
 Fetch own profile.
@@ -166,11 +166,13 @@ Remove the current profile photo. Sets `photoUrl = null` and deletes the R2 obje
 ---
 
 ### Admin: `GET /admin/buddies`
-List buddies. Returns `AdminBuddyResponse[]` (includes `tier`, `internalNotes`, `email`).
+List buddies. Returns `AdminBuddyResponse[]` (includes `tier`, `memberType`, `internalNotes`, `email`).
 
 **Auth:** `admin`
 
-**Query params:** `?status=pending|trainee|active|rejected|suspended`, `?tier=junior|buddy|star|blackstar`
+**Query params:** `?status=pending|trainee|active|rejected|suspended`, `?tier=junior|buddy|star|blackstar`, `?memberType=buddy|plab_member`
+
+`tier` is what the buddy can do; `memberType` is what they are to PLAB. The two are independent — a `plab_member` holds a tier like anyone else, and filtering by one says nothing about the other.
 
 **Response `200`** — array of `AdminBuddyResponse`
 
@@ -224,7 +226,7 @@ Buddy detail with bookings and aggregations.
 ---
 
 ### Admin: `PUT /admin/buddies/:id`
-Update admin-managed fields. Both fields optional; pass `null` to clear.
+Update admin-managed fields. All fields optional. `tier` and `internalNotes` accept `null` to clear; `memberType` does not — it is non-nullable and defaults to `buddy`.
 
 **Auth:** `admin`
 
@@ -232,6 +234,7 @@ Update admin-managed fields. Both fields optional; pass `null` to clear.
 ```json
 {
   "tier": "junior | buddy | star | blackstar | null",
+  "memberType": "buddy | plab_member",
   "internalNotes": "string | null"
 }
 ```

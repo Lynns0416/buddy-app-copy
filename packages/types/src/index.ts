@@ -11,6 +11,12 @@ export type BuddyStatus = z.infer<typeof BuddyStatusSchema>
 export const BuddyTierSchema = z.enum(['junior', 'buddy', 'star', 'blackstar'] as const)
 export type BuddyTier = z.infer<typeof BuddyTierSchema>
 
+// What a person is to PLAB, not what they can do — see BuddyTierSchema for the
+// latter. The two axes are independent: a plab_member holds a tier like anyone
+// else, and memberType affects no eligibility, capacity or permission.
+export const MemberTypeSchema = z.enum(['buddy', 'plab_member'] as const)
+export type MemberType = z.infer<typeof MemberTypeSchema>
+
 export const BookingStatusSchema = z.enum(['confirmed', 'maybe', 'waitlist', 'declined'])
 export type BookingStatus = z.infer<typeof BookingStatusSchema>
 
@@ -320,6 +326,7 @@ export type UpdateBuddyStatus = z.infer<typeof UpdateBuddyStatusSchema>
 
 export const UpdateAdminBuddyProfileSchema = z.object({
   tier: BuddyTierSchema.nullable().optional(),
+  memberType: MemberTypeSchema.optional(),
   internalNotes: z.string().nullable().optional(),
 })
 export type UpdateAdminBuddyProfile = z.infer<typeof UpdateAdminBuddyProfileSchema>
@@ -426,6 +433,7 @@ export type AdminBuddyResponse = {
   userId: string
   status: BuddyStatus
   tier: BuddyTier | null
+  memberType: MemberType
   displayName: string
   realName: string
   photoUrl: string | null

@@ -4,14 +4,14 @@ import { useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
-import type { AdminBuddyResponse, BuddyTier, UpdateAdminBuddyProfile } from '@peace-buddy/types'
-import { BuddyTierSchema, BuddyStatusSchema } from '@peace-buddy/types'
+import type { AdminBuddyResponse, BuddyTier, MemberType, UpdateAdminBuddyProfile } from '@peace-buddy/types'
+import { BuddyTierSchema, BuddyStatusSchema, MemberTypeSchema } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { routes } from '@/lib/routes'
-import { updateBuddy, updateBuddyStatus } from '../admin.buddy'
+import { updateBuddy, updateBuddyStatus, memberTypeLabelKey } from '../admin.buddy'
 import { PromoteTierModal } from './promote-tier-modal'
 
 const TIER_NONE = '__none__'
@@ -27,15 +27,47 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedTier, setSelectedTier] = useState<BuddyTier | ''>((buddy.tier as BuddyTier) || '')
+  const [selectedMemberType, setSelectedMemberType] = useState<MemberType>(buddy.memberType)
   const [notes, setNotes] = useState(buddy.internalNotes || '')
   const [showPromoteModal, setShowPromoteModal] = useState(false)
 
   const isTrainee = buddy.status === BuddyStatusSchema.enum.trainee
   const backRoute = isTrainee ? routes.adminTrainees(locale) : routes.adminBuddies(locale)
 
+  // Compared against the same normalisation the fields were seeded with, so an
+  // untouched form produces an empty diff — an unset note is '' here and null
+  // on the server, and those mean the same thing.
+  function pendingChanges(): UpdateAdminBuddyProfile {
+    const data: UpdateAdminBuddyProfile = {}
+    if (!isTrainee && selectedTier !== (buddy.tier ?? '')) {
+      data.tier = selectedTier || null
+    }
+    if (selectedMemberType !== buddy.memberType) {
+      data.memberType = selectedMemberType
+    }
+    if (notes !== (buddy.internalNotes ?? '')) {
+      data.internalNotes = notes || null
+    }
+    return data
+  }
+
+  // Promotion shares the page with the member type and notes fields, so an edit
+  // made just before promoting has to be written first or it is lost on the
+  // redirect. Status only moves if that write succeeded.
   async function doPromote() {
     setIsSubmitting(true)
     setError(null)
+
+    const data = pendingChanges()
+    if (Object.keys(data).length > 0) {
+      const saved = await updateBuddy(buddy.id, data)
+      if (!saved.ok) {
+        setIsSubmitting(false)
+        setError(t('error.unknown'))
+        return
+      }
+    }
+
     const result = await updateBuddyStatus(buddy.id, BuddyStatusSchema.enum.active)
     setIsSubmitting(false)
     if (result.ok) {
@@ -49,15 +81,7 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
     setIsSubmitting(true)
     setError(null)
 
-    const data: UpdateAdminBuddyProfile = {}
-    if (!isTrainee && selectedTier !== buddy.tier) {
-      data.tier = selectedTier || null
-    }
-    if (notes !== buddy.internalNotes) {
-      data.internalNotes = notes || null
-    }
-
-    const result = await updateBuddy(buddy.id, data)
+    const result = await updateBuddy(buddy.id, pendingChanges())
     setIsSubmitting(false)
     if (result.ok) {
       router.push(backRoute)
@@ -108,6 +132,25 @@ export function BuddyForm({ buddy }: BuddyFormProps) {
             </Select>
           </div>
         )}
+
+        <div>
+          <Label htmlFor="memberType">{t('memberType')}</Label>
+          <Select
+            value={selectedMemberType}
+            onValueChange={(val) => setSelectedMemberType(val as MemberType)}
+          >
+            <SelectTrigger id="memberType">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MemberTypeSchema.options.map((memberType: MemberType) => (
+                <SelectItem key={memberType} value={memberType}>
+                  {t(memberTypeLabelKey(memberType) as Parameters<typeof t>[0])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div>
           <Label htmlFor="notes">{t('internalNotes')}</Label>

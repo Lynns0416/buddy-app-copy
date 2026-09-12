@@ -1,6 +1,6 @@
 import { BookingStatus as PrismaBookingStatus } from '@prisma/client'
 import { db } from '../lib/db'
-import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse, Language } from '@peace-buddy/types'
+import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, MemberType, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse, Language } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema, NotifEventKindSchema } from '@peace-buddy/types'
 import { enqueueEmail, enqueueInApp } from './notification.service'
 
@@ -9,6 +9,7 @@ const adminBuddySelect = {
   userId: true,
   status: true,
   tier: true,
+  memberType: true,
   displayName: true,
   realName: true,
   photoUrl: true,
@@ -26,6 +27,7 @@ function mapBuddy(raw: {
   userId: string
   status: string
   tier: string | null
+  memberType: string
   displayName: string
   realName: string
   photoUrl: string | null
@@ -37,10 +39,18 @@ function mapBuddy(raw: {
   return { ...rest, email: user.email } as unknown as AdminBuddyResponse
 }
 
-export async function listBuddies(status?: BuddyStatus, tier?: BuddyTier): Promise<AdminBuddyResponse[]> {
+export async function listBuddies(
+  status?: BuddyStatus,
+  tier?: BuddyTier,
+  memberType?: MemberType,
+): Promise<AdminBuddyResponse[]> {
   const rows = await db.buddyProfile.findMany({
-    where: status || tier
-      ? { ...(status ? { status } : {}), ...(tier ? { tier } : {}) }
+    where: status || tier || memberType
+      ? {
+          ...(status ? { status } : {}),
+          ...(tier ? { tier } : {}),
+          ...(memberType ? { memberType } : {}),
+        }
       : undefined,
     select: adminBuddySelect,
     orderBy: { createdAt: 'asc' },
@@ -248,12 +258,14 @@ export async function updateAdminBookingStatus(
 export async function updateBuddyProfile(
   id: string,
   tier?: BuddyTier | null,
-  internalNotes?: string | null
+  internalNotes?: string | null,
+  memberType?: MemberType
 ): Promise<AdminBuddyResponse | null> {
   try {
-    const data: { tier?: BuddyTier | null; internalNotes?: string | null } = {}
+    const data: { tier?: BuddyTier | null; internalNotes?: string | null; memberType?: MemberType } = {}
     if (tier !== undefined) data.tier = tier
     if (internalNotes !== undefined) data.internalNotes = internalNotes
+    if (memberType !== undefined) data.memberType = memberType
 
     if (Object.keys(data).length === 0) {
       const raw = await db.buddyProfile.findUnique({

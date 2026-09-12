@@ -18,6 +18,7 @@ import type {
   MyTourBookingEntry,
   BuddyStatus,
   BuddyTier,
+  MemberType,
   TourStatus,
   TourStatusAction,
   UpdateAdminBuddyProfile,
@@ -81,10 +82,11 @@ export const apiClient = {
     }),
 
   // Admin — Buddies
-  listBuddies: (status?: BuddyStatus, tier?: BuddyTier) => {
+  listBuddies: (status?: BuddyStatus, tier?: BuddyTier, memberType?: MemberType) => {
     const params: string[] = []
     if (status) params.push(`status=${status}`)
     if (tier) params.push(`tier=${tier}`)
+    if (memberType) params.push(`memberType=${memberType}`)
     const url = params.length ? `${apiPaths.adminBuddies}?${params.join('&')}` : apiPaths.adminBuddies
     return apiRequest<AdminBuddyResponse[]>(url)
   },

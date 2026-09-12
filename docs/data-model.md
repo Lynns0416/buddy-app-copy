@@ -87,6 +87,7 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | userId | UUID | FK → User, Unique |
 | status | Enum | `pending` / `trainee` / `active` / `rejected` / `suspended` |
 | tier | Enum? | `junior` / `buddy` / `star` / `blackstar` — NULL for trainees |
+| memberType | Enum | `buddy` / `plab_member`; default `buddy`. Non-nullable |
 | displayName | String | |
 | realName | String | |
 | photoUrl | String? | |
@@ -101,7 +102,8 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | updatedAt | Timestamp | |
 
 **Status lifecycle:** `pending` → `trainee` (approve) → `active` (promote, sets `tier = junior`) / `rejected`. Active buddies can be `suspended`.  
-**Tier:** always NULL when `status = trainee`.
+**Tier:** always NULL when `status = trainee`.  
+**Member type:** a second, independent axis — `tier` is what a person can do, `memberType` is what they are to PLAB. Unlike `tier` it is never NULL: employment is known for everyone, including trainees. It affects no eligibility, capacity, permission or notification; `BookingPool` still splits on `tier === junior` alone.
 
 ### Group
 

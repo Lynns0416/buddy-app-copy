@@ -105,6 +105,7 @@ const mockBuddy = {
   userId: 'user-1',
   status: 'pending',
   tier: null,
+  memberType: 'buddy',
   displayName: 'Test Buddy',
   realName: 'Real Name',
   email: 'buddy@example.com',
@@ -158,13 +159,24 @@ describe('GET /admin/buddies', () => {
   it('filters by status query param', async () => {
     mockListBuddies.mockResolvedValueOnce([mockBuddy] as unknown as AdminBuddyResponse[])
     await buildApp('admin').request('/admin/buddies?status=pending')
-    expect(mockListBuddies).toHaveBeenCalledWith('pending', undefined)
+    expect(mockListBuddies).toHaveBeenCalledWith('pending', undefined, undefined)
   })
 
   it('filters by tier query param', async () => {
     mockListBuddies.mockResolvedValueOnce([])
     await buildApp('admin').request('/admin/buddies?status=active&tier=junior')
-    expect(mockListBuddies).toHaveBeenCalledWith('active', 'junior')
+    expect(mockListBuddies).toHaveBeenCalledWith('active', 'junior', undefined)
+  })
+
+  it('filters by memberType query param', async () => {
+    mockListBuddies.mockResolvedValueOnce([])
+    await buildApp('admin').request('/admin/buddies?status=active&memberType=plab_member')
+    expect(mockListBuddies).toHaveBeenCalledWith('active', undefined, 'plab_member')
+  })
+
+  it('returns 400 for invalid memberType', async () => {
+    const res = await buildApp('admin').request('/admin/buddies?memberType=invalid')
+    expect(res.status).toBe(400)
   })
 
   it('returns 400 for tier=trainee (trainee is a status, not a tier)', async () => {
@@ -185,7 +197,7 @@ describe('GET /admin/buddies', () => {
   it('calls listBuddies with undefined args when params omitted', async () => {
     mockListBuddies.mockResolvedValueOnce([])
     await buildApp('admin').request('/admin/buddies')
-    expect(mockListBuddies).toHaveBeenCalledWith(undefined, undefined)
+    expect(mockListBuddies).toHaveBeenCalledWith(undefined, undefined, undefined)
   })
 })
 
@@ -219,7 +231,27 @@ describe('PUT /admin/buddies/:id', () => {
       body: JSON.stringify({ tier: 'junior', internalNotes: 'good' }),
     })
     expect(res.status).toBe(200)
-    expect(mockUpdateBuddyProfile).toHaveBeenCalledWith('profile-1', 'junior', 'good')
+    expect(mockUpdateBuddyProfile).toHaveBeenCalledWith('profile-1', 'junior', 'good', undefined)
+  })
+
+  it('updates memberType', async () => {
+    mockUpdateBuddyProfile.mockResolvedValueOnce({ ...mockBuddy, memberType: 'plab_member' } as unknown as AdminBuddyResponse)
+    const res = await buildApp('admin').request('/admin/buddies/profile-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberType: 'plab_member' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateBuddyProfile).toHaveBeenCalledWith('profile-1', undefined, undefined, 'plab_member')
+  })
+
+  it('returns 400 for invalid memberType', async () => {
+    const res = await buildApp('admin').request('/admin/buddies/profile-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberType: 'employee' }),
+    })
+    expect(res.status).toBe(400)
   })
 
   it('returns 404 when buddy not found', async () => {

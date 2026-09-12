@@ -12,6 +12,43 @@ duplicate that state here.
 
 ---
 
+## 2026-09-12 — `memberType` is non-nullable with a `buddy` default
+
+**Decision:** `BuddyProfile.memberType` is `MemberType` (`buddy` / `plab_member`),
+`@default(buddy)`, NOT NULL. The admin buddy detail page shows its dropdown for
+every account status, trainees included, unlike the tier dropdown which is
+hidden for trainees. `GET /admin/buddies` gained a `?memberType=` filter
+alongside `?tier=`.
+
+**Why non-nullable:** #136 left nullable-vs-defaulted open. `tier` is nullable
+because a trainee genuinely has no tier yet — the absence is meaningful.
+Employment has no such state: everyone on the roster is either a part-time buddy
+or on the PLAB team, from the day they apply. A nullable column would invite
+"unknown" to mean "buddy" at every call site and eventually disagree with
+itself. The default also makes the pre-release `prisma db push` backfill every
+existing row correctly, since every existing profile is a buddy.
+
+**Why the dropdown is shown to trainees:** employment does not depend on account
+status. A PLAB member can be a trainee. Hiding the field until promotion would
+force the admin to remember to come back.
+
+**Rejected — deriving memberType from tier, or keeping a single enum:** settled
+on 2026-09-10 in the BuddyTier entry below; the whole point is that the two axes
+are independent.
+
+**Rejected — 社員 / アルバイト as the Japanese labels:** already rejected on
+2026-09-10. Implemented as バディ / PLABメンバー, with メンバータイプ as the field label.
+
+**Rejected — a behavioural hook on memberType:** #136 scoped this out
+explicitly. `BookingPool` still splits on `tier === junior` alone, and
+eligibility, capacity, permissions and notifications all ignore memberType. If
+that has to change, it is a separate issue.
+
+**Current state:** `prisma/schema.prisma`, PRD §5.2.1, `data-model.md`
+`BuddyProfile`, `api.md`.
+
+---
+
 ## 2026-09-12 — Prisma Migrate replaces db push
 
 **Decision:** Schema changes ship as migration files in `prisma/migrations/`,

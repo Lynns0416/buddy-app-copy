@@ -124,7 +124,22 @@ A buddy may see which tier they hold. The API does not expose it yet — see #13
 
 Typical progression: Junior → Buddy → Star → Blackstar.
 
-Employment is a separate axis and is not encoded here. A person who is a PLAB member rather than a part-time buddy holds a tier like anyone else; see #136.
+Employment is a separate axis and is not encoded here — see §5.2.1.
+
+### 5.2.1 Member Type (admin-managed)
+
+`memberType` answers "what is this person to PLAB", where tier answers "what can this person do":
+
+| Member type | Description |
+|---|---|
+| **Buddy** (バディ) | A part-time buddy |
+| **PLAB Member** (PLABメンバー) | On the PLAB team rather than a part-time buddy |
+
+The two axes are independent. A PLAB member holds a tier like anyone else, and the requirements for each tier are identical either way — a blackstar PLAB member and a blackstar buddy have met the same bar. This is why the old `organizer` tier was removed: it encoded employment on the capability axis and left "blackstar PLAB member" unrepresentable.
+
+Unlike tier, `memberType` is never null and defaults to `buddy` — employment is known for everyone, trainees included. It changes nothing behavioural: booking eligibility, seat pools, capacity, permissions and notifications all ignore it.
+
+社員 and アルバイト are not used for these values anywhere in the UI or the docs — the team's own vocabulary is バディ and PLABメンバー.
 
 ### 5.3 Self-Managed Fields (edited by buddy)
 
@@ -170,6 +185,7 @@ Ordered for UI display — priority tier shown first:
 |---|---|---|
 | Account status | Enum | See §5.1 |
 | Tier | Enum | See §5.2 — visible to the buddy it belongs to, not yet exposed by the API (#137) |
+| Member type | Enum | See §5.2.1 — `buddy` / `plab_member`; admin-only, default `buddy` |
 | Internal notes | Free text | Admins only |
 | Admin evaluation records | See §9 | Admins only |
 
@@ -789,8 +805,8 @@ Route: `/buddy`. Fetches `GET /tours?from=<today>` and renders a list of upcomin
 
 #### Buddy Roster (`/admin/buddies`)
 
-- **Table:** displayName, email, tier, [View Detail]
-- **Sortable by:** name, email, tier, status
+- **Table:** displayName, email, tier, member type, [View Detail]
+- **Sortable by:** name, email, tier, member type, status
 - **Actions:** Click row → navigate to detail page
 
 #### Buddy Detail Page (`/admin/buddies/:id`)
@@ -799,19 +815,23 @@ Route: `/buddy`. Fetches `GET /tours?from=<today>` and renders a list of upcomin
 - Real name, email, photo
 - Status (`trainee` / `active` / `rejected` — `suspended` planned)
 - Tier (`junior` / `buddy` / `star` / `blackstar`; null for trainees)
+- Member type (`buddy` / `plab_member`; never null)
 - Internal notes
 - Created date
 - **Cancellation summary** — total / unavoidable / avoidable / unreviewed counts derived from the buddy's `CancellationReason` rows
 - **Absence summary** — `absentWithoutReport` count from `AdminEvaluation` rows; admins use it to inform the `reliability` score in `AdminProfileEvaluation`
 - Full booking history (table of tours + booking status) — see below
 
-**Edit form** (`PUT /admin/buddies/:id` — body `{tier?, internalNotes?}`):
-- Tier dropdown
+**Edit form** (`PUT /admin/buddies/:id` — body `{tier?, memberType?, internalNotes?}`):
+- Tier dropdown — hidden for trainees, who have no tier yet
+- Member type dropdown — shown for every status, including trainees, since employment does not depend on account status
 - Internal notes textarea
 - [Save] [Cancel]
 
 **Status transitions on this page** (`PUT /admin/buddies/:id/status`):
 - Promote trainee → active (auto-sets tier to `junior`)
+  - Promotion shares the page with the member type and notes fields, so an unsaved edit to either is written first via `PUT /admin/buddies/:id`.
+  - The two writes are not atomic. A failed profile write leaves the status unchanged; a failed status change leaves the profile edit applied. Both surface the same error, and retrying is safe — the second attempt recomputes the same diff.
 - Reject pending (from this page if needed)
 - Suspend / un-suspend — **Planned**: enum value exists but no API path yet
 
@@ -832,10 +852,10 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/admin/buddies?status=pending` | List pending buddies (called by the `/admin/buddies/pending` page) |
-| `GET` | `/admin/buddies?status=active&tier=...` | List active buddies (called by the `/admin/buddies` page); filterable by tier |
+| `GET` | `/admin/buddies?status=active&tier=...&memberType=...` | List active buddies (called by the `/admin/buddies` page); filterable by tier and member type |
 | `GET` | `/admin/buddies/:id` | Fetch `AdminBuddyDetailResponse` (profile + bookings + cancellation/absence summaries) |
 | `PUT` | `/admin/buddies/:id/status` | Set status. Allowed values: `trainee` / `active` / `rejected`. `→ active` auto-sets `tier = junior`. |
-| `PUT` | `/admin/buddies/:id` | Update `tier` and/or `internalNotes` (both nullable) |
+| `PUT` | `/admin/buddies/:id` | Update `tier`, `memberType` and/or `internalNotes`. `tier` and `internalNotes` are nullable; `memberType` is not |
 
 #### Business Rules
 
@@ -846,6 +866,7 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 | Tier updates | Admin can change tier any time after promotion via `PUT /admin/buddies/:id`. |
 | Internal notes | Admins only; never visible to buddies (excluded from buddy responses by `select`). |
 | Tier values | `junior` / `buddy` / `star` / `blackstar`. Trainees have `tier = null`. |
+| Member type values | `buddy` / `plab_member`, default `buddy`, never null. Independent of tier and of status; see §5.2.1. |
 | Data retention | Buddies are never deleted; all history retained. |
 
 #### Planned
@@ -1052,7 +1073,7 @@ When GCP nonprofit credits run low:
 | 5 | Default Maybe confirmation deadline offset (days before tour) | Team | **Resolved** — 9 days before tour; reminders at 3 days + 1 day before deadline. Cancellation deadline defaults to 7 days before (always after Maybe deadline). |
 | 6 | Cancellation reason category enum values | Team | **Resolved** — `health` / `emergency` / `personal` / `work` / `other` |
 | 7 | Group type enum values — School / Company / Community / Other sufficient? | Team | **Resolved** — confirmed as-is |
-| 8 | Internal tier names | Team | **Resolved** — `junior` / `buddy` / `star` / `blackstar`. `organizer` was employment, not capability, and moved out (#136). Tier is no longer hidden from the buddy who holds it (#137). |
+| 8 | Internal tier names | Team | **Resolved** — `junior` / `buddy` / `star` / `blackstar`. `organizer` was employment, not capability, and moved to `memberType` (§5.2.1, #136). Tier is no longer hidden from the buddy who holds it (#137). |
 | 9 | When no admins are assigned to a tour, should post-deadline "I can't go" reports notify all admins as a fallback? | Team | **Resolved** — no fallback; notification only goes to assigned admins. Tours without assigned admins flagged visually in UI as unresolved. |
 | 10 | Tier-based booking pool split percentages | Team | **Resolved** — junior 20%, non-junior 30%, anyone 50%. See §8.9. |
 | 11 | Can a buddy re-book after cancelling? | Team | **Resolved** — yes, if a vacancy exists in their pool or the anyone pool. See §8.9. |

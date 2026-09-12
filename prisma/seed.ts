@@ -3,6 +3,7 @@ import {
   UserRole,
   BuddyStatus,
   BuddyTier,
+  MemberType,
   GroupType,
   TourStatus,
   BookingStatus,
@@ -36,11 +37,16 @@ const SEED_ADMIN2_UID = 'seed-admin2-00000000000000000000000'
 // Tier is a pyramid on purpose — few stars, fewer blackstars. Only active
 // and suspended buddies carry a tier; trainee, pending and rejected are
 // always null.
+//
+// memberType is the other axis and is independent of tier: the roster carries
+// PLAB members at two different tiers so the admin table shows the two columns
+// really do vary separately. Omitted means `buddy`, the column default.
 type RosterEntry = {
   realName: string
   displayName: string
   status: BuddyStatus
   tier: BuddyTier | null
+  memberType?: MemberType
   languages: string[]
   daysAgo: number
   internalNotes?: string
@@ -56,7 +62,7 @@ const ROSTER: RosterEntry[] = [
   { realName: '山本 結衣',   displayName: 'ゆい',     status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese', 'english'],             daysAgo: 77 },
   { realName: '中村 拓海',   displayName: 'たくみ',   status: BuddyStatus.active,    tier: BuddyTier.junior,    languages: ['japanese'],                        daysAgo: 84 },
   { realName: '小林 愛',     displayName: 'あい',     status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'english'],             daysAgo: 120 },
-  { realName: '加藤 直樹',   displayName: 'なおき',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese'],                        daysAgo: 128 },
+  { realName: '加藤 直樹',   displayName: 'なおき',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     memberType: MemberType.plab_member, languages: ['japanese'],                        daysAgo: 128 },
   { realName: '吉田 遥',     displayName: 'はるか',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'english'],             daysAgo: 135 },
   { realName: '山田 涼太',   displayName: 'りょうた', status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'chinese_simplified'],  daysAgo: 142 },
   { realName: '佐々木 千尋', displayName: 'ちひろ',   status: BuddyStatus.active,    tier: BuddyTier.buddy,     languages: ['japanese', 'english'],             daysAgo: 150 },
@@ -66,7 +72,7 @@ const ROSTER: RosterEntry[] = [
   { realName: '木村 綾乃',   displayName: 'あやの',   status: BuddyStatus.active,    tier: BuddyTier.star,      languages: ['japanese', 'english'],             daysAgo: 300 },
   { realName: '林 隼人',     displayName: 'はやと',   status: BuddyStatus.active,    tier: BuddyTier.star,      languages: ['japanese', 'english', 'french'],   daysAgo: 340 },
   { realName: '清水 芽衣',   displayName: 'めい',     status: BuddyStatus.active,    tier: BuddyTier.blackstar, languages: ['japanese', 'english'],             daysAgo: 520, internalNotes: '研修セッションの担当可。オンライン・オフラインとも対応。' },
-  { realName: '斎藤 光',     displayName: 'ひかる',   status: BuddyStatus.active,    tier: BuddyTier.blackstar, languages: ['japanese', 'english', 'spanish'],  daysAgo: 610, internalNotes: '統括担当。緊急時の連絡先。' },
+  { realName: '斎藤 光',     displayName: 'ひかる',   status: BuddyStatus.active,    tier: BuddyTier.blackstar, memberType: MemberType.plab_member, languages: ['japanese', 'english', 'spanish'],  daysAgo: 610, internalNotes: '統括担当。緊急時の連絡先。' },
   { realName: '森田 奈々',   displayName: 'なな',     status: BuddyStatus.suspended, tier: BuddyTier.junior,    languages: ['japanese'],                        daysAgo: 95,  internalNotes: '本人希望により一時停止中。' },
   { realName: '池田 亮',     displayName: 'りょう',   status: BuddyStatus.suspended, tier: BuddyTier.star,      languages: ['japanese', 'english'],             daysAgo: 380, internalNotes: '留学のため休止。復帰時期は未定。' },
   { realName: '橋本 詩織',   displayName: 'しおり',   status: BuddyStatus.trainee,   tier: null,                languages: ['japanese'],                        daysAgo: 12 },
@@ -246,6 +252,7 @@ async function main() {
         realName: entry.realName,
         status: entry.status,
         tier: entry.tier,
+        memberType: entry.memberType ?? MemberType.buddy,
         languages: entry.languages,
         skills: [],
         internalNotes: entry.internalNotes ?? null,
@@ -257,6 +264,7 @@ async function main() {
         realName: entry.realName,
         status: entry.status,
         tier: entry.tier,
+        memberType: entry.memberType ?? MemberType.buddy,
         languages: entry.languages,
         skills: [],
         internalNotes: entry.internalNotes ?? null,

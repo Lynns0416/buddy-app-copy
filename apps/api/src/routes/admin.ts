@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { BuddyStatusSchema, BuddyTierSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema, AdminUpdateCancellationSchema, AdminUpdateBookingStatusSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, BuddyTierSchema, MemberTypeSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema, AdminUpdateCancellationSchema, AdminUpdateBookingStatusSchema } from '@peace-buddy/types'
 import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason, updateAdminBookingStatus } from '../services/admin.service'
 import { adminGroupRoutes } from './adminGroups'
 import { adminTourRoutes } from './adminTours'
@@ -21,6 +21,7 @@ adminRoutes.route('', adminProfileRoutes)
 adminRoutes.get('/buddies', async (c) => {
   const statusParam = c.req.query('status')
   const tierParam = c.req.query('tier')
+  const memberTypeParam = c.req.query('memberType')
 
   let status
   if (statusParam !== undefined) {
@@ -36,7 +37,14 @@ adminRoutes.get('/buddies', async (c) => {
     tier = parsed.data
   }
 
-  return c.json(await listBuddies(status, tier))
+  let memberType
+  if (memberTypeParam !== undefined) {
+    const parsed = MemberTypeSchema.safeParse(memberTypeParam)
+    if (!parsed.success) return c.json({ error: 'Invalid memberType' }, 400)
+    memberType = parsed.data
+  }
+
+  return c.json(await listBuddies(status, tier, memberType))
 })
 
 adminRoutes.get('/buddies/:id', async (c) => {
@@ -63,7 +71,7 @@ adminRoutes.put('/buddies/:id', async (c) => {
     return c.json({ error: 'Invalid request body' }, 400)
   }
 
-  const buddy = await updateBuddyProfile(id, data.tier, data.internalNotes)
+  const buddy = await updateBuddyProfile(id, data.tier, data.internalNotes, data.memberType)
   if (!buddy) return c.json({ error: 'Buddy not found' }, 404)
 
   return c.json(buddy)

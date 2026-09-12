@@ -28,6 +28,11 @@ enum BuddyTier {
   blackstar
 }
 
+enum MemberType {
+  buddy
+  plab_member
+}
+
 enum GroupType {
   school
   company
@@ -118,6 +123,7 @@ model BuddyProfile {
   userId           String                              @unique
   status           BuddyStatus
   tier             BuddyTier?
+  memberType       MemberType                          @default(buddy)
   displayName      String
   realName         String
   photoUrl         String?

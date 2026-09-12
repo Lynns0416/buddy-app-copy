@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { MemberType } from '@peace-buddy/types'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -10,7 +11,7 @@ import { AppShell } from '@/components/app-shell'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { routes } from '@/lib/routes'
-import { sortBuddies, nextBuddySort, mapBuddyError, buddyName, type BuddySortField } from './admin.buddy'
+import { sortBuddies, nextBuddySort, mapBuddyError, buddyName, memberTypeLabelKey, type BuddySortField } from './admin.buddy'
 import { useBuddies } from './use-buddies'
 import { BuddyAvatar } from '@/components/buddy-avatar'
 
@@ -34,6 +35,10 @@ export default function AdminBuddiesPage() {
   function tierLabel(tier: string | null): string {
     if (!tier) return '—'
     return t(`tier${tier.charAt(0).toUpperCase() + tier.slice(1)}` as Parameters<typeof t>[0])
+  }
+
+  function memberTypeLabel(memberType: MemberType): string {
+    return t(memberTypeLabelKey(memberType) as Parameters<typeof t>[0])
   }
 
   if (!ready) return null
@@ -65,6 +70,7 @@ export default function AdminBuddiesPage() {
                 { field: 'displayName' as const, label: t('name') },
                 { field: 'email' as const, label: t('email') },
                 { field: 'tier' as const, label: t('tier') },
+                { field: 'memberType' as const, label: t('memberType') },
               ]).map(({ field, label }) => (
                 <button
                   key={field}
@@ -85,7 +91,17 @@ export default function AdminBuddiesPage() {
                 <div>
                   <p className="font-medium">{buddyName(t, buddy)}</p>
                   <p className="text-sm text-muted-foreground">{buddy.email}</p>
-                  {buddy.tier && <p className="mt-1 text-xs text-muted-foreground">{tierLabel(buddy.tier)}</p>}
+                  {/* Both lines can read "Buddy" — tier `buddy` and member type
+                      `buddy` are different statements — so the card names the
+                      field the way the table's column headers do. */}
+                  {buddy.tier && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      <span className="font-medium">{t('tier')}</span> {tierLabel(buddy.tier)}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    <span className="font-medium">{t('memberType')}</span> {memberTypeLabel(buddy.memberType)}
+                  </p>
                 </div>
                 <div>
                   <BuddyAvatar photoUrl={buddy.photoUrl} displayName={buddy.displayName} size="lg" />
@@ -127,6 +143,15 @@ export default function AdminBuddiesPage() {
                       <SortIcon active={sortField === 'tier'} dir={sortDir} />
                     </button>
                   </TableHead>
+                  <TableHead>
+                    <button
+                      className="inline-flex items-center gap-1 whitespace-nowrap font-medium transition-colors hover:text-foreground"
+                      onClick={() => handleSort('memberType')}
+                    >
+                      {t('memberType')}
+                      <SortIcon active={sortField === 'memberType'} dir={sortDir} />
+                    </button>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -146,6 +171,7 @@ export default function AdminBuddiesPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{buddy.email}</TableCell>
                     <TableCell>{tierLabel(buddy.tier)}</TableCell>
+                    <TableCell>{memberTypeLabel(buddy.memberType)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

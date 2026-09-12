@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortBuddies, nextBuddySort, buddyName, fetchBuddies, fetchTrainees, updateBuddyStatus, fetchBuddy, updateBuddy, sortBookingHistory, nextBookingSort } from './admin.buddy'
+import { sortBuddies, nextBuddySort, buddyName, memberTypeLabelKey, fetchBuddies, fetchTrainees, updateBuddyStatus, fetchBuddy, updateBuddy, sortBookingHistory, nextBookingSort } from './admin.buddy'
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, AdminBuddyBookingEntry } from '@peace-buddy/types'
-import { BuddyStatusSchema, BuddyTierSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, BuddyTierSchema, MemberTypeSchema } from '@peace-buddy/types'
 
 vi.mock('@/i18n/routing', () => ({
   routing: { defaultLocale: 'en' },
@@ -43,6 +43,7 @@ const buddy = (overrides: Partial<AdminBuddyResponse> = {}): AdminBuddyResponse 
   displayName: 'Alice',
   email: 'alice@example.com',
   tier: null,
+  memberType: 'buddy',
   status: 'pending',
   createdAt: '2025-01-01T00:00:00Z',
   ...overrides,
@@ -107,8 +108,47 @@ describe('sortBuddies', () => {
     })
   })
 
+  describe('by memberType', () => {
+    const plab = buddy({ id: 'b6', memberType: 'plab_member' })
+
+    it('sorts buddy before plab_member asc', () => {
+      const result = sortBuddies([plab, alice], 'memberType', 'asc')
+      expect(result.map((b) => b.id)).toEqual(['b1', 'b6'])
+    })
+
+    it('sorts plab_member first desc', () => {
+      const result = sortBuddies([alice, plab], 'memberType', 'desc')
+      expect(result.map((b) => b.id)).toEqual(['b6', 'b1'])
+    })
+
+    it('is independent of tier', () => {
+      const plabJunior = buddy({ id: 'b7', tier: 'junior', memberType: 'plab_member' })
+      const buddyBlackstar = buddy({ id: 'b8', tier: 'blackstar', memberType: 'buddy' })
+      const result = sortBuddies([plabJunior, buddyBlackstar], 'memberType', 'asc')
+      expect(result.map((b) => b.id)).toEqual(['b8', 'b7'])
+    })
+  })
+
   it('returns empty array unchanged', () => {
     expect(sortBuddies([], 'displayName', 'asc')).toEqual([])
+  })
+})
+
+// ── memberTypeLabelKey ─────────────────────────────────────────────────────
+
+describe('memberTypeLabelKey', () => {
+  it('maps buddy to its message key', () => {
+    expect(memberTypeLabelKey(MemberTypeSchema.enum.buddy)).toBe('memberTypeBuddy')
+  })
+
+  it('maps plab_member to its message key', () => {
+    expect(memberTypeLabelKey(MemberTypeSchema.enum.plab_member)).toBe('memberTypePlabMember')
+  })
+
+  it('has a key for every member type', () => {
+    for (const memberType of MemberTypeSchema.options) {
+      expect(memberTypeLabelKey(memberType)).toBeTruthy()
+    }
   })
 })
 
@@ -231,13 +271,19 @@ describe('fetchBuddies', () => {
     mockListBuddies.mockResolvedValue(stubBuddies)
     const result = await fetchBuddies(BuddyStatusSchema.enum.pending)
     expect(result).toEqual({ ok: true, data: stubBuddies })
-    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.pending, undefined)
+    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.pending, undefined, undefined)
   })
 
   it('passes tier when provided', async () => {
     mockListBuddies.mockResolvedValue(stubBuddies)
     await fetchBuddies(BuddyStatusSchema.enum.active, BuddyTierSchema.enum.junior)
-    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.active, BuddyTierSchema.enum.junior)
+    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.active, BuddyTierSchema.enum.junior, undefined)
+  })
+
+  it('passes memberType when provided', async () => {
+    mockListBuddies.mockResolvedValue(stubBuddies)
+    await fetchBuddies(BuddyStatusSchema.enum.active, undefined, MemberTypeSchema.enum.plab_member)
+    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.active, undefined, MemberTypeSchema.enum.plab_member)
   })
 
   it('returns not_found for 404', async () => {
@@ -260,7 +306,7 @@ describe('fetchTrainees', () => {
     mockListBuddies.mockResolvedValue(stubBuddies)
     const result = await fetchTrainees()
     expect(result).toEqual({ ok: true, data: stubBuddies })
-    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.trainee, undefined)
+    expect(mockListBuddies).toHaveBeenCalledWith(BuddyStatusSchema.enum.trainee, undefined, undefined)
   })
 })
 

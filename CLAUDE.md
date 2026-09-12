@@ -20,7 +20,11 @@ Source of truth for completed work is `git log`.
 - **i18n**: every UI string via `useTranslations`. Update `en.json` + `ja.json` together, always.
 - **Tests**: Vitest, colocated `*.test.ts`. Route tests use `buildApp()` with stub auth middleware. Mock Prisma + Firebase via `vi.mock`.
 - **Tests never hardcode user-facing text**: a copy edit must not break a logic test. Assert against the string resource, not a copy of it — import `messages.*.json` in `apps/api`, and in `apps/web` mock `useTranslations` to echo the key (`() => (key: string) => key`) so assertions read keys. Prefer `getByRole('button' | 'link', { name })` over `getByText` for anything interactive. Literals stay only for machine-readable values another system depends on: URLs and paths, encoding output, API error codes, and test data fixtures.
-- **Commits**: one concern per commit, no co-author signature.
+- **Commits**: few, grouped by layer. Branches are squash-merged, so granularity
+  buys nothing and many small commits are unwanted — a feature branch is ~3
+  commits (data model / API / UI), not 8. A follow-up fix to code written earlier
+  in the same branch belongs *in* the unit that caused it, not appended as its
+  own commit. Split only genuinely unrelated work. No co-author signature.
 - **Web routing**: always use `routes.*` from `apps/web/src/lib/routes.ts`, never raw strings.
 - **Admin tables**: all columns must be client-side sortable. Use the `SortIcon` component from `apps/web/src/components/sort-icon.tsx` with `SortField`/`SortDir`/`handleSort`/`sorted` pattern (see `admin/groups/page.tsx` for reference).
 - **Diagrams**: all docs diagrams are mermaid fenced blocks (` ```mermaid `) — GitHub renders them natively. Never add ASCII art for entities, flows, or state machines. Directory trees stay plain ASCII (mermaid has no tree primitive). Pick the right type: `erDiagram` for schema, `stateDiagram-v2` for status lifecycles, `sequenceDiagram` for request/auth flows, `flowchart` for algorithms and infrastructure.
@@ -52,6 +56,9 @@ Source of truth is the code — when a diagram and the schema disagree, fix the 
 ## Never
 - Start implementing before user says go
 - Add co-author to commits
+- Rewrite the git tree — no `reset`, `rebase`, `--amend`, or force-push, including
+  on commits made minutes ago. A wrong split gets squashed anyway; say so and
+  leave it
 - Hardcode UI strings
 - Run commands outside Docker
 - Hold decisions in memory only — update relevant docs (PRD.md, architecture.md, data-model.md, etc.) immediately when a decision is made

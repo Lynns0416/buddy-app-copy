@@ -49,6 +49,7 @@ const mockRaw = {
   userId: 'user-1',
   status: 'pending',
   tier: null,
+  memberType: 'buddy',
   displayName: 'Test Buddy',
   realName: 'Real Name',
   internalNotes: null,
@@ -83,6 +84,7 @@ const mockMapped = {
   userId: 'user-1',
   status: 'pending',
   tier: null,
+  memberType: 'buddy',
   displayName: 'Test Buddy',
   realName: 'Real Name',
   internalNotes: null,
@@ -105,6 +107,22 @@ describe('listBuddies', () => {
     await listBuddies('pending')
     expect(mdb.buddyProfile.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { status: 'pending' } })
+    )
+  })
+
+  it('filters by memberType when provided', async () => {
+    mdb.buddyProfile.findMany.mockResolvedValueOnce([mockRaw] as unknown[])
+    await listBuddies(undefined, undefined, 'plab_member')
+    expect(mdb.buddyProfile.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { memberType: 'plab_member' } })
+    )
+  })
+
+  it('combines status, tier and memberType filters', async () => {
+    mdb.buddyProfile.findMany.mockResolvedValueOnce([] as unknown[])
+    await listBuddies('active', 'blackstar', 'plab_member')
+    expect(mdb.buddyProfile.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: 'active', tier: 'blackstar', memberType: 'plab_member' } })
     )
   })
 
@@ -248,6 +266,14 @@ describe('updateBuddyProfile', () => {
       expect.objectContaining({ where: { id: 'profile-1' }, data: { tier: 'junior', internalNotes: 'good notes' } })
     )
     expect(result?.email).toBe('buddy@example.com')
+  })
+
+  it('updates memberType', async () => {
+    mdb.buddyProfile.update.mockResolvedValueOnce({ ...mockRaw, memberType: 'plab_member' } as unknown)
+    await updateBuddyProfile('profile-1', undefined, undefined, 'plab_member')
+    expect(mdb.buddyProfile.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { memberType: 'plab_member' } })
+    )
   })
 
   it('updates only tier when internalNotes is undefined', async () => {
