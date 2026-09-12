@@ -214,12 +214,6 @@
     "filters": {
       "status": "ステータス",
       "groupType": "グループ種別",
-      "groupTypeOption": {
-        "school": "学校",
-        "company": "企業",
-        "community": "団体",
-        "other": "その他"
-      },
       "dateRange": "日付",
       "dateRangeOption": {
         "all": "すべての日付",
@@ -234,6 +228,9 @@
       "placeholder": "入力してグループを検索",
       "noGroups": "グループがまだありません。先に作成してください。",
       "noResults": "一致するグループはありません"
+    },
+    "groupSummary": {
+      "viewGroup": "グループページを開く"
     },
     "group": "グループ",
     "tourDate": "ツアー日",
@@ -614,6 +611,12 @@
     "maybe": "未確定",
     "waitlist": "キャンセル待ち",
     "declined": "辞退"
+  },
+  "groupType": {
+    "school": "学校",
+    "company": "企業",
+    "community": "団体",
+    "other": "その他"
   },
   "adminProfile": {
     "title": "マイプロフィール",

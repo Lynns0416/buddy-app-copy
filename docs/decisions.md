@@ -798,3 +798,29 @@ of conversion. Revisit if diagrams start breaking in review.
 
 **Current state:** CLAUDE.md "Diagrams" pattern and the "Docs to update when
 implementing" table.
+
+---
+
+## 2026-09-12 — Group type labels live in a top-level `groupType` namespace
+
+**Decision:** The four `GroupType` values are translated through a top-level
+`groupType` namespace, read via `getGroupTypeLabel` in
+`apps/web/src/lib/status-display.ts`. Every site that displays a group type uses
+it: the tour form's group summary and filters, the group list, detail, create
+and edit pages.
+
+**Why:** The values were rendered raw, so `/ja` showed "school". The labels
+already existed under `adminTours.filters.groupTypeOption`, owned by one
+component in another feature's namespace. Enum labels already have a convention
+here — `tourStatus`, `buddyStatus`, `bookingStatus` are top-level namespaces with
+`get*Label` helpers — and group type is the same shape of thing.
+
+**Rejected — keeping the keys under `adminTours.filters`:** the group pages would
+have had to reach into the tours namespace for their own field, or the four
+labels would have been duplicated per namespace and drifted.
+
+**Not changed — sort order.** The group list still sorts the type column by the
+raw enum, matching every other status column in the app
+(`admin.tour.ts`, `admin.buddy.ts`). In `ja` the sort order therefore does not
+follow the displayed labels. Revisit for all enum columns together, not just
+this one.

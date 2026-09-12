@@ -206,7 +206,7 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 |---|---|---|
 | `id` | UUID | Auto |
 | `name` | Text | Required, min 1 char. e.g. "Sakura High School", "Acme Corp" |
-| `type` | Enum | `GroupTypeSchema`: `school` / `company` / `community` / `other` (stored as lowercase; currently rendered raw — no per-value i18n label yet) |
+| `type` | Enum | `GroupTypeSchema`: `school` / `company` / `community` / `other` (stored as lowercase; displayed via the top-level `groupType` i18n namespace) |
 | `contactName` | Text | Optional |
 | `contactEmail` | Email | Optional. Validated as email format on create/update |
 | `contactPhone` | Text | Optional |
@@ -744,9 +744,9 @@ Route: `/buddy`. Fetches `GET /tours?from=<today>` and renders a list of upcomin
 | Route | Purpose |
 |---|---|
 | `/admin/tours` | List tours. Client-side search on group name and location; filters for status, date range (upcoming / past / all), group type and below-minimum-only, combined with AND and kept in the URL query string; sortable by every column; "today" divider in list |
-| `/admin/tours/new` | Create tour form. The group picker is a type-to-filter combobox |
+| `/admin/tours/new` | Create tour form. The group picker is a type-to-filter combobox; the selected group shows a summary (type, contact fields, notes) and a new-tab link to its detail page |
 | `/admin/tours/:id` | Tour detail — metadata, sessions, tier capacities, bookings, admin assignments, evaluations |
-| `/admin/tours/:id/edit` | Edit tour form |
+| `/admin/tours/:id/edit` | Edit tour form — same group picker and selected-group summary as the create form |
 
 **Capabilities:**
 - Create, edit tours; hard-delete restricted to `draft` tours

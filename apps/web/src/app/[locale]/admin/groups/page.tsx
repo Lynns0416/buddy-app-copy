@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import type { GroupResponse, GroupType, AppError } from '@peace-buddy/types'
+import type { GroupResponse, AppError } from '@peace-buddy/types'
 import { AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
@@ -14,18 +14,13 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { fetchGroups, sortGroups, nextGroupSort, type GroupSortField } from './admin.group'
-
-const GROUP_TYPE_CLASS: Record<GroupType, string> = {
-  school: 'bg-blue-100 text-blue-800 border-blue-200',
-  company: 'bg-amber-100 text-amber-800 border-amber-200',
-  community: 'bg-green-100 text-green-800 border-green-200',
-  other: 'bg-slate-100 text-slate-700 border-slate-200',
-}
+import { getGroupTypeLabel, groupTypeBadgeClass } from '@/lib/status-display'
 
 export default function AdminGroupsPage() {
   const { ready, locale } = useAdminGuard()
   const router = useRouter()
   const t = useTranslations('adminGroups')
+  const tGroupType = useTranslations('groupType')
   const [groups, setGroups] = useState<GroupResponse[]>([])
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [sortField, setSortField] = useState<GroupSortField>('name')
@@ -103,7 +98,7 @@ export default function AdminGroupsPage() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{group.name}</span>
-                  <Badge className={GROUP_TYPE_CLASS[group.type]}>{group.type}</Badge>
+                  <Badge className={groupTypeBadgeClass[group.type]}>{getGroupTypeLabel(tGroupType, group.type)}</Badge>
                 </div>
               </div>
             ))}
@@ -144,7 +139,7 @@ export default function AdminGroupsPage() {
                   >
                     <TableCell className="font-medium">{group.name}</TableCell>
                     <TableCell>
-                      <Badge className={GROUP_TYPE_CLASS[group.type]}>{group.type}</Badge>
+                      <Badge className={groupTypeBadgeClass[group.type]}>{getGroupTypeLabel(tGroupType, group.type)}</Badge>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <Button asChild variant="outline" size="sm">

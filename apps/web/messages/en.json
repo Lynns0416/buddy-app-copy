@@ -214,12 +214,6 @@
     "filters": {
       "status": "Status",
       "groupType": "Group Type",
-      "groupTypeOption": {
-        "school": "School",
-        "company": "Company",
-        "community": "Community",
-        "other": "Other"
-      },
       "dateRange": "Date",
       "dateRangeOption": {
         "all": "All dates",
@@ -234,6 +228,9 @@
       "placeholder": "Type to search groups",
       "noGroups": "No groups exist yet. Create one first.",
       "noResults": "No groups match"
+    },
+    "groupSummary": {
+      "viewGroup": "Open group page"
     },
     "group": "Group",
     "tourDate": "Tour Date",
@@ -614,6 +611,12 @@
     "maybe": "Maybe",
     "waitlist": "Waitlist",
     "declined": "Declined"
+  },
+  "groupType": {
+    "school": "School",
+    "company": "Company",
+    "community": "Community",
+    "other": "Other"
   },
   "adminProfile": {
     "title": "My Profile",

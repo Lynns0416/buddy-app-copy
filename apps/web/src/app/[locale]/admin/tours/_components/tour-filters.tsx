@@ -5,7 +5,7 @@ import { TourStatusSchema, GroupTypeSchema, type TourStatus, type GroupType } fr
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { getTourStatusLabel } from '@/lib/status-display'
+import { getTourStatusLabel, getGroupTypeLabel } from '@/lib/status-display'
 import { TourDateRangeSchema, emptyTourFilters, isTourFilterActive, type TourFilters } from '../admin.tour'
 
 type Props = {
@@ -22,6 +22,7 @@ function toggle<T>(values: T[], value: T): T[] {
 export function TourFilterBar({ filters, onChange, resultCount, totalCount }: Props) {
   const t = useTranslations('adminTours')
   const tTourStatus = useTranslations('tourStatus')
+  const tGroupType = useTranslations('groupType')
   const active = isTourFilterActive(filters)
 
   return (
@@ -67,7 +68,7 @@ export function TourFilterBar({ filters, onChange, resultCount, totalCount }: Pr
                   checked={filters.groupTypes.includes(groupType)}
                   onChange={() => onChange({ ...filters, groupTypes: toggle(filters.groupTypes, groupType) })}
                 />
-                {t(`filters.groupTypeOption.${groupType}`)}
+                {getGroupTypeLabel(tGroupType, groupType)}
               </label>
             ))}
           </div>

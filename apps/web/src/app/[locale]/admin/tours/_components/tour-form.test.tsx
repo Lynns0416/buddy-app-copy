@@ -7,16 +7,17 @@ import type { GroupResponse } from '@peace-buddy/types'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
+  useLocale: () => 'en',
 }))
 
 vi.mock('next/link', () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...rest}>{children}</a>
   ),
 }))
 
 const groups: GroupResponse[] = [
-  { id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', name: 'Test School', type: 'school', contactName: null, contactEmail: null, contactPhone: null, notes: null, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', name: 'Test School', type: 'school', contactName: 'Hana Sato', contactEmail: 'hana@example.com', contactPhone: null, notes: 'Arrives by bus', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
 ]
 
 const validFields = {
@@ -84,6 +85,19 @@ describe('TourForm', () => {
     expect(values.notificationOffsets).toEqual([3, 1])
     expect(values.description).toBeNull()
     expect(values.maybeDeadline).toBeNull()
+  })
+
+  it('renders no group summary until a group is picked', async () => {
+    renderForm()
+    const user = userEvent.setup()
+
+    expect(screen.queryByRole('link', { name: /groupSummary\.viewGroup/ })).not.toBeInTheDocument()
+
+    await selectGroup(user)
+
+    expect(screen.getByText(groups[0].contactName!)).toBeInTheDocument()
+    expect(screen.getByText(groups[0].contactEmail!)).toBeInTheDocument()
+    expect(screen.getByText(groups[0].notes!)).toBeInTheDocument()
   })
 
   it('shows a translated error and does not submit when no group is picked', async () => {
@@ -278,5 +292,9 @@ describe('TourForm', () => {
     expect((screen.getByLabelText('location') as HTMLInputElement).value).toBe('Nagasaki')
     expect((screen.getByLabelText('capacity') as HTMLInputElement).value).toBe('10')
     expect((screen.getByLabelText('meetingTime') as HTMLInputElement).value).toBe('09:30')
+    expect(screen.getByRole('link', { name: /groupSummary\.viewGroup/ })).toHaveAttribute(
+      'href',
+      `/en/admin/groups/${groups[0].id}`,
+    )
   })
 })

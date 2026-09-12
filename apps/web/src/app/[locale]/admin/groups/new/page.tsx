@@ -6,13 +6,14 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import type { AppError } from '@peace-buddy/types'
+import type { AppError, GroupType } from '@peace-buddy/types'
 import { GroupTypeSchema, AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { getGroupTypeLabel } from '@/lib/status-display'
 import { createGroup } from '../admin.group'
 import type { CreateGroup } from '@peace-buddy/types'
 
@@ -20,6 +21,7 @@ export default function AdminGroupNewPage() {
   const { ready, locale } = useAdminGuard()
   const router = useRouter()
   const t = useTranslations('adminGroups')
+  const tGroupType = useTranslations('groupType')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -83,8 +85,8 @@ export default function AdminGroupNewPage() {
                 required
                 className="border-input bg-background ring-offset-background flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                {GroupTypeSchema.options.map((opt: string) => (
-                  <option key={opt} value={opt}>{opt}</option>
+                {GroupTypeSchema.options.map((opt: GroupType) => (
+                  <option key={opt} value={opt}>{getGroupTypeLabel(tGroupType, opt)}</option>
                 ))}
               </select>
             </div>

@@ -3,11 +3,13 @@ import {
   getBuddyStatusLabel,
   getTourStatusLabel,
   getBookingStatusLabel,
+  getGroupTypeLabel,
   buddyStatusBadgeVariant,
   tourStatusBadgeVariant,
   bookingStatusBadgeVariant,
+  groupTypeBadgeClass,
 } from './status-display'
-import { BuddyStatusSchema, TourStatusSchema, BookingStatusSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, TourStatusSchema, BookingStatusSchema, GroupTypeSchema } from '@peace-buddy/types'
 
 const t = (key: string) => key
 
@@ -35,6 +37,14 @@ describe('getBookingStatusLabel', () => {
   })
 })
 
+describe('getGroupTypeLabel', () => {
+  it('returns t(type) for each GroupType', () => {
+    for (const type of GroupTypeSchema.options) {
+      expect(getGroupTypeLabel(t, type)).toBe(type)
+    }
+  })
+})
+
 describe('buddyStatusBadgeVariant', () => {
   it('has an entry for every BuddyStatus', () => {
     for (const s of BuddyStatusSchema.options) {
@@ -55,6 +65,14 @@ describe('bookingStatusBadgeVariant', () => {
   it('has an entry for every BookingStatus', () => {
     for (const s of BookingStatusSchema.options) {
       expect(bookingStatusBadgeVariant[s]).toBeDefined()
+    }
+  })
+})
+
+describe('groupTypeBadgeClass', () => {
+  it('has an entry for every GroupType', () => {
+    for (const type of GroupTypeSchema.options) {
+      expect(groupTypeBadgeClass[type]).toBeDefined()
     }
   })
 })

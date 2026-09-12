@@ -5,7 +5,7 @@ import { TourFilterBar } from './tour-filters'
 import { emptyTourFilters, type TourFilters } from '../admin.tour'
 
 vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: (namespace: string) => (key: string) => `${namespace}.${key}`,
 }))
 
 function renderBar(filters: Partial<TourFilters> = {}, onSubmit = vi.fn()) {
@@ -24,7 +24,7 @@ function renderBar(filters: Partial<TourFilters> = {}, onSubmit = vi.fn()) {
   return { onChange, onSubmit }
 }
 
-const searchBox = () => screen.getByRole('searchbox', { name: 'search.label' })
+const searchBox = () => screen.getByRole('searchbox', { name: 'adminTours.search.label' })
 
 describe('TourFilterBar', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -42,7 +42,7 @@ describe('TourFilterBar', () => {
     const user = userEvent.setup()
     const { onChange } = renderBar()
 
-    await user.click(screen.getByRole('checkbox', { name: 'published' }))
+    await user.click(screen.getByRole('checkbox', { name: 'tourStatus.published' }))
 
     expect(onChange).toHaveBeenCalledWith({ ...emptyTourFilters, statuses: ['published'] })
   })
@@ -51,7 +51,7 @@ describe('TourFilterBar', () => {
     const user = userEvent.setup()
     const { onChange } = renderBar({ statuses: ['published', 'draft'] })
 
-    await user.click(screen.getByRole('checkbox', { name: 'published' }))
+    await user.click(screen.getByRole('checkbox', { name: 'tourStatus.published' }))
 
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ statuses: ['draft'] }))
   })
@@ -60,7 +60,7 @@ describe('TourFilterBar', () => {
     const user = userEvent.setup()
     const { onChange } = renderBar()
 
-    await user.click(screen.getByRole('checkbox', { name: 'filters.groupTypeOption.company' }))
+    await user.click(screen.getByRole('checkbox', { name: 'groupType.company' }))
 
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ groupTypes: ['company'] }))
   })
@@ -69,7 +69,7 @@ describe('TourFilterBar', () => {
     const user = userEvent.setup()
     const { onChange } = renderBar()
 
-    await user.selectOptions(screen.getByLabelText('filters.dateRange'), 'past')
+    await user.selectOptions(screen.getByLabelText('adminTours.filters.dateRange'), 'past')
 
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ dateRange: 'past' }))
   })
@@ -78,7 +78,7 @@ describe('TourFilterBar', () => {
     const user = userEvent.setup()
     const { onChange } = renderBar()
 
-    await user.click(screen.getByRole('checkbox', { name: 'filters.belowMinimumOnly' }))
+    await user.click(screen.getByRole('checkbox', { name: 'adminTours.filters.belowMinimumOnly' }))
 
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ belowMinimumOnly: true }))
   })
@@ -87,15 +87,15 @@ describe('TourFilterBar', () => {
     renderBar()
 
     expect(screen.queryByText('filters.resultCount')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'filters.clearAll' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'adminTours.filters.clearAll' })).not.toBeInTheDocument()
   })
 
   it('shows the result count and resets everything from clear-all', async () => {
     const user = userEvent.setup()
     const { onChange } = renderBar({ search: 'alpha', statuses: ['draft'] })
 
-    expect(screen.getByText('filters.resultCount')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'filters.clearAll' }))
+    expect(screen.getByText('adminTours.filters.resultCount')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'adminTours.filters.clearAll' }))
 
     expect(onChange).toHaveBeenCalledWith(emptyTourFilters)
   })

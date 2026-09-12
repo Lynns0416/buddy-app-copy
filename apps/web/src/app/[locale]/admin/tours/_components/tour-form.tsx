@@ -1,6 +1,6 @@
 'use client'
 
-import { useForm, useFieldArray, Controller } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { GroupCombobox } from './group-combobox'
+import { GroupSummary } from './group-summary'
 
 const timeRegex = /^\d{2}:\d{2}$/
 
@@ -131,6 +132,9 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
     name: 'sessions',
   })
 
+  const selectedGroupId = useWatch({ control, name: 'groupId' })
+  const selectedGroup = groups.find((g) => g.id === selectedGroupId) ?? null
+
   async function submit(fields: TourFormFields) {
     const values: TourFormValues = {
       groupId: fields.groupId,
@@ -201,6 +205,7 @@ export function TourForm({ defaultValues, groups, cancelHref, onSubmit, hideSess
                 : errors.groupId.message}
             </p>
           )}
+          <GroupSummary group={selectedGroup} />
         </div>
 
         <div className="flex flex-col gap-1.5">
