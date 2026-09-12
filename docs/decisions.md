@@ -98,6 +98,183 @@ changes", `docs/architecture.md`, `.github/workflows/ci.yml`.
 
 ---
 
+## 2026-09-12 — Four apps in one Container Apps environment, not two environments
+
+**Decision:** Prod and staging share the single `cae-peace-buddy` environment
+and get their own apps inside it: `ca-api` / `ca-web` for prod, `ca-api-stg` /
+`ca-web-stg` for staging, matching the `-stg` suffix already used for the
+staging Postgres server.
+
+**Why:** App count is free. Container Apps bills per vCPU-second and
+GiB-second actually consumed, and a revision scaled to zero incurs no resource
+charge, so four idle apps cost exactly what two cost. Estimated load across both
+environments is ~17,000 vCPU-seconds a month against a 180,000 grant.
+
+**Rejected — a separate Container Apps environment per stack:** this is the
+textbook prod/non-prod isolation and it is the one thing here that actually
+costs money. A second environment means a second VNet, a second pair of static
+public IPs at ~$88/yr, and a second managed load balancer on the unresolved
+meter. Rejected for ~70 members on an internal tool.
+
+**Accepted consequence:** apps in one environment share the VNet and can reach
+each other over internal ingress, so a misconfigured staging api could in
+principle open a connection to the prod database. The mitigations are the
+per-environment database roles already required in `azure-costs.md`, and giving
+staging's api only the staging `DATABASE_URL`.
+
+**Current state:** `deploy-plan.md` §4 and §5.
+
+---
+
+## 2026-09-12 — Nightly `pg_dump` to Azure Blob, 30 daily snapshots
+
+**Decision:** The nightly dump lands in Azure Blob Storage in the prod storage
+account, under its own container, with a lifecycle rule deleting blobs older
+than **30 days**. Retention is 30 daily snapshots, not 7. Cloudflare R2 is
+dropped from the stack altogether once photos have moved.
+
+**Why:** 30 days costs nothing worth measuring — this database is ~70 members
+and a few thousand rows, so a compressed dump is megabytes, and even a generous
+50 MB × 30 is 1.5 GB at $0.02/GB/mo, under $0.50/yr. Since the length is free,
+take the length: a corruption or a bad migration noticed three weeks late is
+still recoverable. The lifecycle rule does the deleting, so longer retention is
+not more code.
+
+**Accepted consequence:** the backups live in the same subscription as the thing
+they back up, so losing the Azure subscription loses both. Accepted explicitly —
+if the subscription is lost the app stops. Azure's own Flexible Server backups
+remain the first line; this dump is the one that survives a bad migration or a
+delete, and keeps a future hosting move possible while the subscription is live.
+
+**Rejected — keeping R2 as an off-cloud backup target:** it preserves genuine
+provider independence, which was the original argument in `deploy-plan.md` §9.
+Rejected because it keeps two long-lived `R2_*` access keys alive for one cron
+job after the photo migration removed the rest, and R2 has no equivalent of a
+lifecycle rule to expire old dumps, so retention becomes code to write and get
+wrong. Blob is reached by the same managed identity the photo service already
+uses. The independence is real but is not worth a second provider and a second
+credential for ~70 members.
+
+**Rejected — 7 daily snapshots:** proposed as sufficient. It is, but 30 costs the
+same to within cents and the extra three weeks is free insurance.
+
+**Current state:** `deploy-plan.md` §9.
+
+---
+
+## 2026-09-12 — Two Azure environments, prod and staging; nothing else deployed
+
+**Decision:** Azure gets **prod** and **staging**, each with its own Postgres
+B1ms server and its own Blob storage account, sharing one resource group, VNet,
+Container Apps environment and registry. The GCP/Neon stack — Cloud Run, Neon
+and the `peace-buddy-staging` Firebase project, the only environment deployed
+today — has its data moved to Azure staging and is then decommissioned, as its
+own task after this plan. Nothing replaces it. Local Docker Compose remains for
+development.
+
+**Why:** Non-dev members were already checking and testing work on that stack,
+which is staging's job, on free tiers nobody maintains. Verified costs put the
+whole two-environment Azure stack at $504–$723/yr against a $2,000/yr grant, so
+a maintained staging environment is affordable and the free tier was buying
+nothing.
+
+**Rejected — prod and staging sharing one Postgres server with two databases:**
+proposed and briefly recommended on 2026-09-12 on cost grounds, then withdrawn
+the same day. Against the design actually chosen it saves **$66/yr** —
+staging's entire line, $13 of compute plus $53 of storage — because staging's
+server is stopped most of the year anyway. The $281/yr quoted while it was under
+discussion assumed an always-on staging server, a baseline that no longer
+exists. It couples the two environments to one CPU credit budget and one
+35-connection ceiling. Cost was its only argument and cost is not the binding
+constraint here.
+
+**Rejected — keeping the free GCP tier alongside Azure staging:** it exists
+today only because a paid staging environment was assumed unaffordable. That
+assumption did not survive the cost verification, and two half-maintained
+environments are worse than one trustworthy one.
+
+**Current state:** `deploy-plan.md` §7, `azure-costs.md`.
+
+---
+
+## 2026-09-12 — Staging compute is started by hand, not scheduled
+
+**Decision:** Staging's Postgres server is stopped by default and started
+manually when a feature needs review. No cron, no automation. Its storage and
+storage account persist; only compute is switched off.
+
+```
+az postgres flexible-server start -g rg-peace-buddy -n psql-peace-buddy-stg
+az postgres flexible-server stop  -g rg-peace-buddy -n psql-peace-buddy-stg
+```
+
+**Why:** Staging is dormant between feature cycles, so a fixed daily window pays
+for hours nobody uses. Storage bills either way at $53/yr; compute is $0.026/hr,
+so ~500 hours a year is ~$13 and the environment totals **$66/yr**. Every figure
+in this entry is a total — compute plus that $53 — so the options compare like
+for like. The team shares a tight-budget norm and can be told when staging is
+up.
+
+**Accepted consequence:** Azure restarts a stopped Flexible Server after seven
+days. With nothing enforcing the stopped state, staging will quietly come back
+during dormant stretches and bill compute until someone notices. This makes the
+budget alert load-bearing rather than optional.
+
+**Rejected — a scheduled daily window of 4–6 hours:** $91–$110/yr, so $25–$44
+more than the manual model, and it also
+disposes of the seven-day auto-restart, because a daily start never lets the
+counter reach seven. Rejected because the usage pattern is bursty rather than
+daily, and the schedule would bill for dormant weeks.
+
+**Rejected — always-on staging at $281/yr:** argued on the grounds that non-dev
+testers will not work to a schedule and a dead environment reads as a broken
+tool. Overruled: the team can be told, and budget discipline is a shared value.
+
+**Current state:** `deploy-plan.md` §7.
+
+---
+
+## 2026-09-12 — Buddy photos move from Cloudflare R2 to Azure Blob
+
+**Decision:** Photo storage moves to Azure Blob Storage in Japan East, one
+storage account per environment, reached from Container Apps by **managed
+identity** rather than access keys. Local development uses **Azurite**
+(`mcr.microsoft.com/azure-storage/azurite`) in the compose file. Sequenced
+**after** the Azure cutover, not as part of it.
+
+**Why:** Residency, not cost. Cloudflare supports EU, US and FedRAMP
+jurisdictions only, with no Japan option, and states that location hints are
+best-effort rather than a guarantee. Member photographs therefore kept the APPI
+外的環境の把握 burden that moving the database to Japan East was meant to remove.
+Blob in Japan East closes that and leaves Firebase Auth as the only US piece.
+
+Two secondary gains: the five long-lived `R2_*` keys disappear, and those keys
+already caused one silent photo-upload failure in staging (see the 2026-09-10
+entry below); and photos can be served through short-lived SAS URLs instead of
+an anonymous public bucket URL, which for personal data beats relying on
+unguessable paths.
+
+Cost is not a factor either way: Hot LRS is $0.02/GB/mo, so ~70 profile photos
+run under $2/yr.
+
+**Rejected — staying on R2:** it works today and its zero-egress pricing is
+genuinely better, but egress is irrelevant at this volume and Azure's first
+100 GB/mo is free regardless. The residency gap is not fixable on R2.
+
+**Rejected — migrating photos during the Azure cutover:** the cutover already
+carries unverified steps and photos are not on its critical path. The surface is
+small and contained (`apps/api/src/services/buddyPhoto.service.ts` at 172 lines,
+its test, `deploy.sh`, `deploy.env.example`, and `next.config.ts` remote
+patterns), so it is cheap to do separately.
+
+The `pg_dump` backup target was the last thing holding R2 open. Settled by
+*Nightly `pg_dump` to Azure Blob, 30 daily snapshots* (2026-09-12): backups go
+to Blob too, so R2 leaves the stack entirely.
+
+**Current state:** `deploy-plan.md` §2 and §8, `azure-costs.md`.
+
+---
+
 ## 2026-09-10 — Hosting is Azure Japan East, funded by the nonprofit grant
 
 **Decision:** The permanent stack is **Azure Container Apps (workload-profiles

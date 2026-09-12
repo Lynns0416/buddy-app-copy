@@ -187,6 +187,12 @@ This applies to: `POST /admin/profiles` (create), `DELETE /admin/profiles/:userI
 
 Profile photos are the only file type uploaded in v1. Storage: **Cloudflare R2** (S3-compatible). Single-step upload, not a signed-URL handoff:
 
+> **Changing.** R2 has no Japan jurisdiction, so photos move to Azure Blob
+> Storage in Japan East, one account per environment, reached by managed
+> identity. Decided 2026-09-12, sequenced after the Azure cutover. Local
+> development moves to Azurite. See `docs/decisions.md`. This section describes
+> what runs today.
+
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -276,8 +282,14 @@ See PRD §10 for event types, channels, and delivery mode defaults.
 |---|---|---|
 | `development` | **Live** | Everything in Docker Compose — Next.js, Hono, local Postgres, Firebase Auth emulator. See `README.md` |
 | `preview` | **Not built** | No PR-preview environment exists. There is no deploy workflow |
-| `staging` | **Live** | Cloud Run (`asia-southeast1`) + Neon (`aws-ap-southeast-1`) + Firebase project `peace-buddy-staging`. Dogfooding only. See Deploy below |
-| `production` | **Being built** | Azure Container Apps + PG Flexible Server B1ms, Japan East, on the Microsoft for Nonprofits grant — decided 2026-09-10, see `docs/decisions.md`. Database is private to a VNet with no public endpoint. Provisioning is `scripts/azure-provision.sh`; progress is tracked in `docs/deploy-plan.md`. Staging migrates off Cloud Run and Neon once it stands up |
+| `staging` | **Live, being replaced** | Today: Cloud Run (`asia-southeast1`) + Neon (`aws-ap-southeast-1`) + Firebase project `peace-buddy-staging` — the only deployed environment, and already where non-dev members check work. Its data moves to Azure alongside prod, onto its own B1ms server; the GCP/Neon side is then decommissioned. On Azure its compute is **started by hand** and stopped when done, so it is off most of the time by design |
+| `production` | **Being built** | Azure Container Apps + PG Flexible Server B1ms, Japan East, on the Microsoft for Nonprofits grant — decided 2026-09-10, see `docs/decisions.md`. Database is private to a VNet with no public endpoint. Provisioning is `scripts/azure-provision.sh`; progress is tracked in `docs/deploy-plan.md`. Always on |
+
+Prod and staging share one resource group, VNet, Container Apps environment and
+registry, and have a separate Postgres server and storage account each. Costs
+are in `docs/azure-costs.md`. The GCP/Neon side is decommissioned once Azure
+staging is trusted, and nothing replaces it; `development` above stays as local
+Docker Compose.
 
 ## CI/CD
 
