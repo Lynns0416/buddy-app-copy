@@ -54,9 +54,10 @@ Monorepo managed with pnpm workspaces:
 └── prisma/                     ← shared Prisma schema + seed script
 ```
 
-Pre-release the schema is applied with `prisma db push` — there is no
-`prisma/migrations/` directory yet. It gets created when the project switches to
-`prisma migrate deploy` on first production deploy (`DEPLOYMENT.md`).
+The schema is applied with `prisma migrate deploy` from the migration files in
+`prisma/migrations/`. `0_init` is the baseline generated from the schema as it
+stood on 2026-09-12; every change since then is its own file. No deploy step
+applies DDL — see `DEPLOYMENT.md`, "Schema Changes".
 
 ## UI Stack
 

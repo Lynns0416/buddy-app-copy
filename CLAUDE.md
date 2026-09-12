@@ -31,6 +31,7 @@ Diagrams go stale silently — nothing typechecks them. When a change touches an
 
 | Change | Update |
 |---|---|
+| Any edit to `prisma/schema.prisma` | A migration file in `prisma/migrations/`, generated with `prisma migrate dev --name <change>` and committed with the schema edit. CI fails the branch otherwise. |
 | `prisma/schema.prisma` model or relation | `docs/data-model.md` — both `erDiagram` blocks + the field table |
 | Tour or booking status transition rules | `docs/PRD.md` §7.2 `stateDiagram-v2`, §8.4 matrix |
 | New service, external dependency, or deploy step | `docs/architecture.md` — the relevant `flowchart` / `sequenceDiagram` |

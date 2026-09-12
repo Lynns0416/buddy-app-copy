@@ -13,6 +13,23 @@ jobs:
       contents: read
       pull-requests: write
 
+    # Only the migration drift check touches this. Prisma replays
+    # prisma/migrations/ into it and drops it again.
+    services:
+      shadow-db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +50,28 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm exec prisma generate --schema prisma/schema.prisma
+
+      # Nothing else checks that prisma/migrations/ still produces
+      # schema.prisma. Without this a schema edit with no migration passes CI,
+      # and migrate deploy then builds a database the generated client
+      # disagrees with — which surfaces at a query, not at boot.
+      - name: Check migrations match schema
+        env:
+          SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: |
+          set +e
+          pnpm exec prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url "$SHADOW_DATABASE_URL" \
+            --exit-code
+          status=$?
+          set -e
+          case "$status" in
+            0) echo "prisma/migrations/ matches schema.prisma" ;;
+            2) echo "::error::prisma/migrations/ does not produce schema.prisma. Run 'prisma migrate dev --name <change>' and commit the migration." ; exit 1 ;;
+            *) exit "$status" ;;
+          esac
 
       - name: Lint
         run: pnpm lint

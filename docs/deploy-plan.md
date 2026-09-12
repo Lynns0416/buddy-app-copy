@@ -221,10 +221,11 @@ actually annoys people. It is one flag and reversible.
 - [ ] Point `DATABASE_URL` at Azure, redeploy the api, smoke test.
 - [ ] Keep the Neon project for a week, then delete it.
 
-Pre-release, so schema changes still go through `prisma db push` (see
-`memory/project_prerelease.md`). Run it by hand once against the new server,
-never from a container `CMD` — Container Apps runs multiple replicas and
-concurrent `db push` is unsafe.
+Schema changes go through `prisma migrate deploy` (see `DEPLOYMENT.md`,
+"Schema Changes"). Run it by hand once against the new server, never from a
+container `CMD` — Container Apps runs multiple replicas and concurrent DDL is
+unsafe. Decide here whether the release gets a one-shot migration job or keeps
+the manual step; that decision was deferred to this move.
 
 ## 7. Cost against the credit
 
@@ -281,7 +282,7 @@ authority.*
 - [ ] Budget alert and a cost anomaly alert.
 - [ ] Container Registry image cleanup policy.
 - [ ] Custom domain, Apple sign-in, real staging/prod split.
-- [ ] Delete `memory/project_prerelease.md`, switch to `prisma migrate deploy`.
+- [x] Delete `memory/project_prerelease.md`, switch to `prisma migrate deploy`. Done 2026-09-12; where `migrate deploy` runs on release is still open, see §6.
 
 ## Progress
 

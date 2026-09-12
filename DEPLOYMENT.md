@@ -174,70 +174,103 @@ Monitoring & Ops.
 
 Assume **no** Google Cloud nonprofit credit offsets this (see above).
 
-## Schema Changes (Pre-release)
+## Schema Changes
 
-- Use `prisma db push` — no migration framework needed
-- Delete `memory/project_prerelease.md` on first prod deploy and switch to `prisma migrate deploy`
+Every schema change ships as a migration file in `prisma/migrations/`, applied
+with `prisma migrate deploy`. `prisma db push` is no longer used anywhere — see
+`docs/decisions.md`, "Prisma Migrate replaces db push".
+
+- Edit `prisma/schema.prisma`, run `prisma migrate dev --name <change>`, review
+  the generated SQL, and commit the migration file with the schema change.
+- Hand-write the SQL when the generated version would lose data. Enum renames
+  are the standard case; the pattern is below.
+- The dev container runs `migrate deploy` on start, so a fresh local database is
+  built from the migration history, never from the schema directly.
+- CI replays `prisma/migrations/` against a throwaway Postgres and fails the
+  branch if the result differs from `schema.prisma`, so a schema edit without a
+  migration cannot merge.
 
 ### No deploy step applies DDL
 
 `scripts/deploy.sh` builds images and runs `gcloud run deploy`. It issues no
 schema command, and the production `runner` stage in `apps/api/Dockerfile` does
-not ship the Prisma CLI. Only the dev stage pushes on start. So a deploy never
-alters the database: someone runs `prisma db push` by hand, never from a
-container `CMD`, because Cloud Run runs several replicas at once.
+not ship the Prisma CLI. So a deploy never alters the database: someone runs
+`prisma migrate deploy` by hand against the target, never from a container
+`CMD`, because Cloud Run and Container Apps both run several replicas at once.
 
 The consequence is that code and schema move independently. A release whose
 code expects a schema the server does not have will run, and fail at the rows
-that disagree rather than at boot.
+that disagree rather than at boot. `prisma migrate status` against the target
+answers whether that gap exists.
 
-### What `db push` does when data blocks the change
+**Open:** where `migrate deploy` runs on release. Deferred until the move to
+Azure Container Apps lands (`docs/deploy-plan.md`), because the answer is
+host-specific and `scripts/deploy.sh` is being replaced.
 
-Verified against a scratch database on 2026-09-12, removing enum values that a
-row still used:
+### Baselining an existing database
 
-| Command | Result |
-|---|---|
-| `prisma db push` | Refuses. Names the values that would be removed. |
-| `prisma db push --accept-data-loss` | Postgres rejects the cast, the transaction rolls back, the row and the enum are unchanged. |
+A database that predates `prisma/migrations/` is not empty and has no migration
+history, so `migrate deploy` refuses it with `P3005`. Confirm the database
+already matches the schema, then mark every migration applied:
 
-**This safety is specific to enum values.** Dropping a column or a table with
-`--accept-data-loss` succeeds and the data is gone. Do not read the table above
-as "`db push` is safe against a populated database".
+```
+prisma migrate diff --from-url "$DATABASE_URL" \
+  --to-schema-datamodel prisma/schema.prisma --exit-code   # 0 = in sync, 2 = differs
+prisma migrate resolve --applied 0_init                    # once per directory
+```
+
+The diff is not optional. `migrate resolve --applied` asserts that the database
+already has everything that migration creates; run it against a database that
+differs and every later migration applies on a false assumption.
+
+**Resolve every directory in `prisma/migrations/`, not just `0_init`.** The diff
+above compares against `schema.prisma`, which is the *end* of the migration
+history. A database that passes it already has the effects of every migration,
+so leaving the later ones unresolved means `migrate deploy` re-applies them.
+Today `0_init` is the only directory; that stops being true with the next schema
+change.
+
+Local databases were baselined on 2026-09-12. Staging was not — it is not
+reachable from the dev machine, and it still needs the enum remap below before
+the diff comes back clean.
 
 ### Renaming enum values on a populated database
 
-Postgres cannot drop an enum value, so `db push` rebuilds the type. Three steps,
-in this order, because the new values must exist before rows can point at them:
+Postgres cannot drop an enum value, so the type has to be rebuilt, and the
+generated migration's `USING` cast fails against rows still holding the old
+value. Write the rebuild by hand instead.
+
+Do **not** reach for `ALTER TYPE ... ADD VALUE` followed by a backfill in the
+same file. Postgres documents that a value added inside a transaction block
+"cannot be used until after the transaction has been committed", so the backfill
+fails wherever the migration runner wraps the file in one. Swapping the type
+avoids the question — every statement below is safe in a single transaction:
 
 ```sql
--- 1. each its own statement, outside a transaction
-ALTER TYPE "BuddyTier" ADD VALUE IF NOT EXISTS 'buddy';
+-- 1. the new type, with the dead values already gone
+CREATE TYPE "BuddyTier_new" AS ENUM ('junior', 'buddy', 'star', 'blackstar');
 
--- 2. remap every column of that type (BuddyProfile.tier, Booking.buddyTier)
-UPDATE "BuddyProfile" SET tier = 'buddy' WHERE tier IN ('mid', 'senior');
+-- 2. every column of the old type — here BuddyProfile.tier and
+--    Booking.buddyTier. Miss one and the DROP in step 3 fails.
+--    The CASE is the rename; NULL stays NULL.
+ALTER TABLE "BuddyProfile" ALTER COLUMN "tier" TYPE "BuddyTier_new"
+  USING (CASE WHEN "tier"::text IN ('mid', 'senior') THEN 'buddy'
+              ELSE "tier"::text END)::"BuddyTier_new";
+ALTER TABLE "Booking" ALTER COLUMN "buddyTier" TYPE "BuddyTier_new"
+  USING (CASE WHEN "buddyTier"::text IN ('mid', 'senior') THEN 'buddy'
+              ELSE "buddyTier"::text END)::"BuddyTier_new";
 
--- 3. prisma db push, which can now drop the dead values
+-- 3. retire the old type and take its name
+DROP TYPE "BuddyTier";
+ALTER TYPE "BuddyTier_new" RENAME TO "BuddyTier";
 ```
+
+Neither `BuddyTier` column carries a default. One that did would need
+`ALTER COLUMN ... DROP DEFAULT` before step 2 and the default re-added after
+step 3, because a default typed as the old enum blocks the column swap.
 
 For a database holding only seed data, dropping it and running `pnpm seed` is
 faster.
-
-### When to adopt Prisma Migrate
-
-The trigger is the first row nobody would agree to delete. Baselining an
-existing `db push` database is two commands and does not get harder with time,
-so there is no penalty for waiting:
-
-```
-prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script \
-  > prisma/migrations/0_init/migration.sql
-prisma migrate resolve --applied 0_init
-```
-
-Adopting it also means a shadow database for `migrate dev`, a migration file per
-schema edit, a change to the dev container `CMD`, and a job that runs
-`migrate deploy` before the new revision takes traffic.
 
 ## Deployment Flow (when ready)
 
@@ -248,7 +281,7 @@ schema edit, a change to the dev container `CMD`, and a job that runs
 5. Create Cloudflare R2 bucket; enable public access (`r2.dev` URL or custom domain under `buddy.plab.jp`); set `R2_*` env vars in Cloud Run
 6. Configure custom domain: add NS record in Xserver delegating `buddy.plab.jp` to Cloudflare; add CNAME records in Cloudflare for Firebase Hosting (web) and Cloud Run (API)
 7. Set env vars: Firebase service account, API URL, Neon connection string
-8. Run `prisma db push` to initialize schema
+8. Run `prisma migrate deploy` to initialize schema
 9. Deploy & smoke test
 
 ## Fallback: Truly Free Stack (no credits needed)

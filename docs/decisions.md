@@ -12,6 +12,55 @@ duplicate that state here.
 
 ---
 
+## 2026-09-12 — Prisma Migrate replaces db push
+
+**Decision:** Schema changes ship as migration files in `prisma/migrations/`,
+applied with `prisma migrate deploy`. `prisma db push` is no longer used, in any
+environment. The baseline `0_init` was generated from `schema.prisma` as it stood
+after #140 and marked applied on the local databases.
+
+**Why:** `db push` cannot express *how* a change is applied — it only computes a
+final state. The `BuddyTier` rename in #140 was the forcing case: push generated
+a drop-and-recreate of the enum, and the `USING` cast failed against rows still
+holding `senior`. There is no flag that fixes that, because the fix is a
+hand-written type swap — create the new enum, remap every column through a
+`USING ... CASE`, drop the old type, rename — and `db push` has nowhere to put
+it. A migration file holds it as one reviewable artifact; the SQL is in
+`DEPLOYMENT.md`. Staging holds data now, so this stopped being theoretical.
+
+**Rejected — wait until first production deploy.** That was the earlier plan
+(`memory/project_prerelease.md`, now deleted). It assumed the cost of `db push`
+was bounded until real users existed. #140 showed the cost lands as soon as any
+database holds rows worth keeping, which staging already does.
+
+**Rejected — hand-written SQL without Prisma Migrate.** Migrate's value here is
+not the SQL generation, it is `_prisma_migrations` recording what a given
+database has. Without it, "does staging have this change" stays a question
+answered from memory.
+
+**Deferred — where `migrate deploy` runs on release.** The production image
+ships no Prisma CLI and `scripts/deploy.sh` applies no DDL, so a one-shot
+migration job is real work, and `scripts/deploy.sh` is being replaced by the
+Azure Container Apps move. Decide it there, `docs/deploy-plan.md` §6. Until
+then it is a manual step, as `db push` was.
+
+**Enforced in CI, not by convention.** A schema edit with no migration file
+would otherwise pass every check and only fail at a query after deploy, so
+`.github/workflows/ci.yml` replays `prisma/migrations/` into a throwaway
+Postgres and fails the branch if the result differs from `schema.prisma`.
+`CLAUDE.md` carries the matching rule.
+
+**Not verified:** `migrate resolve --applied` against Neon, and staging's actual
+enum state. Staging is not reachable from the dev machine. It still needs the
+enum remap in `DEPLOYMENT.md` before the baseline diff comes back clean, and it
+must not be baselined before it does. The CI drift check has not run yet — it
+was written without a local Docker daemon.
+
+**Current state:** `DEPLOYMENT.md` "Schema Changes", `README.md` "Schema
+changes", `docs/architecture.md`, `.github/workflows/ci.yml`.
+
+---
+
 ## 2026-09-10 — Hosting is Azure Japan East, funded by the nonprofit grant
 
 **Decision:** The permanent stack is **Azure Container Apps (workload-profiles

@@ -83,6 +83,33 @@ All commands use the modern `docker-compose` syntax. Run all one-off commands wi
 | Seed database | `docker-compose exec api npx tsx prisma/seed.ts` |
 | Reset database | `docker-compose down -v && docker compose up --build` |
 | Stop all services | `docker-compose down` |
+| Create a migration | `docker-compose exec api pnpm exec prisma migrate dev --name <change>` |
+| Check migration state | `docker-compose exec api pnpm exec prisma migrate status` |
+
+### Schema changes
+
+The api container runs `prisma migrate deploy` on start, so a fresh database is
+built from `prisma/migrations/`. Edit `prisma/schema.prisma`, then run
+`prisma migrate dev --name <change>` to generate the migration file and commit
+it with the schema change.
+
+A database created before migrations existed is not empty and has no migration
+history, so `migrate deploy` refuses it with `P3005`. The api container runs
+`migrate deploy` before `pnpm dev`, so the symptom is that the API never starts
+— check `docker-compose logs api` for `P3005` before looking anywhere else.
+
+Either recreate the database with `docker-compose down -v`, or mark the
+migrations as already applied, one `resolve` per directory in
+`prisma/migrations/`:
+
+```bash
+docker-compose run --rm api pnpm exec prisma migrate resolve --applied 0_init
+```
+
+Resolving only `0_init` is right while it is the only directory. Once there are
+more, resolve all of them — otherwise `migrate deploy` re-applies the ones the
+database already has. `DEPLOYMENT.md` has the full procedure, including the
+diff that must pass first.
 
 ## 2. Firebase Auth Emulator
 

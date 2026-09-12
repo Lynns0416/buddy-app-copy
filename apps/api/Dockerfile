@@ -33,7 +33,7 @@ RUN pnpm --filter @peace-buddy/types build
 RUN pnpm exec prisma generate --schema /app/prisma/schema.prisma
 # A named node_modules volume is not re-seeded from the image the way an
 # anonymous one is, so reconcile it against the lockfile on every start.
-CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm --filter @peace-buddy/types build && pnpm exec prisma generate --schema /app/prisma/schema.prisma && pnpm exec prisma db push --skip-generate --schema /app/prisma/schema.prisma && pnpm --filter @peace-buddy/api dev"]
+CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm --filter @peace-buddy/types build && pnpm exec prisma generate --schema /app/prisma/schema.prisma && pnpm exec prisma migrate deploy --schema /app/prisma/schema.prisma && pnpm --filter @peace-buddy/api dev"]
 
 # --- build ------------------------------------------------------------------
 FROM deps AS build
