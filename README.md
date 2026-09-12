@@ -104,12 +104,13 @@ migrations as already applied, one `resolve` per directory in
 
 ```bash
 docker-compose run --rm api pnpm exec prisma migrate resolve --applied 0_init
+docker-compose run --rm api pnpm exec prisma migrate resolve --applied 20260912032858_add_member_type
 ```
 
-Resolving only `0_init` is right while it is the only directory. Once there are
-more, resolve all of them — otherwise `migrate deploy` re-applies the ones the
-database already has. `DEPLOYMENT.md` has the full procedure, including the
-diff that must pass first.
+Resolve **every** directory in `prisma/migrations/`, not just `0_init` —
+otherwise `migrate deploy` re-applies the ones the database already has. Read
+the directory rather than the list above. `DEPLOYMENT.md` has the full
+procedure, including the diff that must pass first.
 
 ## 2. Firebase Auth Emulator
 

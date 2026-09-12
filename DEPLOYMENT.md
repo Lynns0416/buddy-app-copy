@@ -1,5 +1,18 @@
 # Deployment Architecture
 
+> **Only "Schema Changes" is current.** Everything else in this file is the
+> 2026-08 GCP/Neon/R2 plan, superseded on 2026-09-10 by
+> [`docs/deploy-plan.md`](docs/deploy-plan.md) — Azure Japan East, two
+> environments, Postgres Flexible Server, Azure Blob. Verified costs are in
+> [`docs/azure-costs.md`](docs/azure-costs.md); the reasoning and the rejected
+> alternatives are in [`docs/decisions.md`](docs/decisions.md) (2026-09-10 and
+> 2026-09-12). Kept as the record of what was considered before the grant, and
+> because the Neon capacity analysis is still the only sizing work done.
+>
+> Two figures below are stale beyond the hosting change: the user count is
+> **~70 members**, not 250, and the environment model is **prod + staging**, not
+> one environment.
+
 ## Context
 Peace Buddy is an internal app for ~200–250 buddies (coworkers). The org is a Google-verified non-profit on Google Workspace Business Standard. Deployment must:
 - Avoid surprise billing / subscription creep
@@ -227,8 +240,9 @@ differs and every later migration applies on a false assumption.
 above compares against `schema.prisma`, which is the *end* of the migration
 history. A database that passes it already has the effects of every migration,
 so leaving the later ones unresolved means `migrate deploy` re-applies them.
-Today `0_init` is the only directory; that stops being true with the next schema
-change.
+There are two directories as of 2026-09-12 — `0_init` and
+`20260912032858_add_member_type` — so this is no longer hypothetical. Read the
+directory, do not work from this list.
 
 Local databases were baselined on 2026-09-12. Staging was not — it is not
 reachable from the dev machine, and it still needs the enum remap below before

@@ -9,11 +9,13 @@
 # Safe to re-run. Every step checks whether the resource already exists, so a
 # partial run can be resumed by running it again.
 #
-# Cost, all drawn from the Microsoft for Nonprofits grant:
-#   Postgres B1ms + 32GB storage   ~$16/month   the only meaningful line
-#   Container Registry Basic        ~$5/month
-#   Container Apps, scaled to zero   $0          free monthly grant covers it
-#   VNet, subnets, private DNS       $0
+# Cost, all drawn from the Microsoft for Nonprofits grant. Verified 2026-09-12
+# against the Azure Retail Prices API for Japan East; see docs/azure-costs.md.
+#   Postgres B1ms + 32GB storage   ~$23/month   per server, the meaningful line
+#   Container Registry Basic        ~$5/month   $0.1666/day
+#   Static public IPv4              ~$7/month   two, at $0.005/hr each
+#   Container Apps, scaled to zero   $0         free monthly grant covers it
+#   VNet, subnets, private DNS      ~$0.50/mo   the DNS zone; VNet is free
 set -euo pipefail
 
 ENV_FILE="${1:?usage: scripts/azure-provision.sh <env-file>}"
