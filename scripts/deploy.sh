@@ -1,27 +1,51 @@
 #!/usr/bin/env bash
-# Deploy api + web to Cloud Run.
+# Build and deploy api + web to Azure Container Apps, one environment per run.
 #
-#   scripts/deploy.sh path/to/deploy.env
+#   scripts/deploy.sh scripts/deploy.env       # prod
+#   scripts/deploy.sh scripts/deploy.stg.env   # staging
 #
-# The config file holds secrets — keep it outside the repo.
-# See scripts/deploy.env.example for the required keys.
+# The config file holds the two database passwords, the Firebase private key
+# and every other application secret. It is gitignored (`deploy*.env`) and the
+# script refuses to read it unless it is owner-only, the same check as
+# scripts/azure-provision.sh. See scripts/deploy.env.example for the keys.
 #
-# Order is forced: NEXT_PUBLIC_* is inlined into the web bundle at build time,
-# so the api must be deployed and its URL known before web is built. The api's
-# CORS_ORIGIN then needs web's URL, so the api is patched at the end.
+# Infrastructure — resource group, registry, VNet, Container Apps environment,
+# Postgres — is scripts/azure-provision.sh, and the two database roles are
+# scripts/azure-db-roles.sh. Both run once per environment. This one runs
+# constantly and creates nothing but the two apps.
 #
-# Images are built on Cloud Build, not locally: Cloud Run needs linux/amd64 and
-# the dev machines are arm64.
+# ORDER IS FORCED. NEXT_PUBLIC_* is inlined into the web bundle at build time,
+# so the api must be deployed and its FQDN known before web is built; the api's
+# CORS_ORIGIN is then only known once web exists, so the api is patched last.
+#
+# Images are built with `az acr build`, server-side, so nothing is pushed from
+# a laptop — which also sidesteps building linux/amd64 on an arm64 machine.
+#
+# `prisma migrate deploy` runs here, as a one-shot Container Apps Job, between
+# the builds and the api deploy. See docs/decisions.md, "migrate deploy runs as
+# a one-shot Container Apps Job".
 set -euo pipefail
 
 CONFIG="${1:-}"
 [ -n "$CONFIG" ] && [ -f "$CONFIG" ] || { echo "usage: $0 <config-file>" >&2; exit 1; }
 
+# The config holds pb_app's and pb_migrate's passwords in cleartext.
+MODE="$(stat -f '%OLp' "$CONFIG" 2>/dev/null || stat -c '%a' "$CONFIG")"
+if [ "${MODE: -2}" != "00" ]; then
+  echo "error: $CONFIG is mode $MODE — it holds database passwords." >&2
+  echo "       run: chmod 600 $CONFIG" >&2
+  exit 1
+fi
+
 # shellcheck disable=SC1090
 set -a; . "$CONFIG"; set +a
 
-: "${PROJECT:?}" "${REGION:?}" "${REPO:?}"
-: "${DATABASE_URL:?}" "${SCHEDULER_SECRET:?}"
+: "${ENVIRONMENT:?}" "${RESOURCE_GROUP:?}" "${ACR_NAME:?}" "${ACA_ENV:?}"
+: "${ACA_API:?}" "${ACA_WEB:?}"
+# pb_app for the api, pb_migrate for the migration job. Never the same role,
+# and never the server admin — see docs/deploy-plan.md §4.1.
+: "${DATABASE_URL:?}" "${MIGRATE_DATABASE_URL:?}"
+: "${SCHEDULER_SECRET:?}"
 : "${FIREBASE_PROJECT_ID:?}" "${FIREBASE_CLIENT_EMAIL:?}" "${FIREBASE_PRIVATE_KEY:?}"
 : "${NEXT_PUBLIC_FIREBASE_API_KEY:?}" "${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:?}"
 # Photo upload is a shipped feature, not an opt-in: a revision without these
@@ -29,69 +53,295 @@ set -a; . "$CONFIG"; set +a
 : "${R2_ACCOUNT_ID:?}" "${R2_ACCESS_KEY_ID:?}" "${R2_SECRET_ACCESS_KEY:?}"
 : "${R2_BUCKET_NAME:?}" "${R2_PUBLIC_URL:?}"
 
+if [ "$DATABASE_URL" = "$MIGRATE_DATABASE_URL" ]; then
+  echo "error: DATABASE_URL and MIGRATE_DATABASE_URL are the same string." >&2
+  echo "       The api connects as pb_app, which cannot run DDL; migrations" >&2
+  echo "       connect as pb_migrate. See docs/deploy-plan.md §4.1." >&2
+  exit 1
+fi
+
 cd "$(dirname "$0")/.."
+
+# A dirty tree deploys code that is in no commit, so the commit tag would name
+# an image that does not match it. Say so in the tag rather than in a warning
+# nobody reads.
 TAG="$(git rev-parse --short HEAD)"
-REGISTRY="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}"
+[ -z "$(git status --porcelain)" ] || TAG="${TAG}-dirty"
 
-url_of() { gcloud run services describe "$1" --region "$REGION" --format='value(status.url)'; }
+# --- Confirm the target ------------------------------------------------
+# Red for production, blue for anything else, matching the other two scripts.
+if [ -t 1 ]; then
+  case "$ENVIRONMENT" in
+    prod | production) BANNER=$'\033[1;97;41m' ;;
+    *) BANNER=$'\033[1;97;44m' ;;
+  esac
+  BOLD=$'\033[1m'; RESET=$'\033[0m'
+else
+  BANNER=""; BOLD=""; RESET=""
+fi
+ENV_UPPER="$(printf '%s' "$ENVIRONMENT" | tr '[:lower:]' '[:upper:]')"
 
-# --- api ---------------------------------------------------------------------
-echo "==> building api:${TAG}"
-gcloud builds submit --config apps/api/cloudbuild.yaml \
-  --substitutions "_IMAGE=${REGISTRY}/api,_TAG=${TAG}"
+printf '\n%s                                                  %s\n' "$BANNER" "$RESET"
+printf '%s   DEPLOY  ->  %-36s%s\n' "$BANNER" "$ENV_UPPER" "$RESET"
+printf '%s                                                  %s\n\n' "$BANNER" "$RESET"
+cat <<CONFIRM
+  Config file      $CONFIG
+  Subscription     $(az account show --query name -o tsv)
+  Resource group   $RESOURCE_GROUP
+  Apps environment $ACA_ENV
+  Apps             $ACA_API, $ACA_WEB
+  Image tag        $TAG
 
-# YAML is a superset of JSON, so emitting JSON sidesteps quoting the PEM.
-ENV_FILE="$(mktemp -t api-env-XXXXXX).yaml"
-trap 'rm -f "$ENV_FILE"' EXIT
-python3 - "$ENV_FILE" <<'PY'
-import json, os, sys
-keys = ["DATABASE_URL", "FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL",
-        "FIREBASE_PRIVATE_KEY", "SCHEDULER_SECRET", "EMAIL_DISABLED",
-        "GMAIL_SENDER", "GMAIL_IMPERSONATE",
-        "SLACK_WEBHOOK_URL", "SLACK_ENABLED", "SLACK_DISABLED",
-        "R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
-        "R2_BUCKET_NAME", "R2_PUBLIC_URL"]
-open(sys.argv[1], "w").write(
-    json.dumps({k: os.environ[k] for k in keys if os.environ.get(k)}, indent=2))
-PY
+  Pending migrations are applied to this environment's database before the
+  api is updated.
 
-echo "==> deploying api"
-gcloud run deploy api \
-  --image "${REGISTRY}/api:${TAG}" \
-  --region "$REGION" \
-  --min-instances=0 \
-  --allow-unauthenticated \
-  --env-vars-file "$ENV_FILE"
+CONFIRM
+printf '%sDeploy %s to %s?%s [y/N] ' "$BOLD" "$TAG" "$ENV_UPPER" "$RESET"
+read -r REPLY
+case "$REPLY" in
+  y | Y | yes | YES) ;;
+  *) echo "aborted, nothing deployed." >&2; exit 1 ;;
+esac
 
-API_URL="$(url_of api)"
-echo "    api: $API_URL"
+step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
+exists() { [ -n "$("$@" 2>/dev/null)" ]; }
 
-# --- web ---------------------------------------------------------------------
-echo "==> building web:${TAG}"
-gcloud builds submit --config apps/web/cloudbuild.yaml --substitutions \
-  "_IMAGE=${REGISTRY}/web,_TAG=${TAG},_API_URL=${API_URL},_FB_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY},_FB_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN},_FB_PROJECT_ID=${FIREBASE_PROJECT_ID}"
+app_exists() { exists az containerapp show -n "$1" -g "$RESOURCE_GROUP" --query name -o tsv; }
+fqdn_of() {
+  az containerapp show -n "$1" -g "$RESOURCE_GROUP" \
+    --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null
+}
 
-echo "==> deploying web"
-gcloud run deploy web \
-  --image "${REGISTRY}/web:${TAG}" \
-  --region "$REGION" \
-  --min-instances=0 \
-  --allow-unauthenticated
+ACR_LOGIN="$(az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query loginServer -o tsv)"
+API_IMAGE="${ACR_LOGIN}/api:${TAG}"
+WEB_IMAGE="${ACR_LOGIN}/web:${TAG}"
+MIGRATE_IMAGE="${ACR_LOGIN}/migrate:${TAG}"
 
-WEB_URL="$(url_of web)"
-echo "    web: $WEB_URL"
+# --- 1. Build the api and migration images -----------------------------
+# Both before anything is applied or deployed: a build that fails must not
+# leave a migrated database behind.
+step "Build api:${TAG}"
+az acr build --registry "$ACR_NAME" --image "api:${TAG}" --image "api:latest" \
+  --file apps/api/Dockerfile --target runner .
 
-# --- close the loop ----------------------------------------------------------
-echo "==> pointing api at web"
-gcloud run services update api --region "$REGION" \
-  --update-env-vars "CORS_ORIGIN=${WEB_URL},WEB_BASE_URL=${WEB_URL}"
+step "Build migrate:${TAG}"
+az acr build --registry "$ACR_NAME" --image "migrate:${TAG}" \
+  --file apps/api/Dockerfile --target migrate .
 
+# --- 2. Apply migrations -----------------------------------------------
+# A one-shot Manual job, because the database has no public endpoint and its
+# hostname resolves only inside the VNet. The job is deleted afterwards: it
+# holds pb_migrate's password as a secret for as long as it exists. Same shape
+# as scripts/azure-db-roles.sh, for the same reasons.
+#
+# `migrate deploy` is a no-op when nothing is pending, so this runs on every
+# deploy and is safe to re-run after any failure.
+JOB="caj-migrate"
+JOB_CREATED=""
+EXEC_NAME=""
+
+cleanup_job() {
+  if [ -n "$EXEC_NAME" ]; then
+    step "Migration log"
+    # The logs command lives in the containerapp extension, which is in
+    # preview, and Log Analytics ingests with a delay. Not load-bearing:
+    # the execution status already decided the outcome.
+    tries=0
+    until az containerapp job logs show -n "$JOB" -g "$RESOURCE_GROUP" \
+            --container migrate --execution "$EXEC_NAME" --tail 100 \
+            --format text 2>/dev/null; do
+      tries=$((tries + 1))
+      [ "$tries" -ge 3 ] && { echo "  (no log yet; see the portal)"; break; }
+      sleep 10
+    done
+  fi
+  if [ -n "$JOB_CREATED" ]; then
+    step "Delete job $JOB"
+    if ! az containerapp job delete -n "$JOB" -g "$RESOURCE_GROUP" --yes --output none 2>/dev/null; then
+      echo "  WARNING: could not delete $JOB. It holds pb_migrate's password" >&2
+      echo "  as a secret. Delete it by hand:" >&2
+      echo "    az containerapp job delete -n $JOB -g $RESOURCE_GROUP --yes" >&2
+    fi
+  fi
+}
+trap cleanup_job EXIT
+
+step "Migrate — job $JOB"
+# Left over from an interrupted run, secret and all.
+az containerapp job delete -n "$JOB" -g "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
+
+# `--registry-identity system` gives the job a system-assigned identity and
+# grants it AcrPull, so no registry password is stored anywhere. The role
+# assignment is new on every run, because the job is; if the first execution
+# fails to pull the image, that assignment had not propagated yet — rerun the
+# deploy, which is safe.
+az containerapp job create -n "$JOB" -g "$RESOURCE_GROUP" \
+  --environment "$ACA_ENV" \
+  --trigger-type Manual \
+  --replica-timeout 900 --replica-retry-limit 0 \
+  --replica-completion-count 1 --parallelism 1 \
+  --image "$MIGRATE_IMAGE" --container-name migrate \
+  --registry-server "$ACR_LOGIN" --registry-identity system \
+  --cpu 0.5 --memory 1.0Gi \
+  --secrets "database-url=${MIGRATE_DATABASE_URL}" \
+  --env-vars "DATABASE_URL=secretref:database-url" \
+  --output none
+JOB_CREATED=1
+
+EXEC_NAME="$(az containerapp job start -n "$JOB" -g "$RESOURCE_GROUP" --query name -o tsv)"
+echo "  execution $EXEC_NAME"
+STATUS="Running"
+TRIES=0
+while [ "$STATUS" = "Running" ] || [ "$STATUS" = "Unknown" ] || [ -z "$STATUS" ]; do
+  sleep 10
+  TRIES=$((TRIES + 1))
+  if [ "$TRIES" -gt 90 ]; then
+    echo "error: migration still running after 15 minutes. Check the portal." >&2
+    exit 1
+  fi
+  STATUS="$(az containerapp job execution show -n "$JOB" -g "$RESOURCE_GROUP" \
+    --job-execution-name "$EXEC_NAME" --query properties.status -o tsv 2>/dev/null || echo Unknown)"
+  echo "  $STATUS"
+done
+
+if [ "$STATUS" != "Succeeded" ]; then
+  echo "error: migration execution $STATUS — nothing was deployed." >&2
+  echo "       The log below says why. Prisma applies each migration in a" >&2
+  echo "       transaction, so a failed run is safe to retry." >&2
+  exit 1
+fi
+
+# Print the log and delete the job now, rather than leaving it to the trap at
+# the end of the deploy: everything after this is minutes of image building,
+# and the job holds pb_migrate's password the whole time.
+cleanup_job
+JOB_CREATED=""
+EXEC_NAME=""
+
+# --- 3. Deploy the api -------------------------------------------------
+# Secrets are Container Apps secrets, referenced by name; only the non-secret
+# values are plain environment variables. Empty values are dropped rather than
+# set to "", because the api reads several of them as "set at all".
+SECRETS=()
+ENVS=()
+secret_var() {
+  local var="$1" val="${!1-}"
+  [ -n "$val" ] || return 0
+  local name
+  name="$(printf '%s' "$var" | tr 'A-Z_' 'a-z-')"
+  SECRETS+=("${name}=${val}")
+  ENVS+=("${var}=secretref:${name}")
+}
+plain_var() {
+  local var="$1" val="${!1-}"
+  [ -n "$val" ] || return 0
+  ENVS+=("${var}=${val}")
+}
+
+secret_var DATABASE_URL
+secret_var FIREBASE_PRIVATE_KEY
+secret_var SCHEDULER_SECRET
+secret_var SLACK_WEBHOOK_URL
+secret_var R2_ACCESS_KEY_ID
+secret_var R2_SECRET_ACCESS_KEY
+plain_var FIREBASE_PROJECT_ID
+plain_var FIREBASE_CLIENT_EMAIL
+plain_var EMAIL_DISABLED
+plain_var GMAIL_SENDER
+plain_var GMAIL_IMPERSONATE
+plain_var SLACK_ENABLED
+plain_var SLACK_DISABLED
+plain_var R2_ACCOUNT_ID
+plain_var R2_BUCKET_NAME
+plain_var R2_PUBLIC_URL
+
+# An app's FQDN is fixed once it exists, so on every deploy after the first the
+# web URL is already known. Carrying it into the api's environment here means
+# the api never runs a revision without a CORS origin, and step 6 becomes a
+# no-op instead of a second revision.
+WEB_FQDN="$(fqdn_of "$ACA_WEB" || true)"
+if [ -n "$WEB_FQDN" ]; then
+  ENVS+=("CORS_ORIGIN=https://${WEB_FQDN}" "WEB_BASE_URL=https://${WEB_FQDN}")
+fi
+
+step "Deploy api"
+if app_exists "$ACA_API"; then
+  az containerapp secret set -n "$ACA_API" -g "$RESOURCE_GROUP" \
+    --secrets "${SECRETS[@]}" --output none
+  az containerapp update -n "$ACA_API" -g "$RESOURCE_GROUP" \
+    --image "$API_IMAGE" --replace-env-vars "${ENVS[@]}" --output none
+else
+  # --min-replicas 0 is the difference between $0 and burning credit.
+  az containerapp create -n "$ACA_API" -g "$RESOURCE_GROUP" \
+    --environment "$ACA_ENV" \
+    --image "$API_IMAGE" \
+    --registry-server "$ACR_LOGIN" --registry-identity system \
+    --ingress external --target-port 8080 \
+    --min-replicas 0 --max-replicas 2 \
+    --cpu 0.5 --memory 1.0Gi \
+    --secrets "${SECRETS[@]}" \
+    --env-vars "${ENVS[@]}" \
+    --output none
+fi
+
+API_FQDN="$(fqdn_of "$ACA_API" || true)"
+[ -n "$API_FQDN" ] || { echo "error: $ACA_API reports no ingress FQDN." >&2; exit 1; }
+API_URL="https://${API_FQDN}"
+echo "  api: $API_URL"
+
+# --- 4. Build web ------------------------------------------------------
+# Ingress on the api stays external because the browser calls it directly:
+# NEXT_PUBLIC_API_URL is inlined into the client bundle, and CORS_ORIGIN below
+# exists for exactly that cross-origin call.
+step "Build web:${TAG}"
+az acr build --registry "$ACR_NAME" --image "web:${TAG}" --image "web:latest" \
+  --file apps/web/Dockerfile --target runner \
+  --build-arg "NEXT_PUBLIC_API_URL=${API_URL}" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}" \
+  --build-arg "NEXT_PUBLIC_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}" \
+  .
+
+# --- 5. Deploy web -----------------------------------------------------
+# Nothing at runtime: everything web needs is in the bundle, and the Dockerfile
+# sets PORT and HOSTNAME.
+step "Deploy web"
+if app_exists "$ACA_WEB"; then
+  az containerapp update -n "$ACA_WEB" -g "$RESOURCE_GROUP" \
+    --image "$WEB_IMAGE" --output none
+else
+  az containerapp create -n "$ACA_WEB" -g "$RESOURCE_GROUP" \
+    --environment "$ACA_ENV" \
+    --image "$WEB_IMAGE" \
+    --registry-server "$ACR_LOGIN" --registry-identity system \
+    --ingress external --target-port 3000 \
+    --min-replicas 0 --max-replicas 2 \
+    --cpu 0.5 --memory 1.0Gi \
+    --output none
+fi
+
+NEW_WEB_FQDN="$(fqdn_of "$ACA_WEB" || true)"
+[ -n "$NEW_WEB_FQDN" ] || { echo "error: $ACA_WEB reports no ingress FQDN." >&2; exit 1; }
+WEB_URL="https://${NEW_WEB_FQDN}"
+echo "  web: $WEB_URL"
+
+# --- 6. Close the loop -------------------------------------------------
+# Only on the first deploy, or if web's FQDN changed. Otherwise step 3 already
+# carried it in.
+if [ "$NEW_WEB_FQDN" != "${WEB_FQDN:-}" ]; then
+  step "Point api at web"
+  az containerapp update -n "$ACA_API" -g "$RESOURCE_GROUP" \
+    --set-env-vars "CORS_ORIGIN=${WEB_URL}" "WEB_BASE_URL=${WEB_URL}" --output none
+fi
+
+step "Done"
 cat <<EOF
 
-done.
+  ${ENV_UPPER}, tag ${TAG}
   api  $API_URL
   web  $WEB_URL
 
-Manual step, once per new web URL: add ${WEB_URL#https://} to
-Firebase console -> Authentication -> Settings -> Authorized domains.
+  Manual step, once per new web URL: add ${NEW_WEB_FQDN} to
+  Firebase console -> Authentication -> Settings -> Authorized domains.
+
 EOF

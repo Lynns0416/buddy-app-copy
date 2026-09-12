@@ -96,7 +96,7 @@ flowchart LR
     FA["Firebase Auth 🇺🇸"]
 
     U -->|HTTPS| W
-    W -->|internal ingress| A
+    U -->|"HTTPS — XHR, NEXT_PUBLIC_API_URL"| A
     W -.->|ID token| FA
     A -->|verify token| FA
     A -->|managed identity<br/>no access keys| BLOB
@@ -108,8 +108,10 @@ same shape, each with its own Postgres server and its own storage account, both
 inside the single VNet and the single Container Apps environment. Staging's
 server is stopped by default; see §7.
 
-Ingress stays public because staff reach the app from the internet. Only the
-database is private. A NAT gateway is **not** required — Container Apps gives
+Ingress is external on **both** apps, because staff reach the app from the
+internet and the browser calls the api directly — `NEXT_PUBLIC_API_URL` is
+inlined into the client bundle, which is also why the api needs `CORS_ORIGIN`.
+Only the database is private. A NAT gateway is **not** required — Container Apps gives
 every environment a default outbound public IP, and a NAT gateway buys only a
 *static* outbound address, which nothing here needs.
 
@@ -132,7 +134,7 @@ flowchart LR
         CRW["Cloud Run: web"]
         CRA["Cloud Run: api"]
         AR["Artifact Registry"]
-        CB["Cloud Build<br/>apps/*/cloudbuild.yaml"]
+        CB["Cloud Build<br/>configs deleted 2026-09-13"]
         NEON[("Neon 🇸🇬")]
     end
 
@@ -163,8 +165,10 @@ Already shipped, do not redo:
 - Both Dockerfiles are multi-stage with production `runner` targets
   (`node dist/index.js` for api, Next standalone for web). Commit `839892c`.
 - `apps/web/next.config.ts` emits `output: 'standalone'`.
-- `scripts/deploy.sh` and `scripts/deploy.env.example` exist and work for Cloud
-  Run. Commit `3dcc21e`.
+- `scripts/deploy.sh` and `scripts/deploy.env.example` were rewritten for
+  Azure on 2026-09-13 (#152) and `apps/*/cloudbuild.yaml` deleted. The Cloud
+  Run versions are in commit `3dcc21e` if the live GCP stack ever needs another
+  deploy before it is decommissioned.
 
 Portability was verified and still holds: a plain `postgresql` provider with no
 `directUrl`, a bare `PrismaClient` with no driver adapter, and no reference to
@@ -289,28 +293,43 @@ web is deployed.
 
 ```mermaid
 flowchart LR
-    L["scripts/deploy.sh"] --> B1["az acr build — api"]
-    B1 --> D1["az containerapp update — api"]
+    L["scripts/deploy.sh env-file"] --> B1["az acr build — api<br/>and migrate"]
+    B1 --> M["Container Apps Job<br/>prisma migrate deploy<br/>as pb_migrate, then deleted"]
+    M --> D1["az containerapp create/update — api"]
     D1 --> URL["read api FQDN"]
     URL --> B2["az acr build — web<br/>NEXT_PUBLIC_API_URL baked in"]
-    B2 --> D2["az containerapp update — web"]
+    B2 --> D2["az containerapp create/update — web"]
     D2 --> CORS["az containerapp update — api<br/>CORS_ORIGIN = web FQDN"]
 ```
 
-`prisma migrate deploy` has to land somewhere in this sequence, before the api
-serves traffic against a changed schema. The Prisma Migrate adoption deferred
-that choice to this rewrite; see §6.
+Both images are built before anything is applied or deployed, so a build that
+fails cannot leave a migrated database behind. The migration runs as its own
+job, as `pb_migrate`, and a non-zero exit stops the deploy with nothing
+updated — see §6 and `docs/decisions.md` 2026-09-13.
 
-Rewrite work, not yet started:
+Done 2026-09-13, #152:
 
-- [ ] `scripts/deploy.sh` — `gcloud builds submit` → `az acr build`,
+- [x] `scripts/deploy.sh` — `gcloud builds submit` → `az acr build`,
       `gcloud run deploy` → `az containerapp create/update`,
-      `gcloud run services describe` → `az containerapp show`.
-- [ ] `scripts/deploy.env.example` — `PROJECT`/`REGION`/`REPO` become the Azure
-      names. The 12 application secrets are unchanged.
-- [ ] Delete `apps/api/cloudbuild.yaml` and `apps/web/cloudbuild.yaml`.
-- [ ] `--min-instances=0` becomes `--min-replicas 0`. **This flag is the
+      `gcloud run services describe` → `az containerapp show`. One env file per
+      environment, named in a coloured confirmation banner like the other two
+      scripts, and refused unless it is owner-only.
+- [x] `scripts/deploy.env.example` — `PROJECT`/`REGION`/`REPO` become
+      `RESOURCE_GROUP`, `ACR_NAME`, `ACA_ENV`, `ACA_API`, `ACA_WEB` and
+      `ENVIRONMENT`. The application secrets are unchanged apart from the
+      second connection string.
+- [x] Delete `apps/api/cloudbuild.yaml` and `apps/web/cloudbuild.yaml`.
+- [x] `--min-instances=0` becomes `--min-replicas 0`. **This flag is the
       difference between $0 and burning credit.**
+- [x] `migrate` stage in `apps/api/Dockerfile`, carrying the Prisma CLI and the
+      migration history that the `runner` stage deliberately does not.
+
+Not yet run against anything. The first real deploy is staging, and it needs
+§6's cutover first: the database it would migrate is still on Neon.
+
+Images are pulled with a system-assigned identity holding `AcrPull`, so no
+registry password is stored in an app or a job. The registry has no admin user
+enabled, and does not need one.
 
 ### Cold starts
 
@@ -373,10 +392,17 @@ Schema changes go through `prisma migrate deploy` (see `DEPLOYMENT.md`,
 container `CMD` — Container Apps runs multiple replicas and concurrent DDL is
 unsafe.
 
-**Open, and owned by this move:** whether release runs a one-shot Container Apps
-Job for `migrate deploy` or keeps the manual step. Deferred here by the Prisma
-Migrate adoption because `scripts/deploy.sh` is being replaced anyway. Decide it
-with the deploy rewrite in §5, not after.
+**Settled 2026-09-13 with the deploy rewrite:** release runs a one-shot
+Container Apps Job for `migrate deploy`, started by `scripts/deploy.sh` before
+the api is updated and deleted afterwards. Keeping it manual was not the
+cheaper option it looked like — the private hostname means a manual run needs
+the same job, so the only difference was whether someone had to remember it.
+See `docs/decisions.md` 2026-09-13, "`migrate deploy` runs as a one-shot
+Container Apps Job".
+
+The paragraph above still holds for the cutover itself: the one-off
+`migrate status` check on the restored server is run by hand, against a
+`DATABASE_URL` passed inline, before `scripts/deploy.sh` ever points at Azure.
 
 ## 7. Cost against the credit
 
@@ -493,7 +519,7 @@ authority.*
       else will tell you staging auto-restarted after seven days.
 - [ ] Container Registry image cleanup policy.
 - [ ] Custom domain, Apple sign-in.
-- [x] Delete `memory/project_prerelease.md`, switch to `prisma migrate deploy`. Done 2026-09-12; where `migrate deploy` runs on release is still open, see §6.
+- [x] Delete `memory/project_prerelease.md`, switch to `prisma migrate deploy`. Done 2026-09-12. Where `migrate deploy` runs on release was settled 2026-09-13 in #152: a one-shot Container Apps Job, started by `scripts/deploy.sh`. See §5.
 
 ## Progress
 
@@ -517,11 +543,11 @@ authority.*
 | Storage accounts, one per environment | ⬜ |
 | Photo service ported from the S3 SDK to Azure Blob | ⬜ `apps/api/src/services/buddyPhoto.service.ts`, its test, `deploy.sh`, `deploy.env.example`, `next.config.ts` remote patterns |
 | Azurite in `docker-compose` for local photo upload | ⬜ |
-| `scripts/deploy.sh` rewritten for Azure, parameterised by environment | ⬜ |
+| `scripts/deploy.sh` rewritten for Azure, parameterised by environment | ✅ 2026-09-13, #152 — written, not yet run against Azure |
 | Neon baselined onto Prisma Migrate — enum remap, then drift, then `migrate resolve` for both directories | ✅ 2026-09-12, #142 |
 | Prod built from `0_init` with `migrate deploy` | ⬜ |
 | Staging migration history reconciled after restore | ⬜ |
-| Where `migrate deploy` runs on release, decided | ⬜ deferred here by the Prisma Migrate adoption |
+| Where `migrate deploy` runs on release, decided | ✅ 2026-09-13, #152 — one-shot Container Apps Job, run by `scripts/deploy.sh` as `pb_migrate` |
 | Data migrated off Neon | ⬜ staging only; prod has no data to move |
 | Photos migrated off R2 | ⬜ sequence **after** the cutover; not on its critical path |
 | Nightly `pg_dump` job + 30-day lifecycle rule, prod | ⬜ second Container Apps Job, in `snet-apps`, image carrying `pg_dump` |

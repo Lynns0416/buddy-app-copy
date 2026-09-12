@@ -323,31 +323,43 @@ and still ends in `CMD … dev`; `--target runner` is the production image —
 Manual, driven by `scripts/deploy.sh` — no pipeline. Terraform was rejected;
 see `docs/decisions.md` (2026-09-08, revisited 2026-09-10).
 
-> **This section describes the live Cloud Run deploy, which is being replaced.**
-> The Azure equivalent keeps the same ordering — `az acr build` in place of
-> Cloud Build, `az containerapp update` in place of `gcloud run deploy` — because
-> the ordering exists to solve the build-arg and CORS dependency shown below, not
-> anything GCP-specific. Infrastructure is provisioned separately by
-> `scripts/azure-provision.sh`. See `docs/deploy-plan.md` §5.
-
 ```sh
-scripts/deploy.sh path/to/deploy.env   # template: scripts/deploy.env.example
+scripts/deploy.sh scripts/deploy.stg.env   # template: scripts/deploy.env.example
 ```
 
-Images are built on Cloud Build rather than locally, because Cloud Run needs
-`linux/amd64` and the dev machines are arm64.
+One config file per environment, owner-only and gitignored, naming the Azure
+resources and carrying every application secret. The script refuses a file
+anyone else can read, and names the target in a coloured banner — red for prod
+— before it builds anything.
+
+Infrastructure is provisioned separately, and rarely: `scripts/azure-provision.sh`
+for the resource group, registry, VNet, Container Apps environment and Postgres
+server, then `scripts/azure-db-roles.sh` for the two database roles, once per
+environment. The deploy script creates nothing but the two apps.
+
+Images are built with `az acr build`, server-side, because the apps need
+`linux/amd64` and the dev machines are arm64. Both are pulled with a
+system-assigned identity holding `AcrPull`, so no registry password is stored.
 
 ```mermaid
 flowchart TD
-    C["deploy.env — untracked"] --> B1
-    B1["Cloud Build: api"] --> D1["Cloud Run deploy: api"]
-    D1 -->|"api URL"| B2["Cloud Build: web<br/>NEXT_PUBLIC_* as build args"]
-    B2 --> D2["Cloud Run deploy: web"]
-    D2 -->|"web URL"| P["update api<br/>CORS_ORIGIN, WEB_BASE_URL"]
+    C["deploy.stg.env — untracked, owner-only"] --> B1
+    B1["az acr build: api + migrate"] --> MIG["Container Apps Job:<br/>prisma migrate deploy as pb_migrate<br/>deleted after the run"]
+    MIG --> D1["containerapp create/update: api"]
+    D1 -->|"api FQDN"| B2["az acr build: web<br/>NEXT_PUBLIC_* as build args"]
+    B2 --> D2["containerapp create/update: web"]
+    D2 -->|"web FQDN"| P["update api<br/>CORS_ORIGIN, WEB_BASE_URL"]
     P --> M["manual: add web host to<br/>Firebase authorized domains"]
 ```
 
 The order is forced: `NEXT_PUBLIC_*` is inlined into the web bundle at build
 time, so the api must be deployed before web is built — and the api's
-`CORS_ORIGIN` then needs web's URL, so the api is patched last. Both services
-run `--min-instances=0`; that flag is the difference between $0 and a real bill.
+`CORS_ORIGIN` then needs web's URL, so the api is patched last. Migrations run
+before the api is updated, and a failed migration stops the deploy with nothing
+changed; see `docs/decisions.md` 2026-09-13. Both apps run `--min-replicas 0`;
+that flag is the difference between $0 and a real bill.
+
+> **The live staging stack is still Cloud Run**, until the database cutover in
+> `docs/deploy-plan.md` §6. Its `gcloud` deploy script and the two
+> `cloudbuild.yaml` files were replaced on 2026-09-13; commit `3dcc21e` holds
+> them if that stack needs one more deploy before it is decommissioned.

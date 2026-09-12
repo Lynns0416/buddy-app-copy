@@ -13,7 +13,7 @@ dist/
 .env.local
 apps/api/.env
 apps/web/.env.local
-deploy.env
+deploy*.env
 azure*.env
 
 # firebase

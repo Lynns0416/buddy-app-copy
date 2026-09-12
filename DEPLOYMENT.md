@@ -203,18 +203,25 @@ with `prisma migrate deploy`. `prisma db push` is no longer used anywhere — se
   branch if the result differs from `schema.prisma`, so a schema edit without a
   migration cannot merge.
 
-### No deploy step applies DDL
+### Where `migrate deploy` runs
 
-`scripts/deploy.sh` builds images and runs `gcloud run deploy`. It issues no
-schema command, and the production `runner` stage in `apps/api/Dockerfile` does
-not ship the Prisma CLI. So a deploy never alters the database: someone runs
-`prisma migrate deploy` by hand against the target, never from a container
-`CMD`, because Cloud Run and Container Apps both run several replicas at once.
+`scripts/deploy.sh` applies pending migrations itself, between building the
+images and updating the api: it builds a second image from the `migrate` stage
+of `apps/api/Dockerfile`, runs it as a one-shot Container Apps Job, deletes the
+job, and only then deploys. A failed migration stops the deploy with nothing
+updated, and `migrate deploy` is a no-op when nothing is pending. Decided
+2026-09-13; see `docs/decisions.md`, "`migrate deploy` runs as a one-shot
+Container Apps Job".
 
-The consequence is that code and schema move independently. A release whose
-code expects a schema the server does not have will run, and fail at the rows
-that disagree rather than at boot. `prisma migrate status` against the target
-answers whether that gap exists.
+It is a job because the database has no public endpoint and its hostname
+resolves only inside the VNet, so neither `migrate deploy` nor `migrate status`
+can be run from a laptop at all. A job in `snet-apps` is the only way to reach
+the schema.
+
+The production `runner` image still ships no Prisma CLI, and no migration runs
+from a container `CMD`: Container Apps runs several replicas and concurrent DDL
+is unsafe. The dev container in Docker Compose is the one exception, and it is
+safe there because Compose runs exactly one.
 
 **On Azure, `migrate deploy` connects as `pb_migrate`, never as the api's own
 `DATABASE_URL` and never as the server admin.** The api connects as `pb_app`,
@@ -226,10 +233,6 @@ role creates. The fix is to re-run `scripts/azure-db-roles.sh`, whose catch-up
 grant covers existing objects. Both connection strings come from
 `scripts/azure.env`; see `docs/deploy-plan.md` §4.1 and `docs/decisions.md`
 2026-09-12, "Two database roles per server".
-
-**Open:** where `migrate deploy` runs on release. Deferred until the move to
-Azure Container Apps lands (`docs/deploy-plan.md`), because the answer is
-host-specific and `scripts/deploy.sh` is being replaced.
 
 ### Baselining an existing database
 

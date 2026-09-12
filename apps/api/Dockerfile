@@ -35,6 +35,20 @@ RUN pnpm exec prisma generate --schema /app/prisma/schema.prisma
 # anonymous one is, so reconcile it against the lockfile on every start.
 CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm --filter @peace-buddy/types build && pnpm exec prisma generate --schema /app/prisma/schema.prisma && pnpm exec prisma migrate deploy --schema /app/prisma/schema.prisma && pnpm --filter @peace-buddy/api dev"]
 
+# --- migrate (one-shot job image; never serves traffic) ---------------------
+# `prisma migrate deploy` needs the Prisma CLI and the migration history, and
+# the runner stage below carries neither. This stage is built and run as its
+# own Container Apps job by scripts/deploy.sh, once per release, before the api
+# is updated. It is never the api's CMD: Container Apps runs several replicas
+# and concurrent DDL is unsafe.
+#
+# `prisma/` arrives in the manifests stage, so the migration history is already
+# here. No `prisma generate` — applying migrations does not need a client.
+FROM deps AS migrate
+ENV NODE_ENV=production
+USER node
+CMD ["/app/node_modules/.bin/prisma", "migrate", "deploy", "--schema", "/app/prisma/schema.prisma"]
+
 # --- build ------------------------------------------------------------------
 FROM deps AS build
 COPY tsconfig.base.json ./

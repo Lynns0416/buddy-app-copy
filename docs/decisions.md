@@ -12,6 +12,62 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — `migrate deploy` runs as a one-shot Container Apps Job
+
+**Decision:** `scripts/deploy.sh` applies pending migrations itself, between
+building the images and updating the api. It builds a second image from a new
+`migrate` stage in `apps/api/Dockerfile` — the `deps` layer, which already
+carries the Prisma CLI and `prisma/migrations/` — creates a Manual Container
+Apps Job from it, runs it as `pb_migrate`, and deletes the job afterwards. A
+non-zero exit stops the deploy with nothing updated. This closes the question
+deferred by "Prisma Migrate replaces db push" below.
+
+**Why a job at all — this part is not a choice.** The Postgres server has no
+public endpoint and its hostname resolves only inside the VNet, so anything
+that touches the schema has to run from inside `snet-apps`. Nothing already in
+there can: the api's `runner` image ships no Prisma CLI, and a container `CMD`
+is unsafe because Container Apps runs several replicas and concurrent DDL is
+not. So "keep it manual" and "run it on release" need the **same** job. The
+only question left is who starts it.
+
+**Why the deploy script starts it:** the failure being guarded against is a
+release whose code expects a schema the database does not have. It boots fine
+and fails later, at the rows that disagree. A step that has to be remembered
+does not prevent that; a step in the script does. `migrate deploy` is a no-op
+when nothing is pending, so an ordinary deploy pays one job execution of a few
+seconds.
+
+**Rejected — gate the deploy with `migrate status`, apply by hand.** This was
+option 3 in #152, and it assumed the check could run from the laptop. It
+cannot, for the networking reason above: `migrate status` needs a job in the
+VNet exactly as the apply does. The gate therefore costs what applying costs,
+and still leaves the apply to be remembered.
+
+**Rejected — keep the job between deploys.** It would save recreating the job
+and its `AcrPull` role assignment on every run, at the price of leaving
+`pb_migrate`'s password in a job's secrets permanently. The role that can drop
+every table holding buddy personal data gets no resting place;
+`scripts/azure-db-roles.sh` set that precedent and this follows it. The cost is
+real and accepted: a fresh identity means a fresh role assignment, and a first
+execution can fail to pull the image while it propagates. Rerunning the deploy
+is safe.
+
+**Rejected — `migrate deploy` in the api container's `CMD`.** Several replicas
+start at once, so it races by construction. The dev container does exactly this
+and that stays correct, because Compose runs one.
+
+**Consequence for the deploy config:** it now carries two connection strings,
+`DATABASE_URL` as `pb_app` and `MIGRATE_DATABASE_URL` as `pb_migrate`, and
+`scripts/deploy.sh` refuses a file where the two are equal. The file was
+owner-only by convention; the script now enforces it, as the other two Azure
+scripts do.
+
+**Current state:** `scripts/deploy.sh`, `scripts/deploy.env.example`,
+`apps/api/Dockerfile` (`migrate` stage), `DEPLOYMENT.md` "Schema Changes",
+`docs/deploy-plan.md` §5.
+
+---
+
 ## 2026-09-12 — Two database roles per server, neither of them the admin
 
 **Decision:** Each Postgres server gets **two** login roles, created by
@@ -143,7 +199,7 @@ execution. That is the progress row in `docs/deploy-plan.md` and the database's
 own state.
 
 **Current state:** `DEPLOYMENT.md` "Baselining an existing database",
-`docs/prisma-migrate-adoption.md`, `docs/deploy-plan.md` §6.
+`docs/deploy-plan.md` §6.
 
 ---
 
@@ -230,11 +286,11 @@ not the SQL generation, it is `_prisma_migrations` recording what a given
 database has. Without it, "does staging have this change" stays a question
 answered from memory.
 
-**Deferred — where `migrate deploy` runs on release.** The production image
-ships no Prisma CLI and `scripts/deploy.sh` applies no DDL, so a one-shot
-migration job is real work, and `scripts/deploy.sh` is being replaced by the
-Azure Container Apps move. Decide it there, `docs/deploy-plan.md` §6. Until
-then it is a manual step, as `db push` was.
+**Settled 2026-09-13 — where `migrate deploy` runs on release.** Deferred here
+to the Azure move, and answered by it: `scripts/deploy.sh` runs a one-shot
+Container Apps Job as `pb_migrate` before the api is updated, and the
+production image still ships no Prisma CLI. See the entry at the top of this
+file, "`migrate deploy` runs as a one-shot Container Apps Job".
 
 **Enforced in CI, not by convention.** A schema edit with no migration file
 would otherwise pass every check and only fail at a query after deploy, so
