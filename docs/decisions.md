@@ -12,6 +12,58 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — The deploy script prunes the registry; web images are tagged per environment
+
+**Decision:** The last step of `scripts/deploy.sh` deletes images from the
+`api`, `migrate` and `web` repositories. It keeps every image an active revision
+or a job in `rg-peace-buddy` references, from either environment, and the newest
+five tagged images per repository. Everything else goes, untagged manifests
+included. Web images are tagged `<commit>-<environment>` and no longer also
+`latest`; api and migrate keep the bare commit tag.
+
+**Why:** Basic includes 10 GB. Three staging deploys had used 1.34 GB by
+2026-09-13, so the limit is roughly twenty deploys away. Images are added only
+by a deploy, so the deploy is where they are removed.
+
+**Why "referenced", not age or count alone:** prod and staging push to the
+same repositories and every app scales to zero, so a cold replica pulls its
+image again. A purge by age or count deletes prod's live image once staging
+has deployed enough times since prod last did, and prod then fails at its next
+cold start, long after the purge ran. The prune refuses to delete anything
+unless the images it just deployed appear in the referenced list, so a failed
+or partial query cannot read as "nothing is running".
+
+**Why the web tag changed:** the web image has `NEXT_PUBLIC_API_URL` baked in,
+so the same commit gives a different image per environment. Under a shared
+`web:<commit>` tag, deploying a commit to the second environment took the tag
+from the first, and the first environment's next cold start would pull a bundle
+calling the other api. Prod had never been deployed, so it had not happened.
+The referenced-image check also depends on a tag naming exactly one image.
+`latest` was dropped because, with two environments pushing to one repository,
+it named neither.
+
+**Rejected — the ACR retention policy, which is what #160 names:** it is
+Premium-only and deletes untagged manifests only, so it would not remove old
+tagged builds at all.
+
+**Rejected — a scheduled ACR Task running `acr purge`:** works on Basic, but it
+filters on repository, tag, age and count only, so it cannot see which images
+are running. It would also be another scheduled resource to provision, for
+growth that only happens during a deploy.
+
+**Known residual:** rebuilding an existing tag (a second `-dirty` deploy of one
+commit, or api built again for the other environment) moves the tag to a new
+digest. The old digest becomes untagged and is deleted. Replicas already
+running are unaffected, and new ones pull the rebuilt image from the same
+source. The five are counted per repository across both environments, so
+after five staging deploys prod may have no earlier image left; rolling back
+then means deploying that commit again.
+
+**Current state:** `scripts/deploy.sh` step 7, `docs/deploy-plan.md` §5 and §9,
+`docs/architecture.md` "Deploy".
+
+---
+
 ## 2026-09-13 — Blob is reached by one identity per environment, with shared-key auth off
 
 **Decision:** `scripts/azure-provision.sh` step 7 creates, per environment, a

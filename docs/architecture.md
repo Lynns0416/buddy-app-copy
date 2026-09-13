@@ -343,8 +343,12 @@ server and Blob storage account, then `scripts/azure-db-roles.sh` for the two da
 environment. The deploy script creates nothing but the two apps.
 
 Images are built with `az acr build`, server-side, because the apps need
-`linux/amd64` and the dev machines are arm64. Both are pulled with a
-system-assigned identity holding `AcrPull`, so no registry password is stored.
+`linux/amd64` and the dev machines are arm64. Apps and the migration job pull
+them with one user-assigned identity holding `AcrPull`, so no registry password
+is stored. api and migrate are tagged with the commit; web, which carries the
+environment's api URL, with the commit and the environment. The last step
+deletes old images, keeping any image an app or job still references and the
+newest five per repository; see `docs/decisions.md` 2026-09-13.
 
 ```mermaid
 flowchart TD
@@ -354,7 +358,8 @@ flowchart TD
     D1 -->|"api FQDN"| B2["az acr build: web<br/>NEXT_PUBLIC_* as build args"]
     B2 --> D2["containerapp create/update: web"]
     D2 -->|"web FQDN"| P["update api<br/>CORS_ORIGIN, WEB_BASE_URL"]
-    P --> M["manual: add web host to<br/>Firebase authorized domains"]
+    P --> PR["prune registry<br/>keep referenced + newest 5"]
+    PR --> M["manual: add web host to<br/>Firebase authorized domains"]
 ```
 
 The order is forced: `NEXT_PUBLIC_*` is inlined into the web bundle at build

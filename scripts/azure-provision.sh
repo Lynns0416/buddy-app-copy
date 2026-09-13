@@ -112,8 +112,9 @@ for ns in Microsoft.App Microsoft.ContainerRegistry Microsoft.DBforPostgreSQL Mi
 done
 
 # --- 3. Container registry ---------------------------------------------
-# Where the api and web images live. Basic includes 10GB, far more than two
-# Node images need. Images are built server-side with `az acr build`, so
+# Where the api and web images live. Basic includes 10GB and has no retention
+# policy; scripts/deploy.sh deletes old images at the end of every deploy.
+# Images are built server-side with `az acr build`, so
 # nothing is pushed from a laptop — which also sidesteps ARM/x86 mismatches.
 step "Container registry $ACR_NAME"
 if ! exists az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query name -o tsv; then

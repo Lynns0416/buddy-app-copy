@@ -84,6 +84,19 @@ fi
 TAG="$(git rev-parse --short HEAD)"
 [ -z "$(git status --porcelain)" ] || TAG="${TAG}-dirty"
 
+# The web image is built per environment — NEXT_PUBLIC_API_URL is baked into
+# it — and both environments push to the same repository. Tagged by commit
+# alone, the second environment to deploy a commit takes over the first one's
+# tag, and the first environment's next cold start pulls a bundle that calls
+# the other api. api and migrate carry nothing per environment and keep the
+# plain commit tag.
+case "$ENVIRONMENT" in
+  *[!A-Za-z0-9_.-]*)
+    echo "error: ENVIRONMENT '$ENVIRONMENT' cannot be part of an image tag." >&2
+    exit 1 ;;
+esac
+WEB_TAG="${TAG}-${ENVIRONMENT}"
+
 # --- Confirm the target ------------------------------------------------
 # Red for production, blue for anything else, matching the other two scripts.
 if [ -t 1 ]; then
@@ -106,7 +119,7 @@ cat <<CONFIRM
   Resource group   $RESOURCE_GROUP
   Apps environment $ACA_ENV
   Apps             $ACA_API, $ACA_WEB
-  Image tag        $TAG
+  Image tag        $TAG (web: $WEB_TAG)
   Web URL          ${WEB_HOSTNAME:-<generated>}
   Api URL          ${API_HOSTNAME:-<generated>}
 
@@ -140,7 +153,7 @@ host_of() {
 
 ACR_LOGIN="$(az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query loginServer -o tsv)"
 API_IMAGE="${ACR_LOGIN}/api:${TAG}"
-WEB_IMAGE="${ACR_LOGIN}/web:${TAG}"
+WEB_IMAGE="${ACR_LOGIN}/web:${WEB_TAG}"
 MIGRATE_IMAGE="${ACR_LOGIN}/migrate:${TAG}"
 
 # --- 1. Build the api and migration images -----------------------------
@@ -319,8 +332,8 @@ echo "  api: $API_URL"
 # Ingress on the api stays external because the browser calls it directly:
 # NEXT_PUBLIC_API_URL is inlined into the client bundle, and CORS_ORIGIN below
 # exists for exactly that cross-origin call.
-step "Build web:${TAG}"
-az acr build --registry "$ACR_NAME" --image "web:${TAG}" --image "web:latest" \
+step "Build web:${WEB_TAG}"
+az acr build --registry "$ACR_NAME" --image "web:${WEB_TAG}" \
   --file apps/web/Dockerfile --target runner \
   --build-arg "NEXT_PUBLIC_API_URL=${API_URL}" \
   --build-arg "NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}" \
@@ -359,6 +372,84 @@ if [ "$NEW_WEB_FQDN" != "${WEB_FQDN:-}" ]; then
   step "Point api at web"
   az containerapp update -n "$ACA_API" -g "$RESOURCE_GROUP" \
     --set-env-vars "CORS_ORIGIN=${WEB_URL}" "WEB_BASE_URL=${WEB_URL}" --output none
+fi
+
+# --- 7. Prune the registry ---------------------------------------------
+# Every deploy adds an api, a migrate and a web image, and Basic includes 10GB.
+# Azure's retention policy is no help: it deletes untagged manifests only, and
+# only on Premium. A deploy is the only thing that adds images, so it is also
+# what removes them.
+#
+# Prod and staging push to the same repositories and every app scales to zero,
+# so a cold replica pulls its image again: deleting an image an app still
+# references breaks that app at its next cold start, not now. Kept: every image
+# a container app or job in the resource group references, from either
+# environment, and the newest $KEEP_IMAGES tagged images in each repository.
+# Everything else is deleted, including the untagged manifests a rebuilt tag
+# leaves behind. See docs/decisions.md 2026-09-13.
+#
+# A failure here leaves extra images behind, never a broken deploy, so it warns
+# rather than exits.
+KEEP_IMAGES=5
+IN_USE=""
+
+referenced() { case $'\n'"$IN_USE"$'\n' in *$'\n'"$1"$'\n'*) return 0 ;; esac; return 1; }
+
+prune_registry() {
+  local repo digest tags tag rank keep apps app manifests
+  apps="$(az containerapp list -g "$RESOURCE_GROUP" --query "[].name" -o tsv 2>/dev/null)" || return 1
+  # Every active revision's image as well as each app's template. In single
+  # revision mode the previous revision keeps serving until the new one is
+  # ready, and for good if it never is, and a cold start pulls its image again.
+  # `revision list` without --all returns active revisions only.
+  IN_USE="$(
+    az containerapp list -g "$RESOURCE_GROUP" \
+      --query "[].properties.template.containers[].image | []" -o tsv 2>/dev/null &&
+    az containerapp job list -g "$RESOURCE_GROUP" \
+      --query "[].properties.template.containers[].image | []" -o tsv 2>/dev/null &&
+    while read -r app; do
+      [ -n "$app" ] || continue
+      az containerapp revision list -n "$app" -g "$RESOURCE_GROUP" \
+        --query "[].properties.template.containers[].image | []" -o tsv 2>/dev/null || exit 1
+    done <<<"$apps"
+  )" || return 1
+  # An empty or partial answer would read as "nothing is running". This
+  # deploy's own two images must be in it, or nothing is deleted.
+  if ! referenced "$API_IMAGE" || ! referenced "$WEB_IMAGE"; then
+    echo "  could not confirm which images are in use." >&2
+    return 1
+  fi
+
+  for repo in api migrate web; do
+    # Into a variable first: a failed listing read straight from a process
+    # substitution is indistinguishable from an empty repository, and the prune
+    # would report success having checked nothing.
+    manifests="$(az acr manifest list-metadata -r "$ACR_NAME" -n "$repo" \
+      --orderby time_desc --only-show-errors -o tsv \
+      --query "[].[digest, join(' ', tags || \`[]\`)]")" || return 1
+    rank=0
+    while IFS=$'\t' read -r digest tags; do
+      [ -n "$digest" ] || continue
+      keep=""
+      if [ -n "$tags" ]; then
+        rank=$((rank + 1))
+        [ "$rank" -gt "$KEEP_IMAGES" ] || keep=1
+      fi
+      if referenced "${ACR_LOGIN}/${repo}@${digest}"; then keep=1; fi
+      while read -r tag; do
+        if [ -n "$tag" ] && referenced "${ACR_LOGIN}/${repo}:${tag}"; then keep=1; fi
+      done <<<"${tags// /$'\n'}"
+      [ -z "$keep" ] || continue
+      echo "  delete ${repo}@${digest:0:19} ${tags:-(untagged)}"
+      az acr repository delete -n "$ACR_NAME" --image "${repo}@${digest}" \
+        --yes --output none || return 1
+    done <<<"$manifests"
+  done
+}
+
+step "Prune registry"
+if ! prune_registry; then
+  echo "  WARNING: registry not pruned. The deploy itself is complete." >&2
 fi
 
 step "Done"

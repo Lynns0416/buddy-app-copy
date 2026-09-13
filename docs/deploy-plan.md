@@ -306,6 +306,7 @@ flowchart LR
     URL --> B2["az acr build — web<br/>NEXT_PUBLIC_API_URL baked in"]
     B2 --> D2["az containerapp create/update — web"]
     D2 --> CORS["az containerapp update — api<br/>CORS_ORIGIN = web FQDN"]
+    CORS --> PRUNE["az acr repository delete<br/>all but referenced + newest 5"]
 ```
 
 Both images are built before anything is applied or deployed, so a build that
@@ -582,7 +583,12 @@ authority.*
       2026-09-13 by `scripts/azure-cost-alerts.sh`: an annual subscription
       budget, a monthly budget on the staging server alone, and a daily anomaly
       alert. Amounts and limits in `azure-costs.md`, "Cost alerts".
-- [ ] Container Registry image cleanup policy.
+- [x] Container Registry image cleanup. Written 2026-09-13, #160, as the last
+      step of `scripts/deploy.sh` rather than a registry policy, which Basic
+      does not have: it keeps every image an active revision or job references
+      and the newest five per repository. Web images are now tagged per
+      environment. Dry-run against the live registry only; like the rest of
+      `deploy.sh` (§5), not yet run in a deploy. See `decisions.md` 2026-09-13.
 - [ ] Custom domain, Apple sign-in.
 - [x] Delete `memory/project_prerelease.md`, switch to `prisma migrate deploy`. Done 2026-09-12. Where `migrate deploy` runs on release was settled 2026-09-13 in #152: a one-shot Container Apps Job, started by `scripts/deploy.sh`. See §5.
 
