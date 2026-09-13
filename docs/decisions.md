@@ -115,6 +115,84 @@ staging running, which is what the manual start/stop model exists to avoid.
 
 ---
 
+## 2026-09-13 — `ci`'s path filter lives on the steps, not on `on:`
+
+**Decision:** `.github/workflows/ci.yml` keeps an unfiltered `on:`. A first
+step, `dorny/paths-filter@v4`, sets `code` on pull requests, and every step
+from *Install dependencies* down is guarded on
+`github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'`.
+*Notify Slack* guards on `!= 'false'` instead, so that an unset `code` — the
+filter step or anything ahead of it having failed — still notifies rather than
+going red in silence. The job always reports; on a PR that changes nothing it
+checks, it runs no check and reports success. See `docs/architecture.md`
+§CI/CD.
+
+**Why not `on: pull_request: paths:`** — a workflow skipped by a path filter
+reports **no status at all**, not a passing one, so it can never satisfy a
+required status check. The `shellcheck` entry below reaches the opposite
+conclusion from the same mechanism — but note that its stated reason repeats
+the same unverified premise corrected here; its decision to stay un-required
+is unaffected.
+
+**The gate is not actually armed today.** Ruleset `main` (id 15242620) is
+`enforcement: active` and names `ci` as its one required check, with
+`strict_required_status_checks_policy` and `do_not_enforce_on_create` both
+`false` — but `conditions.ref_name.include` is empty, so it matches no refs. As
+of 2026-09-13 `GET /repos/plab-nagasaki/peace-buddy/rules/branches/main`
+returns `[]` and `GET .../branches/main` reports `protected: false`; the
+`deletion` and `required_linear_history` rules are equally inert. `on: paths:`
+would therefore work right now. The filter sits on the steps anyway, because a
+workflow that always reports is correct both before and after anyone repairs
+the ref condition, where `on: paths:` stops being mergeable the moment they
+do. **Arming the ruleset is an open question this
+entry does not settle.**
+
+**The filter is a denylist, not an allowlist:** `'**'` minus `docs/**`,
+`**/*.md`, `docker-compose.yml` and `apps/*/Dockerfile`, under
+`predicate-quantifier: some-with-excludes`. An allowlist would silently skip a
+new top-level directory nobody remembered to add; a denylist over-runs instead,
+which is the status quo. The Dockerfiles are safe to skip because `ci` runs
+pnpm directly on the runner and never builds an image.
+
+**`scripts/**` is not excluded**, so the saving is narrower than it looks: it
+applies to a PR that is purely docs and markdown, and most infra PRs touch
+`scripts/**` as well as `docs/**` and still run in full. Kept that way because
+`ci` is not where shell coverage is decided — `shellcheck.yml` is — and
+shrinking `ci`'s must-run set on that argument is a separate call from this one.
+
+**Gated to `pull_request`; pushes to `main` always run in full.** The action
+resolves a base differently for a push (the before-commit, with fetch
+fallbacks), and a post-merge run on `main` is the last check before anyone
+deploys. Not worth the ambiguity to save a run per merge.
+
+**Rejected — splitting the migration drift check into its own path-filtered
+workflow** so `services: shadow-db` could leave `ci`. Services start before the
+first step and cannot be conditioned, so a docs-only PR still pays a Postgres
+container start nothing connects to. Accepted, because the alternative makes
+the only check catching a schema edit with no migration non-required — i.e.
+ignorable — and the container is a fraction of what a full run costs.
+
+**Rejected — dropping `ci` from the ruleset** and filtering `on:` freely.
+Simplest change available, and it discards the merge gate `main` was meant to
+have rather than repairing it.
+
+**Rejected — a companion no-op job also named `ci`** with inverted
+`paths-ignore`, so exactly one of the two always reports. It works, but two
+workflows then have to keep the same job name forever or merges silently break.
+
+**Rejected — pinning `paths-filter` to a commit SHA.** Actions take job-level
+`permissions`, not per-step, so the new action inherits the
+`pull-requests: write` that exists for the coverage comment when it needs only
+read. A SHA would bound a compromised release, at the cost of being the one
+action in the repo not on a major tag and needing manual bumps.
+`davelosert/vitest-coverage-report-action@v2` already holds the same grant, so
+the pin would harden one of two identical exposures.
+
+**Not included — `concurrency` with `cancel-in-progress`.** Worth having, but
+it solves superseded runs, not irrelevant ones. Different change.
+
+---
+
 ## 2026-09-13 — `shellcheck` runs as its own un-required workflow
 
 **Decision:** `.github/workflows/shellcheck.yml` runs

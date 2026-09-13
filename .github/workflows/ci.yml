@@ -15,6 +15,10 @@ jobs:
 
     # Only the migration drift check touches this. Prisma replays
     # prisma/migrations/ into it and drops it again.
+    #
+    # Services start before the first step, so the paths filter cannot reach
+    # them: a docs-only PR still pays the container start. Accepted — see
+    # docs/decisions.md (2026-09-13).
     services:
       shadow-db:
         image: postgres:16
@@ -33,6 +37,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # A workflow skipped by `on: pull_request: paths:` reports no status at
+      # all, not a passing one, so it can never satisfy a required status
+      # check. Ruleset `main` names ci as its required check but matches no
+      # refs, so nothing is enforced as of 2026-09-13 — see
+      # docs/decisions.md. The filter goes on the steps regardless: a job that
+      # always reports is correct whether or not the ruleset is repaired.
+      # It still reports success; it just runs no check.
+      #
+      # A denylist, not an allowlist: a new top-level directory runs CI by
+      # default rather than being skipped silently. scripts/** is deliberately
+      # absent from the exclusions — see docs/decisions.md (2026-09-13).
+      #
+      # pull_request only. Pushes to main always run in full, which avoids
+      # depending on how the action resolves a base for a push.
+      - uses: dorny/paths-filter@v4
+        id: changes
+        if: github.event_name == 'pull_request'
+        with:
+          predicate-quantifier: 'some-with-excludes'
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!docker-compose.yml'
+              - '!apps/*/Dockerfile'
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -42,13 +73,21 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Every step from here down is guarded on the filter — Notify Slack on a
+      # looser comparison, for the reason given there. A new step without one
+      # does not just run when it should not — it runs on a docs-only PR
+      # where Install dependencies was skipped, so node_modules is absent and
+      # it fails. Adding a step means adding the `if:`.
       - name: Install dependencies
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build types
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         run: pnpm --filter @peace-buddy/types build
 
       - name: Generate Prisma client
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         run: pnpm exec prisma generate --schema prisma/schema.prisma
 
       # Nothing else checks that prisma/migrations/ still produces
@@ -56,6 +95,7 @@ jobs:
       # and migrate deploy then builds a database the generated client
       # disagrees with — which surfaces at a query, not at boot.
       - name: Check migrations match schema
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         env:
           SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
         run: |
@@ -74,25 +114,35 @@ jobs:
           esac
 
       - name: Lint
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         run: pnpm lint
 
       - name: Typecheck
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         run: pnpm typecheck
 
       - name: Test (API)
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         run: pnpm --filter @peace-buddy/api test:coverage
 
       - name: Coverage report
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-summary-path: apps/api/coverage/coverage-summary.json
           name: API
 
       - name: Test (Web)
+        if: github.event_name != 'pull_request' || steps.changes.outputs.code == 'true'
         run: pnpm --filter @peace-buddy/web test
 
+      # != 'false', not == 'true'. The filter step carries an implicit
+      # success(), so anything failing ahead of it — checkout, the pnpm or node
+      # setup, the action itself — leaves `code` unset. Comparing against
+      # 'true' would then skip this step and the job would go red with no
+      # notification, which is the failure you can least afford to miss.
       - name: Notify Slack
-        if: always()
+        if: always() && (github.event_name != 'pull_request' || steps.changes.outputs.code != 'false')
         uses: slackapi/slack-github-action@v2
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -302,6 +302,18 @@ to rotate them. See `docs/deploy-plan.md` §4.1.
 `.github/workflows/ci.yml` is the main workflow. It runs on PRs and pushes to
 `main`. **There is no deploy pipeline** — deployment is manual and not yet set up.
 
+`ci` is the check ruleset `main` names as required, so its `on:` trigger is
+deliberately unfiltered — a workflow skipped by `on: paths:` reports no status
+at all and could never satisfy that check. The path filter sits on the steps
+instead: `dorny/paths-filter` runs first on pull requests, and every step from
+*Install dependencies* down — the Slack notification included — is guarded on
+its output. A PR touching only `docs/**`, markdown, `docker-compose.yml` or a
+`Dockerfile` reports a green `ci` having run no check. Everything else,
+`scripts/**` and `prisma/**` included, runs in full; so does every push to
+`main`. The Postgres service starts either way, because services start before
+the first step. As of 2026-09-13 the ruleset matches no refs, so the check is
+not actually enforced — see `docs/decisions.md` (2026-09-13).
+
 `.github/workflows/shellcheck.yml` runs `shellcheck` over every `.sh` under
 `scripts/`, on PRs that touch them and nothing else. It is not a required check;
 see `docs/decisions.md` (2026-09-13). Heredoc bodies are outside what it can
@@ -310,9 +322,13 @@ see. The same command runs locally — see `README.md` "Running Tests".
 ```mermaid
 flowchart LR
     PR["PR or push to main"] --> CI["GitHub Actions — ci.yml"]
-    CI --> Types["build @peace-buddy/types"]
+    CI --> Filter{"PR touches only docs, md,<br/>compose or a Dockerfile?"}
+    Filter -->|yes| Green["report success — no checks run"]
+    Filter -->|no| Install["pnpm install"]
+    Install --> Types["build @peace-buddy/types"]
     Types --> Prisma["prisma generate"]
-    Prisma --> Lint["lint"]
+    Prisma --> Drift["check migrations match schema"]
+    Drift --> Lint["lint"]
     Lint --> TC["typecheck"]
     TC --> TA["test — api, with coverage"]
     TA --> TW["test — web"]
