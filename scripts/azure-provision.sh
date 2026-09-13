@@ -33,6 +33,7 @@ fi
 source "$ENV_FILE"
 
 : "${RESOURCE_GROUP:?}" "${LOCATION:?}" "${ACR_NAME:?}" "${ACA_ENV:?}"
+: "${ACR_PULL_IDENTITY:?}"
 : "${VNET_NAME:?}" "${VNET_CIDR:?}" "${DNS_ZONE:?}"
 : "${SUBNET_APPS:?}" "${SUBNET_APPS_CIDR:?}" "${SUBNET_DB:?}" "${SUBNET_DB_CIDR:?}"
 : "${PG_SERVER:?}" "${PG_VERSION:?}" "${PG_TIER:?}" "${PG_SKU:?}" "${PG_STORAGE_GB:?}"
@@ -115,6 +116,29 @@ if ! exists az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query name -o tsv;
   az acr create --resource-group "$RESOURCE_GROUP" --name "$ACR_NAME" \
     --sku Basic --location "$LOCATION" --output none
 fi
+
+# --- 3.1 Identity that pulls images -------------------------------------
+# Both apps and the migration job authenticate to the registry with this one
+# user-assigned identity rather than with a system-assigned one each. A
+# system-assigned identity is born with the resource that holds it, so its
+# AcrPull assignment is seconds old when the platform first validates the
+# pull and the create fails; the migration job is deleted and recreated on
+# every deploy, which made that a permanent race rather than a first-run
+# cost. This identity outlives every resource that uses it. See
+# docs/decisions.md 2026-09-13.
+step "Pull identity $ACR_PULL_IDENTITY"
+if ! exists az identity show -n "$ACR_PULL_IDENTITY" -g "$RESOURCE_GROUP" --query name -o tsv; then
+  az identity create -n "$ACR_PULL_IDENTITY" -g "$RESOURCE_GROUP" \
+    --location "$LOCATION" --output none
+fi
+ACR_ID="$(az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query id -o tsv)"
+IDENTITY_PRINCIPAL="$(az identity show -n "$ACR_PULL_IDENTITY" -g "$RESOURCE_GROUP" \
+  --query principalId -o tsv)"
+# Idempotent: the role assignment already existing is the normal case on a
+# re-run, and az says so rather than failing.
+az role assignment create --role AcrPull \
+  --assignee-object-id "$IDENTITY_PRINCIPAL" --assignee-principal-type ServicePrincipal \
+  --scope "$ACR_ID" --output none 2>/dev/null || true
 
 # --- 4. Network --------------------------------------------------------
 # The database gets no public endpoint. It is reachable only from inside this

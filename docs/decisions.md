@@ -12,6 +12,78 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — Custom hostnames come from config, not from Azure
+
+**Decision:** `scripts/deploy.sh` takes two optional keys, `WEB_HOSTNAME` and
+`API_HOSTNAME`. When either is set it is used for that app's URL; when blank
+the script falls back to the hostname Container Apps generates, which is what
+both environments run on today. The URLs feed three things: the api's
+`CORS_ORIGIN` and `WEB_BASE_URL`, and `NEXT_PUBLIC_API_URL`, which is baked
+into the web bundle at build time.
+
+**Why:** a custom domain is bound to an app but is not what the ingress
+reports, so it cannot be discovered the way the generated name can. Without
+config the script would rediscover the generated hostname on every run and
+overwrite a correct `CORS_ORIGIN` with it, which fails as a blocked
+cross-origin request from the real domain rather than as a deploy error.
+
+**Rejected — reading the bound custom domain off the app instead:** it is in
+`properties.configuration.ingress.customDomains`, so discovery is technically
+possible. Rejected because an app can carry several bound hostnames and
+nothing in the resource says which one is canonical, so the script would be
+guessing at exactly the value that decides whether the browser's requests are
+allowed. Naming it in config is one line and removes the guess.
+
+**Rejected — dropping the generated hostname once a domain exists:** would
+simplify the script to one path. Rejected because the generated name is what
+every environment starts on, before any DNS exists, and it stays the fallback
+that makes a fresh environment deployable with no records at all.
+
+**Current state:** `scripts/deploy.sh`, `scripts/deploy.env.example`,
+`docs/deploy-plan.md` §5.
+
+---
+
+## 2026-09-13 — Images are pulled with a user-assigned identity
+
+**Decision:** One user-assigned managed identity, `id-peace-buddy-acrpull`,
+created once by `scripts/azure-provision.sh` and granted `AcrPull` on the
+registry once. Both container apps and the migration job authenticate to the
+registry with it. No resource gets a system-assigned identity for this.
+
+**Why:** A system-assigned identity is created together with the resource that
+holds it, so its role assignment is seconds old when the platform first
+validates the image pull — and the platform validates before the assignment has
+propagated. `az containerapp job create --registry-identity system` fails with
+`unable to pull image using Managed identity system`, leaving a job behind that
+still carries the CLI's placeholder image. The first staging deploy died there.
+
+Retrying does not help, and this is the part that makes it a design bug rather
+than a flake: the migration job is deleted and recreated on **every** deploy, so
+its identity is new every time and the race never stops being fresh. An identity
+that outlives the resources using it has the race exactly once, at provisioning,
+against nothing.
+
+**Rejected — retry the image patch until the assignment propagates:** keeps the
+system-assigned identity and adds a poll loop. Rejected because it pays one to
+five minutes of waiting on every single deploy, for a job whose actual work is a
+few seconds of `migrate deploy`, and because it makes the deploy script's
+slowest step a sleep.
+
+**Rejected — the registry's admin user and a password in the deploy config:**
+the one option with no propagation question at all. Rejected for the reason the
+whole design keeps coming back to: a long-lived credential that can pull every
+image, stored in a file and copied into every app's secrets, replacing an
+identity that stores nothing.
+
+**Consequence:** `ACR_PULL_IDENTITY` is now a required key in both config files,
+the Azure one that provisions it and the deploy one that references it.
+
+**Current state:** `scripts/azure-provision.sh` step 3.1, `scripts/deploy.sh`,
+`docs/deploy-plan.md` §5.
+
+---
+
 ## 2026-09-13 — `migrate deploy` runs as a one-shot Container Apps Job
 
 **Decision:** `scripts/deploy.sh` applies pending migrations itself, between

@@ -328,9 +328,26 @@ Not yet run against anything. The first real deploy is staging, and as of
 2026-09-13 nothing stands in front of it: §6's restore moved the data, so the
 database it would migrate is the Azure one.
 
-Images are pulled with a system-assigned identity holding `AcrPull`, so no
-registry password is stored in an app or a job. The registry has no admin user
-enabled, and does not need one.
+Images are pulled with `id-peace-buddy-acrpull`, one user-assigned identity
+created by `azure-provision.sh` and granted `AcrPull` once, so no registry
+password is stored in an app or a job. The registry has no admin user enabled,
+and does not need one. It is user-assigned rather than system-assigned because
+a system-assigned identity is born with the resource holding it and the
+platform validates the pull before the role assignment propagates — which the
+first staging deploy hit, and which the migration job would hit on every run,
+being recreated each time. See `decisions.md` 2026-09-13, "Images are pulled
+with a user-assigned identity".
+
+Both apps answer on the hostname Container Apps generates until a real domain
+is bound. A bound custom domain cannot be discovered from the app the way the
+generated name can, so `WEB_HOSTNAME` and `API_HOSTNAME` in the deploy config
+name it instead; blank means "use the generated one". Binding a hostname is two
+DNS records, a `CNAME` to the app and a `TXT` on `asuid.<host>` carrying the
+app's `customDomainVerificationId`, then `az containerapp hostname add` and
+`hostname bind`, which issues a free managed certificate. Set the config key
+only after that certificate exists — the value is what `CORS_ORIGIN` and the
+web bundle's `NEXT_PUBLIC_API_URL` are built from. See `decisions.md`
+2026-09-13, "Custom hostnames come from config".
 
 ### Cold starts
 

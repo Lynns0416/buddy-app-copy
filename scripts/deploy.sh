@@ -41,7 +41,7 @@ fi
 set -a; . "$CONFIG"; set +a
 
 : "${ENVIRONMENT:?}" "${RESOURCE_GROUP:?}" "${ACR_NAME:?}" "${ACA_ENV:?}"
-: "${ACA_API:?}" "${ACA_WEB:?}"
+: "${ACA_API:?}" "${ACA_WEB:?}" "${ACR_PULL_IDENTITY:?}"
 # pb_app for the api, pb_migrate for the migration job. Never the same role,
 # and never the server admin — see docs/deploy-plan.md §4.1.
 : "${DATABASE_URL:?}" "${MIGRATE_DATABASE_URL:?}"
@@ -61,6 +61,20 @@ if [ "$DATABASE_URL" = "$MIGRATE_DATABASE_URL" ]; then
 fi
 
 cd "$(dirname "$0")/.."
+
+# Images are pulled with a user-assigned identity that outlives every resource
+# here, not with a system-assigned one. A system-assigned identity is created
+# with the resource that holds it, so its AcrPull assignment is seconds old
+# when the platform first validates the pull — and the migration job is
+# deleted and recreated on every deploy, which made that race permanent
+# rather than a first-run cost. See docs/decisions.md 2026-09-13.
+ACR_IDENTITY_ID="$(az identity show -n "$ACR_PULL_IDENTITY" -g "$RESOURCE_GROUP" \
+  --query id -o tsv 2>/dev/null || true)"
+if [ -z "$ACR_IDENTITY_ID" ]; then
+  echo "error: no user-assigned identity '$ACR_PULL_IDENTITY' in $RESOURCE_GROUP." >&2
+  echo "       scripts/azure-provision.sh creates it and grants it AcrPull." >&2
+  exit 1
+fi
 
 # A dirty tree deploys code that is in no commit, so the commit tag would name
 # an image that does not match it. Say so in the tag rather than in a warning
@@ -91,6 +105,8 @@ cat <<CONFIRM
   Apps environment $ACA_ENV
   Apps             $ACA_API, $ACA_WEB
   Image tag        $TAG
+  Web URL          ${WEB_HOSTNAME:-<generated>}
+  Api URL          ${API_HOSTNAME:-<generated>}
 
   Pending migrations are applied to this environment's database before the
   api is updated.
@@ -110,6 +126,14 @@ app_exists() { exists az containerapp show -n "$1" -g "$RESOURCE_GROUP" --query 
 fqdn_of() {
   az containerapp show -n "$1" -g "$RESOURCE_GROUP" \
     --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null
+}
+# A custom domain is bound to an app but is not what the ingress reports, so it
+# cannot be discovered — every deploy would otherwise overwrite the real URL
+# with the generated one. Config wins when set; the generated name is the
+# fallback, so leaving both keys blank keeps the previous behaviour exactly.
+host_of() {
+  local configured="$2"
+  if [ -n "$configured" ]; then printf '%s' "$configured"; else fqdn_of "$1"; fi
 }
 
 ACR_LOGIN="$(az acr show -n "$ACR_NAME" -g "$RESOURCE_GROUP" --query loginServer -o tsv)"
@@ -170,18 +194,17 @@ step "Migrate — job $JOB"
 # Left over from an interrupted run, secret and all.
 az containerapp job delete -n "$JOB" -g "$RESOURCE_GROUP" --yes --output none 2>/dev/null || true
 
-# `--registry-identity system` gives the job a system-assigned identity and
-# grants it AcrPull, so no registry password is stored anywhere. The role
-# assignment is new on every run, because the job is; if the first execution
-# fails to pull the image, that assignment had not propagated yet — rerun the
-# deploy, which is safe.
+# The job pulls with $ACR_PULL_IDENTITY, which already holds AcrPull, so no
+# registry password is stored anywhere and nothing waits on a role assignment
+# to propagate.
 az containerapp job create -n "$JOB" -g "$RESOURCE_GROUP" \
   --environment "$ACA_ENV" \
   --trigger-type Manual \
   --replica-timeout 900 --replica-retry-limit 0 \
   --replica-completion-count 1 --parallelism 1 \
   --image "$MIGRATE_IMAGE" --container-name migrate \
-  --registry-server "$ACR_LOGIN" --registry-identity system \
+  --registry-server "$ACR_LOGIN" --registry-identity "$ACR_IDENTITY_ID" \
+  --mi-user-assigned "$ACR_IDENTITY_ID" \
   --cpu 0.5 --memory 1.0Gi \
   --secrets "database-url=${MIGRATE_DATABASE_URL}" \
   --env-vars "DATABASE_URL=secretref:database-url" \
@@ -259,7 +282,7 @@ plain_var R2_PUBLIC_URL
 # web URL is already known. Carrying it into the api's environment here means
 # the api never runs a revision without a CORS origin, and step 6 becomes a
 # no-op instead of a second revision.
-WEB_FQDN="$(fqdn_of "$ACA_WEB" || true)"
+WEB_FQDN="$(host_of "$ACA_WEB" "${WEB_HOSTNAME:-}" || true)"
 if [ -n "$WEB_FQDN" ]; then
   ENVS+=("CORS_ORIGIN=https://${WEB_FQDN}" "WEB_BASE_URL=https://${WEB_FQDN}")
 fi
@@ -275,7 +298,8 @@ else
   az containerapp create -n "$ACA_API" -g "$RESOURCE_GROUP" \
     --environment "$ACA_ENV" \
     --image "$API_IMAGE" \
-    --registry-server "$ACR_LOGIN" --registry-identity system \
+    --registry-server "$ACR_LOGIN" --registry-identity "$ACR_IDENTITY_ID" \
+    --user-assigned "$ACR_IDENTITY_ID" \
     --ingress external --target-port 8080 \
     --min-replicas 0 --max-replicas 2 \
     --cpu 0.5 --memory 1.0Gi \
@@ -284,7 +308,7 @@ else
     --output none
 fi
 
-API_FQDN="$(fqdn_of "$ACA_API" || true)"
+API_FQDN="$(host_of "$ACA_API" "${API_HOSTNAME:-}" || true)"
 [ -n "$API_FQDN" ] || { echo "error: $ACA_API reports no ingress FQDN." >&2; exit 1; }
 API_URL="https://${API_FQDN}"
 echo "  api: $API_URL"
@@ -313,14 +337,15 @@ else
   az containerapp create -n "$ACA_WEB" -g "$RESOURCE_GROUP" \
     --environment "$ACA_ENV" \
     --image "$WEB_IMAGE" \
-    --registry-server "$ACR_LOGIN" --registry-identity system \
+    --registry-server "$ACR_LOGIN" --registry-identity "$ACR_IDENTITY_ID" \
+    --user-assigned "$ACR_IDENTITY_ID" \
     --ingress external --target-port 3000 \
     --min-replicas 0 --max-replicas 2 \
     --cpu 0.5 --memory 1.0Gi \
     --output none
 fi
 
-NEW_WEB_FQDN="$(fqdn_of "$ACA_WEB" || true)"
+NEW_WEB_FQDN="$(host_of "$ACA_WEB" "${WEB_HOSTNAME:-}" || true)"
 [ -n "$NEW_WEB_FQDN" ] || { echo "error: $ACA_WEB reports no ingress FQDN." >&2; exit 1; }
 WEB_URL="https://${NEW_WEB_FQDN}"
 echo "  web: $WEB_URL"
