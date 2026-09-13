@@ -12,6 +12,38 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — Photos are copied off R2 by name from the dev machine; R2 goes last
+
+**Decision:** `scripts/r2-to-blob.sh` copies every object under `buddy-photos/`
+in the staging R2 bucket into `stpeacebuddystg`'s `photos` container under the
+same name, and fails unless each arrives with the same MD5 and a content type
+matching its extension. It runs from the dev machine: rclone in a container
+downloads, `az --auth-mode login` uploads. Staging only — prod never had a
+working bucket, and its account (#175) starts empty. The database is not
+touched: the photo_key migration already turned stored URLs into these names.
+
+**Why re-runnable, and R2 torn down last:** GCP staging, still what non-dev
+members use, reads and writes the bucket until it is switched off (#156).
+Deleting the bucket or revoking the keys before then breaks photos in the app
+people use, and a photo uploaded there after a copy would be lost. So the copy
+runs again just before GCP staging stops, and teardown follows that.
+
+**Rejected — a Container Apps job, like the database restore:** the restore
+needed the VNet; Blob has a public endpoint. A job would hold the R2 keys as
+secrets and need a Blob role of its own, for ~70 files.
+
+**Rejected — azcopy straight from R2:** its S3 source takes Amazon S3 URLs, not
+R2's endpoint.
+
+**Rejected — copying only the objects a row references:** the rows are reachable
+only inside the VNet, so reading them takes a job. A profile holds more than one
+object only when the api's best-effort delete of a replaced photo failed; the
+script names any such profile rather than guessing which object is current.
+
+**Current state:** `scripts/r2-to-blob.sh`, `docs/deploy-plan.md` Progress.
+
+---
+
 ## 2026-09-13 — The deploy script prunes the registry; web images are tagged per environment
 
 **Decision:** The last step of `scripts/deploy.sh` deletes images from the

@@ -624,10 +624,10 @@ authority.*
 | Where `migrate deploy` runs on release, decided | ✅ 2026-09-13, #152 — one-shot Container Apps Job, run by `scripts/deploy.sh` as `pb_migrate` |
 | Data migrated off Neon | ✅ 2026-09-13, #153 — staging only; prod has no data to move |
 | `DATABASE_URL` repointed at Azure, api redeployed, smoke tested | ⬜ this is the first real deploy, which the restore unblocks; tracked with §5, not #153 |
-| Photos migrated off R2 | ⬜ sequence **after** the cutover; not on its critical path |
+| Photos migrated off R2 | 🟨 #155 — staging copied 2026-09-13 with `scripts/r2-to-blob.sh`, all 6 photos verified by MD5 and content type; prod has nothing on R2. Run again just before GCP staging stops taking uploads, and check photos render after the first Azure staging deploy |
 | Nightly `pg_dump` job + 30-day lifecycle rule, prod | ⬜ second Container Apps Job, in `snet-apps`, image carrying `pg_dump` |
 | One tested restore from a dump | ⬜ the checklist item that actually proves the backup |
-| R2 account torn down — bucket and the five `R2_*` keys; code and deploy config dropped them in #154 | ⬜ after photos move; R2 leaves the stack entirely |
+| R2 account torn down — bucket and the five `R2_*` keys; code and deploy config dropped them in #154 | ⬜ after the last copy **and** after GCP staging stops serving — it still reads and writes the bucket; see `decisions.md` "Photos are copied off R2" |
 | GCP/Neon stack decommissioned — Cloud Run, Neon, the `peace-buddy-staging` project | ⬜ own task after this plan; only once Azure staging is trusted by the non-dev members |
 
 The provisioning script prints a `DATABASE_URL` built from the server admin
