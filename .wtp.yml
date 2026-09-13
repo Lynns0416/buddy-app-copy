@@ -28,6 +28,14 @@ hooks:
     - type: copy
       from: deploy.env
       to: deploy.env
+    # Read by scripts/azure-*.sh. They refuse a file anyone but the owner can
+    # read; the copy keeps the source's mode, so leave the originals at 600.
+    - type: copy
+      from: scripts/azure.env
+      to: scripts/azure.env
+    - type: copy
+      from: scripts/azure.stg.env
+      to: scripts/azure.stg.env
     # Firebase Auth emulator data. Without it a new worktree starts with an
     # empty user table and every seeded login fails. The emulator rewrites this
     # directory on export, so a worktree's copy diverges from the main

@@ -12,6 +12,57 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — Blob is reached by one identity per environment, with shared-key auth off
+
+**Decision:** `scripts/azure-provision.sh` step 7 creates, per environment, a
+StorageV2 Hot LRS account in Japan East (`stpeacebuddy`, `stpeacebuddystg`), a
+private `photos` container, and a user-assigned identity
+(`id-peace-buddy-blob`, `id-peace-buddy-blob-stg`) holding Storage Blob Data
+Contributor on that account alone. The account has shared-key auth and
+anonymous blob access disabled, TLS 1.2 minimum, and a public endpoint.
+
+**Why per environment:** prod's and staging's apps share one Container Apps
+environment, so the identity is the isolation. Staging's api holding only
+staging's identity cannot read prod's photos, the same way it holds only
+staging's `DATABASE_URL`.
+
+**Why shared-key auth off:** #151 says managed identity, not access keys. With
+keys merely unused, a leaked key still reads every photo; disabled, it
+authorises nothing. The cost is that people and scripts authenticate with
+Entra (`--auth-mode login`, and a data role for anyone browsing blobs), which
+#155's copy off R2 and #159's dump job have to follow. Azurite locally is
+unaffected.
+
+**Rejected — reusing `id-peace-buddy-acrpull`:** one identity is shared by every
+app in both environments, so staging could write prod's account.
+
+**Rejected — a system-assigned identity on the api:** the api does not exist
+when provisioning runs, so the role grant would move into `deploy.sh` and race
+the app's first revision — the failure the pull identity was created to
+remove.
+
+**Rejected — scoping the role to the container:** photos are to be served by
+user delegation SAS, and `generateUserDelegationKey` is granted only at account
+scope or above.
+
+**Rejected — a private endpoint:** browsers fetch photos through SAS URLs, so
+the endpoint has to be reachable from the internet, and private endpoints are
+billed. Disabled anonymous access is what keeps it closed.
+
+**Found on the way:** `Microsoft.Storage` was not registered on the
+subscription, although the Progress table marked providers done. Step 2 now
+registers and waits for it. And step 6 could not be rerun against staging: on
+a stopped server `db show` fails, the script took that for a missing database,
+and `db create` hung to a gateway timeout, so step 7 was never reached. Step 6
+now skips the database check unless the server is `Ready`. **Rejected —
+starting the server in the script:** bills compute on every rerun and leaves
+staging running, which is what the manual start/stop model exists to avoid.
+
+**Current state:** `scripts/azure-provision.sh` step 7,
+`scripts/azure.env.example`, `docs/deploy-plan.md` §4 and Progress.
+
+---
+
 ## 2026-09-13 — `shellcheck` runs as its own un-required workflow
 
 **Decision:** `.github/workflows/shellcheck.yml` runs

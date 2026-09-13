@@ -338,8 +338,8 @@ anyone else can read, and names the target in a coloured banner — red for prod
 — before it builds anything.
 
 Infrastructure is provisioned separately, and rarely: `scripts/azure-provision.sh`
-for the resource group, registry, VNet, Container Apps environment and Postgres
-server, then `scripts/azure-db-roles.sh` for the two database roles, once per
+for the resource group, registry, VNet, Container Apps environment, Postgres
+server and Blob storage account, then `scripts/azure-db-roles.sh` for the two database roles, once per
 environment. The deploy script creates nothing but the two apps.
 
 Images are built with `az acr build`, server-side, because the apps need

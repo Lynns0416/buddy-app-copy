@@ -187,11 +187,12 @@ Numbered as the script's own sections are:
 ```mermaid
 flowchart TB
     CONF["0 · confirm the target<br/>coloured banner, red for prod"] --> RG["1 · resource group<br/>the undo button"]
-    RG --> PROV["2 · register providers<br/>App · ContainerRegistry<br/>DBforPostgreSQL · OperationalInsights<br/>Network"]
-    PROV --> ACR["3 · container registry<br/>Basic"]
+    RG --> PROV["2 · register providers<br/>App · ContainerRegistry<br/>DBforPostgreSQL · OperationalInsights<br/>Network · Storage"]
+    PROV --> ACR["3 · container registry<br/>Basic<br/>+ the AcrPull identity"]
     ACR --> VNET["4 · VNet + 2 subnets<br/>+ private DNS zone<br/>+ the zone→VNet link"]
     VNET --> ENV["5 · Container Apps env<br/>network type fixed at creation"]
     ENV --> PG["6 · Postgres server<br/>VNet-injected, private access is PERMANENT<br/>then the peacebuddy database, its own call"]
+    PG --> ST["7 · storage account, Hot LRS<br/>shared-key auth off, no anonymous access<br/>+ photos container<br/>+ its own identity, Blob Data Contributor"]
 ```
 
 Two steps are one-way doors. A Container Apps environment's network type cannot
@@ -226,18 +227,23 @@ revisions scale to zero. See `decisions.md` 2026-09-12.
 **The script is run once per environment, with that environment's env file.**
 It takes `ENVIRONMENT`, names the target in a coloured confirmation banner — red
 for prod, anything else blue — and refuses to create anything until someone
-agrees to it. `ENVIRONMENT` reaches nothing but that banner; the value that
-decides which server step 6 creates is `PG_SERVER` — `psql-peace-buddy` for
-prod, `psql-peace-buddy-stg` for staging — and the banner prints that name
-before anything is created. Steps 1 through 5 are the shared resource group,
-VNet and Container Apps environment; they are idempotent, so the second run
-skips them and only step 6 produces a second server and database.
+agrees to it. `ENVIRONMENT` reaches nothing but that banner; the values that
+decide what steps 6 and 7 create are `PG_SERVER`, `STORAGE_ACCOUNT` and
+`STORAGE_IDENTITY` — `psql-peace-buddy`, `stpeacebuddy` and
+`id-peace-buddy-blob` for prod, `psql-peace-buddy-stg`, `stpeacebuddystg` and
+`id-peace-buddy-blob-stg` for staging — and the banner prints the server and
+account before anything is created. Steps 1 through 5 are the shared resource
+group, registry, VNet and Container Apps environment; they are idempotent, so
+the second run skips them and only steps 6 and 7 produce a second server,
+database, storage account and identity.
 
-**The script stops there. It creates no storage account**, for either
-environment. The diagram above is the whole of it, so the per-environment Blob
-storage that §2 describes and the Progress table tracks has not been created by
-anything. That is #151, and it is why the two-environment work is not finished
-by the provisioning merge.
+**Step 7 is the environment's Blob storage** — the account, a private `photos`
+container, and an identity holding Storage Blob Data Contributor on that
+account only. Shared-key auth is off, so an account key authorises nothing and
+anyone reaching blobs by hand does it with `--auth-mode login`. The public
+endpoint stays on, because browsers load photos through SAS URLs, but anonymous
+access is disabled for the whole account. Connecting the api to it — attaching
+the identity and the config keys — is #154. See `decisions.md` 2026-09-13.
 
 ### 4.1 Database roles — the step straight after provisioning
 
@@ -587,7 +593,7 @@ authority.*
 | Grant activated | ✅ 2026-09-10 |
 | `az` CLI installed, signed in | ✅ |
 | Resource group `rg-peace-buddy`, Japan East | ✅ |
-| Providers registered | ✅ |
+| Providers registered | ✅ — except `Microsoft.Storage`, found unregistered 2026-09-13; step 2 now registers it |
 | Registry `crpeacebuddy`, Basic | ✅ |
 | Costs verified against the Retail Prices API | ✅ 2026-09-12, see `azure-costs.md` |
 | VNet, subnets, private DNS | ✅ 2026-09-12 — `snet-apps` `10.0.0.0/23`, `snet-db` `10.0.4.0/24`, zone `peace-buddy.private.postgres.database.azure.com` |
@@ -600,7 +606,8 @@ authority.*
 | Roles created on **staging** | ✅ 2026-09-12 — `pb_migrate` and `pb_app` on `psql-peace-buddy-stg`, every grant asserted by the SQL |
 | Roles created on **prod** | ⬜ #175 — blocked on the prod server not existing |
 | Budgets and cost anomaly alert | ✅ 2026-09-13 — #157, `azure-cost-alerts.sh` run with the staging env file; see `azure-costs.md` "Cost alerts" |
-| Storage accounts, one per environment | ⬜ |
+| Storage account — **staging** | ✅ 2026-09-13, #151 — `stpeacebuddystg`, StorageV2 Hot LRS, shared-key auth off, no anonymous access, TLS 1.2; private `photos` container; `id-peace-buddy-blob-stg` holding Storage Blob Data Contributor on the account only |
+| Storage account — **prod** | ⬜ #175 — `azure-provision.sh` step 7, run with `scripts/azure.env` alongside the prod server |
 | Photo service ported from the S3 SDK to Azure Blob | ⬜ `apps/api/src/services/buddyPhoto.service.ts`, its test, `deploy.sh`, `deploy.env.example`, `next.config.ts` remote patterns |
 | Azurite in `docker-compose` for local photo upload | ⬜ |
 | `scripts/deploy.sh` rewritten for Azure, parameterised by environment | ✅ 2026-09-13, #152 — written, not yet run against Azure |
