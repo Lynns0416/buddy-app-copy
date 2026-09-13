@@ -12,6 +12,60 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — `shellcheck` runs as its own un-required workflow
+
+**Decision:** `.github/workflows/shellcheck.yml` runs
+`koalaman/shellcheck:v0.11.0` over every `.sh` found under `scripts/`, on pull
+requests that touch `scripts/**` or the workflow itself. It is not a required
+status check.
+
+**Known blind spot:** shellcheck does not analyse heredoc bodies, so the bash
+payload `azure-db-restore.sh` assembles — the script its restore job actually
+executes, and the largest single block of bash in `scripts/` — is not covered.
+Linting it would mean extracting it to its own file, which is a change to how
+the job ships, not a CI change.
+
+**Why:** ~1500 lines of bash provision the infrastructure and deploy prod, and
+nothing checked any of it. The prod path of `azure-provision.sh` can only be
+exercised against a real subscription, so the one class that can be caught
+without running anything — quoting, unset expansions, typo'd variable names —
+is worth catching. Two SC1090 hits were fixed to make it green: `deploy.sh`'s
+directive bound to the first command of a `;` list rather than the `.`, and
+`azure-db-restore.sh`'s subshell source had none.
+
+**Pinned, and found by `find` rather than a glob:** `:stable` moves, so a
+shellcheck release could redden a branch that changed no shell; and
+`scripts/*.sh` would miss `scripts/<subdir>/x.sh` while still reporting green.
+
+**Rejected — a step in `ci`:** that job starts a Postgres service and installs
+pnpm before it would reach a linter. A standalone job reports in seconds and
+needs no database, no credentials and nothing running.
+
+**Rejected — making it a required check:** ruleset `main` requires only `ci`,
+and a path-filtered job that is skipped reports no status at all, so every PR
+touching no shell would sit pending forever. Un-required means a red X on
+shell PRs that informs without blocking. Requiring it later means either
+always running the job with the path filter moved onto the steps, or a
+companion no-op job of the same name.
+
+**Rejected — `hadolint` on the two Dockerfiles:** mostly style nags across two
+files.
+
+**Rejected — `docker compose config`:** one local dev file; a syntax error
+surfaces the moment anyone runs it.
+
+**Deferred — env-example drift** between the `: "${VAR:?}"` lists in
+`deploy.sh`/`azure-provision.sh` and the keys in
+`deploy.env.example`/`azure.env.example`. A real failure class — a revision
+deployed without `R2_*` 500s on every upload — but both pairs agree today, so
+it would be a pure regression guard. Left out to keep the first version to one
+tool.
+
+**Current state:** `.github/workflows/shellcheck.yml`,
+`docs/architecture.md` "CI/CD".
+
+---
+
 ## 2026-09-13 — Staging gets a budget of its own, in yen
 
 **Decision:** `scripts/azure-cost-alerts.sh` creates three alerts: an annual

@@ -642,10 +642,13 @@ against the live subscription. The rest are still open.
 2. ~~**Container Registry Basic at ~$5/mo.**~~ **Resolved 2026-09-12.**
    $0.1666/day, so $5.07/mo. The estimate was right.
 3. ~~**`scripts/azure-provision.sh` has never been executed.**~~ **Resolved
-   2026-09-12.** Run end to end against staging, #165. Still no `shellcheck` on
-   this machine, and the prod path has not been run. Its DNS-link and hostname
-   fixes (§4) were made after that run and have themselves not been executed by
-   the script — staging's link was created by hand.
+   2026-09-12.** Run end to end against staging, #165. `shellcheck` now runs in
+   CI over the files in `scripts/` (#183, `.github/workflows/shellcheck.yml`)
+   and they pass — but it does not analyse heredoc bodies, so the bash payload
+   `azure-db-restore.sh` assembles for its restore job is unchecked, and the
+   prod path has still not been executed. Its DNS-link and hostname fixes (§4)
+   were made after that run and have themselves not been executed by the
+   script — staging's link was created by hand.
 4. ~~**Private DNS zone naming.**~~ **Resolved 2026-09-12.**
    `peace-buddy.private.postgres.database.azure.com` was accepted and the
    staging server is linked to it.

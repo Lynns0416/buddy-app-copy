@@ -37,8 +37,10 @@ if [ "${MODE: -2}" != "00" ]; then
   exit 1
 fi
 
+set -a
 # shellcheck disable=SC1090
-set -a; . "$CONFIG"; set +a
+. "$CONFIG"
+set +a
 
 : "${ENVIRONMENT:?}" "${RESOURCE_GROUP:?}" "${ACR_NAME:?}" "${ACA_ENV:?}"
 : "${ACA_API:?}" "${ACA_WEB:?}" "${ACR_PULL_IDENTITY:?}"

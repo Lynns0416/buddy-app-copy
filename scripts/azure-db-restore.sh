@@ -62,6 +62,7 @@ source "$ENV_FILE"
 : "${PG_SERVER:?}" "${PG_DB_NAME:?}"
 : "${PG_MIGRATE_USER:?}" "${PG_MIGRATE_PASSWORD:?}" "${PG_APP_USER:?}"
 
+# shellcheck disable=SC1090
 # The source file is a deploy config, not an Azure one — read it in a subshell
 # so its DATABASE_URL is the only thing that crosses over and nothing else in
 # it can shadow a variable above.

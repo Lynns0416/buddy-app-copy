@@ -1,0 +1,40 @@
+name: Shellcheck
+
+# ~1500 lines of bash provision the infrastructure and deploy prod, and the
+# prod path can only be exercised against prod. Static analysis catches the
+# class that bites there: quoting, unset expansions, typo'd variable names.
+#
+# Separate from ci.yml, and deliberately not a required check — see
+# docs/decisions.md, 2026-09-13.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/shellcheck.yml'
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # find, not scripts/*.sh: a glob misses scripts/<subdir>/x.sh and the job
+      # still reports green.
+      #
+      # shell: bash for -o pipefail. The default run shell is `bash -e`, which
+      # takes the pipeline's status from xargs alone, so a find that failed —
+      # scripts/ renamed or deleted — would pass with nothing linted.
+      #
+      # Heredoc bodies are not analysed: the bash payload azure-db-restore.sh
+      # assembles for its restore job is not covered by this job.
+      #
+      # README.md "Running Tests" repeats the pin; bump both together.
+      - name: Run shellcheck
+        shell: bash
+        run: |
+          find scripts -type f -name '*.sh' -print0 \
+            | xargs -0 -r docker run --rm -v "$PWD:/mnt" koalaman/shellcheck:v0.11.0

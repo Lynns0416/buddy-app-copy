@@ -176,6 +176,11 @@ docker-compose --profile test run web-test
 
 # Lint check
 docker-compose --profile test run lint
+
+# Shell scripts — from the repo root. Same image and pin as
+# .github/workflows/shellcheck.yml; nothing checks that the two agree.
+find scripts -type f -name '*.sh' -print0 \
+  | xargs -0 -r docker run --rm -v "$PWD:/mnt" koalaman/shellcheck:v0.11.0
 ```
 
 ### API Tests (detailed)

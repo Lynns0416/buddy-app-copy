@@ -299,8 +299,13 @@ to rotate them. See `docs/deploy-plan.md` §4.1.
 
 ## CI/CD
 
-`.github/workflows/ci.yml` is the only workflow. It runs on PRs and pushes to
+`.github/workflows/ci.yml` is the main workflow. It runs on PRs and pushes to
 `main`. **There is no deploy pipeline** — deployment is manual and not yet set up.
+
+`.github/workflows/shellcheck.yml` runs `shellcheck` over every `.sh` under
+`scripts/`, on PRs that touch them and nothing else. It is not a required check;
+see `docs/decisions.md` (2026-09-13). Heredoc bodies are outside what it can
+see. The same command runs locally — see `README.md` "Running Tests".
 
 ```mermaid
 flowchart LR
