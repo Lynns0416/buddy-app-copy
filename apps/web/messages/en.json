@@ -54,6 +54,7 @@
     "title": "Sign in",
     "google": "Sign in with Google",
     "apple": "Sign in with Apple",
+    "appleComingSoon": "Apple sign-in is coming soon",
     "sessionExpired": "Seems like you've been logged out, sorry. Please sign in again 🙇"
   },
   "admin": {

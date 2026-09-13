@@ -27,7 +27,9 @@ vi.mock('@/components/google-sign-in-button', () => ({
 }))
 
 vi.mock('@/components/apple-sign-in-button', () => ({
-  AppleSignInButton: ({ label }: { label: string }) => <button>{label}</button>,
+  AppleSignInButton: ({ label, disabled }: { label: string; disabled?: boolean }) => (
+    <button disabled={disabled}>{label}</button>
+  ),
 }))
 
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -40,6 +42,7 @@ vi.mocked(useAuth).mockReturnValue({ firebaseUser: null, dbUser: null, loading: 
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
     vi.mocked(useRouter).mockReturnValue({ replace: mockReplace } as never)
     vi.mocked(useAuth).mockReturnValue({ firebaseUser: null, dbUser: null, loading: false } as never)
     vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as never)
@@ -62,6 +65,26 @@ describe('LoginPage', () => {
     render(<LoginPage />)
     expect(screen.getByRole('button', { name: 'google' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'apple' })).toBeInTheDocument()
+  })
+
+  it('disables Apple sign-in and shows coming soon when the flag is unset', () => {
+    render(<LoginPage />)
+    expect(screen.getByRole('button', { name: 'apple' })).toBeDisabled()
+    expect(screen.getByText('appleComingSoon')).toBeInTheDocument()
+  })
+
+  it('disables Apple sign-in when the flag is set to anything but true', () => {
+    vi.stubEnv('NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED', 'false')
+    render(<LoginPage />)
+    expect(screen.getByRole('button', { name: 'apple' })).toBeDisabled()
+    expect(screen.getByText('appleComingSoon')).toBeInTheDocument()
+  })
+
+  it('enables Apple sign-in and hides coming soon when the flag is true', () => {
+    vi.stubEnv('NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED', 'true')
+    render(<LoginPage />)
+    expect(screen.getByRole('button', { name: 'apple' })).toBeEnabled()
+    expect(screen.queryByText('appleComingSoon')).not.toBeInTheDocument()
   })
 
   it('renders nothing while loading', () => {

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { BuddyStatusSchema, UserRoleSchema } from '@peace-buddy/types'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
+import { isAppleSignInEnabled } from '../../../lib/flags'
 import { GoogleSignInButton } from '@/components/google-sign-in-button'
 import { AppleSignInButton } from '@/components/apple-sign-in-button'
 
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('login')
+  const appleEnabled = isAppleSignInEnabled()
 
   useEffect(() => {
     if (!loading && firebaseUser && dbUser) {
@@ -66,7 +68,12 @@ export default function LoginPage() {
         </Suspense>
         <div className="flex flex-col gap-3">
           <GoogleSignInButton label={t('google')} onClick={handleGoogle} />
-          <AppleSignInButton label={t('apple')} onClick={handleApple} />
+          <div>
+            <AppleSignInButton label={t('apple')} onClick={handleApple} disabled={!appleEnabled} />
+            {!appleEnabled && (
+              <p className="mt-2 text-center text-xs text-muted-foreground">{t('appleComingSoon')}</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -54,6 +54,7 @@
     "title": "ログイン",
     "google": "Googleでログイン",
     "apple": "Appleでログイン",
+    "appleComingSoon": "Appleログインは近日対応予定です",
     "sessionExpired": "ログアウトされたようです。お手数ですが、再度サインインをお願いします 🙇"
   },
   "admin": {

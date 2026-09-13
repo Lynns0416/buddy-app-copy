@@ -360,6 +360,7 @@ az acr build --registry "$ACR_NAME" --image "web:${WEB_TAG}" \
   --build-arg "NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}" \
   --build-arg "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}" \
   --build-arg "NEXT_PUBLIC_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}" \
+  --build-arg "NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED=${NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED:-false}" \
   .
 
 # --- 5. Deploy web -----------------------------------------------------

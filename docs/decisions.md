@@ -1587,6 +1587,10 @@ with Google and later with Apple + Hide My Email gets a different email, so a
 second `User` and duplicate `BuddyProfile`. Review `upsertUser`
 (`apps/api/src/services/auth.service.ts`) before launch.
 
+**Superseded in part by 2026-09-13:** the decision to finish rather than drop
+still stands, but the button is disabled behind a flag until the console config
+lands.
+
 ---
 
 ## 2026-08-15 — Email login deferred
@@ -1648,3 +1652,36 @@ raw enum, matching every other status column in the app
 (`admin.tour.ts`, `admin.buddy.ts`). In `ja` the sort order therefore does not
 follow the displayed labels. Revisit for all enum columns together, not just
 this one.
+
+---
+
+## 2026-09-13 — Apple sign-in held behind `NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED`
+
+**Decision:** The Apple button renders disabled with a "coming soon" label
+(`login.appleComingSoon`) unless `NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED` is exactly
+`"true"`. Off by default. Re-enabling is a build-arg change, not a code change.
+
+**Why:** The Firebase Apple provider (Service ID + key) is still unconfigured —
+blocked on the Apple Developer nonprofit grant, whose terms are under review.
+Until then `signInWithApple()` throws and `handleApple` only `console.error`s it,
+so the login page's second button silently does nothing. This is the front door
+for every user; broken-and-silent is the worst of the available states. A flag
+also keeps the launch decoupled from the grant: the config can land on Apple's
+timetable rather than ours.
+
+**Rejected — removing the button until the provider is live:** it would have to
+be rebuilt, and 2026-08-15 already settled that the code stays. It also tells
+Apple-preferring users nothing, where a disabled button says "this is coming".
+
+**Rejected — a runtime config value instead of a build-time flag:** every other
+client-side setting here is `NEXT_PUBLIC_*` inlined at build time
+(`apps/web/Dockerfile`), and web images are already built per environment. A
+runtime channel would be a new mechanism for one boolean. The cost is real and
+accepted: flipping the flag needs a web rebuild, not a container restart.
+
+**Current state:** `apps/web/src/lib/flags.ts`, the login page, `apps/web/Dockerfile`,
+`scripts/deploy.sh` step 4, `docker-compose.yml`, `apps/web/.env.example`.
+
+**Revisit when** the Apple Developer grant closes and the Service ID + key are in
+the Firebase console. Flip the flag, then delete it and the `appleComingSoon`
+key.

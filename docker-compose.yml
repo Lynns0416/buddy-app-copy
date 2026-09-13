@@ -74,6 +74,7 @@ services:
       - apps/web/.env.local
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED: "${NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED:-false}"
       npm_config_store_dir: /app/node_modules/.pnpm-store
       CI: "true"
     depends_on:

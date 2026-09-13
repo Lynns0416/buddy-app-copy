@@ -8,11 +8,11 @@ Source of truth for completed work is `git log` — do not duplicate ship dates 
 
 ## Before launch
 
-Target: release in 1–2 weeks from 2026-08-15. Only these two block it.
+Target: release in 1–2 weeks from 2026-08-15. Only the Slack webhook blocks it — Apple sign-in is held behind a flag rather than shipped broken.
 
 - [x] **Admin notifications via Slack** — replaced the broken admin email path rather than building it. `new_signup` and `new_booking` had no email template and no email enqueue site at all, so the originally-planned "flip the defaults to immediate" would have changed nothing. See `docs/decisions.md` 2026-08-15.
 - [ ] **Create the Slack app and set `SLACK_WEBHOOK_URL`** — the code ships inert without it. Sending is gated on `SLACK_ENABLED=true` or `NODE_ENV=production`; until the webhook exists, admins get in-app only. **This is now the launch dependency.**
-- [ ] **Apple sign-in: Firebase console config** (Service ID + key) — the button ships today and errors until it is set. Either finish the config or hide the button; do not launch with a broken provider. See `docs/decisions.md` 2026-08-15.
+- [ ] **Apple sign-in: Firebase console config** (Service ID + key) — no longer launch-blocking. The button is disabled behind `NEXT_PUBLIC_APPLE_SIGN_IN_ENABLED` and shows "coming soon" until the provider exists; re-enable by rebuilding web with the flag set to `true`. See `docs/decisions.md` 2026-08-15 and 2026-09-13.
 
 Deliberately **not** blocking launch — all are missing nudges rather than broken flows, and at ~50 buddies / 5–6 admins they surface within a day:
 
