@@ -154,13 +154,53 @@ those keys already caused one silent photo-upload failure in staging.
   **CPU Credits Remaining** and alert on it.
 - **Staging auto-restarts after seven days.** With no scheduler enforcing the
   stopped state, staging silently comes back during dormant stretches and bills
-  compute until someone notices. The budget alert is the only thing that will
-  catch it, which makes it load-bearing rather than optional.
+  compute until someone notices. The staging server budget below is the only
+  thing that will catch it, which makes it load-bearing rather than optional.
 - **B1ms allows 35 user connections** of 50 total, and Burstable has no
   PgBouncer. Container Apps replicas across two apps share that ceiling, so cap
   the Prisma pool in both `DATABASE_URL`s.
 - **Give each database its own role** so a misdirected connection string cannot
   reach prod data.
+
+## Cost alerts
+
+Created 2026-09-13 by `scripts/azure-cost-alerts.sh`. All email
+`COST_ALERT_EMAIL` from `microsoft-noreply@microsoft.com`.
+
+| Alert | Scope | Amount | Fires at |
+|---|---|---|---|
+| `budget-peace-buddy-annual` | subscription | ¥160,000/yr (~$1,000) | 80% actual, 100% actual, 100% forecast |
+| `budget-psql-peace-buddy-stg-monthly` | staging server only | ¥1,600/mo (~$10) | 100% actual, 100% forecast |
+| `dailyAnomalyPeaceBuddy` | subscription | — | a daily cost outside the expected range |
+
+**Amounts are in yen.** Cost Management reports this subscription in JPY, and a
+budget takes the billing currency. Azure's own conversion is **¥159.3 per
+dollar**, read off the Retail Prices API on 2026-09-13 by pricing the same meter
+in both currencies: B1ms compute is $0.026 and ¥4.1423 an hour, the registry
+$0.1666 and ¥26.5427 a day.
+
+**Why a staging budget of its own.** Staging left running adds ~$19/mo of
+compute to a subscription spending $42–60/mo, which the annual total would not
+flag for months. Against staging's own month — ~¥700 of storage plus a few
+hundred yen of hand-started hours — the same compute trips the forecast
+threshold within days and the actual one inside about nine.
+
+**What these cannot do.**
+
+- **They are days late, not hours.** Usage reaches Cost Management a day or
+  more after it happens, so staging waking on day 7 is seen on day 8 at best.
+- **The anomaly alert is blind until ~2026-11-10.** It trains on 60 days of
+  history and billing began 2026-09-10.
+- **It expires.** Azure caps an anomaly alert's end date at five years; the
+  script sets 31 December four years on, and a re-run pushes it out.
+- **Nothing stops spend.** A budget only emails.
+
+**The subscription's offer is on Microsoft's unsupported list.** Quota
+`Sponsored_2016-01-01`, Microsoft Azure Sponsorship, is listed under offers
+Cost Management does not support. Cost data is nonetheless flowing — daily JPY
+rows from 2026-09-10 — and budgets and the anomaly rule were accepted. If an
+alert that should have fired never arrives, this is the first suspect; the
+fallback is watching the sponsorship balance by hand.
 
 ## Why the estimate moved
 

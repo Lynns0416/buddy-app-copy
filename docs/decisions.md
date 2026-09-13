@@ -12,6 +12,39 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — Staging gets a budget of its own, in yen
+
+**Decision:** `scripts/azure-cost-alerts.sh` creates three alerts: an annual
+subscription budget of ¥160,000 (~$1,000, half the grant), a monthly budget of
+¥1,600 filtered to `psql-peace-buddy-stg` by `ResourceId`, and a daily anomaly
+alert on the subscription. It is a script like the other `azure-*.sh`, reading
+the same env file, and a non-prod env file is what adds the server budget.
+
+**Why the server budget:** #157 exists to catch staging restarting itself after
+seven days. A month of that is ~$19 against a subscription running $42–60, which
+a subscription-level threshold would not notice until long after the fact.
+Filtered to the one server, the same cost is roughly double a normal month.
+
+**Rejected — a subscription budget only:** what the issue names. Rejected
+because it does not do the job the issue says makes it load-bearing.
+
+**Rejected — amounts in dollars:** budgets take the billing currency, which Cost
+Management reports as JPY. Converted at Azure's own ¥159.3, not a market rate,
+so the figures line up with what the portal shows.
+
+**Rejected — a monthly subscription budget:** the grant is annual and does not
+roll over, so an annual budget measures the thing that runs out. The staging
+budget covers the month-scale signal.
+
+**Rejected — creating them by hand in the portal:** nothing would record the
+amounts or recipients, and the anomaly rule's five-year expiry would need
+remembering. A re-runnable script matches how everything else on Azure is made.
+
+**Current state:** `scripts/azure-cost-alerts.sh`, `scripts/azure.env.example`,
+`docs/azure-costs.md` "Cost alerts", `docs/deploy-plan.md` §9.
+
+---
+
 ## 2026-09-13 — Custom hostnames come from config, not from Azure
 
 **Decision:** `scripts/deploy.sh` takes two optional keys, `WEB_HOSTNAME` and

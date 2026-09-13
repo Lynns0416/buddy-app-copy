@@ -506,10 +506,11 @@ az postgres flexible-server stop  -g rg-peace-buddy -n psql-peace-buddy-stg
 
 **Azure restarts a stopped server by itself after seven days.** With no
 scheduler enforcing the stopped state, staging will quietly come back during
-every dormant stretch and bill compute until someone notices. It was last stopped on
-**2026-09-13**, after the restore in §6.1 started it, so it comes back on its
-own around **2026-09-20** unless stopped again. That is the accepted cost of not building a scheduler. The budget alert
-in §9 is the only thing that will catch it, which makes that checklist item
+every dormant stretch and bill compute until someone notices. It was found
+running at 00:40 UTC on **2026-09-13**, after this section already recorded it as
+stopped, and stopped then, so it comes back on its own around **2026-09-20**
+unless stopped again. That is the accepted cost of not building a scheduler. The
+budgets in §9 are the only thing that will catch it, which makes them
 load-bearing rather than nice to have.
 
 Starting takes minutes, not seconds, so start it before people need it.
@@ -570,8 +571,11 @@ authority.*
       losing the subscription loses both, accepted on the grounds that if the
       subscription is lost the app stops anyway. ~$0.50/yr at 30 snapshots.
       Decided 2026-09-12, see `decisions.md`.
-- [ ] Budget alert and a cost anomaly alert. **Load-bearing**, see §7: nothing
-      else will tell you staging auto-restarted after seven days.
+- [x] Budget alert and a cost anomaly alert. **Load-bearing**, see §7: nothing
+      else will tell you staging auto-restarted after seven days. Done
+      2026-09-13 by `scripts/azure-cost-alerts.sh`: an annual subscription
+      budget, a monthly budget on the staging server alone, and a daily anomaly
+      alert. Amounts and limits in `azure-costs.md`, "Cost alerts".
 - [ ] Container Registry image cleanup policy.
 - [ ] Custom domain, Apple sign-in.
 - [x] Delete `memory/project_prerelease.md`, switch to `prisma migrate deploy`. Done 2026-09-12. Where `migrate deploy` runs on release was settled 2026-09-13 in #152: a one-shot Container Apps Job, started by `scripts/deploy.sh`. See §5.
@@ -595,6 +599,7 @@ authority.*
 | `azure-db-roles.sh` + `azure-db-roles.sql`, the two-role setup | ✅ 2026-09-12 — run end to end against staging; see §4.1 |
 | Roles created on **staging** | ✅ 2026-09-12 — `pb_migrate` and `pb_app` on `psql-peace-buddy-stg`, every grant asserted by the SQL |
 | Roles created on **prod** | ⬜ #175 — blocked on the prod server not existing |
+| Budgets and cost anomaly alert | ✅ 2026-09-13 — #157, `azure-cost-alerts.sh` run with the staging env file; see `azure-costs.md` "Cost alerts" |
 | Storage accounts, one per environment | ⬜ |
 | Photo service ported from the S3 SDK to Azure Blob | ⬜ `apps/api/src/services/buddyPhoto.service.ts`, its test, `deploy.sh`, `deploy.env.example`, `next.config.ts` remote patterns |
 | Azurite in `docker-compose` for local photo upload | ⬜ |
