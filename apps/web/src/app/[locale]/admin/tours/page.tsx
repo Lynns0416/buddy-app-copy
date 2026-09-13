@@ -90,14 +90,21 @@ function AdminToursList() {
   const isUpcoming = (tour: AdminTourSummaryResponse) => tour.tourDate.slice(0, 10) >= todayStr
   const dividerEnabled = sortField === 'tourDate'
 
-  const desktopColumns = [
-    { field: 'tourDate' as const, label: t('tourDate') },
-    { field: 'group' as const, label: t('group') },
-    { field: 'location' as const, label: t('location') },
-    { field: 'capacity' as const, label: t('capacity') },
-    { field: 'participantCount' as const, label: t('participantCount') },
-    { field: 'confirmedCount' as const, label: t('confirmedCount') },
-    { field: 'status' as const, label: t('status') },
+  // The count headers are far longer than their 1-3 digit values, and a nowrap
+  // header is the column's floor — which is what squeezes group and location.
+  // Dropping nowrap lets them wrap and releases that width. min-w-24 is the floor:
+  // ja breaks per character, so 最大バディ数 / 参加希望者数 land on two lines rather
+  // than collapsing. It buys nothing in en, where Participants / Confirmed are
+  // single words with no break opportunity and keep their full width regardless.
+  const countHead = 'min-w-24'
+  const desktopColumns: { field: TourListSortField; label: string; headClass: string }[] = [
+    { field: 'tourDate', label: t('tourDate'), headClass: 'whitespace-nowrap' },
+    { field: 'group', label: t('group'), headClass: 'whitespace-nowrap' },
+    { field: 'location', label: t('location'), headClass: 'whitespace-nowrap' },
+    { field: 'capacity', label: t('capacity'), headClass: countHead },
+    { field: 'participantCount', label: t('participantCount'), headClass: countHead },
+    { field: 'confirmedCount', label: t('confirmedCount'), headClass: countHead },
+    { field: 'status', label: t('status'), headClass: 'whitespace-nowrap' },
   ]
   const desktopColSpan = desktopColumns.length + 1
 
@@ -187,8 +194,8 @@ function AdminToursList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {desktopColumns.map(({ field, label }) => (
-                    <TableHead key={field} className="whitespace-nowrap">
+                  {desktopColumns.map(({ field, label, headClass }) => (
+                    <TableHead key={field} className={headClass}>
                       <button
                         className="inline-flex items-center font-medium transition-colors hover:text-foreground"
                         onClick={() => handleSort(field)}
@@ -198,7 +205,7 @@ function AdminToursList() {
                       </button>
                     </TableHead>
                   ))}
-                  <TableHead className="w-20" />
+                  <TableHead className="w-px" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -217,7 +224,7 @@ function AdminToursList() {
                         className="cursor-pointer"
                         onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
                       >
-                        <TableCell className="tabular-nums text-sm">{tour.tourDate.slice(0, 10)}</TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums text-sm">{tour.tourDate.slice(0, 10)}</TableCell>
                         <TableCell className="font-medium">{tour.group.name}</TableCell>
                         <TableCell>{tour.location}</TableCell>
                         <TableCell className="text-center">{tour.capacity}</TableCell>
@@ -228,7 +235,7 @@ function AdminToursList() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">{tour.confirmedCount}</TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <Badge variant={tourStatusBadgeVariant[tour.status]}>
                             {getTourStatusLabel(tTourStatus, tour.status)}
                           </Badge>
