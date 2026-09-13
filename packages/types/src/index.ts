@@ -178,7 +178,6 @@ export const RegisterRequestBodySchema = z
     displayName: z.string().optional(),
     realName: z.string().optional(),
     languages: z.array(LanguageSchema).optional(),
-    photoUrl: z.string().optional(),
     bio: z.string().optional(),
   })
   .refine(
@@ -193,7 +192,6 @@ export const UpdateBuddyProfileSchema = z
   .object({
     displayName: z.string().optional(),
     realName: z.string().optional(),
-    photoUrl: z.string().nullable().optional(),
     bio: z.string().nullable().optional(),
     contactInfo: z.string().nullable().optional(),
     languages: z.array(LanguageSchema).optional(),

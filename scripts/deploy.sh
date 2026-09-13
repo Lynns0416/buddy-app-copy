@@ -50,10 +50,10 @@ set +a
 : "${SCHEDULER_SECRET:?}"
 : "${FIREBASE_PROJECT_ID:?}" "${FIREBASE_CLIENT_EMAIL:?}" "${FIREBASE_PRIVATE_KEY:?}"
 : "${NEXT_PUBLIC_FIREBASE_API_KEY:?}" "${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN:?}"
-# Photo upload is a shipped feature, not an opt-in: a revision without these
-# 500s on every upload with an error that points at the AWS SDK, not the deploy.
-: "${R2_ACCOUNT_ID:?}" "${R2_ACCESS_KEY_ID:?}" "${R2_SECRET_ACCESS_KEY:?}"
-: "${R2_BUCKET_NAME:?}" "${R2_PUBLIC_URL:?}"
+# Photo upload is a shipped feature, not an opt-in. These name what
+# scripts/azure-provision.sh step 7 created for this environment; there is no
+# key, because the api reaches the account as STORAGE_IDENTITY.
+: "${STORAGE_ACCOUNT:?}" "${STORAGE_PHOTOS_CONTAINER:?}" "${STORAGE_IDENTITY:?}"
 
 if [ "$DATABASE_URL" = "$MIGRATE_DATABASE_URL" ]; then
   echo "error: DATABASE_URL and MIGRATE_DATABASE_URL are the same string." >&2
@@ -75,6 +75,24 @@ ACR_IDENTITY_ID="$(az identity show -n "$ACR_PULL_IDENTITY" -g "$RESOURCE_GROUP"
 if [ -z "$ACR_IDENTITY_ID" ]; then
   echo "error: no user-assigned identity '$ACR_PULL_IDENTITY' in $RESOURCE_GROUP." >&2
   echo "       scripts/azure-provision.sh creates it and grants it AcrPull." >&2
+  exit 1
+fi
+
+# The api reaches Blob as this environment's storage identity, which holds
+# Storage Blob Data Contributor on $STORAGE_ACCOUNT alone. The app carries the
+# pull identity too, so the api is handed this one's client id to say which to
+# use. See docs/decisions.md 2026-09-13, "Blob is reached by one identity per
+# environment".
+STORAGE_IDENTITY_ID="$(az identity show -n "$STORAGE_IDENTITY" -g "$RESOURCE_GROUP" \
+  --query id -o tsv 2>/dev/null || true)"
+STORAGE_IDENTITY_CLIENT_ID="$(az identity show -n "$STORAGE_IDENTITY" -g "$RESOURCE_GROUP" \
+  --query clientId -o tsv 2>/dev/null || true)"
+STORAGE_ACCOUNT_URL="$(az storage account show -n "$STORAGE_ACCOUNT" -g "$RESOURCE_GROUP" \
+  --query primaryEndpoints.blob -o tsv 2>/dev/null || true)"
+STORAGE_ACCOUNT_URL="${STORAGE_ACCOUNT_URL%/}"
+if [ -z "$STORAGE_IDENTITY_ID" ] || [ -z "$STORAGE_IDENTITY_CLIENT_ID" ] || [ -z "$STORAGE_ACCOUNT_URL" ]; then
+  echo "error: no storage account '$STORAGE_ACCOUNT' or identity '$STORAGE_IDENTITY' in $RESOURCE_GROUP." >&2
+  echo "       scripts/azure-provision.sh step 7 creates both." >&2
   exit 1
 fi
 
@@ -122,6 +140,7 @@ cat <<CONFIRM
   Image tag        $TAG (web: $WEB_TAG)
   Web URL          ${WEB_HOSTNAME:-<generated>}
   Api URL          ${API_HOSTNAME:-<generated>}
+  Photos           $STORAGE_ACCOUNT/$STORAGE_PHOTOS_CONTAINER, as $STORAGE_IDENTITY
 
   Pending migrations are applied to this environment's database before the
   api is updated.
@@ -280,8 +299,6 @@ secret_var DATABASE_URL
 secret_var FIREBASE_PRIVATE_KEY
 secret_var SCHEDULER_SECRET
 secret_var SLACK_WEBHOOK_URL
-secret_var R2_ACCESS_KEY_ID
-secret_var R2_SECRET_ACCESS_KEY
 plain_var FIREBASE_PROJECT_ID
 plain_var FIREBASE_CLIENT_EMAIL
 plain_var EMAIL_DISABLED
@@ -289,9 +306,9 @@ plain_var GMAIL_SENDER
 plain_var GMAIL_IMPERSONATE
 plain_var SLACK_ENABLED
 plain_var SLACK_DISABLED
-plain_var R2_ACCOUNT_ID
-plain_var R2_BUCKET_NAME
-plain_var R2_PUBLIC_URL
+plain_var STORAGE_ACCOUNT_URL
+plain_var STORAGE_PHOTOS_CONTAINER
+plain_var STORAGE_IDENTITY_CLIENT_ID
 
 # An app's FQDN is fixed once it exists, so on every deploy after the first the
 # web URL is already known. Carrying it into the api's environment here means
@@ -306,6 +323,10 @@ step "Deploy api"
 if app_exists "$ACA_API"; then
   az containerapp secret set -n "$ACA_API" -g "$RESOURCE_GROUP" \
     --secrets "${SECRETS[@]}" --output none
+  # An api created before photos moved to Blob holds only the pull identity.
+  # Assigning an identity the app already holds changes nothing.
+  az containerapp identity assign -n "$ACA_API" -g "$RESOURCE_GROUP" \
+    --user-assigned "$STORAGE_IDENTITY_ID" --output none
   az containerapp update -n "$ACA_API" -g "$RESOURCE_GROUP" \
     --image "$API_IMAGE" --replace-env-vars "${ENVS[@]}" --output none
 else
@@ -314,7 +335,7 @@ else
     --environment "$ACA_ENV" \
     --image "$API_IMAGE" \
     --registry-server "$ACR_LOGIN" --registry-identity "$ACR_IDENTITY_ID" \
-    --user-assigned "$ACR_IDENTITY_ID" \
+    --user-assigned "$ACR_IDENTITY_ID" "$STORAGE_IDENTITY_ID" \
     --ingress external --target-port 8080 \
     --min-replicas 0 --max-replicas 2 \
     --cpu 0.5 --memory 1.0Gi \

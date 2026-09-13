@@ -78,7 +78,7 @@ A web-first internal booking application for managing group tour assignments. Th
 - **Social login:** Google and Apple (OAuth 2.0) via Firebase Auth.
 - **Signup flow:**
   1. Buddy signs in via Google or Apple in the frontend (Firebase issues an ID token).
-  2. Frontend calls `POST /auth/register` with an optional profile payload (`displayName`, `realName`, `languages`, `photoUrl`, `bio`). The server upserts a `User` (role `buddy`) and a `BuddyProfile` in `pending` state. If `displayName` is missing it falls back to the email prefix.
+  2. Frontend calls `POST /auth/register` with an optional profile payload (`displayName`, `realName`, `languages`, `bio`). The server upserts a `User` (role `buddy`) and a `BuddyProfile` in `pending` state. If `displayName` is missing it falls back to the email prefix.
   3. Subsequent requests go through `authMiddleware`, which validates the Firebase token and looks the user up by `firebaseUid`.
   4. Admins receive an in-app notification and a post to the shared Slack channel on new signup. Admin email is off by default (§10.2).
   5. Admin approves or rejects via `PUT /admin/buddies/:id/status`. Allowed status values via the API: `trainee` / `active` / `rejected`. See §11.4 for the approval flow and §5.1 for status constraints.
@@ -147,7 +147,7 @@ Unlike tier, `memberType` is never null and defaults to `buddy` — employment i
 |---|---|---|
 | Display name / nickname | Text | Chosen by buddy; editable in profile settings |
 | Real name | Text | For admin reference; editable in profile settings |
-| Profile photo | Image upload | **Shipped** via Cloudflare R2. `POST /me/profile/photo` (multipart `photo` field) and `DELETE /me/profile/photo`. Constraints: ≤ 2 MB, MIME in `image/jpeg` / `image/png` / `image/webp`, magic-byte validated. |
+| Profile photo | Image upload | **Shipped**, stored in a private Azure Blob container and shown through signed links that last until the end of the next UTC day. `POST /me/profile/photo` (multipart `photo` field) and `DELETE /me/profile/photo`. Constraints: ≤ 2 MB, MIME in `image/jpeg` / `image/png` / `image/webp`, magic-byte validated. |
 | Bio | Long text | Free description |
 | Contact info | Text / Email | Preferred contact method |
 | Languages spoken | Multi-select enum (`LanguageSchema`) | See enum values below |
@@ -915,7 +915,7 @@ Nav item: "Profile" in buddy shell sidebar (alongside "Dashboard").
 | Languages | Checkbox group | Ordered by `LanguageSchema.options`; priority tier (en/ko/zh) shown first |
 | Skills & interests | Textarea | One skill per line; split on `\n` before submit; joined with `\n` for display |
 | Availability | Textarea | Free text |
-| Profile photo | File input + preview | Uploads via `POST /me/profile/photo` to Cloudflare R2; delete via `DELETE /me/profile/photo`. See §5.3 for constraints. |
+| Profile photo | File input + preview | Uploads via `POST /me/profile/photo` to Azure Blob; delete via `DELETE /me/profile/photo`. See §5.3 for constraints. |
 
 `[Save]` `[Cancel]`
 
@@ -982,7 +982,7 @@ New additions:
 | Database | GCP Cloud SQL (Postgres) | Via GCP nonprofit credits |
 | ORM | Prisma | Lives in `apps/api`; schema in `prisma/` |
 | Auth | Firebase Auth | Google + Apple OAuth; token validated in Hono middleware |
-| File storage | Cloudflare R2 (S3-compatible) | Profile photos; single-step multipart upload via `POST /me/profile/photo` |
+| File storage | Azure Blob Storage, Japan East | Profile photos in a private container; single-step multipart upload via `POST /me/profile/photo`; read through signed links pinned to the UTC day |
 | Scheduled jobs | GCP Cloud Scheduler | Hits Hono API routes for reminders, deadline checks, digest flush |
 | Email | Gmail API (Google Workspace for Nonprofits) | Single `sendEmail()` utility in `apps/api`; env: `GMAIL_*` credentials (provider-specific) |
 | Slack notifications | Slack Incoming Webhooks | Admin notifications; env: `SLACK_WEBHOOK_URL`; fired from `apps/api` |

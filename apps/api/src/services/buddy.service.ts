@@ -1,4 +1,5 @@
 import { db } from '../lib/db'
+import { withPhotoLink } from '../lib/photoStorage'
 import type { BuddyProfileResponse, UpdateBuddyProfile } from '@peace-buddy/types'
 
 // Explicit select — tier is buddy-visible (#137); never fetches internalNotes,
@@ -9,7 +10,7 @@ export const buddyProfileSelect = {
   tier: true,
   displayName: true,
   realName: true,
-  photoUrl: true,
+  photoKey: true,
   bio: true,
   contactInfo: true,
   languages: true,
@@ -25,7 +26,7 @@ export async function getBuddyProfile(userId: string): Promise<BuddyProfileRespo
     select: buddyProfileSelect,
   })
   if (!profile) return null
-  return profile as unknown as BuddyProfileResponse
+  return (await withPhotoLink(profile)) as unknown as BuddyProfileResponse
 }
 
 export async function updateBuddyProfile(
@@ -38,7 +39,7 @@ export async function updateBuddyProfile(
       data,
       select: buddyProfileSelect,
     })
-    return updated as unknown as BuddyProfileResponse
+    return (await withPhotoLink(updated)) as unknown as BuddyProfileResponse
   } catch (e) {
     if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e
@@ -61,5 +62,5 @@ export async function markOnboardingSeen(userId: string): Promise<BuddyProfileRe
     data: { onboardingSeenAt: new Date() },
     select: buddyProfileSelect,
   })
-  return updated as unknown as BuddyProfileResponse
+  return (await withPhotoLink(updated)) as unknown as BuddyProfileResponse
 }

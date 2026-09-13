@@ -1,4 +1,5 @@
 import { db } from '../lib/db'
+import { withPhotoLink } from '../lib/photoStorage'
 import type { Locale, UserResponse } from '@peace-buddy/types'
 import { UserRoleSchema, BuddyStatusSchema, NotifEventKindSchema } from '@peace-buddy/types'
 import { enqueueInAppForAllAdmins, enqueueSlackForAdmins } from './notification.service'
@@ -18,7 +19,7 @@ const userSelect = {
       tier: true,
       displayName: true,
       realName: true,
-      photoUrl: true,
+      photoKey: true,
       bio: true,
       contactInfo: true,
       languages: true,
@@ -30,6 +31,16 @@ const userSelect = {
   },
 } as const
 
+async function toUserResponse<T extends { buddyProfile: { photoKey: string | null } | null }>(
+  row: T,
+): Promise<UserResponse> {
+  const { buddyProfile, ...rest } = row
+  return {
+    ...rest,
+    buddyProfile: buddyProfile ? await withPhotoLink(buddyProfile) : null,
+  } as unknown as UserResponse
+}
+
 export async function upsertUser(
   uid: string,
   email: string,
@@ -37,7 +48,6 @@ export async function upsertUser(
     displayName?: string
     realName?: string
     languages?: string[]
-    photoUrl?: string | null
     bio?: string | null
   }
 ): Promise<UserResponse> {
@@ -56,7 +66,6 @@ export async function upsertUser(
             displayName: data.displayName ?? email.split('@')[0],
             realName: data.realName ?? '',
             languages: data.languages ?? [],
-            photoUrl: data.photoUrl ?? null,
             bio: data.bio ?? null,
           },
         },
@@ -77,7 +86,7 @@ export async function upsertUser(
     return row
   })
 
-  return user as unknown as UserResponse
+  return toUserResponse(user)
 }
 
 export async function getUser(id: string): Promise<UserResponse | null> {
@@ -87,7 +96,7 @@ export async function getUser(id: string): Promise<UserResponse | null> {
   })
 
   if (!user) return null
-  return user as unknown as UserResponse
+  return toUserResponse(user)
 }
 
 export async function updateLocale(userId: string, locale: Locale): Promise<UserResponse | null> {
@@ -97,7 +106,7 @@ export async function updateLocale(userId: string, locale: Locale): Promise<User
       data: { locale },
       select: userSelect,
     })
-    return user as unknown as UserResponse
+    return await toUserResponse(user)
   } catch (e) {
     if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e

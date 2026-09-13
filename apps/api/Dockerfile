@@ -2,7 +2,10 @@
 
 # --- runtime base -----------------------------------------------------------
 # openssl is required by the Prisma query engine on debian.
-FROM node:20-slim AS runtime-base
+# Node 22, not 20: @azure/storage-blob, @azure/storage-common and
+# @azure/identity all declare engines.node >=22, and nothing in CI builds this
+# image, so a 20 base would only fail in a deployed revision.
+FROM node:22-slim AS runtime-base
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 

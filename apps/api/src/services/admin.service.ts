@@ -1,5 +1,6 @@
 import { BookingStatus as PrismaBookingStatus } from '@prisma/client'
 import { db } from '../lib/db'
+import { withPhotoLink } from '../lib/photoStorage'
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, MemberType, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse, Language } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema, NotifEventKindSchema } from '@peace-buddy/types'
 import { enqueueEmail, enqueueInApp } from './notification.service'
@@ -12,7 +13,7 @@ const adminBuddySelect = {
   memberType: true,
   displayName: true,
   realName: true,
-  photoUrl: true,
+  photoKey: true,
   internalNotes: true,
   createdAt: true,
   updatedAt: true,
@@ -21,7 +22,7 @@ const adminBuddySelect = {
   },
 } as const
 
-function mapBuddy(raw: {
+async function mapBuddy(raw: {
   user: { email: string }
   id: string
   userId: string
@@ -30,13 +31,13 @@ function mapBuddy(raw: {
   memberType: string
   displayName: string
   realName: string
-  photoUrl: string | null
+  photoKey: string | null
   internalNotes: string | null
   createdAt: Date
   updatedAt: Date
-}): AdminBuddyResponse {
+}): Promise<AdminBuddyResponse> {
   const { user, ...rest } = raw
-  return { ...rest, email: user.email } as unknown as AdminBuddyResponse
+  return { ...(await withPhotoLink(rest)), email: user.email } as unknown as AdminBuddyResponse
 }
 
 export async function listBuddies(
@@ -55,7 +56,7 @@ export async function listBuddies(
     select: adminBuddySelect,
     orderBy: { createdAt: 'asc' },
   })
-  return rows.map(mapBuddy)
+  return Promise.all(rows.map(mapBuddy))
 }
 
 const adminBuddyDetailSelect = {
@@ -147,7 +148,7 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
   }
   const hasProfile = bio !== null || contactInfo !== null || languages.length > 0 || skills.length > 0
   return {
-    ...mapBuddy(rest),
+    ...(await mapBuddy(rest)),
     buddyProfile: hasProfile ? { bio, contactInfo, languages: languages as Language[], skills } : null,
     bookings: mappedBookings,
     cancellationSummary,
@@ -231,7 +232,7 @@ export async function updateBuddyStatus(
     })
 
     if (!result) return null
-    return mapBuddy(result)
+    return await mapBuddy(result)
   } catch (e) {
     if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e
@@ -272,7 +273,7 @@ export async function updateBuddyProfile(
         where: { id },
         select: adminBuddySelect,
       })
-      return raw ? mapBuddy(raw) : null
+      return raw ? await mapBuddy(raw) : null
     }
 
     const raw = await db.buddyProfile.update({
@@ -280,7 +281,7 @@ export async function updateBuddyProfile(
       data,
       select: adminBuddySelect,
     })
-    return mapBuddy(raw)
+    return await mapBuddy(raw)
   } catch (e) {
     if (typeof e === 'object' && e !== null && (e as { code?: string }).code === 'P2025') return null
     throw e

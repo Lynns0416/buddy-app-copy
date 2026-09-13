@@ -126,7 +126,7 @@ model BuddyProfile {
   memberType       MemberType                          @default(buddy)
   displayName      String
   realName         String
-  photoUrl         String?
+  photoKey         String?
   bio              String?
   contactInfo      String?
   languages        String[]

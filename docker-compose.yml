@@ -15,6 +15,18 @@ services:
       timeout: 5s
       retries: 5
 
+  # Buddy photos. The api makes the same Blob SDK calls here as against Azure,
+  # signing links with Azurite's well-known development key instead of a
+  # managed identity. --skipApiVersionCheck lets an SDK newer than this image
+  # talk to it.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.37.0
+    command: azurite-blob --blobHost 0.0.0.0 --location /data --skipApiVersionCheck
+    ports:
+      - "10000:10000"
+    volumes:
+      - azurite_data:/data
+
   api:
     build:
       context: .
@@ -26,6 +38,11 @@ services:
       - apps/api/.env
     environment:
       DATABASE_URL: postgresql://peacebuddy:peacebuddy@db:5432/peacebuddy
+      # Azurite's published development account; the key is public by design.
+      STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+      STORAGE_PHOTOS_CONTAINER: photos
+      # The api reaches Azurite as `azurite`, the browser as `localhost`.
+      STORAGE_LINK_BASE_URL: http://localhost:10000/devstoreaccount1
       # Keep pnpm's store off the host bind mount — it defaults to
       # /app/.pnpm-store there and grows without bound inside the repo.
       npm_config_store_dir: /app/node_modules/.pnpm-store
@@ -36,6 +53,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      azurite:
+        condition: service_started
     volumes:
       - .:/app
       # Named, not anonymous: `up --build` recreates containers, and every
@@ -94,6 +113,7 @@ services:
 
 volumes:
   db_data:
+  azurite_data:
   api_nm_root:
   api_nm_types:
   api_nm_api:

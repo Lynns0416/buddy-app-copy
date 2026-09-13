@@ -28,7 +28,6 @@ Called on first login. Validates the Firebase ID token (no DB user required yet)
   "displayName": "string",
   "realName": "string",
   "languages": ["english", "japanese"],
-  "photoUrl": "string",
   "bio": "string"
 }
 ```
@@ -106,7 +105,6 @@ Update self-managed fields.
 {
   "displayName": "string",
   "realName": "string",
-  "photoUrl": "string",
   "bio": "string",
   "contactInfo": "string",
   "languages": ["english", "japanese"],
@@ -138,7 +136,7 @@ the original one.
 ---
 
 ### Buddy: `POST /me/profile/photo`
-Direct upload to Cloudflare R2. Single-step — no signed-URL flow.
+Upload through the api into the environment's private Azure Blob container. Single-step — no signed-URL upload handoff.
 
 **Auth:** any authenticated buddy
 
@@ -149,9 +147,11 @@ Server validation:
 - MIME ∈ `image/jpeg` / `image/png` / `image/webp`
 - Magic bytes verified against declared MIME (rejects spoofed types)
 
-The previous photo (if any) is deleted from R2 asynchronously after the DB row updates.
+The previous photo (if any) is deleted from Blob, best-effort, after the DB row updates.
 
 **Response `200`** — updated `BuddyProfileResponse`
+
+`photoUrl` in this and every other response is a read-only signed link that stays the same for the UTC day and expires at the end of the next day, not a permanent address. Do not store it; fetch the profile again for a fresh one.
 
 **Errors**
 - `400` — invalid MIME type or magic-byte mismatch
@@ -161,7 +161,7 @@ The previous photo (if any) is deleted from R2 asynchronously after the DB row u
 ---
 
 ### Buddy: `DELETE /me/profile/photo`
-Remove the current profile photo. Sets `photoUrl = null` and deletes the R2 object.
+Remove the current profile photo. Sets `photoKey = null` and deletes the blob.
 
 **Auth:** any authenticated buddy
 

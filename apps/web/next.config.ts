@@ -22,18 +22,20 @@ const nextConfig: NextConfig = {
     ]
   },
   images: {
+    // In local dev photos come from Azurite at localhost:10000, which the web
+    // container cannot reach, so the browser loads them directly instead.
+    unoptimized: process.env.NODE_ENV === 'development',
+    // One storage account per environment, named in scripts/azure.env.example.
+    // Named rather than *.blob.core.windows.net, which would let the optimizer
+    // proxy any Azure account's blobs.
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.r2.dev',
+        hostname: 'stpeacebuddy.blob.core.windows.net',
       },
       {
         protocol: 'https',
-        hostname: 'staging-buddy-photos.plab.jp',
-      },
-      {
-        protocol: 'https',
-        hostname: 'buddy-photos.plab.jp',
+        hostname: 'stpeacebuddystg.blob.core.windows.net',
       },
     ],
   },

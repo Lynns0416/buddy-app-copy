@@ -119,7 +119,7 @@ describe('POST /auth/register', () => {
     expect(body.buddyProfile?.status).toBe('pending')
   })
 
-  it('passes firebase name and picture to upsertUser', async () => {
+  it('passes firebase name to upsertUser but not the Google picture', async () => {
     mockVerify.mockResolvedValueOnce({
       uid: 'uid-123',
       email: 'test@example.com',
@@ -137,11 +137,10 @@ describe('POST /auth/register', () => {
     expect(mockUpsertUser).toHaveBeenCalledWith(
       'uid-123',
       'test@example.com',
-      expect.objectContaining({
-        displayName: 'Firebase Name',
-        photoUrl: 'https://photo.url',
-      })
+      expect.objectContaining({ displayName: 'Firebase Name' })
     )
+    // Photos are blob names in private storage; an external URL has no place there.
+    expect(mockUpsertUser.mock.calls[0][2]).not.toHaveProperty('photoUrl')
   })
 })
 

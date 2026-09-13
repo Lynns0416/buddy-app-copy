@@ -71,7 +71,7 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID="your-firebase-project-id"
 NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST="localhost:9099"
 ```
 
-`DATABASE_URL` and `NEXT_PUBLIC_API_URL` are set automatically by `docker-compose.yml` — do not add them to `.env` files.
+`DATABASE_URL`, `STORAGE_*` and `NEXT_PUBLIC_API_URL` are set automatically by `docker-compose.yml` — do not add them to `.env` files.
 
 ## Docker Commands Reference
 
@@ -147,6 +147,7 @@ docker-compose up --build
 - Web: http://localhost:3000
 - API: http://localhost:8080
 - DB: localhost:5432 (peacebuddy / peacebuddy)
+- Azurite (buddy photos): localhost:10000
 
 Migrations run automatically on API container start.
 

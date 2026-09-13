@@ -90,7 +90,7 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | memberType | Enum | `buddy` / `plab_member`; default `buddy`. Non-nullable |
 | displayName | String | |
 | realName | String | |
-| photoUrl | String? | |
+| photoKey | String? | Blob name in the environment's private `photos` container. Responses carry a signed `photoUrl` instead; see `decisions.md` 2026-09-13 |
 | bio | Text? | |
 | contactInfo | String? | |
 | languages | String[] | |

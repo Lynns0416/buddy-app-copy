@@ -6,7 +6,7 @@ import type { FirebaseEnv, AuthEnv } from '../types'
 
 // Handler for POST /auth/register — mounted on publicApp (firebaseAuth middleware only)
 export async function registerHandler(c: Context<FirebaseEnv>) {
-  const { uid, email, name, picture } = c.get('firebaseUser')
+  const { uid, email, name } = c.get('firebaseUser')
 
   let body: unknown
   try {
@@ -26,7 +26,6 @@ export async function registerHandler(c: Context<FirebaseEnv>) {
     displayName: data.displayName ?? name,
     realName: data.realName,
     languages: data.languages,
-    photoUrl: data.photoUrl ?? picture ?? null,
     bio: data.bio,
   })
 

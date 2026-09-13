@@ -73,7 +73,7 @@ buddyRoutes.post(
       if (e instanceof PhotoInvalidTypeError) return c.json(apiError('invalid_request'), 400)
       if (e instanceof BuddyNotFoundError) return c.json(apiError('not_found'), 404)
       if (e instanceof PhotoStorageUnconfiguredError) {
-        console.error(`photo upload: missing R2 environment variables: ${e.message}`)
+        console.error(`photo upload: missing photo storage environment variables: ${e.message}`)
         return c.json(apiError('unknown'), 500)
       }
       throw e

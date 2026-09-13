@@ -614,8 +614,8 @@ authority.*
 | Budgets and cost anomaly alert | ✅ 2026-09-13 — #157, `azure-cost-alerts.sh` run with the staging env file; see `azure-costs.md` "Cost alerts" |
 | Storage account — **staging** | ✅ 2026-09-13, #151 — `stpeacebuddystg`, StorageV2 Hot LRS, shared-key auth off, no anonymous access, TLS 1.2; private `photos` container; `id-peace-buddy-blob-stg` holding Storage Blob Data Contributor on the account only |
 | Storage account — **prod** | ⬜ #175 — `azure-provision.sh` step 7, run with `scripts/azure.env` alongside the prod server |
-| Photo service ported from the S3 SDK to Azure Blob | ⬜ `apps/api/src/services/buddyPhoto.service.ts`, its test, `deploy.sh`, `deploy.env.example`, `next.config.ts` remote patterns |
-| Azurite in `docker-compose` for local photo upload | ⬜ |
+| Photo service ported from the S3 SDK to Azure Blob | ✅ 2026-09-13, #154 — `photoKey` column, signed links pinned to the UTC day; see `decisions.md` "Photos are stored as blob names" |
+| Azurite in `docker-compose` for local photo upload | ✅ 2026-09-13, #154 |
 | `scripts/deploy.sh` rewritten for Azure, parameterised by environment | ✅ 2026-09-13, #152 — written, not yet run against Azure |
 | Neon baselined onto Prisma Migrate — enum remap, then drift, then `migrate resolve` for both directories | ✅ 2026-09-12, #142 |
 | `azure-db-restore.sh`, the dump-and-load job | ✅ 2026-09-13 — rehearsed against a local Postgres 16 target, then run against Azure; see §6.1 |
@@ -627,7 +627,7 @@ authority.*
 | Photos migrated off R2 | ⬜ sequence **after** the cutover; not on its critical path |
 | Nightly `pg_dump` job + 30-day lifecycle rule, prod | ⬜ second Container Apps Job, in `snet-apps`, image carrying `pg_dump` |
 | One tested restore from a dump | ⬜ the checklist item that actually proves the backup |
-| R2 account torn down — bucket, the five `R2_*` keys, `deploy.env.example` | ⬜ after photos move; R2 leaves the stack entirely |
+| R2 account torn down — bucket and the five `R2_*` keys; code and deploy config dropped them in #154 | ⬜ after photos move; R2 leaves the stack entirely |
 | GCP/Neon stack decommissioned — Cloud Run, Neon, the `peace-buddy-staging` project | ⬜ own task after this plan; only once Azure staging is trusted by the non-dev members |
 
 The provisioning script prints a `DATABASE_URL` built from the server admin

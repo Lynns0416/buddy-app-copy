@@ -115,6 +115,70 @@ staging running, which is what the manual start/stop model exists to avoid.
 
 ---
 
+## 2026-09-13 — Photos are stored as blob names and served by signed links pinned to the day
+
+**Decision:** `BuddyProfile.photoUrl` is renamed `photoKey` and holds only the
+blob name — `buddy-photos/<profileId>/<uuid>.<ext>` — in the environment's
+private `photos` container. Every response that carries a photo still exposes
+`photoUrl`, which is now a read-only user delegation SAS link signed by
+`apps/api/src/lib/photoStorage.ts`, identical all UTC day and expiring at the
+end of the next day. The Google
+profile picture is no longer saved at sign-up, so a buddy who has not uploaded a
+photo renders initials.
+
+**Why blob names, not URLs:** the stored value stops depending on where photos
+are served from. R2 URLs embedded the host, which is why leaving R2 means
+rewriting rows. A name survives a new account, a custom domain, or a later
+decision to serve publicly, with one function changed and no data migration.
+The migration turns existing R2 URLs into names by keeping everything from
+`buddy-photos/`, so #155 copies the objects under the same names.
+
+**Why signed links:** #190 already made the container private, with anonymous
+access and shared-key auth off. Other members still see photos — the api hands
+links only to signed-in users — but a link copied out of the app stops working
+within two days instead of working forever.
+
+**Rejected — a public container with permanent URLs:** the simplest option,
+caches perfectly, and the UUID paths are unguessable. Rejected because a URL
+copied out of the app — into chat, a log, a former member's browser history —
+keeps working without login and cannot be revoked short of deleting the photo.
+For member photographs under APPI, "only signed-in members get working links"
+is the easier position, and it would reverse #190's account settings.
+
+**Why pinned to the day:** browsers and the next/image optimizer cache by URL.
+Signed fresh on every response, the link changed every time, so the web
+container (0.5 vCPU) downloaded and resized every avatar again — ~70 originals
+of up to 2 MB on the admin buddies list — on every page load. With no start
+time and the expiry pinned to the end of tomorrow, every link signed on one UTC
+day is identical, so each photo is resized once a day. First written as a
+rejected option, as cleverness the next person would have to understand;
+reversed the same day once that cost was spelled out.
+
+**Rejected — keeping the column named `photoUrl`:** no migration, but the name
+would lie, and the Google picture URLs already in it would need a "pass through
+anything starting with https" branch for good.
+
+**Rejected — keeping the Google `picture` as a fallback photo:** it did not
+render — `next.config.ts` never allowed Google's image host, so those avatars
+were broken images — and storing it would mix external URLs with blob names in
+one column. Better-looking initials are a design task on `AvatarPlaceholder`.
+
+**Rejected — Azurite with OAuth, so local signing also uses a delegation key:**
+it needs Azurite served over HTTPS with a certificate. Locally the same SDK
+signs with Azurite's published development key instead; that is one branch in
+`photoStorage.ts`, and shared-key auth is off on the Azure accounts, so it
+cannot be taken there by accident.
+
+**Local development:** the api reaches Azurite as `azurite:10000` and hands the
+browser links on `localhost:10000`; the signature does not cover the host.
+next/image is `unoptimized` in development only, because the web container
+cannot reach `localhost:10000`.
+
+**Current state:** `apps/api/src/lib/photoStorage.ts`, `docs/architecture.md`
+"File Upload Flow", `scripts/deploy.sh`, `docker-compose.yml`.
+
+---
+
 ## 2026-09-13 — `ci`'s path filter lives on the steps, not on `on:`
 
 **Decision:** `.github/workflows/ci.yml` keeps an unfiltered `on:`. A first

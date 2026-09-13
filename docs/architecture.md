@@ -11,7 +11,7 @@ flowchart TD
 
     Auth["Firebase Auth<br/>Google / Apple OAuth"]
     DB[("Neon Postgres<br/>via Prisma ORM")]
-    R2["Cloudflare R2<br/>profile photos"]
+    Blob["Azure Blob Storage<br/>buddy photos, private"]
     Gmail["Gmail API<br/>email via sendEmail"]
     Slack["Slack incoming webhook<br/>admin channel via sendSlack"]
 
@@ -20,7 +20,7 @@ flowchart TD
     Sched -->|"POST /jobs/* with X-Scheduler-Secret"| API
     API --> Auth
     API --> DB
-    API --> R2
+    API --> Blob
     API --> Gmail
     API --> Slack
 ```
@@ -185,30 +185,45 @@ This applies to: `POST /admin/profiles` (create), `DELETE /admin/profiles/:userI
 
 ## File Upload Flow
 
-Profile photos are the only file type uploaded in v1. Storage: **Cloudflare R2** (S3-compatible). Single-step upload, not a signed-URL handoff:
-
-> **Changing.** R2 has no Japan jurisdiction, so photos move to Azure Blob
-> Storage in Japan East, one account per environment, reached by managed
-> identity. Decided 2026-09-12, sequenced after the Azure cutover. Local
-> development moves to Azurite. See `docs/decisions.md`. This section describes
-> what runs today.
+Profile photos are the only file type uploaded in v1. Storage: **Azure Blob Storage**, one account per environment in Japan East, in a private `photos` container. The api reaches it as the environment's user-assigned storage identity — no account keys, and shared-key auth is off on the account. Upload is single-step through the api, not a signed-URL handoff:
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant A as Hono API
-    participant R as Cloudflare R2
+    participant B as Azure Blob
     participant D as Postgres
 
     C->>A: POST /me/profile/photo, multipart field photo
     A->>A: validate size 2 MB, MIME jpeg/png/webp, magic bytes
-    A->>R: PUT buddy-photos/profileId/uuid.ext
-    A->>D: update BuddyProfile.photoUrl
-    A-->>C: 200
-    A--)R: delete previous object, best-effort
+    A->>B: PUT photos/buddy-photos/profileId/uuid.ext
+    A->>D: update BuddyProfile.photoKey
+    A-->>C: 200, photoUrl signed until end of tomorrow
+    A--)B: delete previous blob, best-effort
 ```
 
-Deletion: `DELETE /me/profile/photo` removes the R2 object and nulls `photoUrl`.
+`BuddyProfile.photoKey` holds only the blob name. Every response that carries a photo swaps it for `photoUrl`, a read-only user delegation SAS link that is identical all UTC day and expires at the end of the next day. The browser fetches the image from Blob directly, browsers and next/image cache it by URL for the day, and a copied link stops working within two days:
+
+```mermaid
+sequenceDiagram
+    participant C as Browser
+    participant A as Hono API
+    participant E as Entra ID
+    participant B as Azure Blob
+
+    C->>A: GET a profile, signed in
+    opt no cached delegation key covering the link expiry
+        A->>E: token for the storage identity
+        A->>B: get user delegation key, 2 days
+    end
+    A->>A: sign read-only link for photoKey, expires end of tomorrow UTC
+    A-->>C: photoUrl
+    C->>B: GET photo with signature
+```
+
+Deletion: `DELETE /me/profile/photo` nulls `photoKey` and deletes the blob.
+
+Locally the api talks to Azurite from `docker-compose.yml` with the same SDK, signing with Azurite's published development key. See `docs/decisions.md` 2026-09-13, "Photos are stored as blob names".
 
 ## Notification Flow
 
