@@ -117,6 +117,49 @@ the Azure one that provisions it and the deploy one that references it.
 
 ---
 
+## 2026-09-13 — `noindex` keeps the app out of search results; robots.txt allows crawling
+
+**Decision:** Every page carries `robots: { index: false, follow: false }` from
+`apps/web/src/app/[locale]/layout.tsx`, `apps/web/next.config.ts` sends
+`X-Robots-Tag: noindex, nofollow` on every path, and
+`apps/web/src/app/robots.ts` serves `Allow: /`. The meta tag and the header are
+the mechanism; robots.txt exists only to record that *not* blocking crawlers is
+deliberate.
+
+**Why not both:** they cancel. Google's documentation is explicit — "For the
+`noindex` rule to be effective, the page or resource must not be blocked by a
+robots.txt file... the crawler will never see the `noindex` rule, and the page
+can still appear in search results, for example if other pages link to it."
+A `Disallow: /` therefore buys the weaker of the two outcomes: no snippet, but
+a URL that can still be listed once anyone links to it.
+
+**Rejected — `Disallow: /` as well, which is what #180 asked for.** Its only
+remaining benefit is suppressing crawler traffic against `/login`, and #180
+itself puts that out of scope as a WAF and rate-limit question. Paying for it
+with the deindex signal is the wrong trade.
+
+**Why the header as well as the meta tag:** the meta tag reaches only HTML
+rendered under `app/[locale]/layout.tsx`. A route handler, a `public/` file, or
+a page that exports its own `metadata.robots` would silently drop the signal.
+`X-Robots-Tag` is set once at the edge of every response and cannot be
+overridden per-page. Neither replaces the other: the header does not appear in
+the HTML, so anything reading the markup alone still needs the tag.
+
+**Rejected — no `robots.ts` at all.** `Allow: /` is a no-op to a crawler, so
+the file is documentation. It is kept because the failure mode is someone
+adding `Disallow: /` back without knowing it disables the meta tag.
+
+**Not a security control.** Firebase Auth plus the `__session` guard in
+`apps/web/src/middleware.ts` is what protects the app; scrapers ignore both
+mechanisms here. Only `/login` and `/pending` are reachable without the cookie,
+so that is the entire crawlable surface either way.
+
+**Current state:** `apps/web/src/app/robots.ts`,
+`apps/web/src/app/[locale]/layout.tsx`, `apps/web/next.config.ts`. All three are
+asserted by `apps/web/src/app/robots.test.ts`.
+
+---
+
 ## 2026-09-13 — `migrate deploy` runs as a one-shot Container Apps Job
 
 **Decision:** `scripts/deploy.sh` applies pending migrations itself, between

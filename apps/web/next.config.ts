@@ -10,6 +10,17 @@ const nextConfig: NextConfig = {
   // next build runs with cwd = apps/web; trace from the monorepo root so the
   // workspace `@peace-buddy/types` link is followed.
   outputFileTracingRoot: path.join(process.cwd(), '../..'),
+  // Belt to the meta tag's braces: the header covers every response, including
+  // routes that render outside app/[locale]/layout.tsx and non-HTML bodies that
+  // carry no <meta> at all. See docs/decisions.md.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+    ]
+  },
   images: {
     remotePatterns: [
       {
