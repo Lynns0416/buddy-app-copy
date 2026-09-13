@@ -7,10 +7,10 @@ flowchart TD
     Browser["Browser / PWA"]
     Web["Next.js App Router<br/>frontend only — no business logic"]
     API["Hono API<br/>business logic, DB access, auth validation"]
-    Sched["Cloud Scheduler"]
+    Sched["Scheduler<br/>none deployed"]
 
     Auth["Firebase Auth<br/>Google / Apple OAuth"]
-    DB[("Neon Postgres<br/>via Prisma ORM")]
+    DB[("Azure PG Flexible Server<br/>via Prisma ORM")]
     Blob["Azure Blob Storage<br/>buddy photos, private"]
     Gmail["Gmail API<br/>email via sendEmail"]
     Slack["Slack incoming webhook<br/>admin channel via sendSlack"]
@@ -25,10 +25,9 @@ flowchart TD
     API --> Slack
 ```
 
-**Staging runs on Cloud Run and Neon; both are being replaced.** As of
-2026-09-10 the permanent target is **Azure Container Apps + PG Flexible Server
-in Japan East**, funded by the Microsoft for Nonprofits grant — see
-`docs/decisions.md` (2026-09-10) and `docs/deploy-plan.md`. `DEPLOYMENT.md`
+**Deployed on Azure Container Apps + PG Flexible Server in Japan East**, funded
+by the Microsoft for Nonprofits grant — see `docs/decisions.md` (2026-09-10) and
+`docs/deploy-plan.md`. The GCP/Neon staging stack was retired on 2026-09-13. `DEPLOYMENT.md`
 predates that decision and its hosting sections are stale; read it only for the
 reasoning it records, not as current state.
 
@@ -91,7 +90,7 @@ sequenceDiagram
     participant W as Next.js
     participant M as Hono middleware
     participant R as Route + service
-    participant D as Neon Postgres
+    participant D as Postgres
 
     B->>W: navigate
     W->>M: REST call, Authorization Bearer ID token
@@ -282,6 +281,10 @@ The three enqueue jobs are idempotent via `NotificationDispatchLog(eventKey UNIQ
 The dispatcher claims each job with a compare-and-swap on `attempts`, so two
 concurrent workers can't send the same job twice.
 
+**No scheduler is deployed.** Cloud Scheduler went with the GCP stack on
+2026-09-13, and nothing on Azure calls these endpoints; notifications are to be
+re-planned.
+
 > `DEPLOYMENT.md` calls for consolidating these four into **one hourly tick** before
 > deploy — Cloud Scheduler's free tier is 3 jobs, and four separate schedules push
 > Neon past its free compute allowance. **That pressure disappears on Azure**
@@ -297,14 +300,13 @@ See PRD §10 for event types, channels, and delivery mode defaults.
 |---|---|---|
 | `development` | **Live** | Everything in Docker Compose — Next.js, Hono, local Postgres, Firebase Auth emulator. See `README.md` |
 | `preview` | **Not built** | No PR-preview environment exists. There is no deploy workflow |
-| `staging` | **Live, being replaced** | Today: Cloud Run (`asia-southeast1`) + Neon (`aws-ap-southeast-1`) + Firebase project `peace-buddy-staging` — the only deployed environment, and already where non-dev members check work. Its data moves to Azure alongside prod, onto its own B1ms server; the GCP/Neon side is then decommissioned. On Azure its compute is **started by hand** and stopped when done, so it is off most of the time by design |
+| `staging` | **Live** | Azure Container Apps + PG Flexible Server B1ms `psql-peace-buddy-stg`, Japan East, signing in through Firebase project `peace-buddy-staging`. Where non-dev members check work. Its compute is **started by hand** and stopped when done, so it is off most of the time by design. Replaced the Cloud Run + Neon stack, retired 2026-09-13 |
 | `production` | **Being built** | Azure Container Apps + PG Flexible Server B1ms, Japan East, on the Microsoft for Nonprofits grant — decided 2026-09-10, see `docs/decisions.md`. Database is private to a VNet with no public endpoint. Provisioning is `scripts/azure-provision.sh`; progress is tracked in `docs/deploy-plan.md`. Always on |
 
 Prod and staging share one resource group, VNet, Container Apps environment and
 registry, and have a separate Postgres server and storage account each. Costs
-are in `docs/azure-costs.md`. The GCP/Neon side is decommissioned once Azure
-staging is trusted, and nothing replaces it; `development` above stays as local
-Docker Compose.
+are in `docs/azure-costs.md`. Nothing replaced the retired GCP/Neon stack;
+`development` above stays as local Docker Compose.
 
 On Azure each server carries two restricted login roles, created by
 `scripts/azure-db-roles.sh` right after provisioning. `pb_app` reads and writes
@@ -399,8 +401,3 @@ time, so the api must be deployed before web is built — and the api's
 before the api is updated, and a failed migration stops the deploy with nothing
 changed; see `docs/decisions.md` 2026-09-13. Both apps run `--min-replicas 0`;
 that flag is the difference between $0 and a real bill.
-
-> **The live staging stack is still Cloud Run**, until the database cutover in
-> `docs/deploy-plan.md` §6. Its `gcloud` deploy script and the two
-> `cloudbuild.yaml` files were replaced on 2026-09-13; commit `3dcc21e` holds
-> them if that stack needs one more deploy before it is decommissioned.

@@ -978,12 +978,12 @@ New additions:
 | Frontend | Next.js (App Router) | UI only — no business logic; web-first, mobile-responsive PWA |
 | Backend | Hono | Dedicated REST API; all business logic, auth middleware, Prisma access |
 | Repo | Monorepo (pnpm workspaces) | `apps/web`, `apps/api`, `packages/types`, `prisma/` |
-| Hosting | GCP Cloud Run | Both services; via GCP nonprofit credits |
-| Database | GCP Cloud SQL (Postgres) | Via GCP nonprofit credits |
+| Hosting | Azure Container Apps, Japan East | Both services; via the Microsoft for Nonprofits grant |
+| Database | Azure Database for PostgreSQL Flexible Server | B1ms, private to a VNet; via the same grant |
 | ORM | Prisma | Lives in `apps/api`; schema in `prisma/` |
 | Auth | Firebase Auth | Google + Apple OAuth; token validated in Hono middleware |
 | File storage | Azure Blob Storage, Japan East | Profile photos in a private container; single-step multipart upload via `POST /me/profile/photo`; read through signed links pinned to the UTC day |
-| Scheduled jobs | GCP Cloud Scheduler | Hits Hono API routes for reminders, deadline checks, digest flush |
+| Scheduled jobs | None deployed | Hono API routes for reminders, deadline checks, digest flush exist; nothing calls them since GCP Cloud Scheduler was retired on 2026-09-13 |
 | Email | Gmail API (Google Workspace for Nonprofits) | Single `sendEmail()` utility in `apps/api`; env: `GMAIL_*` credentials (provider-specific) |
 | Slack notifications | Slack Incoming Webhooks | Admin notifications; env: `SLACK_WEBHOOK_URL`; fired from `apps/api` |
 | Scheduler auth | Shared secret header | `X-Scheduler-Secret` matched against `SCHEDULER_SECRET` env; middleware exists in `apps/api/src/middleware/schedulerAuth.ts` |
@@ -995,7 +995,7 @@ New additions:
 
 | Service | Program |
 |---|---|
-| GCP / Firebase | Google for Nonprofits (via TechSoup) |
+| Azure | Microsoft for Nonprofits — $2,000/yr Azure Sponsorship credit, activated 2026-09-10 |
 | GitHub | GitHub for Nonprofits |
 | Google Workspace | Google for Nonprofits — provides the Gmail API mailbox used for outbound email |
 
@@ -1005,10 +1005,9 @@ A single `sendEmail()` utility wraps the email provider. v1 uses the Gmail API a
 
 ### 13.4 Migration Path
 
-When GCP nonprofit credits run low:
-- Cloud Run → small always-on instance (~$5–10/mo)
-- Cloud SQL → retain or migrate to Supabase Pro ($25/mo, same Postgres)
-- Same Prisma schema throughout — minimal migration effort
+When the Azure grant lapses, unrenewed credit falls to pay-as-you-go — see
+`docs/deploy-plan.md` §1. The Prisma schema uses a plain `postgresql` provider,
+so the database stays portable to any managed Postgres.
 
 ### 13.5 Mobile Strategy
 

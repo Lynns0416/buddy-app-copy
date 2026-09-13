@@ -12,6 +12,48 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — GCP staging is retired now; the `peace-buddy-staging` project stays
+
+**Decision:** The GCP/Neon staging stack is torn down on 2026-09-13, without
+waiting for a review cycle on Azure staging. Inside the `peace-buddy-staging`
+GCP project, the Cloud Run services are deleted — the only thing running there —
+along with the images and source uploads their deploys left behind and their
+`run.app` hostname in Firebase Auth's authorized domains. They never had a
+custom domain, so there was no DNS record to remove. The Neon project is deleted outright. The GCP project itself and its
+Firebase Auth stay.
+
+**Why now:** Azure staging already serves the app on the data #153 moved, and
+the non-dev members — three or four people — did not review anything over the
+weekend. The review-cycle gate in "Two Azure environments, prod and staging"
+guarded work people might still do on GCP; there is none to lose.
+
+**Why the project stays:** a Firebase project is a GCP project, and Cloud Run
+ran in this one. Azure staging signs in through it, and `users.firebaseUid` is
+unique to it, so a replacement project would give every member a new UID and
+orphan their row. This supersedes the 2026-09-12 entry where it lists the
+project among what gets decommissioned.
+
+**Rejected — deleting the project:** takes Firebase Auth, and so sign-in on
+Azure staging, with it.
+
+**Rejected — keeping Neon for a week as the rollback:** the week covered a data
+move going wrong. The move was verified by the restore job and Azure staging
+runs on it; nothing will be restored from GCP.
+
+**Rejected — copying photos off R2 again before Cloud Run stops:** the second
+copy was for photos uploaded on GCP after the first. Such an upload is
+referenced only by a Neon row, which is discarded, so Azure's database would
+never point at it. This supersedes "Photos are copied off R2" on that point. R2
+can go once Cloud Run is deleted, since Cloud Run holds its keys.
+
+**Not replaced — Cloud Scheduler:** it was what called `/jobs/*`. Nothing on
+Azure does, so notification jobs run nowhere; notifications are to be
+re-planned rather than re-pointed.
+
+**Current state:** `deploy-plan.md` Progress, `architecture.md` Environments.
+
+---
+
 ## 2026-09-13 — Photos are copied off R2 by name from the dev machine; R2 goes last
 
 **Decision:** `scripts/r2-to-blob.sh` copies every object under `buddy-photos/`
@@ -27,6 +69,7 @@ members use, reads and writes the bucket until it is switched off (#156).
 Deleting the bucket or revoking the keys before then breaks photos in the app
 people use, and a photo uploaded there after a copy would be lost. So the copy
 runs again just before GCP staging stops, and teardown follows that.
+*Superseded on the second copy, 2026-09-13 — see "GCP staging is retired now".*
 
 **Rejected — a Container Apps job, like the database restore:** the restore
 needed the VNet; Blob has a public endpoint. A job would hold the R2 keys as
@@ -949,7 +992,8 @@ Container Apps environment and registry. The GCP/Neon stack — Cloud Run, Neon
 and the `peace-buddy-staging` Firebase project, the only environment deployed
 today — has its data moved to Azure staging and is then decommissioned, as its
 own task after this plan. Nothing replaces it. Local Docker Compose remains for
-development.
+development. *Superseded on the Firebase project, which stays, and on waiting
+for a review cycle, 2026-09-13 — see "GCP staging is retired now".*
 
 **Why:** Non-dev members were already checking and testing work on that stack,
 which is staging's job, on free tiers nobody maintains. Verified costs put the

@@ -8,19 +8,16 @@ is underway; see "Progress" below for what actually exists.
 
 ## Status
 
-Staging is **live on GCP** — Cloud Run `asia-southeast1`, Neon
-`aws-ap-southeast-1`, Firebase `peace-buddy-staging`. Production has never been
-built. So this is a migration of one dogfood environment, not a production
-cutover, and it is the cheapest moment it will ever be.
+Staging is **live on Azure**. The GCP/Neon stack it replaced — Cloud Run
+`asia-southeast1`, Neon `aws-ap-southeast-1` — was retired on 2026-09-13 (#156);
+the Firebase project `peace-buddy-staging` stays as staging's auth provider.
+Production has never been built.
 
-**The environment model changed on 2026-09-12.** There is one deployed
-environment today — the GCP/Neon stack behind `peace-buddy-staging` — and
-non-dev members already use it to check and test work, which is staging's job.
-It runs on free tiers nobody maintains. Azure gets **two environments, prod and
-staging**, on separate Postgres servers. The GCP/Neon stack's data moves to
-Azure staging (§6); the GCP side is then decommissioned as its own task, and
-nothing replaces it. Local Docker Compose stays for development. See
-`decisions.md` 2026-09-12.
+**The environment model changed on 2026-09-12.** Azure has **two environments,
+prod and staging**, on separate Postgres servers. Staging took over what the
+GCP/Neon stack was doing — non-dev members check and test work there — and took
+its data (§6). Nothing else is deployed; local Docker Compose stays for
+development. See `decisions.md` 2026-09-12 and 2026-09-13.
 
 Load, for sizing arguments: **~70 members**, peak season is November at roughly
 **one tour every two days**. This is an internal business tool, not a consumer
@@ -37,7 +34,7 @@ them has one to two orders of magnitude of headroom.
 | Database | **PG Flexible Server B1ms** | Cheapest real tier. Japan East placement removes the APPI 外的環境の把握 burden for application data |
 | DB networking | **Private, VNet-injected** | Costs $0. No public endpoint at all, so a leaked password is not sufficient to reach the data |
 | Infra as code | **Shell script now, Bicep later** | Learning Azure's resource model and a templating language at once makes failures ambiguous. Codify once the shape is proven |
-| Environments | **prod + staging on Azure, nothing else deployed** | Non-dev members already test on the one deployed environment, `peace-buddy-staging` on GCP free tiers. One maintained environment beats a free one nobody owns. Local Docker Compose covers development |
+| Environments | **prod + staging on Azure, nothing else deployed** | Non-dev members were already testing on the one deployed environment, on GCP free tiers. One maintained environment beats a free one nobody owns. Local Docker Compose covers development |
 | DB per environment | **A separate B1ms each** | Sharing one server saves $66/yr against this design — staging's server is stopped most of the year — and was rejected: it couples prod and staging to one CPU credit budget and one 35-connection ceiling, and it is not how anyone runs these |
 | Staging uptime | **Started by hand, stopped when done** | Staging is dormant between feature cycles. Storage bills regardless; compute is the only variable and it is $0.026/hr |
 | Photo storage | **Azure Blob, Japan East** | R2 has no Japan jurisdiction and location hints are best-effort, so photos kept the APPI burden the database move removed |
@@ -129,7 +126,7 @@ staging/prod split is **no longer omitted** — it is the point of this plan now
 
 ```mermaid
 flowchart LR
-    subgraph NOW["Live today — GCP"]
+    subgraph NOW["Retired 2026-09-13 — GCP"]
         direction TB
         CRW["Cloud Run: web"]
         CRA["Cloud Run: api"]
@@ -167,8 +164,7 @@ Already shipped, do not redo:
 - `apps/web/next.config.ts` emits `output: 'standalone'`.
 - `scripts/deploy.sh` and `scripts/deploy.env.example` were rewritten for
   Azure on 2026-09-13 (#152) and `apps/*/cloudbuild.yaml` deleted. The Cloud
-  Run versions are in commit `3dcc21e` if the live GCP stack ever needs another
-  deploy before it is decommissioned.
+  Run versions are in commit `3dcc21e`.
 
 Portability was verified and still holds: a plain `postgresql` provider with no
 `directUrl`, a bare `PrismaClient` with no driver adapter, and no reference to
@@ -331,9 +327,8 @@ Done 2026-09-13, #152:
 - [x] `migrate` stage in `apps/api/Dockerfile`, carrying the Prisma CLI and the
       migration history that the `runner` stage deliberately does not.
 
-Not yet run against anything. The first real deploy is staging, and as of
-2026-09-13 nothing stands in front of it: §6's restore moved the data, so the
-database it would migrate is the Azure one.
+First run against staging in #179, 2026-09-13, onto the database §6's restore
+moved. Not yet run against prod.
 
 Images are pulled with `id-peace-buddy-acrpull`, one user-assigned identity
 created by `azure-provision.sh` and granted `AcrPull` once, so no registry
@@ -397,16 +392,11 @@ just a restore:
       in #153, against an empty target: 20 tables, row counts agreeing on both
       ends, history matching `prisma/migrations/`, `pb_app` verified. The server
       was stopped again afterwards.
-- [ ] Point `DATABASE_URL` at Azure, redeploy the api, smoke test. **Not part
-      of #153.** Nothing on Azure serves the app yet — no image has been built
-      and neither container app exists — and the api that does serve staging
-      runs on Cloud Run, which has no route into the VNet. So there is nothing
-      to repoint yet: this step *is* the first Azure deploy, and it belongs
-      with §5. The restore is what unblocks it.
-- [ ] Keep the Neon project for a week, then delete it — **not before
-      2026-09-20**, and not until the api actually runs against Azure, since
-      until then Neon is still the database staging serves from. Deleting it is
-      part of retiring the GCP stack (#156).
+- [x] Point `DATABASE_URL` at Azure, redeploy the api, smoke test. Cloud Run
+      had no route into the VNet, so there was nothing to repoint: this step
+      was the first Azure staging deploy, #179, 2026-09-13.
+- [x] Delete the Neon project — done 2026-09-13, #156. The week's wait planned as a rollback was
+      waived on 2026-09-13; see `decisions.md`, "GCP staging is retired now".
 
 Schema changes go through `prisma migrate deploy` (see `DEPLOYMENT.md`,
 "Schema Changes"). Run it by hand once against each new server, never from a
@@ -616,19 +606,19 @@ authority.*
 | Storage account — **prod** | ⬜ #175 — `azure-provision.sh` step 7, run with `scripts/azure.env` alongside the prod server |
 | Photo service ported from the S3 SDK to Azure Blob | ✅ 2026-09-13, #154 — `photoKey` column, signed links pinned to the UTC day; see `decisions.md` "Photos are stored as blob names" |
 | Azurite in `docker-compose` for local photo upload | ✅ 2026-09-13, #154 |
-| `scripts/deploy.sh` rewritten for Azure, parameterised by environment | ✅ 2026-09-13, #152 — written, not yet run against Azure |
+| `scripts/deploy.sh` rewritten for Azure, parameterised by environment | ✅ 2026-09-13, #152 — first run against staging in #179 |
 | Neon baselined onto Prisma Migrate — enum remap, then drift, then `migrate resolve` for both directories | ✅ 2026-09-12, #142 |
 | `azure-db-restore.sh`, the dump-and-load job | ✅ 2026-09-13 — rehearsed against a local Postgres 16 target, then run against Azure; see §6.1 |
 | Prod built from `0_init` with `migrate deploy` | ⬜ |
 | Staging migration history reconciled after restore | ✅ 2026-09-13 — nothing to reconcile; the dump carried `_prisma_migrations` and the restore job asserted it against `prisma/migrations/` |
 | Where `migrate deploy` runs on release, decided | ✅ 2026-09-13, #152 — one-shot Container Apps Job, run by `scripts/deploy.sh` as `pb_migrate` |
 | Data migrated off Neon | ✅ 2026-09-13, #153 — staging only; prod has no data to move |
-| `DATABASE_URL` repointed at Azure, api redeployed, smoke tested | ⬜ this is the first real deploy, which the restore unblocks; tracked with §5, not #153 |
-| Photos migrated off R2 | 🟨 #155 — staging copied 2026-09-13 with `scripts/r2-to-blob.sh`, all 6 photos verified by MD5 and content type; prod has nothing on R2. Run again just before GCP staging stops taking uploads, and check photos render after the first Azure staging deploy |
+| `DATABASE_URL` repointed at Azure, api redeployed, smoke tested | ✅ 2026-09-13, #179 — the first Azure staging deploy |
+| Photos migrated off R2 | ✅ #155 — staging copied 2026-09-13 with `scripts/r2-to-blob.sh`, all 6 photos verified by MD5 and content type; prod has nothing on R2. No second copy: an upload made on GCP since then is referenced only by a Neon row, which is discarded; see `decisions.md` "GCP staging is retired now" |
 | Nightly `pg_dump` job + 30-day lifecycle rule, prod | ⬜ second Container Apps Job, in `snet-apps`, image carrying `pg_dump` |
 | One tested restore from a dump | ⬜ the checklist item that actually proves the backup |
-| R2 account torn down — bucket and the five `R2_*` keys; code and deploy config dropped them in #154 | ⬜ after the last copy **and** after GCP staging stops serving — it still reads and writes the bucket; see `decisions.md` "Photos are copied off R2" |
-| GCP/Neon stack decommissioned — Cloud Run, Neon, the `peace-buddy-staging` project | ⬜ own task after this plan; only once Azure staging is trusted by the non-dev members |
+| R2 account torn down — bucket and the five `R2_*` keys; code and deploy config dropped them in #154 | ✅ 2026-09-13, #155 — bucket deleted after Cloud Run (#156), API token revoked |
+| GCP/Neon stack decommissioned — in `peace-buddy-staging`: the Cloud Run services, Artifact Registry repo `asia-southeast1/peace-buddy`, the Cloud Build source bucket `gs://peace-buddy-staging_cloudbuild` and the `run.app` Firebase authorized domain (no custom domain, so no DNS record); and the Neon project. The project itself and its Firebase Auth **stay**: Azure staging signs in through them | ✅ 2026-09-13, #156 — all of the above deleted; see `decisions.md` "GCP staging is retired now" |
 
 The provisioning script prints a `DATABASE_URL` built from the server admin
 account, because a restricted role can only be created with `psql` from inside
