@@ -454,6 +454,20 @@
       "forbidden": "このプロフィールを編集する権限がありません。",
       "network": "ネットワークエラーが発生しました。接続を確認してください。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
+    },
+    "linkedAccounts": {
+      "title": "ログイン方法",
+      "description": "別のログイン方法を追加できます。アカウントは今のままで、プロフィール・ツアー履歴・評価はそのまま引き継がれます。",
+      "google": "Google",
+      "apple": "Apple",
+      "connected": "連携済み",
+      "connectGoogle": "Googleと連携する",
+      "connectApple": "Appleと連携する",
+      "comingSoon": "Appleでのログインは近日対応予定です",
+      "error": {
+        "alreadyInUse": "この{provider}アカウントはすでに別のPeace Buddyアカウントと連携されています。管理者にお問い合わせください。",
+        "unknown": "ログイン方法を連携できませんでした。もう一度お試しください。"
+      }
     }
   },
   "languages": {

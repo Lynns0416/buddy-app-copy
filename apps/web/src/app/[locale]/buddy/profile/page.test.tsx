@@ -26,6 +26,10 @@ vi.mock('./_components/profile-header', () => ({
   ProfileHeader: () => <div />,
 }))
 
+vi.mock('./_components/linked-accounts', () => ({
+  LinkedAccounts: () => null,
+}))
+
 vi.mock('./_components/profile-form', () => ({
   ProfileForm: () => <div />,
 }))

@@ -18,7 +18,7 @@ All routes are served by the Hono API (`apps/api`). Every request must include a
 ## Auth
 
 ### `POST /auth/register`
-Called on first login. Validates the Firebase ID token (no DB user required yet) and upserts a `User` (role `buddy`) + `BuddyProfile` in `pending` state. `firebaseUid` and `email` come from the verified token, not the body.
+Called on every popup sign-in, not only the first. A restored session (page reload) rehydrates through `GET /auth/me` instead, so `email` is not refreshed until the buddy next signs in. Validates the Firebase ID token (no DB user required yet) and upserts a `User` (role `buddy`) + `BuddyProfile` in `pending` state. `firebaseUid` and `email` come from the verified token, not the body. On an existing user only `email` is written, so the row tracks the current provider address; it is skipped when the token carries no email claim, so a good address is never replaced by an empty one. The profile fields in the body apply to the create branch only.
 
 **Auth:** Firebase ID token (`firebaseAuthMiddleware` only — no DB user yet)
 

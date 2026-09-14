@@ -9,6 +9,7 @@ import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { ProfileHeader } from './_components/profile-header'
 import { ProfileForm } from './_components/profile-form'
+import { LinkedAccounts } from './_components/linked-accounts'
 import { useMyProfile } from './hooks/use-my-profile'
 
 export default function ProfilePage() {
@@ -50,6 +51,7 @@ export default function ProfilePage() {
         <>
           <ProfileHeader profile={profile} onPhotoSaved={updateProfile} />
           <ProfileForm profile={profile} onSaved={refetch} />
+          <LinkedAccounts />
         </>
       )}
     </AppShell>

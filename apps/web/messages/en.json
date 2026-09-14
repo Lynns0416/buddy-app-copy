@@ -454,6 +454,20 @@
       "forbidden": "You don't have permission to edit this profile.",
       "network": "Network error. Please check your connection.",
       "unknown": "An error occurred. Please try again."
+    },
+    "linkedAccounts": {
+      "title": "Sign-in methods",
+      "description": "Add another way to sign in. You keep this same account — your profile, tour history and evaluations stay as they are.",
+      "google": "Google",
+      "apple": "Apple",
+      "connected": "Connected",
+      "connectGoogle": "Connect Google",
+      "connectApple": "Connect Apple",
+      "comingSoon": "Apple sign-in is coming soon",
+      "error": {
+        "alreadyInUse": "That {provider} account is already connected to another Peace Buddy account. Please ask an admin for help.",
+        "unknown": "Could not connect that sign-in method. Please try again."
+      }
     }
   },
   "languages": {

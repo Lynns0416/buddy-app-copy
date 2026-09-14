@@ -70,7 +70,13 @@ export async function upsertUser(
           },
         },
       },
-      update: {},
+      // Refresh email on every sign-in: the provider address is the source of
+      // truth, and it is what notification delivery and the admin UI resolve to.
+      // Without this it keeps whatever it held at account creation (#194).
+      // Guarded on a non-empty value — verifyFirebaseToken falls back to '' when
+      // the ID token carries no email claim, and writing that would clobber a
+      // good stored address with one nothing can deliver to.
+      update: email ? { email } : {},
       select: userSelect,
     })
 

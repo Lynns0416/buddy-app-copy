@@ -84,7 +84,29 @@ describe('upsertUser', () => {
             }),
           },
         }),
-        update: {},
+        update: { email: 'test@example.com' },
+      })
+    )
+  })
+
+  it('leaves the stored email alone when the token carried no email claim', async () => {
+    mdb.user.upsert.mockResolvedValueOnce(mockUserRow)
+
+    // verifyFirebaseToken falls back to '' when the ID token has no email claim
+    await upsertUser('uid-123', '', {})
+
+    expect(mdb.user.upsert).toHaveBeenCalledWith(oc({ update: {} }))
+  })
+
+  it('refreshes email on re-sign-in so a changed provider address is not kept stale', async () => {
+    mdb.user.upsert.mockResolvedValueOnce({ ...mockUserRow, email: 'new@example.com' })
+
+    await upsertUser('uid-123', 'new@example.com', {})
+
+    expect(mdb.user.upsert).toHaveBeenCalledWith(
+      oc({
+        where: { firebaseUid: 'uid-123' },
+        update: { email: 'new@example.com' },
       })
     )
   })

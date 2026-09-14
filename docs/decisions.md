@@ -12,6 +12,58 @@ duplicate that state here.
 
 ---
 
+## 2026-09-13 — A second auth provider is linked from the profile page, not at sign-in
+
+**Decision:** A buddy who wants both Google and Apple on one account links the
+second provider from their own profile page, while signed in, via Firebase
+`linkWithPopup`. Firebase keeps the same `uid`, so `User.firebaseUid` still
+resolves to the one row and no second `User` or `BuddyProfile` is created.
+Either direction links — whichever provider the buddy signed up with is the one
+the other gets added to.
+`apps/web/src/app/[locale]/buddy/profile/_components/linked-accounts.tsx`.
+
+**Why not link at sign-in** (catch `auth/account-exists-with-different-credential`
+and link the credential): it is unreachable for the case that actually motivates
+this. Apple's Hide My Email returns a `…@privaterelay.appleid.com` address that
+never equals the Google one, so before authentication there is no shared key to
+match the two identities on. Linking from a live session needs no key — identity
+is already proven.
+
+**Why not match on email:** `email` is mutable and not unique per person;
+OIDC treats the provider subject as the only stable identifier. Silently merging
+two accounts because their addresses match is also the pre-account-takeover
+attack — an attacker registers the victim's address at a provider with weak
+verification and the victim's real sign-in merges into it. `User.email` stays
+non-unique metadata, refreshed from the token but never used as identity.
+
+**Rejected — admin-side account merge:** covers every case including a duplicate
+that already exists, but bookings, evaluations, tier, notifications and
+preferences all have to move, and it adds an admin operation to own. Products
+that support multiple providers generally treat merge as a support chore rather
+than a product surface. Revisit if duplicates actually appear; until then the
+buddy is told to contact an admin (`profile.linkedAccounts.error.alreadyInUse`).
+
+**Rejected — prompting the buddy at signup** ("do you already have an account?"):
+correctness depends on the buddy answering right, and it puts the question at the
+moment they have least context.
+
+**Rejected — a local `Identity` table** (`User 1—N Identity(provider, subject)`),
+which is how teams that own their identity layer model this: redundant here.
+Firebase already holds the provider list on one `uid`, so duplicating it in
+Postgres buys nothing and adds a migration plus two lookup sites to keep in step.
+
+**Also fixed here:** `upsertUser` passed `update: {}`, so `User.email` kept
+whatever it held at account creation. It now refreshes on every sign-in — that
+address is what notification delivery and the admin UI resolve to. The refresh
+is guarded on a non-empty value: `verifyFirebaseToken` falls back to `''` when
+the ID token carries no email claim, and `update: {}` used to make it impossible
+for that to reach the row.
+
+**Current state:** `docs/architecture.md` "Second provider on one account",
+`docs/api.md` `POST /auth/register`. Closes #194.
+
+---
+
 ## 2026-09-13 — GCP staging is retired now; the `peace-buddy-staging` project stays
 
 **Decision:** The GCP/Neon staging stack is torn down on 2026-09-13, without
@@ -1582,10 +1634,10 @@ Remaining work is Firebase console config (Service ID + key) only. Firebase
 generates and rotates the client secret itself, so there is no recurring key
 chore.
 
-**Open risk:** Firebase defaults to one account per email. A buddy who signs in
-with Google and later with Apple + Hide My Email gets a different email, so a
-second `User` and duplicate `BuddyProfile`. Review `upsertUser`
-(`apps/api/src/services/auth.service.ts`) before launch.
+**Open risk — resolved 2026-09-13:** a buddy who signed in with Google and later
+with Apple + Hide My Email would have got a second `User` and a duplicate
+`BuddyProfile`. Settled by linking the second provider from the profile page
+rather than at sign-in — see the 2026-09-13 entry.
 
 **Superseded in part by 2026-09-13:** the decision to finish rather than drop
 still stands, but the button is disabled behind a flag until the console config

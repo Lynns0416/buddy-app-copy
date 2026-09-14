@@ -123,6 +123,7 @@ sequenceDiagram
     F-->>W: ID token
     W->>A: POST /auth/register with token
     A->>D: upsert User + BuddyProfile, status pending
+    Note over A,D: on re-login the upsert refreshes email only
     A-->>W: registered
     Note over W,A: every later call carries the ID token
     W->>A: request + Authorization header
@@ -130,6 +131,37 @@ sequenceDiagram
     A->>D: look up user by firebaseUid
     A-->>W: response
 ```
+
+### Second provider on one account
+
+A buddy attaches a second provider from their own profile page rather than at
+sign-in. `linkWithPopup` attaches the credential to the Firebase user already in
+the session, which keeps the same `uid`, so `User.firebaseUid` still resolves to
+the one row — no second `User`, no duplicate `BuddyProfile`. Both directions are
+offered: whichever provider the buddy signed up with is the one the other is
+added to.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant W as Next.js
+    participant F as Firebase Auth
+    participant A as Hono API
+    participant D as Postgres
+
+    Note over U,F: already signed in with one provider
+    U->>W: Connect the other one (profile page)
+    W->>F: linkWithPopup(currentUser, provider)
+    F-->>W: same uid, providerData now has both
+    Note over W,A: no API call — uid unchanged
+    U->>W: later sign-in with either provider
+    W->>A: POST /auth/register with token
+    A->>D: resolves to the same User row
+```
+
+Sign-in-time linking is not used: Apple's Hide My Email returns a relay address
+that never equals the Google one, so there is no shared key to match on before
+authentication. See `docs/decisions.md` 2026-09-13.
 
 Approval is a separate admin action: `PUT /admin/buddies/:id/status` moves the
 buddy `pending → trainee` or `pending → rejected`, and the buddy is notified.

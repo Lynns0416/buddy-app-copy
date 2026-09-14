@@ -63,12 +63,14 @@ describe('BuddyHistoryPage', () => {
       signOut: vi.fn(),
       signInWithGoogle: vi.fn(),
       signInWithApple: vi.fn(),
+      linkedProviderIds: [],
+      linkProvider: vi.fn(),
       setBuddyProfile: vi.fn(),
     })
   })
 
   it('renders nothing while loading', () => {
-    mockUseAuth.mockReturnValue({ firebaseUser: null, dbUser: null, loading: true, signOut: vi.fn(), signInWithGoogle: vi.fn(), signInWithApple: vi.fn(), setBuddyProfile: vi.fn() })
+    mockUseAuth.mockReturnValue({ firebaseUser: null, dbUser: null, loading: true, signOut: vi.fn(), signInWithGoogle: vi.fn(), signInWithApple: vi.fn(), linkedProviderIds: [], linkProvider: vi.fn(), setBuddyProfile: vi.fn() })
     mockUseMyBookings.mockReturnValue({ bookings: null, error: false })
     const { container } = render(<BuddyHistoryPage />)
     expect(container.firstChild).toBeNull()
@@ -127,7 +129,7 @@ describe('BuddyHistoryPage', () => {
   })
 
   it('passes ready=false when loading', () => {
-    mockUseAuth.mockReturnValue({ firebaseUser: null, dbUser: null, loading: true, signOut: vi.fn(), signInWithGoogle: vi.fn(), signInWithApple: vi.fn(), setBuddyProfile: vi.fn() })
+    mockUseAuth.mockReturnValue({ firebaseUser: null, dbUser: null, loading: true, signOut: vi.fn(), signInWithGoogle: vi.fn(), signInWithApple: vi.fn(), linkedProviderIds: [], linkProvider: vi.fn(), setBuddyProfile: vi.fn() })
     mockUseMyBookings.mockReturnValue({ bookings: null, error: false })
     render(<BuddyHistoryPage />)
     expect(mockUseMyBookings).toHaveBeenCalledWith(false)

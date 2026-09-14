@@ -10,6 +10,7 @@ import {
 } from 'react'
 import {
   signInWithPopup,
+  linkWithPopup,
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   OAuthProvider,
@@ -23,12 +24,32 @@ import type { BuddyProfileResponse, UserResponse } from '@peace-buddy/types'
 // Alias for UserResponse — keeps call sites using useAuth().dbUser stable
 export type DbUser = UserResponse
 
+// Firebase provider ids. Client-side identity only — never an API contract, so
+// these stay here rather than in packages/types.
+export const GOOGLE_PROVIDER_ID = 'google.com'
+export const APPLE_PROVIDER_ID = 'apple.com'
+export type LinkableProviderId = typeof GOOGLE_PROVIDER_ID | typeof APPLE_PROVIDER_ID
+
+function buildProvider(providerId: LinkableProviderId) {
+  if (providerId === GOOGLE_PROVIDER_ID) return new GoogleAuthProvider()
+  const apple = new OAuthProvider(APPLE_PROVIDER_ID)
+  apple.addScope('email')
+  apple.addScope('name')
+  return apple
+}
+
 type AuthContextValue = {
   firebaseUser: FirebaseUser | null
   dbUser: DbUser | null
   loading: boolean
   signInWithGoogle: () => Promise<void>
   signInWithApple: () => Promise<void>
+  // Provider ids already attached to the signed-in Firebase user
+  // ('google.com', 'apple.com'). Held as state rather than read off
+  // firebaseUser.providerData: linking mutates the same User object, so a
+  // re-render needs a new value, not the same reference back.
+  linkedProviderIds: string[]
+  linkProvider: (providerId: LinkableProviderId) => Promise<void>
   signOut: () => Promise<void>
   setBuddyProfile: (profile: BuddyProfileResponse) => void
 }
@@ -45,6 +66,7 @@ function clearTokenCookie() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
+  const [linkedProviderIds, setLinkedProviderIds] = useState<string[]>([])
   const [dbUser, setDbUser] = useState<DbUser | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -53,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // keeping the __session cookie fresh. onAuthStateChanged would miss token refreshes.
     const unsubscribe = onIdTokenChanged(firebaseAuth, async (user) => {
       setFirebaseUser(user)
+      setLinkedProviderIds(user ? user.providerData.map((p) => p.providerId) : [])
 
       if (user) {
         const token = await user.getIdToken()
@@ -100,8 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithGoogle = useCallback(async () => {
-    const provider = new GoogleAuthProvider()
-    const result = await signInWithPopup(firebaseAuth, provider)
+    const result = await signInWithPopup(firebaseAuth, buildProvider(GOOGLE_PROVIDER_ID))
     const token = await result.user.getIdToken()
     writeTokenCookie(token)
     // Set dbUser from the register response directly to avoid a redundant /auth/me call
@@ -112,10 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithApple = useCallback(async () => {
-    const provider = new OAuthProvider('apple.com')
-    provider.addScope('email')
-    provider.addScope('name')
-    const result = await signInWithPopup(firebaseAuth, provider)
+    const result = await signInWithPopup(firebaseAuth, buildProvider(APPLE_PROVIDER_ID))
     const token = await result.user.getIdToken()
     writeTokenCookie(token)
     // Set dbUser from the register response directly to avoid a redundant /auth/me call
@@ -123,6 +142,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const me = await apiRequest<DbUser>('/auth/register', { method: 'POST' })
     setDbUser(me)
     setFirebaseUser(result.user)
+  }, [])
+
+  // Attaches a second provider to the Firebase user that is already signed in.
+  // Firebase keeps the same uid, so `User.firebaseUid` still resolves to the
+  // same row — no second User, no duplicate BuddyProfile (#194). Either
+  // direction works, because whichever provider the buddy started with is the
+  // one the other has to be added to. This is also the only path that covers
+  // Apple's Hide My Email, where the relay address never matches the Google one
+  // and so nothing can be matched on at sign-in time.
+  const linkProvider = useCallback(async (providerId: LinkableProviderId) => {
+    const current = firebaseAuth.currentUser
+    if (!current) throw new Error('linkProvider called with no signed-in user')
+    const result = await linkWithPopup(current, buildProvider(providerId))
+    setLinkedProviderIds(result.user.providerData.map((p) => p.providerId))
   }, [])
 
   // Lets a page that changed the buddy profile through the API keep dbUser in
@@ -136,10 +169,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearTokenCookie()
     setDbUser(null)
     setFirebaseUser(null)
+    setLinkedProviderIds([])
   }, [])
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, dbUser, loading, signInWithGoogle, signInWithApple, signOut, setBuddyProfile }}>
+    <AuthContext.Provider value={{ firebaseUser, dbUser, loading, signInWithGoogle, signInWithApple, linkedProviderIds, linkProvider, signOut, setBuddyProfile }}>
       {children}
     </AuthContext.Provider>
   )
