@@ -85,7 +85,7 @@ describe('enqueueMaybeReminders', () => {
 
   it('enqueues in-app + email per Maybe buddy when offset 3 matches today', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: THREE_DAYS_OUT },
+      { id: 't1', maybeDeadline: THREE_DAYS_OUT, tourDate: THREE_DAYS_OUT, group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([
       { buddy: { userId: 'u1' } },
@@ -104,13 +104,18 @@ describe('enqueueMaybeReminders', () => {
     expect(rows.map((d) => d.channel).sort()).toEqual(['email', 'email', 'in_app', 'in_app'])
     for (const d of rows) {
       expect(d.eventType).toBe('maybe_reminder')
-      expect(d.payload).toEqual({ tourId: 't1', offsetDays: 3 })
+      expect(d.payload).toEqual({
+        tourId: 't1',
+        groupName: 'Sakura School',
+        tourDate: '2026-06-24', // THREE_DAYS_OUT
+        offsetDays: 3,
+      })
     }
   })
 
   it('fires offset 1 when deadline is tomorrow (JST)', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: ONE_DAY_OUT },
+      { id: 't1', maybeDeadline: ONE_DAY_OUT, tourDate: ONE_DAY_OUT, group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([{ buddy: { userId: 'u1' } }])
 
@@ -122,7 +127,7 @@ describe('enqueueMaybeReminders', () => {
 
   it('skips tours whose deadline does not match any offset today', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: TEN_DAYS_OUT },
+      { id: 't1', maybeDeadline: TEN_DAYS_OUT, tourDate: TEN_DAYS_OUT, group: { name: 'Sakura School' } },
     ])
 
     const result = await enqueueMaybeReminders(NOW)
@@ -134,7 +139,7 @@ describe('enqueueMaybeReminders', () => {
   it('skips tours with null maybeDeadline returned by Prisma', async () => {
     // The `gte: today` filter excludes nulls in the query, but guard in code too.
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: null },
+      { id: 't1', maybeDeadline: null, tourDate: null, group: { name: 'Sakura School' } },
     ])
 
     const result = await enqueueMaybeReminders(NOW)
@@ -145,7 +150,7 @@ describe('enqueueMaybeReminders', () => {
 
   it('skips tours whose deadline is already in the past', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: YESTERDAY },
+      { id: 't1', maybeDeadline: YESTERDAY, tourDate: YESTERDAY, group: { name: 'Sakura School' } },
     ])
 
     const result = await enqueueMaybeReminders(NOW)
@@ -156,7 +161,7 @@ describe('enqueueMaybeReminders', () => {
 
   it('dedups buddies holding Maybe on multiple sessions of the same tour', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: THREE_DAYS_OUT },
+      { id: 't1', maybeDeadline: THREE_DAYS_OUT, tourDate: THREE_DAYS_OUT, group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([
       { buddy: { userId: 'u1' } },
@@ -172,7 +177,7 @@ describe('enqueueMaybeReminders', () => {
 
   it('filters bookings to Maybe status only', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: THREE_DAYS_OUT },
+      { id: 't1', maybeDeadline: THREE_DAYS_OUT, tourDate: THREE_DAYS_OUT, group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([])
 
@@ -184,7 +189,7 @@ describe('enqueueMaybeReminders', () => {
 
   it('excludes suspended and rejected buddies via the booking-side relation filter', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: THREE_DAYS_OUT },
+      { id: 't1', maybeDeadline: THREE_DAYS_OUT, tourDate: THREE_DAYS_OUT, group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([])
 
@@ -198,7 +203,7 @@ describe('enqueueMaybeReminders', () => {
 
   it('counts P2002 from the dispatch log as alreadySent and skips enqueue', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: THREE_DAYS_OUT },
+      { id: 't1', maybeDeadline: THREE_DAYS_OUT, tourDate: THREE_DAYS_OUT, group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([{ buddy: { userId: 'u1' } }])
 
@@ -220,7 +225,7 @@ describe('enqueueMaybeReminders', () => {
 
   it('propagates non-P2002 errors raised inside the enqueue txn', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', maybeDeadline: THREE_DAYS_OUT },
+      { id: 't1', maybeDeadline: THREE_DAYS_OUT, tourDate: THREE_DAYS_OUT, group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([{ buddy: { userId: 'u1' } }])
 

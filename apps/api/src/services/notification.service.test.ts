@@ -38,6 +38,22 @@ vi.mock('../lib/db', () => {
 })
 
 import { db } from '../lib/db'
+
+// These tests exercise recipient fan-out and preference gating, not message
+// content — but every event's payload is typed now, so the fixtures have to be
+// complete. One per payload shape.
+const tourPayload = { tourId: 'tour-1', groupName: 'Sakura School', tourDate: '2026-07-04' }
+const reminderPayload = { ...tourPayload, offsetDays: 3 }
+const bookingPayload = {
+  ...tourPayload,
+  bookingId: 'b1',
+  sessionId: 's1',
+  buddyId: 'bd1',
+  buddyName: 'Aya',
+}
+const newBookingPayload = { ...bookingPayload, status: 'confirmed' as const }
+const cantGoPayload = { ...bookingPayload, category: 'health' as const }
+const signupPayload = { buddyUserId: 'u-new', email: 'new@example.test', displayName: 'Aya' }
 const mdb = db as unknown as MockDb
 
 beforeEach(() => vi.clearAllMocks())
@@ -75,7 +91,7 @@ describe('enqueueInApp', () => {
     mdb.user.findUnique.mockResolvedValueOnce({ locale: 'ja' })
     const when = new Date('2026-06-15T09:00:00Z')
     await enqueueInApp(
-      { eventType: 'tour_reminder', recipientUserId: 'u1', payload: {}, scheduledFor: when },
+      { eventType: 'tour_reminder', recipientUserId: 'u1', payload: reminderPayload, scheduledFor: when },
       mdb as any,
     )
     expect((mdb.notificationJob.create.mock.calls[0][0] as any).data.scheduledFor).toBe(when)
@@ -90,7 +106,7 @@ describe('enqueueInAppForAllAdmins', () => {
     ])
 
     await enqueueInAppForAllAdmins(
-      { eventType: 'new_signup', payload: { buddyUserId: 'u-new' } },
+      { eventType: 'new_signup', payload: signupPayload },
       mdb as any,
     )
 
@@ -110,7 +126,7 @@ describe('enqueueInAppForAllAdmins', () => {
 
   it('no-ops when there are no admins', async () => {
     mdb.user.findMany.mockResolvedValueOnce([])
-    await enqueueInAppForAllAdmins({ eventType: 'new_signup', payload: {} }, mdb as any)
+    await enqueueInAppForAllAdmins({ eventType: 'new_signup', payload: signupPayload }, mdb as any)
     expect(mdb.notificationJob.createMany).not.toHaveBeenCalled()
   })
 })
@@ -124,7 +140,7 @@ describe('enqueueInAppForTourAdmins', () => {
 
     await enqueueInAppForTourAdmins(
       'tour-1',
-      { eventType: 'new_booking', payload: { tourId: 'tour-1' } },
+      { eventType: 'new_booking', payload: newBookingPayload },
       mdb as any,
     )
 
@@ -140,7 +156,7 @@ describe('enqueueInAppForTourAdmins', () => {
     mdb.tourAdminAssignment.findMany.mockResolvedValueOnce([])
     await enqueueInAppForTourAdmins(
       'tour-1',
-      { eventType: 'new_booking', payload: {} },
+      { eventType: 'new_booking', payload: newBookingPayload },
       mdb as any,
     )
     expect(mdb.notificationJob.createMany).not.toHaveBeenCalled()
@@ -245,7 +261,7 @@ describe('enqueueEmail', () => {
 
   it('skips events with no template (e.g. new_signup → digest-only, slice 5)', async () => {
     await enqueueEmail(
-      { eventType: 'new_signup', recipientUserId: 'u1', payload: {} },
+      { eventType: 'new_signup', recipientUserId: 'u1', payload: signupPayload },
       mdb as any,
     )
     expect(mdb.user.findUnique).not.toHaveBeenCalled()
@@ -269,7 +285,7 @@ describe('enqueueEmailForActiveBuddies', () => {
       { user: { id: 'b2', locale: 'en' } },
     ])
     await enqueueEmailForActiveBuddies(
-      { eventType: 'tour_published', payload: { tourId: 'tour-1' } },
+      { eventType: 'tour_published', payload: tourPayload },
       mdb as any,
     )
     const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ channel: string; recipientUserId: string }>
@@ -279,7 +295,7 @@ describe('enqueueEmailForActiveBuddies', () => {
 
   it('skips events with no template entirely (no DB read)', async () => {
     await enqueueEmailForActiveBuddies(
-      { eventType: 'self_eval_prompt', payload: {} },
+      { eventType: 'self_eval_prompt', payload: tourPayload },
       mdb as any,
     )
     expect(mdb.buddyProfile.findMany).not.toHaveBeenCalled()
@@ -295,7 +311,7 @@ describe('enqueueEmailForBookedBuddies', () => {
     ])
     await enqueueEmailForBookedBuddies(
       'tour-1',
-      { eventType: 'tour_cancelled', payload: { tourId: 'tour-1' } },
+      { eventType: 'tour_cancelled', payload: tourPayload },
       mdb as any,
     )
     const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ recipientUserId: string }>
@@ -307,7 +323,7 @@ describe('enqueueEmailForTourAdmins', () => {
   const tourId = 'tour-1'
   const args = {
     eventType: 'booking_cancelled' as const,
-    payload: { tourId },
+    payload: bookingPayload,
   }
 
   function assignment(userId: string, prefs: Array<{ eventType: string; emailEnabled: boolean; emailMode: string }>) {
@@ -355,7 +371,7 @@ describe('enqueueEmailForTourAdmins', () => {
   })
 
   it('enqueues one channel-wide slack job with no recipient, not one per admin', async () => {
-    await enqueueSlackForAdmins({ eventType: 'new_signup', payload: { buddyUserId: 'u1' } }, mdb as any)
+    await enqueueSlackForAdmins({ eventType: 'new_signup', payload: signupPayload }, mdb as any)
 
     expect(mdb.notificationJob.create).toHaveBeenCalledTimes(1)
     expect(mdb.notificationJob.createMany).not.toHaveBeenCalled()
@@ -369,14 +385,14 @@ describe('enqueueEmailForTourAdmins', () => {
   })
 
   it('does not consult admin rows at all — the channel has no per-admin targeting', async () => {
-    await enqueueSlackForAdmins({ eventType: 'new_signup', payload: {} }, mdb as any)
+    await enqueueSlackForAdmins({ eventType: 'new_signup', payload: signupPayload }, mdb as any)
 
     expect(mdb.user.findMany).not.toHaveBeenCalled()
     expect(mdb.tourAdminAssignment.findMany).not.toHaveBeenCalled()
   })
 
   it('skips buddy-targeted events — they have no slack template', async () => {
-    await enqueueSlackForAdmins({ eventType: 'tour_reminder', payload: {} }, mdb as any)
+    await enqueueSlackForAdmins({ eventType: 'tour_reminder', payload: reminderPayload }, mdb as any)
 
     expect(mdb.notificationJob.create).not.toHaveBeenCalled()
   })
@@ -388,7 +404,7 @@ describe('enqueueEmailForTourAdmins', () => {
     ])
     await enqueueEmailForTourAdmins(
       tourId,
-      { eventType: 'cant_go_post_deadline', payload: { tourId } },
+      { eventType: 'cant_go_post_deadline', payload: cantGoPayload },
       mdb as any,
     )
     const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ recipientUserId: string }>

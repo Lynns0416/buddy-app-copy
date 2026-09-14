@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Mock } from 'vitest'
-import { createBooking, updateBooking } from './booking.service'
+import { createBooking, reportCantGo, updateBooking } from './booking.service'
 
 type MockFn = Mock<(...args: unknown[]) => unknown>
 interface MockDb {
@@ -47,7 +47,12 @@ const futureSession = {
   id: 'session-1',
   tourId: 'tour-1',
   capacity: 10,
-  tour: { status: 'published', tourDate: new Date('2099-05-01'), bookingOpen: true },
+  tour: {
+    status: 'published',
+    tourDate: new Date('2099-05-01'),
+    bookingOpen: true,
+    group: { name: 'Sakura School' },
+  },
 }
 
 // Session stub used for updateBooking (includes nested tour deadline fields)
@@ -55,10 +60,15 @@ const sessionWithDeadline = {
   id: 'session-1',
   capacity: 10,
   tourId: 'tour-1',
-  tour: { cancellationDeadline: new Date('2099-01-01'), maybeDeadline: null as Date | null },
+  tour: {
+    cancellationDeadline: new Date('2099-01-01'),
+    maybeDeadline: null as Date | null,
+    tourDate: new Date('2099-05-01'),
+    group: { name: 'Sakura School' },
+  },
 }
 
-const mockBuddy = { id: 'buddy-1', tier: 'junior', status: 'active' }
+const mockBuddy = { id: 'buddy-1', tier: 'junior', status: 'active', displayName: 'Aya' }
 
 const mockBookingRow = {
   id: 'booking-1',
@@ -250,7 +260,7 @@ describe('updateBooking', () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
     mdb.tourSession.findUnique.mockResolvedValueOnce({
       ...sessionWithDeadline,
-      tour: { cancellationDeadline: new Date('2000-01-01'), maybeDeadline: null },
+      tour: { ...sessionWithDeadline.tour, cancellationDeadline: new Date('2000-01-01') },
     })
     mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'confirmed', buddyTier: 'junior' })
     mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
@@ -399,5 +409,139 @@ describe('updateBooking', () => {
 
     const result = await updateBooking('session-1', 'user-1', 'maybe')
     expect(result).toEqual({ ok: false, code: 'DEADLINE_PASSED' })
+  })
+})
+
+describe('notification payloads', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  // What a message needs to name the acting buddy and the tour. Snapshotted at
+  // enqueue time — see docs/decisions.md 2026-09-13.
+  const names = { buddyName: 'Aya', groupName: 'Sakura School', tourDate: '2099-05-01' }
+
+  type JobData = { channel: string; eventType: string; payload: Record<string, unknown> }
+  function enqueued(channel: string): JobData | undefined {
+    const call = mdb.notificationJob.create.mock.calls.find(
+      (c) => (c[0] as { data: JobData }).data.channel === channel,
+    )
+    return (call?.[0] as { data: JobData } | undefined)?.data
+  }
+
+  it('new_booking carries the buddy and tour names', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce(futureSession)
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    mdb.tierCapacity.findMany.mockResolvedValueOnce([])
+    mdb.booking.count.mockResolvedValueOnce(0)
+    mdb.booking.count.mockResolvedValueOnce(0)
+    mdb.booking.count.mockResolvedValueOnce(0)
+    mdb.booking.findUnique.mockResolvedValueOnce(null)
+    mdb.booking.create.mockResolvedValueOnce({ ...mockBookingRow, status: 'confirmed' })
+
+    await createBooking('tour-1', 'session-1', 'user-1')
+
+    expect(enqueued('slack')).toMatchObject({
+      eventType: 'new_booking',
+      payload: {
+        ...names,
+        bookingId: 'booking-1',
+        tourId: 'tour-1',
+        sessionId: 'session-1',
+        buddyId: 'buddy-1',
+        status: 'confirmed',
+      },
+    })
+  })
+
+  it('booking_cancelled carries the buddy and tour names', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    mdb.tourSession.findUnique.mockResolvedValueOnce(sessionWithDeadline)
+    mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'confirmed', buddyTier: 'junior' })
+    mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
+    mdb.booking.update.mockResolvedValueOnce({ ...mockBookingRow, status: 'declined' })
+    mdb.cancellationReason.create.mockResolvedValueOnce({})
+    mdb.tierCapacity.findMany.mockResolvedValueOnce([])
+    mdb.booking.findFirst.mockResolvedValueOnce(null) // no waitlist candidate
+
+    await updateBooking('session-1', 'user-1', 'declined', mockReason)
+
+    expect(enqueued('slack')).toMatchObject({
+      eventType: 'booking_cancelled',
+      payload: { ...names, bookingId: 'booking-1', tourId: 'tour-1', buddyId: 'buddy-1' },
+    })
+  })
+
+  it('maybe_resolved carries the buddy and tour names plus the resolution', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    mdb.tourSession.findUnique.mockResolvedValueOnce(sessionWithDeadline)
+    mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'maybe', buddyTier: 'junior' })
+    mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
+    mdb.booking.update.mockResolvedValueOnce({ ...mockBookingRow, status: 'declined' })
+
+    await updateBooking('session-1', 'user-1', 'declined')
+
+    expect(enqueued('slack')).toMatchObject({
+      eventType: 'maybe_resolved',
+      payload: { ...names, bookingId: 'booking-1', tourId: 'tour-1', resolution: 'declined' },
+    })
+  })
+
+  it('cant_go_post_deadline carries the buddy and tour names plus the category', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    mdb.tourSession.findUnique.mockResolvedValueOnce({
+      id: 'session-1',
+      tourId: 'tour-1',
+      capacity: 10,
+      tour: {
+        cancellationDeadline: new Date('2000-01-01'),
+        tourDate: new Date('2099-05-01'),
+        group: { name: 'Sakura School' },
+      },
+    })
+    // Maybe rather than confirmed, so the assertion is not entangled with
+    // waitlist promotion.
+    mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'maybe', buddyTier: 'junior' })
+    mdb.booking.update.mockResolvedValueOnce({ ...mockBookingRow, status: 'declined' })
+    mdb.cancellationReason.create.mockResolvedValueOnce({})
+
+    await reportCantGo('tour-1', 'session-1', 'user-1', mockReason)
+
+    expect(enqueued('slack')).toMatchObject({
+      eventType: 'cant_go_post_deadline',
+      payload: { ...names, bookingId: 'booking-1', tourId: 'tour-1', category: 'health' },
+    })
+  })
+
+  it('waitlist_promoted names the tour, read through the promoted booking', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    mdb.tourSession.findUnique.mockResolvedValueOnce(sessionWithDeadline)
+    mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'confirmed', buddyTier: 'junior' })
+    mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
+    mdb.booking.update.mockResolvedValueOnce({ ...mockBookingRow, status: 'declined' })
+    mdb.cancellationReason.create.mockResolvedValueOnce({})
+    mdb.tierCapacity.findMany.mockResolvedValueOnce([])
+    mdb.booking.findFirst.mockResolvedValueOnce({ id: 'waitlist-booking-1', buddyTier: 'junior' })
+    mdb.booking.count.mockResolvedValueOnce(0)
+    mdb.booking.count.mockResolvedValueOnce(0)
+    mdb.booking.count.mockResolvedValueOnce(0)
+    mdb.booking.update.mockResolvedValueOnce({})
+    mdb.booking.findUnique.mockResolvedValueOnce({
+      buddy: { userId: 'promoted-user' },
+      tour: { tourDate: new Date('2099-05-01'), group: { name: 'Sakura School' } },
+    })
+    mdb.user.findUnique.mockResolvedValue({ locale: 'ja' })
+
+    await updateBooking('session-1', 'user-1', 'declined', mockReason)
+
+    expect(enqueued('email')).toMatchObject({
+      eventType: 'waitlist_promoted',
+      recipientUserId: 'promoted-user',
+      payload: {
+        bookingId: 'waitlist-booking-1',
+        tourId: 'tour-1',
+        sessionId: 'session-1',
+        groupName: 'Sakura School',
+        tourDate: '2099-05-01',
+      },
+    })
   })
 })

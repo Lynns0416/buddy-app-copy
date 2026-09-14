@@ -17,6 +17,11 @@
     "subject": "[Peace Buddy] A new tour is open",
     "bodyText": "A new tour was published.\n\nDetails: {url}",
     "bodyHtml": "<p>A new tour was published.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] A new tour is open: {groupName} ({tourDate})",
+      "bodyText": "A new tour was published.\n\n{groupName} — {tourDate}\n\nDetails: {url}",
+      "bodyHtml": "<p>A new tour was published.</p><p><strong>{groupName}</strong> — {tourDate}</p>"
+    },
     "cta": "View tour",
     "path": "/buddy/tours/{tourId}"
   },
@@ -24,6 +29,11 @@
     "subject": "[Peace Buddy] Tour details changed",
     "bodyText": "A tour you joined had its date or location changed.\n\n{url}",
     "bodyHtml": "<p>A tour you joined had its date or location changed.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] Tour details changed: {groupName} ({tourDate})",
+      "bodyText": "A tour you joined had its date or location changed.\n\n{groupName} — {tourDate}\n\n{url}",
+      "bodyHtml": "<p>A tour you joined had its date or location changed.</p><p><strong>{groupName}</strong> — {tourDate}</p>"
+    },
     "cta": "See the latest details",
     "path": "/buddy/tours/{tourId}"
   },
@@ -31,6 +41,11 @@
     "subject": "[Peace Buddy] A tour was cancelled",
     "bodyText": "A tour you joined has been cancelled.\n\n{url}",
     "bodyHtml": "<p>A tour you joined has been cancelled.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] A tour was cancelled: {groupName} ({tourDate})",
+      "bodyText": "A tour you joined has been cancelled.\n\n{groupName} — {tourDate}\n\n{url}",
+      "bodyHtml": "<p>A tour you joined has been cancelled.</p><p><strong>{groupName}</strong> — {tourDate}</p>"
+    },
     "cta": "See details",
     "path": "/buddy/tours/{tourId}"
   },
@@ -38,6 +53,11 @@
     "subject": "[Peace Buddy] Tour reminder",
     "bodyText": "This is a reminder for an upcoming tour you signed up for.\n\n{url}",
     "bodyHtml": "<p>This is a reminder for an upcoming tour you signed up for.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] Tour reminder: {groupName} ({tourDate})",
+      "bodyText": "This is a reminder for an upcoming tour you signed up for.\n\n{groupName} — {tourDate}\n\n{url}",
+      "bodyHtml": "<p>This is a reminder for an upcoming tour you signed up for.</p><p><strong>{groupName}</strong> — {tourDate}</p>"
+    },
     "cta": "Open tour",
     "path": "/buddy/tours/{tourId}"
   },
@@ -45,6 +65,11 @@
     "subject": "[Peace Buddy] Please confirm your Maybe booking",
     "bodyText": "You have a tour booking still marked as Maybe. Please confirm or decline before the deadline.\n\n{url}",
     "bodyHtml": "<p>You have a tour booking still marked as Maybe. Please confirm or decline before the deadline.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] Please confirm your Maybe booking: {groupName} ({tourDate})",
+      "bodyText": "You have a tour booking still marked as Maybe. Please confirm or decline before the deadline.\n\n{groupName} — {tourDate}\n\n{url}",
+      "bodyHtml": "<p>You have a tour booking still marked as Maybe. Please confirm or decline before the deadline.</p><p><strong>{groupName}</strong> — {tourDate}</p>"
+    },
     "cta": "Confirm or decline",
     "path": "/buddy/tours/{tourId}"
   },
@@ -52,6 +77,11 @@
     "subject": "[Peace Buddy] You're off the waitlist",
     "bodyText": "A waitlist seat opened — you're now confirmed.\n\n{url}",
     "bodyHtml": "<p>A waitlist seat opened — you're now confirmed.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] You're off the waitlist: {groupName} ({tourDate})",
+      "bodyText": "A waitlist seat opened — you're now confirmed.\n\n{groupName} — {tourDate}\n\n{url}",
+      "bodyHtml": "<p>A waitlist seat opened — you're now confirmed.</p><p><strong>{groupName}</strong> — {tourDate}</p>"
+    },
     "cta": "View your booking",
     "path": "/buddy/tours/{tourId}"
   },
@@ -59,6 +89,11 @@
     "subject": "[Peace Buddy] A buddy cancelled a booking",
     "bodyText": "A buddy cancelled their booking.\n\n{url}",
     "bodyHtml": "<p>A buddy cancelled their booking.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] {buddyName} cancelled a booking: {groupName} ({tourDate})",
+      "bodyText": "{buddyName} cancelled their booking for {groupName} — {tourDate}.\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> cancelled their booking for {groupName} — {tourDate}.</p>"
+    },
     "cta": "Open tour",
     "path": "/admin/tours/{tourId}"
   },
@@ -66,6 +101,11 @@
     "subject": "[Peace Buddy] Post-deadline can't-go report",
     "bodyText": "A buddy reported they can't go after the deadline.\n\n{url}",
     "bodyHtml": "<p>A buddy reported they can't go after the deadline.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] Post-deadline can't-go report: {buddyName} / {groupName} ({tourDate})",
+      "bodyText": "{buddyName} reported they can't go to {groupName} — {tourDate}, after the deadline.\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> reported they can't go to {groupName} — {tourDate}, after the deadline.</p>"
+    },
     "cta": "Open tour",
     "path": "/admin/tours/{tourId}"
   },
@@ -73,6 +113,11 @@
     "subject": "[Peace Buddy] A Maybe booking was resolved",
     "bodyText": "A Maybe booking was resolved to confirmed or declined.\n\n{url}",
     "bodyHtml": "<p>A Maybe booking was resolved to confirmed or declined.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] A Maybe booking was resolved: {buddyName} / {groupName} ({tourDate})",
+      "bodyText": "{buddyName} resolved their Maybe booking for {groupName} — {tourDate}.\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> resolved their Maybe booking for {groupName} — {tourDate}.</p>"
+    },
     "cta": "Open tour",
     "path": "/admin/tours/{tourId}"
   },
@@ -80,6 +125,11 @@
     "subject": "[Peace Buddy] A Maybe deadline passed unresolved",
     "bodyText": "A Maybe deadline passed without resolution.\n\n{url}",
     "bodyHtml": "<p>A Maybe deadline passed without resolution.</p>",
+    "detail": {
+      "subject": "[Peace Buddy] A Maybe deadline passed unresolved: {groupName} ({tourDate})",
+      "bodyText": "The Maybe deadline for {groupName} — {tourDate} passed without resolution.\n\n{url}",
+      "bodyHtml": "<p>The Maybe deadline for <strong>{groupName}</strong> — {tourDate} passed without resolution.</p>"
+    },
     "cta": "Follow up",
     "path": "/admin/tours/{tourId}"
   }

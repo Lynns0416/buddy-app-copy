@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
+import { payloadTourDate } from '../lib/notificationPayload'
 import {
   TourStatusSchema,
   BookingStatusSchema,
@@ -339,6 +340,15 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
   }
 }
 
+// The group name and date a notification message shows. Selected from the same
+// `update` that changed them, so an edit that moves the tour notifies with the
+// new values rather than the ones read before the write.
+const tourRefSelect = { tourDate: true, group: { select: { name: true } } } as const
+
+function tourRef(tour: { tourDate: Date; group: { name: string } }) {
+  return { groupName: tour.group.name, tourDate: payloadTourDate(tour.tourDate) }
+}
+
 export async function updateTour(id: string, data: UpdateTour): Promise<AdminTourDetailResponse> {
   const existing = await db.tour.findUnique({
     where: { id },
@@ -354,8 +364,9 @@ export async function updateTour(id: string, data: UpdateTour): Promise<AdminTou
 
   try {
     await db.$transaction(async (tx) => {
-      await tx.tour.update({
+      const updated = await tx.tour.update({
         where: { id },
+        select: tourRefSelect,
         data: {
           ...(data.groupId !== undefined ? { groupId: data.groupId } : {}),
           ...(data.tourDate !== undefined ? { tourDate: data.tourDate } : {}),
@@ -370,7 +381,10 @@ export async function updateTour(id: string, data: UpdateTour): Promise<AdminTou
       })
 
       if (notifyDetailsChanged) {
-        const args = { eventType: NotifEventKindSchema.enum.tour_details_changed, payload: { tourId: id } }
+        const args = {
+          eventType: NotifEventKindSchema.enum.tour_details_changed,
+          payload: { tourId: id, ...tourRef(updated) },
+        }
         await enqueueInAppForBookedBuddies(id, args, tx)
         await enqueueEmailForBookedBuddies(id, args, tx)
       }
@@ -400,14 +414,24 @@ export async function transitionTourStatus(
   }
 
   await db.$transaction(async (tx) => {
-    await tx.tour.update({ where: { id }, data: { status: targetStatus } })
+    const updated = await tx.tour.update({
+      where: { id },
+      select: tourRefSelect,
+      data: { status: targetStatus },
+    })
 
     if (targetStatus === TourStatusSchema.enum.published) {
-      const args = { eventType: NotifEventKindSchema.enum.tour_published, payload: { tourId: id } }
+      const args = {
+        eventType: NotifEventKindSchema.enum.tour_published,
+        payload: { tourId: id, ...tourRef(updated) },
+      }
       await enqueueInAppForActiveBuddies(args, tx)
       await enqueueEmailForActiveBuddies(args, tx)
     } else if (targetStatus === TourStatusSchema.enum.cancelled) {
-      const args = { eventType: NotifEventKindSchema.enum.tour_cancelled, payload: { tourId: id } }
+      const args = {
+        eventType: NotifEventKindSchema.enum.tour_cancelled,
+        payload: { tourId: id, ...tourRef(updated) },
+      }
       await enqueueInAppForBookedBuddies(id, args, tx)
       await enqueueEmailForBookedBuddies(id, args, tx)
     }

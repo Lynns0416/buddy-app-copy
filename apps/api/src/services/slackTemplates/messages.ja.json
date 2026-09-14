@@ -1,31 +1,49 @@
 {
   "new_signup": {
     "text": ":wave: *新規バディ登録* — 承認待ちです。",
+    "detail": {
+      "text": ":wave: *新規バディ登録* — {displayName} さん（{email}）が承認待ちです。"
+    },
     "cta": "バディを確認する",
     "path": "/admin/buddies/{buddyUserId}"
   },
   "new_booking": {
     "text": ":calendar: *ツアーに参加希望* がありました。",
+    "detail": {
+      "text": ":calendar: *ツアーに参加希望* — {buddyName} さんが *{groupName}*（{tourDate}）に参加を希望しています。"
+    },
     "cta": "ツアーを確認する",
     "path": "/admin/tours/{tourId}"
   },
   "booking_cancelled": {
     "text": ":x: *ツアー参加がキャンセル* されました。",
+    "detail": {
+      "text": ":x: *ツアー参加がキャンセル* — {buddyName} さんが *{groupName}*（{tourDate}）をキャンセルしました。"
+    },
     "cta": "ツアーを確認する",
     "path": "/admin/tours/{tourId}"
   },
   "maybe_resolved": {
     "text": ":white_check_mark: *「未定」が確定* しました。",
+    "detail": {
+      "text": ":white_check_mark: *「未定」が確定* — {buddyName} さんが *{groupName}*（{tourDate}）の回答を確定しました。"
+    },
     "cta": "ツアーを確認する",
     "path": "/admin/tours/{tourId}"
   },
   "maybe_deadline_missed": {
     "text": ":alarm_clock: *「未定」のまま期限を過ぎた* バディがいます。個別に確認してください。",
+    "detail": {
+      "text": ":alarm_clock: *「未定」のまま期限を過ぎた* バディがいます — *{groupName}*（{tourDate}）。個別に確認してください。"
+    },
     "cta": "ツアーを確認する",
     "path": "/admin/tours/{tourId}"
   },
   "cant_go_post_deadline": {
     "text": ":rotating_light: *期限後の欠席連絡* がありました。",
+    "detail": {
+      "text": ":rotating_light: *期限後の欠席連絡* — {buddyName} さんが *{groupName}*（{tourDate}）に参加できなくなりました。"
+    },
     "cta": "ツアーを確認する",
     "path": "/admin/tours/{tourId}"
   }

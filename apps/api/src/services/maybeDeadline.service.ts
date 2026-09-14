@@ -6,6 +6,7 @@ import {
   type MaybeDeadlineResult,
 } from '@peace-buddy/types'
 import { Prisma } from '@prisma/client'
+import { payloadTourDate, type TourNameRef } from '../lib/notificationPayload'
 import {
   enqueueEmailForTourAdmins,
   enqueueInAppForTourAdmins,
@@ -48,12 +49,12 @@ export async function enqueueMaybeDeadlineMissed(
       // for a tour that would produce zero notification jobs.
       adminAssignments: { some: { admin: { deletedAt: null } } },
     },
-    select: { id: true },
+    select: { id: true, tourDate: true, group: { select: { name: true } } },
   })
 
   for (const tour of tours) {
     result.tours += 1
-    const outcome = await tryEnqueueForTour(tour.id)
+    const outcome = await tryEnqueueForTour(tour)
     if (outcome === 'enqueued') result.enqueuedTours += 1
     else result.alreadySent += 1
   }
@@ -61,17 +62,21 @@ export async function enqueueMaybeDeadlineMissed(
   return result
 }
 
-async function tryEnqueueForTour(tourId: string): Promise<'enqueued' | 'already_sent'> {
-  const eventKey = `maybe_deadline_missed:${tourId}`
+async function tryEnqueueForTour(tour: TourNameRef): Promise<'enqueued' | 'already_sent'> {
+  const eventKey = `maybe_deadline_missed:${tour.id}`
   try {
     await db.$transaction(async (tx) => {
       await tx.notificationDispatchLog.create({ data: { eventKey } })
       const args = {
         eventType: NotifEventKindSchema.enum.maybe_deadline_missed,
-        payload: { tourId },
+        payload: {
+          tourId: tour.id,
+          groupName: tour.group.name,
+          tourDate: payloadTourDate(tour.tourDate),
+        },
       }
-      await enqueueInAppForTourAdmins(tourId, args, tx)
-      await enqueueEmailForTourAdmins(tourId, args, tx)
+      await enqueueInAppForTourAdmins(tour.id, args, tx)
+      await enqueueEmailForTourAdmins(tour.id, args, tx)
       await enqueueSlackForAdmins(args, tx)
     })
     return 'enqueued'

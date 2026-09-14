@@ -79,7 +79,7 @@ describe('enqueueTourReminders', () => {
 
   it('enqueues in-app + email per buddy when an offset matches today (JST)', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3, 1] },
+      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3, 1], group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([
       { buddy: { userId: 'u1' } },
@@ -104,13 +104,18 @@ describe('enqueueTourReminders', () => {
     // Every enqueued job carries the tour scope + the offset that triggered it.
     for (const d of rows) {
       expect(d.eventType).toBe('tour_reminder')
-      expect(d.payload).toEqual({ tourId: 't1', offsetDays: 3 })
+      expect(d.payload).toEqual({
+        tourId: 't1',
+        groupName: 'Sakura School',
+        tourDate: '2026-06-24', // THREE_DAYS_OUT
+        offsetDays: 3,
+      })
     }
   })
 
   it('skips offsets whose trigger date is not today', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', tourDate: TEN_DAYS_OUT, notificationOffsets: [3, 1] },
+      { id: 't1', tourDate: TEN_DAYS_OUT, notificationOffsets: [3, 1], group: { name: 'Sakura School' } },
     ])
 
     const result = await enqueueTourReminders(NOW)
@@ -122,7 +127,7 @@ describe('enqueueTourReminders', () => {
 
   it('dedups recipients booked across multiple sessions of the same tour', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3] },
+      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3], group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([
       { buddy: { userId: 'u1' } },
@@ -138,7 +143,7 @@ describe('enqueueTourReminders', () => {
 
   it('counts P2002 from the dispatch log as alreadySent and skips enqueue', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3] },
+      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3], group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([{ buddy: { userId: 'u1' } }])
 
@@ -161,7 +166,7 @@ describe('enqueueTourReminders', () => {
 
   it('filters bookings to confirmed / maybe / waitlist statuses only', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3] },
+      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3], group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([])
 
@@ -174,8 +179,8 @@ describe('enqueueTourReminders', () => {
 
   it('fires reminders for multiple tours that each match today on a different offset', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', tourDate: TEN_DAYS_OUT, notificationOffsets: [10] },
-      { id: 't2', tourDate: THREE_DAYS_OUT, notificationOffsets: [3] },
+      { id: 't1', tourDate: TEN_DAYS_OUT, notificationOffsets: [10], group: { name: 'Sakura School' } },
+      { id: 't2', tourDate: THREE_DAYS_OUT, notificationOffsets: [3], group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([{ buddy: { userId: 'u1' } }])
     mdb.booking.findMany.mockResolvedValueOnce([{ buddy: { userId: 'u2' } }])
@@ -192,7 +197,7 @@ describe('enqueueTourReminders', () => {
 
   it('is a no-op for a tour with an empty notificationOffsets array', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [] },
+      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [], group: { name: 'Sakura School' } },
     ])
 
     const result = await enqueueTourReminders(NOW)
@@ -204,7 +209,7 @@ describe('enqueueTourReminders', () => {
 
   it('propagates non-P2002 errors raised inside the enqueue txn', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
-      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3] },
+      { id: 't1', tourDate: THREE_DAYS_OUT, notificationOffsets: [3], group: { name: 'Sakura School' } },
     ])
     mdb.booking.findMany.mockResolvedValueOnce([{ buddy: { userId: 'u1' } }])
 

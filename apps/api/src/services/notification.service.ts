@@ -10,6 +10,7 @@ import {
   type MarkNotificationsRead,
   type NotifEventKind,
   type NotifEventType,
+  type NotifPayload,
   type NotificationResponse,
 } from '@peace-buddy/types'
 import type { Prisma, PrismaClient } from '@prisma/client'
@@ -19,12 +20,18 @@ import { DEFAULT_ADMIN_EMAIL_PREFS } from './adminNotificationDefaults'
 
 type Tx = PrismaClient | Prisma.TransactionClient
 
-type EnqueueArgs = {
-  eventType: NotifEventKind
+// Generic over the event kind so `payload` is checked against that event's
+// schema in packages/types — a typo in a field name a template reads would
+// otherwise render as a silent blank.
+type EnqueueArgs<K extends NotifEventKind = NotifEventKind> = {
+  eventType: K
   recipientUserId: string
-  payload: Record<string, unknown>
+  payload: NotifPayload<K>
   scheduledFor?: Date
 }
+
+// The broadcast helpers below resolve their own recipients.
+type BroadcastArgs<K extends NotifEventKind = NotifEventKind> = Omit<EnqueueArgs<K>, 'recipientUserId'>
 
 // Maps a dispatchable kind to its admin-preference enum value, when the event
 // is configurable per-admin. Returns null for events that aren't admin-preference
@@ -62,7 +69,7 @@ function decideAdminEmail(kind: NotifEventKind, prefs: AdminPrefRow[]): AdminEma
 
 // Writes one in-app job per recipient. Caller MUST pass a txn client (`tx`)
 // so the job row is committed atomically with the triggering state change.
-export async function enqueueInApp(args: EnqueueArgs, tx: Tx) {
+export async function enqueueInApp<K extends NotifEventKind>(args: EnqueueArgs<K>, tx: Tx) {
   const recipient = await tx.user.findUnique({
     where: { id: args.recipientUserId },
     select: { locale: true },
@@ -83,8 +90,8 @@ export async function enqueueInApp(args: EnqueueArgs, tx: Tx) {
 
 // Enqueue an in-app job for every active+trainee admin. Used for global admin
 // events (e.g. new_signup) that aren't tour-scoped.
-export async function enqueueInAppForAllAdmins(
-  args: Omit<EnqueueArgs, 'recipientUserId'>,
+export async function enqueueInAppForAllAdmins<K extends NotifEventKind>(
+  args: BroadcastArgs<K>,
   tx: Tx,
 ) {
   const admins = await tx.user.findMany({
@@ -111,9 +118,9 @@ export async function enqueueInAppForAllAdmins(
 // Enqueue an in-app job for admins assigned to a tour. Used for tour-scoped
 // events (new_booking, booking_cancelled, etc.). Soft-deleted admins are
 // excluded. If no admins are assigned, no notifications are sent — matches PRD §10.2.
-export async function enqueueInAppForTourAdmins(
+export async function enqueueInAppForTourAdmins<K extends NotifEventKind>(
   tourId: string,
-  args: Omit<EnqueueArgs, 'recipientUserId'>,
+  args: BroadcastArgs<K>,
   tx: Tx,
 ) {
   const assignments = await tx.tourAdminAssignment.findMany({
@@ -135,8 +142,8 @@ export async function enqueueInAppForTourAdmins(
 }
 
 // Enqueue an in-app job for every active buddy. Used for tour_published.
-export async function enqueueInAppForActiveBuddies(
-  args: Omit<EnqueueArgs, 'recipientUserId'>,
+export async function enqueueInAppForActiveBuddies<K extends NotifEventKind>(
+  args: BroadcastArgs<K>,
   tx: Tx,
 ) {
   const buddies = await tx.buddyProfile.findMany({
@@ -160,9 +167,9 @@ export async function enqueueInAppForActiveBuddies(
 // Enqueue an in-app job for every buddy with a confirmed/maybe/waitlist booking
 // on the tour. Deduped by user (a buddy holding bookings across both sessions
 // receives one notification). Used for tour_cancelled and tour_details_changed.
-export async function enqueueInAppForBookedBuddies(
+export async function enqueueInAppForBookedBuddies<K extends NotifEventKind>(
   tourId: string,
-  args: Omit<EnqueueArgs, 'recipientUserId'>,
+  args: BroadcastArgs<K>,
   tx: Tx,
 ) {
   const bookings = await tx.booking.findMany({
@@ -204,8 +211,8 @@ export async function enqueueInAppForBookedBuddies(
 // recipient. There is no per-admin targeting and therefore no
 // NotificationPreference lookup — the channel is all-or-nothing, gated only by
 // whether a template exists for the event.
-export async function enqueueSlackForAdmins(
-  args: Omit<EnqueueArgs, 'recipientUserId'>,
+export async function enqueueSlackForAdmins<K extends NotifEventKind>(
+  args: BroadcastArgs<K>,
   tx: Tx,
 ) {
   if (!hasSlackTemplate(args.eventType)) return
@@ -232,7 +239,7 @@ export async function enqueueSlackForAdmins(
 // (docs/decisions.md 2026-08-15). Admin email is off by default, so this only
 // affects an admin who explicitly re-enables email and picks digest.
 
-export async function enqueueEmail(args: EnqueueArgs, tx: Tx) {
+export async function enqueueEmail<K extends NotifEventKind>(args: EnqueueArgs<K>, tx: Tx) {
   if (!hasEmailTemplate(args.eventType)) return
 
   const recipient = await tx.user.findUnique({
@@ -253,8 +260,8 @@ export async function enqueueEmail(args: EnqueueArgs, tx: Tx) {
   })
 }
 
-export async function enqueueEmailForActiveBuddies(
-  args: Omit<EnqueueArgs, 'recipientUserId'>,
+export async function enqueueEmailForActiveBuddies<K extends NotifEventKind>(
+  args: BroadcastArgs<K>,
   tx: Tx,
 ) {
   if (!hasEmailTemplate(args.eventType)) return
@@ -277,9 +284,9 @@ export async function enqueueEmailForActiveBuddies(
   })
 }
 
-export async function enqueueEmailForBookedBuddies(
+export async function enqueueEmailForBookedBuddies<K extends NotifEventKind>(
   tourId: string,
-  args: Omit<EnqueueArgs, 'recipientUserId'>,
+  args: BroadcastArgs<K>,
   tx: Tx,
 ) {
   if (!hasEmailTemplate(args.eventType)) return
@@ -316,9 +323,9 @@ export async function enqueueEmailForBookedBuddies(
   })
 }
 
-export async function enqueueEmailForTourAdmins(
+export async function enqueueEmailForTourAdmins<K extends NotifEventKind>(
   tourId: string,
-  args: Omit<EnqueueArgs, 'recipientUserId'>,
+  args: BroadcastArgs<K>,
   tx: Tx,
 ) {
   if (!hasEmailTemplate(args.eventType)) return

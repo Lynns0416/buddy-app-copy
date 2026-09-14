@@ -81,6 +81,7 @@ function tourFindManyArgs(callIndex = 0): TourFindManyArgs {
 }
 
 const NOW = new Date('2026-06-20T15:30:00Z')
+const TOUR_DATE = new Date('2026-07-04T00:00:00Z')
 // JST midnight 2026-06-21 == 2026-06-20T15:00:00Z
 const TODAY_UTC = new Date(Date.UTC(2026, 5, 21))
 const YESTERDAY_UTC = new Date(Date.UTC(2026, 5, 20))
@@ -107,7 +108,7 @@ describe('enqueueMaybeDeadlineMissed', () => {
   })
 
   it('enqueues in-app + email to all assigned admins for each tour returned, with one dispatch log per tour', async () => {
-    mdb.tour.findMany.mockResolvedValueOnce([{ id: 't1' }])
+    mdb.tour.findMany.mockResolvedValueOnce([{ id: 't1', tourDate: TOUR_DATE, group: { name: 'Sakura School' } }])
 
     const result = await enqueueMaybeDeadlineMissed(NOW)
 
@@ -126,7 +127,7 @@ describe('enqueueMaybeDeadlineMissed', () => {
   })
 
   it('counts P2002 from the dispatch log as alreadySent and emits no jobs', async () => {
-    mdb.tour.findMany.mockResolvedValueOnce([{ id: 't1' }])
+    mdb.tour.findMany.mockResolvedValueOnce([{ id: 't1', tourDate: TOUR_DATE, group: { name: 'Sakura School' } }])
 
     mdb.$transaction.mockImplementationOnce((async (fn: TxnCallback) => {
       await fn({
@@ -144,7 +145,7 @@ describe('enqueueMaybeDeadlineMissed', () => {
   })
 
   it('propagates non-P2002 errors from the transaction', async () => {
-    mdb.tour.findMany.mockResolvedValueOnce([{ id: 't1' }])
+    mdb.tour.findMany.mockResolvedValueOnce([{ id: 't1', tourDate: TOUR_DATE, group: { name: 'Sakura School' } }])
 
     const unexpected = new Error('connection lost')
     mdb.$transaction.mockImplementationOnce(() => Promise.reject(unexpected))
@@ -176,8 +177,8 @@ describe('enqueueMaybeDeadlineMissed', () => {
     }
   })
 
-  it('payload carries the tourId for template path interpolation', async () => {
-    mdb.tour.findMany.mockResolvedValueOnce([{ id: 't1' }])
+  it('payload carries the tour id plus the group and date the message names', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([{ id: 't1', tourDate: TOUR_DATE, group: { name: 'Sakura School' } }])
 
     await enqueueMaybeDeadlineMissed(NOW)
 
@@ -191,7 +192,11 @@ describe('enqueueMaybeDeadlineMissed', () => {
     ]
     for (const d of rows) {
       expect(d.eventType).toBe('maybe_deadline_missed')
-      expect(d.payload).toEqual({ tourId: 't1' })
+      expect(d.payload).toEqual({
+        tourId: 't1',
+        groupName: 'Sakura School',
+        tourDate: '2026-07-04',
+      })
     }
   })
 })

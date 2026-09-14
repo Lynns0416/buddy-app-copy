@@ -17,6 +17,11 @@
     "subject": "【Peace Buddy】新しいツアーが公開されました",
     "bodyText": "新しいツアーが公開されました。\n\n詳細: {url}",
     "bodyHtml": "<p>新しいツアーが公開されました。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】新しいツアーが公開されました：{groupName}（{tourDate}）",
+      "bodyText": "新しいツアーが公開されました。\n\n{groupName}（{tourDate}）\n\n詳細: {url}",
+      "bodyHtml": "<p>新しいツアーが公開されました。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
+    },
     "cta": "ツアーを見る",
     "path": "/buddy/tours/{tourId}"
   },
@@ -24,6 +29,11 @@
     "subject": "【Peace Buddy】ツアー情報が更新されました",
     "bodyText": "あなたが参加予定のツアーで、日付または場所が変更されました。\n\n{url}",
     "bodyHtml": "<p>あなたが参加予定のツアーで、日付または場所が変更されました。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】ツアー情報が更新されました：{groupName}（{tourDate}）",
+      "bodyText": "あなたが参加予定のツアーで、日付または場所が変更されました。\n\n{groupName}（{tourDate}）\n\n{url}",
+      "bodyHtml": "<p>あなたが参加予定のツアーで、日付または場所が変更されました。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
+    },
     "cta": "最新の情報を確認する",
     "path": "/buddy/tours/{tourId}"
   },
@@ -31,6 +41,11 @@
     "subject": "【Peace Buddy】ツアーがキャンセルされました",
     "bodyText": "あなたが参加予定のツアーがキャンセルされました。\n\n{url}",
     "bodyHtml": "<p>あなたが参加予定のツアーがキャンセルされました。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】ツアーがキャンセルされました：{groupName}（{tourDate}）",
+      "bodyText": "あなたが参加予定のツアーがキャンセルされました。\n\n{groupName}（{tourDate}）\n\n{url}",
+      "bodyHtml": "<p>あなたが参加予定のツアーがキャンセルされました。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
+    },
     "cta": "詳細を確認する",
     "path": "/buddy/tours/{tourId}"
   },
@@ -38,6 +53,11 @@
     "subject": "【Peace Buddy】ツアーのリマインド",
     "bodyText": "あなたが参加予定のツアーのリマインドです。\n\n{url}",
     "bodyHtml": "<p>あなたが参加予定のツアーのリマインドです。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】ツアーのリマインド：{groupName}（{tourDate}）",
+      "bodyText": "あなたが参加予定のツアーのリマインドです。\n\n{groupName}（{tourDate}）\n\n{url}",
+      "bodyHtml": "<p>あなたが参加予定のツアーのリマインドです。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
+    },
     "cta": "ツアーを開く",
     "path": "/buddy/tours/{tourId}"
   },
@@ -45,6 +65,11 @@
     "subject": "【Peace Buddy】「保留」の予約をご確認ください",
     "bodyText": "「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。\n\n{url}",
     "bodyHtml": "<p>「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】「保留」の予約をご確認ください：{groupName}（{tourDate}）",
+      "bodyText": "「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。\n\n{groupName}（{tourDate}）\n\n{url}",
+      "bodyHtml": "<p>「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
+    },
     "cta": "回答する",
     "path": "/buddy/tours/{tourId}"
   },
@@ -52,6 +77,11 @@
     "subject": "【Peace Buddy】キャンセル待ちから繰り上がりました",
     "bodyText": "キャンセル待ちから繰り上がり、参加確定となりました。\n\n{url}",
     "bodyHtml": "<p>キャンセル待ちから繰り上がり、参加確定となりました。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】キャンセル待ちから繰り上がりました：{groupName}（{tourDate}）",
+      "bodyText": "キャンセル待ちから繰り上がり、参加確定となりました。\n\n{groupName}（{tourDate}）\n\n{url}",
+      "bodyHtml": "<p>キャンセル待ちから繰り上がり、参加確定となりました。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
+    },
     "cta": "予約を確認する",
     "path": "/buddy/tours/{tourId}"
   },
@@ -59,6 +89,11 @@
     "subject": "【Peace Buddy】バディが予約をキャンセルしました",
     "bodyText": "バディが予約をキャンセルしました。\n\n{url}",
     "bodyHtml": "<p>バディが予約をキャンセルしました。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】{buddyName} さんが予約をキャンセルしました：{groupName}（{tourDate}）",
+      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）の予約をキャンセルしました。\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）の予約をキャンセルしました。</p>"
+    },
     "cta": "ツアーを開く",
     "path": "/admin/tours/{tourId}"
   },
@@ -66,6 +101,11 @@
     "subject": "【Peace Buddy】期限後の「行けない」報告",
     "bodyText": "バディが期限後に「行けない」と報告しました。\n\n{url}",
     "bodyHtml": "<p>バディが期限後に「行けない」と報告しました。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】期限後の「行けない」報告：{buddyName} さん／{groupName}（{tourDate}）",
+      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）について、期限後に「行けない」と報告しました。\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）について、期限後に「行けない」と報告しました。</p>"
+    },
     "cta": "ツアーを開く",
     "path": "/admin/tours/{tourId}"
   },
@@ -73,6 +113,11 @@
     "subject": "【Peace Buddy】「保留」の予約が確定または辞退になりました",
     "bodyText": "「保留」の予約が確定または辞退に変わりました。\n\n{url}",
     "bodyHtml": "<p>「保留」の予約が確定または辞退に変わりました。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】「保留」の予約が確定または辞退になりました：{buddyName} さん／{groupName}（{tourDate}）",
+      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）の「保留」の予約を確定または辞退に変えました。\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）の「保留」の予約を確定または辞退に変えました。</p>"
+    },
     "cta": "ツアーを開く",
     "path": "/admin/tours/{tourId}"
   },
@@ -80,6 +125,11 @@
     "subject": "【Peace Buddy】「保留」の期限が過ぎました",
     "bodyText": "「保留」の期限が、未確定のまま過ぎました。\n\n{url}",
     "bodyHtml": "<p>「保留」の期限が、未確定のまま過ぎました。</p>",
+    "detail": {
+      "subject": "【Peace Buddy】「保留」の期限が過ぎました：{groupName}（{tourDate}）",
+      "bodyText": "{groupName}（{tourDate}）で、「保留」の期限が未確定のまま過ぎました。\n\n{url}",
+      "bodyHtml": "<p><strong>{groupName}</strong>（{tourDate}）で、「保留」の期限が未確定のまま過ぎました。</p>"
+    },
     "cta": "対応する",
     "path": "/admin/tours/{tourId}"
   }

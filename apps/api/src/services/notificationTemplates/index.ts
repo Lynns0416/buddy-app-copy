@@ -1,11 +1,23 @@
 import type { Locale, NotifEventKind } from '@peace-buddy/types'
 import { webBase } from '../../lib/webBase'
+import {
+  escapeHtml,
+  escapePlain,
+  interpolate,
+  resolvePath,
+  safeUrl,
+  type TemplatePayload,
+} from '../../lib/templateRender'
 import messagesEn from './messages.en.json'
 import messagesJa from './messages.ja.json'
 
 export type RenderedEmail = { subject: string; html: string; text: string }
 
-type Payload = Record<string, unknown>
+type Detail = {
+  subject: string
+  bodyText: string
+  bodyHtml: string
+}
 
 type Entry = {
   subject: string
@@ -13,6 +25,7 @@ type Entry = {
   bodyHtml: string
   cta: string
   path: string
+  detail?: Detail
 }
 
 const APP_NAME = 'Peace Buddy'
@@ -27,35 +40,12 @@ const messages: Record<Locale, Record<string, Entry>> = {
   ja: messagesJa as Record<string, Entry>,
 }
 
-const HTML_ESCAPE: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-}
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => HTML_ESCAPE[c])
-}
-
-// URLs are constructed from a hardcoded template path + URL-encoded payload
-// values, so injection through ctaUrl shouldn't happen — but if a future
-// template ever pulls an externally-sourced URL through here, the scheme guard
-// blocks `javascript:` / `data:` and friends.
-function safeHref(u: string): string {
-  try {
-    const parsed = new URL(u)
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '#'
-    return parsed.toString()
-  } catch {
-    return '#'
-  }
-}
-
 function wrap(bodyHtml: string, ctaUrl: string, ctaText: string): string {
-  // bodyHtml is template-authored and trusted. Anything that crosses an
-  // interpolation boundary into an HTML attribute or text node is escaped.
-  const href = escapeHtml(safeHref(ctaUrl))
+  // `bodyHtml` arrives already safe: it is either trusted template copy or the
+  // `detail` variant, whose interpolated values were escaped with escapeHtml
+  // when they were substituted in. Everything else crossing into an attribute
+  // or text node here is escaped at this boundary.
+  const href = escapeHtml(safeUrl(ctaUrl) ?? '#')
   const label = escapeHtml(ctaText)
   return [
     '<!doctype html>',
@@ -68,17 +58,24 @@ function wrap(bodyHtml: string, ctaUrl: string, ctaText: string): string {
   ].join('')
 }
 
-function resolvePath(template: string, payload: Payload): string {
-  return template.replace(/\{(\w+)\}/g, (_m, key: string) => {
-    const v = payload[key]
-    return typeof v === 'string' ? encodeURIComponent(v) : ''
-  })
-}
-
 function lookup(locale: Locale, eventType: NotifEventKind): Entry | null {
   const e = messages[locale]?.[eventType]
   if (e) return e
   return messages.en[eventType] ?? null
+}
+
+// Renders the detail variant, or null if any part of it has an unresolved
+// placeholder. All three parts stand or fall together — a subject that names
+// the tour above a body that doesn't reads like two different emails.
+function renderDetail(
+  detail: Detail,
+  scope: TemplatePayload,
+): { subject: string; text: string; bodyHtml: string } | null {
+  const subject = interpolate(detail.subject, scope, escapePlain)
+  const text = interpolate(detail.bodyText, scope, escapePlain)
+  const bodyHtml = interpolate(detail.bodyHtml, scope, escapeHtml)
+  if (subject === null || text === null || bodyHtml === null) return null
+  return { subject, text, bodyHtml }
 }
 
 export function hasEmailTemplate(eventType: NotifEventKind): boolean {
@@ -87,19 +84,30 @@ export function hasEmailTemplate(eventType: NotifEventKind): boolean {
 
 export function renderEmail(
   eventType: NotifEventKind,
-  payload: Payload,
+  payload: TemplatePayload,
   locale: Locale,
 ): RenderedEmail | null {
   const entry = lookup(locale, eventType)
   if (!entry) return null
 
+  // An unresolved path would deep-link to `/buddy/tours/` — a 404. The locale
+  // home is the honest degradation. (The Slack renderer drops the link
+  // entirely; an email always has a CTA button, so it needs somewhere to go.)
   const path = resolvePath(entry.path, payload)
-  const url = `${webBase()}/${locale}${path}`
-  const text = entry.bodyText.replaceAll('{url}', url)
+  const url = `${webBase()}/${locale}${path ?? ''}`
+
+  // `url` joins the payload so a template can place the link inside its body
+  // text. Payload keys cannot shadow it.
+  const scope: TemplatePayload = { ...payload, url }
+
+  const detail = entry.detail ? renderDetail(entry.detail, scope) : null
+  if (detail) {
+    return { subject: detail.subject, text: detail.text, html: wrap(detail.bodyHtml, url, entry.cta) }
+  }
 
   return {
     subject: entry.subject,
-    text,
+    text: entry.bodyText.replaceAll('{url}', url),
     html: wrap(entry.bodyHtml, url, entry.cta),
   }
 }

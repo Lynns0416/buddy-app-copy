@@ -48,6 +48,7 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 ### Slack channel (PRD §10.3)
 
 - [x] Slack delivery shipped for all six admin events — `lib/slack.ts` sender, `services/slackTemplates/`, `enqueueSlackForAdmins`, and the dispatcher case. One shared channel via `SLACK_WEBHOOK_URL`; still needs the webhook created (see "Before launch").
+- [x] Slack and email messages name the acting buddy and the tour, not just the event — shared interpolation in `lib/templateRender.ts`, payloads widened at every enqueue site, typed per event in `packages/types`. `docs/decisions.md` 2026-09-13.
 - [ ] Per-admin Slack targeting / `@mentions` — deferred. Requires per-user Slack IDs and a bot token instead of an incoming webhook. `slackEnabled` is informational only until then.
 
 ---

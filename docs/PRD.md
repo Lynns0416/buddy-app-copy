@@ -686,6 +686,17 @@ Because delivery is channel-wide rather than per-recipient:
   locale to honour. Templates live in
   `apps/api/src/services/slackTemplates/messages.ja.json`.
 
+**Message content.** Every admin event names the acting buddy and the tour —
+group name and date — not just the fact that something happened. Those values
+are snapshotted into `NotificationJob.payload` at enqueue time rather than
+resolved at render time (`docs/decisions.md` 2026-09-13). Each template carries
+two variants: the detailed one, and a generic fallback used when any of its
+fields is missing from the payload, which is what rows written before the
+payloads were widened look like. Interpolated values are buddy- and
+admin-controlled, so each is escaped for its channel at the substitution
+boundary. The same two-variant mechanism backs the email templates, so
+buddy-facing mail names the tour too.
+
 Only admin-targeted events post to Slack. Buddy-targeted events stay on in-app +
 email — they have no place in an internal ops channel.
 
@@ -697,6 +708,7 @@ in `NotificationJob.lastError` and retry on the standard backoff.
 
 - **In-app:** a `Notification` row is written for every event that lists "In-app" in the table above, for every recipient. Read via `GET /me/notifications`. Both buddies and admins receive in-app notifications.
 - **Email:** sent via the Gmail API (see §13). Recipient locale determines language; locale is read from `User.locale: 'ja' | 'en'` (default `'ja'`), surfaced to the user as a language toggle in profile settings.
+- **Payload:** `Notification.payload`, `NotificationJob.payload` and `DigestQueue.payload` are `Json` columns. What each event kind writes is typed in `packages/types` (`NotifPayloadSchemas`); nothing parses a payload on the way out, because rows predating a field must still render (§10.3).
 - **Slack:** Planned — see §10.3.
 
 ### 10.5 Scheduled Jobs

@@ -64,6 +64,62 @@ for that to reach the row.
 
 ---
 
+## 2026-09-13 — Notification payloads snapshot the names they display
+
+**Decision:** `buddyName`, `groupName` and `tourDate` are copied into
+`NotificationJob.payload` at enqueue time and rendered from there. The renderers
+never look the tour or the buddy up again. A buddy who renames themselves after
+a message is queued — or after it is sent — does not retro-change what the
+message says.
+
+**Why:** a notification is a record of what was true when the event happened.
+"Aya cancelled" should keep saying Aya even if that profile is later renamed;
+re-resolving would rewrite history in the ops channel and in an already-sent
+email, which cannot be rewritten anyway. Snapshotting also keeps rendering free
+of DB access, so the dispatcher can render a queued job without a second round
+trip and a deleted tour does not break an unsent message.
+
+**Rejected — resolve at render time from the IDs already in the payload:** the
+payload carries `tourId` and `buddyId`, so the dispatcher could join. It would
+make every render a query, on the hot path of a queue drain, to produce a value
+that is *less* correct for this use.
+
+**Consequence — old rows have no snapshot.** The payload columns are persisted
+Json and rows written before this change lack the fields. Each template
+therefore has two variants: a `detail` one naming the buddy and the tour, and
+the pre-existing generic one. Substitution is all-or-nothing — if any
+placeholder in `detail` has no non-empty string value, the whole message falls
+back to the generic variant rather than emitting a sentence with a hole in it.
+The same rule already governed deep links (a half-resolved `/admin/tours/` is a
+404). This also means no backfill was needed and none is planned.
+
+**Consequence — interpolated values are untrusted.** `displayName` is set by the
+buddy at registration, and group names by admins. Before this change `entry.text`
+and `bodyHtml` were template-authored and emitted raw. Now every substituted
+value is escaped for its channel at the substitution boundary: `escapeSlack` for
+Slack message text, `escapeHtml` for the email HTML body, `escapePlain` for the
+subject and text body. A buddy named `<http://evil|click>` renders as literal
+text in the ops channel.
+
+Markup is not the only thing an interpolated value can forge. `displayName` has
+no charset constraint (`RegisterRequestBodySchema`), so a name full of newlines
+would render in the channel as several apparent messages, and would split an
+email subject line. `escapeSlack` and `escapePlain` therefore also collapse
+control characters and the Unicode line separators — a value may never
+introduce line structure of its own. `escapeHtml` needs no equivalent: a stray
+newline inside a `<p>` renders as whitespace.
+
+**Not done — per-event validation on read.** `packages/types` gained a schema
+per event kind, but it types what the enqueue sites *write*; nothing parses a
+payload on the way out. Parsing would reject exactly the old rows the fallback
+above is designed to serve.
+
+**Current state:** `packages/types/src/index.ts` (`NotifPayloadSchemas`),
+`apps/api/src/lib/templateRender.ts`, `apps/api/src/services/slackTemplates/`,
+`apps/api/src/services/notificationTemplates/`, PRD §10.3.
+
+---
+
 ## 2026-09-13 — GCP staging is retired now; the `peace-buddy-staging` project stays
 
 **Decision:** The GCP/Neon staging stack is torn down on 2026-09-13, without

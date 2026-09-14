@@ -113,6 +113,74 @@ export const NotifEventKindSchema = z.enum([
 ])
 export type NotifEventKind = z.infer<typeof NotifEventKindSchema>
 
+// ---- Notification payloads ----
+//
+// One schema per dispatchable event. These describe what an enqueue site
+// WRITES, so a typo in a field name fails typecheck instead of rendering a
+// blank placeholder in a Slack post.
+//
+// They are deliberately not applied on the way out. `NotificationJob.payload`,
+// `Notification.payload` and `DigestQueue.payload` are persisted Json columns
+// with rows written before these fields existed; the renderers read the payload
+// loosely and fall back to a generic, placeholder-free message when a field is
+// missing (docs/decisions.md 2026-09-13).
+//
+// The display fields (`buddyName`, `groupName`, `tourDate`) are snapshots taken
+// at enqueue time — a later rename does not retro-update an already-queued
+// message. Same decision entry.
+
+// Every tour-scoped event carries enough to name the tour in a message.
+// `tourDate` is the UTC calendar date as `YYYY-MM-DD`, matching the `.slice(0, 10)`
+// the web app applies to the ISO string the API returns.
+const TourRefPayloadSchema = z.object({
+  tourId: z.string(),
+  groupName: z.string(),
+  tourDate: z.string(),
+})
+
+// Booking-scoped admin events additionally name the acting buddy.
+const BookingRefPayloadSchema = TourRefPayloadSchema.extend({
+  bookingId: z.string(),
+  sessionId: z.string(),
+  buddyId: z.string(),
+  buddyName: z.string(),
+})
+
+export const NotifPayloadSchemas = {
+  // Buddy-targeted
+  account_approved: z.object({}),
+  account_rejected: z.object({}),
+  tour_published: TourRefPayloadSchema,
+  tour_details_changed: TourRefPayloadSchema,
+  tour_cancelled: TourRefPayloadSchema,
+  tour_reminder: TourRefPayloadSchema.extend({ offsetDays: z.number() }),
+  maybe_reminder: TourRefPayloadSchema.extend({ offsetDays: z.number() }),
+  waitlist_promoted: TourRefPayloadSchema.extend({
+    bookingId: z.string(),
+    sessionId: z.string(),
+  }),
+  waitlist_opened: TourRefPayloadSchema.extend({ sessionId: z.string() }),
+  self_eval_prompt: TourRefPayloadSchema,
+  // Admin-targeted
+  new_signup: z.object({
+    buddyUserId: z.string(),
+    email: z.string(),
+    displayName: z.string().nullable(),
+  }),
+  new_booking: BookingRefPayloadSchema.extend({ status: BookingStatusSchema }),
+  booking_cancelled: BookingRefPayloadSchema,
+  cant_go_post_deadline: BookingRefPayloadSchema.extend({
+    category: CancellationCategorySchema,
+  }),
+  maybe_resolved: BookingRefPayloadSchema.extend({ resolution: BookingStatusSchema }),
+  maybe_deadline_missed: TourRefPayloadSchema,
+} as const satisfies Record<NotifEventKind, z.ZodTypeAny>
+
+export type NotifPayloadMap = {
+  [K in NotifEventKind]: z.infer<(typeof NotifPayloadSchemas)[K]>
+}
+export type NotifPayload<K extends NotifEventKind = NotifEventKind> = NotifPayloadMap[K]
+
 export type NotificationResponse = {
   id: string
   type: NotifEventKind

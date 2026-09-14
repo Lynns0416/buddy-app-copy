@@ -3,6 +3,7 @@ import { db } from '../lib/db'
 import { BookingStatusSchema, NotifEventKindSchema } from '@peace-buddy/types'
 import type { BookingResponse, BookingStatus, BuddyTier, CancellationReasonBody, MyTourBookingEntry } from '@peace-buddy/types'
 import { getPoolCapacities, poolForTier, NON_JUNIOR_TIERS } from '../lib/pool'
+import { payloadTourDate } from '../lib/notificationPayload'
 import type { Pool } from '../lib/pool'
 import {
   enqueueEmail,
@@ -76,9 +77,19 @@ export async function createBooking(
   const [session, buddy] = await Promise.all([
     db.tourSession.findUnique({
       where: { id: sessionId },
-      select: { id: true, tourId: true, capacity: true, tour: { select: { status: true, tourDate: true, bookingOpen: true } } },
+      select: {
+        id: true,
+        tourId: true,
+        capacity: true,
+        tour: {
+          select: { status: true, tourDate: true, bookingOpen: true, group: { select: { name: true } } },
+        },
+      },
     }),
-    db.buddyProfile.findUnique({ where: { userId }, select: { id: true, tier: true, status: true } }),
+    db.buddyProfile.findUnique({
+      where: { userId },
+      select: { id: true, tier: true, status: true, displayName: true },
+    }),
   ])
 
   if (!session) return { ok: false, code: 'SESSION_NOT_FOUND' }
@@ -135,7 +146,16 @@ export async function createBooking(
       }
       const bookingArgs = {
         eventType: NotifEventKindSchema.enum.new_booking,
-        payload: { bookingId: row.id, tourId, sessionId, buddyId: buddy.id, status: row.status },
+        payload: {
+          bookingId: row.id,
+          tourId,
+          sessionId,
+          buddyId: buddy.id,
+          buddyName: buddy.displayName,
+          groupName: tour.group.name,
+          tourDate: payloadTourDate(tour.tourDate),
+          status: row.status as BookingStatus,
+        },
       }
       await enqueueInAppForTourAdmins(tourId, bookingArgs, tx)
       await enqueueSlackForAdmins(bookingArgs, tx)
@@ -161,14 +181,21 @@ export async function updateBooking(
   reason?: CancellationReasonBody,
 ): Promise<UpdateBookingResult> {
   const [buddy, session] = await Promise.all([
-    db.buddyProfile.findUnique({ where: { userId }, select: { id: true } }),
+    db.buddyProfile.findUnique({ where: { userId }, select: { id: true, displayName: true } }),
     db.tourSession.findUnique({
       where: { id: sessionId },
       select: {
         id: true,
         capacity: true,
         tourId: true,
-        tour: { select: { cancellationDeadline: true, maybeDeadline: true } },
+        tour: {
+          select: {
+            cancellationDeadline: true,
+            maybeDeadline: true,
+            tourDate: true,
+            group: { select: { name: true } },
+          },
+        },
       },
     }),
   ])
@@ -244,6 +271,16 @@ export async function updateBooking(
   const wasMaybe = booking.status === PrismaBookingStatus.maybe
   const willDecline = wasConfirmed && newStatus === BookingStatusSchema.enum.declined
 
+  // Snapshotted into every payload below so the message can name the buddy and
+  // the tour without a second lookup at render time. See docs/decisions.md
+  // 2026-09-13 for why these are frozen at enqueue rather than looked up live.
+  const tourRef = {
+    tourId: session.tourId,
+    buddyName: buddy.displayName,
+    groupName: session.tour.group.name,
+    tourDate: payloadTourDate(session.tour.tourDate),
+  }
+
   const updated = await db.$transaction(async (tx) => {
     const u = await tx.booking.update({
       where: { id: booking.id },
@@ -265,7 +302,7 @@ export async function updateBooking(
       }
       const cancelArgs = {
         eventType: NotifEventKindSchema.enum.booking_cancelled,
-        payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id },
+        payload: { ...tourRef, bookingId: booking.id, sessionId, buddyId: buddy.id },
       }
       await enqueueInAppForTourAdmins(session.tourId, cancelArgs, tx)
       await enqueueEmailForTourAdmins(session.tourId, cancelArgs, tx)
@@ -275,7 +312,13 @@ export async function updateBooking(
     if (wasMaybe && newStatus !== BookingStatusSchema.enum.maybe) {
       const resolvedArgs = {
         eventType: NotifEventKindSchema.enum.maybe_resolved,
-        payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id, resolution: newStatus },
+        payload: {
+          ...tourRef,
+          bookingId: booking.id,
+          sessionId,
+          buddyId: buddy.id,
+          resolution: newStatus,
+        },
       }
       await enqueueInAppForTourAdmins(session.tourId, resolvedArgs, tx)
       await enqueueEmailForTourAdmins(session.tourId, resolvedArgs, tx)
@@ -299,14 +342,20 @@ export async function reportCantGo(
   body: CancellationReasonBody,
 ): Promise<ReportCantGoResult> {
   const [buddy, session] = await Promise.all([
-    db.buddyProfile.findUnique({ where: { userId }, select: { id: true } }),
+    db.buddyProfile.findUnique({ where: { userId }, select: { id: true, displayName: true } }),
     db.tourSession.findUnique({
       where: { id: sessionId },
       select: {
         id: true,
         tourId: true,
         capacity: true,
-        tour: { select: { cancellationDeadline: true } },
+        tour: {
+          select: {
+            cancellationDeadline: true,
+            tourDate: true,
+            group: { select: { name: true } },
+          },
+        },
       },
     }),
   ])
@@ -351,7 +400,16 @@ export async function reportCantGo(
     })
     const cantGoArgs = {
       eventType: NotifEventKindSchema.enum.cant_go_post_deadline,
-      payload: { bookingId: booking.id, tourId: session.tourId, sessionId, buddyId: buddy.id, category: body.category },
+      payload: {
+        bookingId: booking.id,
+        tourId: session.tourId,
+        sessionId,
+        buddyId: buddy.id,
+        buddyName: buddy.displayName,
+        groupName: session.tour.group.name,
+        tourDate: payloadTourDate(session.tour.tourDate),
+        category: body.category,
+      },
     }
     await enqueueInAppForTourAdmins(session.tourId, cantGoArgs, tx)
     await enqueueEmailForTourAdmins(session.tourId, cantGoArgs, tx)
@@ -405,15 +463,27 @@ async function promoteWaitlist(sessionId: string, capacity: number, cancelledTie
         where: { id: candidate.id },
         data: { status: PrismaBookingStatus.confirmed },
       })
+      // The tour is read through the booking rather than separately: it costs
+      // nothing extra, runs only when someone is actually promoted, and is
+      // non-null by construction so the payload can never carry a blank name.
       const promoted = await tx.booking.findUnique({
         where: { id: candidate.id },
-        select: { buddy: { select: { userId: true } } },
+        select: {
+          buddy: { select: { userId: true } },
+          tour: { select: { tourDate: true, group: { select: { name: true } } } },
+        },
       })
       if (promoted) {
         const promoArgs = {
           eventType: NotifEventKindSchema.enum.waitlist_promoted,
           recipientUserId: promoted.buddy.userId,
-          payload: { bookingId: candidate.id, tourId, sessionId },
+          payload: {
+            bookingId: candidate.id,
+            tourId,
+            sessionId,
+            groupName: promoted.tour.group.name,
+            tourDate: payloadTourDate(promoted.tour.tourDate),
+          },
         }
         await enqueueInApp(promoArgs, tx)
         await enqueueEmail(promoArgs, tx)

@@ -37,7 +37,8 @@
       "Bash(grep -A60 *)",
       "Bash(grep -n *)",
       "Bash(npx tsc *)",
-      "Bash(pnpm tsc *)"
+      "Bash(pnpm tsc *)",
+      "Bash(grep -v \":\\\\s*$\")"
     ],
     "deny": [
       "Bash(rm -rf:*)",

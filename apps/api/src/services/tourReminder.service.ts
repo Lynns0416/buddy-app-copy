@@ -8,6 +8,7 @@ import {
 } from '@peace-buddy/types'
 import { Prisma } from '@prisma/client'
 import { enqueueEmail, enqueueInApp } from './notification.service'
+import { payloadTourDate, type TourNameRef } from '../lib/notificationPayload'
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -41,7 +42,12 @@ export async function enqueueTourReminders(now: Date = new Date()): Promise<Tour
       status: TourStatusSchema.enum.published,
       tourDate: { gte: today },
     },
-    select: { id: true, tourDate: true, notificationOffsets: true },
+    select: {
+      id: true,
+      tourDate: true,
+      notificationOffsets: true,
+      group: { select: { name: true } },
+    },
   })
 
   for (const tour of tours) {
@@ -58,7 +64,7 @@ export async function enqueueTourReminders(now: Date = new Date()): Promise<Tour
 
     for (const offset of offsetsDueToday) {
       for (const recipient of recipients) {
-        const outcome = await tryEnqueueForRecipient(tour.id, offset, recipient.userId)
+        const outcome = await tryEnqueueForRecipient(tour, offset, recipient.userId)
         if (outcome === 'enqueued') result.enqueued += 1
         else result.alreadySent += 1
       }
@@ -98,18 +104,23 @@ async function findReminderRecipients(tourId: string): Promise<Recipient[]> {
 }
 
 async function tryEnqueueForRecipient(
-  tourId: string,
+  tour: TourNameRef,
   offsetDays: number,
   recipientUserId: string,
 ): Promise<'enqueued' | 'already_sent'> {
-  const eventKey = dispatchKey(tourId, offsetDays, recipientUserId)
+  const eventKey = dispatchKey(tour.id, offsetDays, recipientUserId)
   try {
     await db.$transaction(async (tx) => {
       await tx.notificationDispatchLog.create({ data: { eventKey } })
       const args = {
         eventType: NotifEventKindSchema.enum.tour_reminder,
         recipientUserId,
-        payload: { tourId, offsetDays },
+        payload: {
+          tourId: tour.id,
+          groupName: tour.group.name,
+          tourDate: payloadTourDate(tour.tourDate),
+          offsetDays,
+        },
       }
       await enqueueInApp(args, tx)
       await enqueueEmail(args, tx)
