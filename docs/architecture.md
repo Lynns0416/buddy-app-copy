@@ -433,3 +433,58 @@ time, so the api must be deployed before web is built — and the api's
 before the api is updated, and a failed migration stops the deploy with nothing
 changed; see `docs/decisions.md` 2026-09-13. Both apps run `--min-replicas 0`;
 that flag is the difference between $0 and a real bill.
+
+## Logs and monitoring
+
+Every app in `cae-peace-buddy` writes stdout/stderr and platform events to one
+Log Analytics workspace, `workspace-rgpeacebuddygjmh` (customer id
+`04d99fc8-0f21-4400-8680-c0201f3caf70`), kept 30 days. Prod and staging share
+it, so filter by app name: `ca-api-stg` / `ca-web-stg` now, `ca-api` / `ca-web`
+once prod exists. No Datadog or other agent — nothing to install.
+
+### Tail live
+
+```sh
+az containerapp logs show -g rg-peace-buddy -n ca-api-stg --follow --tail 50 --format text
+az containerapp logs show -g rg-peace-buddy -n ca-api-stg --type system --follow   # starts, crashes, image pulls
+```
+
+This streams from a running replica. Staging is stopped most of the time and
+scales to zero, so for anything past, query the workspace instead.
+
+### Search history
+
+Portal → the workspace → Logs, or from the CLI:
+
+```sh
+az monitor log-analytics query -w 04d99fc8-0f21-4400-8680-c0201f3caf70 -o table --analytics-query "
+ContainerAppConsoleLogs_CL
+| where ContainerAppName_s == 'ca-api-stg' and TimeGenerated > ago(1h)
+| where Stream_s == 'stderr' or Log_s has ' 500 '
+| project TimeGenerated, Stream_s, Log_s
+| order by TimeGenerated desc"
+```
+
+| Table | Holds | Useful columns |
+|---|---|---|
+| `ContainerAppConsoleLogs_CL` | the app's stdout/stderr, one row per line | `ContainerAppName_s`, `Stream_s`, `Log_s` |
+| `ContainerAppSystemLogs_CL` | revision starts/stops, crashes, scaling, image pulls | `ContainerAppName_s`, `Reason_s`, `Log_s` |
+
+A stack trace spans several rows with the same `TimeGenerated`.
+
+### Alerts — not set up
+
+Nothing alerts on errors or restarts yet; the only alerts are the cost ones from
+`scripts/azure-cost-alerts.sh`. No decision is recorded. The likely shape is an
+Azure Monitor log search alert rule on `ContainerAppConsoleLogs_CL` (stderr or
+5xx) and one on `ContainerAppSystemLogs_CL` (container terminated), both firing
+an action group. Open before choosing:
+
+- An action group's webhook payload is not Slack's format, so it cannot post to
+  a Slack incoming webhook directly. It needs email to a Slack channel address,
+  or a Logic App to reshape it.
+- Use a separate channel/webhook from `SLACK_WEBHOOK_URL`, which is the app's
+  booking and notification channel.
+- Log search alert rule pricing is unverified.
+- The workspace has no daily ingestion cap, so the "under 5 GB/mo, free"
+  assumption in `docs/azure-costs.md` is not enforced.
