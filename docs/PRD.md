@@ -743,11 +743,15 @@ via `GET / PUT /notification-preferences` (api.md). Slack target is governed by 
 
 Route: `/buddy`. Fetches `GET /tours?from=<today>` and renders a list of upcoming tour cards.
 
-**Per-tour card shows:** group name, status badge (`tourStatus.*`), tour date, meeting times (concatenated across sessions), location, total capacity (sum across sessions), participant count.
+**Per-tour card shows:** group name, tour date, each session's meeting time, location, total capacity (sum across sessions), participant count.
 
 **Non-active buddy:** if the caller's status isn't `active`, the page replaces the list with a "you're not registered" message (`tour.notRegistered`).
 
-**Per-buddy booking statuses are not shown on this page** — they live on `/buddy/history` (Upcoming / Past sections). Navigation to that page is via the "My bookings" link in the header. Profile is reached via the sidebar (`/dashboard/profile`).
+**The caller's own booking status** is shown beside each session's meeting time as a badge (`bookingStatus.*`): Confirmed, Maybe or Waitlist. It is per session because bookings are — a two-session tour can read `09:00 Confirmed · 13:00 Waitlist`. A session with no booking shows nothing, and so does a `declined` one: the buddy cancelled it and can book it again. `GET /tours` returns this as `sessions[].myBookingStatus`, resolved for every listed session in one query.
+
+**No tour status badge:** the page requests `GET /tours` without `status`, which defaults to `published`, so every card would read "Published". It told the buddy nothing and shared the primary fill with the Confirmed badge. The page title says what the list is instead: "Tours looking for buddies" / 「バディ募集中のツアー」 (`tour.title`). Tours with `bookingOpen` off stay listed — the title names the page's purpose, and the tour detail page is where booking is gated.
+
+The full booking list, including past tours, lives on `/buddy/history` (Upcoming / Past sections). Navigation to that page is via the "My bookings" link in the header. Profile is reached via the sidebar (`/dashboard/profile`).
 
 ### 11.2 Tour Management
 

@@ -448,6 +448,12 @@ export type TourSessionResponse = {
   belowMinimum: boolean
 }
 
+// A session as listed to a buddy. Kept apart from TourSessionResponse, which
+// is also the admin tour and group session shape, where "my booking" means nothing.
+export type TourListSessionResponse = TourSessionResponse & {
+  myBookingStatus: BookingStatus | null
+}
+
 export type TourResponse = {
   id: string
   groupId: string
@@ -461,7 +467,7 @@ export type TourResponse = {
   cancellationDeadline: string
   maybeDeadline: string | null
   notificationOffsets: number[]
-  sessions: TourSessionResponse[]
+  sessions: TourListSessionResponse[]
   createdAt: string
   updatedAt: string
 }
@@ -559,12 +565,11 @@ export type TourSeatCounts = {
   declined: number
 }
 
-export type TourSessionDetailResponse = TourSessionResponse & {
+export type TourSessionDetailResponse = TourListSessionResponse & {
   seatCounts: TourSeatCounts
   remaining: number
   myCapacity: number | null
   myRemaining: number | null
-  myBookingStatus: BookingStatus | null
 }
 
 export type TourDetailResponse = Omit<TourResponse, 'sessions'> & {

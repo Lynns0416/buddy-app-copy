@@ -9,18 +9,18 @@ import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { apiClient } from '@/lib/api-client'
 import type { TourResponse } from '@peace-buddy/types'
-import { BuddyStatusSchema } from '@peace-buddy/types'
+import { BookingStatusSchema, BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
 import { fetchUpcomingTours } from './buddy.tour'
-import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
+import { bookingStatusBadgeVariant, getBookingStatusLabel } from '@/lib/status-display'
 
 export default function BuddyTourPage() {
   const { firebaseUser, dbUser, loading, setBuddyProfile } = useAuth()
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('tour')
-  const tTourStatus = useTranslations('tourStatus')
+  const tBookingStatus = useTranslations('bookingStatus')
   const [tours, setTours] = useState<TourResponse[]>([])
   const sentToOnboarding = useRef(false)
 
@@ -98,20 +98,25 @@ export default function BuddyTourPage() {
         <div className="flex flex-col gap-3">
           {tours.map((tour) => (
             <Link key={tour.id} href={routes.buddyTour(locale, tour.id)} className="rounded-lg border bg-card p-4 hover:bg-accent transition-colors">
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <p className="font-medium">{tour.group.name}</p>
-                <Badge variant={tourStatusBadgeVariant[tour.status]} className="shrink-0">
-                  {getTourStatusLabel(tTourStatus, tour.status)}
-                </Badge>
-              </div>
+              <p className="mb-3 font-medium">{tour.group.name}</p>
               <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays size={14} />
                   {tour.tourDate.slice(0, 10)}
                 </span>
-                <span className="flex items-center gap-1.5">
+                <span className="flex flex-wrap items-center gap-1.5">
                   <Clock size={14} />
-                  {tour.sessions.map((s) => s.meetingTime.slice(11, 16)).join(' / ')}
+                  {tour.sessions.map((s) => (
+                    <span key={s.id} className="flex items-center gap-1.5 pr-1.5">
+                      {s.meetingTime.slice(11, 16)}
+                      {/* declined means the buddy cancelled and can book again — on the card that is not booked */}
+                      {s.myBookingStatus && s.myBookingStatus !== BookingStatusSchema.enum.declined && (
+                        <Badge variant={bookingStatusBadgeVariant[s.myBookingStatus]}>
+                          {getBookingStatusLabel(tBookingStatus, s.myBookingStatus)}
+                        </Badge>
+                      )}
+                    </span>
+                  ))}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin size={14} />

@@ -38,6 +38,9 @@ vi.mock('@/lib/api-client', () => ({
 import { useAuth } from '../../../lib/auth'
 import { apiClient } from '@/lib/api-client'
 import { routes } from '@/lib/routes'
+import { fetchUpcomingTours } from './buddy.tour'
+import { BookingStatusSchema, GroupTypeSchema, TourStatusSchema } from '@peace-buddy/types'
+import type { BookingStatus, TourResponse } from '@peace-buddy/types'
 
 const setBuddyProfile = vi.fn()
 
@@ -114,5 +117,69 @@ describe('BuddyTourPage', () => {
     expect(await screen.findByText('noTours')).toBeInTheDocument()
     expect(screen.getByText('title')).toBeInTheDocument()
     expect(screen.queryByText('traineeMessage')).not.toBeInTheDocument()
+  })
+
+  function mockTourWithBookings(statuses: Array<BookingStatus | null>) {
+    const tour: TourResponse = {
+      id: 'tour-1',
+      groupId: 'group-1',
+      group: { id: 'group-1', name: 'Test School', type: GroupTypeSchema.enum.school },
+      status: TourStatusSchema.enum.published,
+      tourDate: '2026-05-01T00:00:00.000Z',
+      bookingOpen: true,
+      location: 'Tokyo Station',
+      participantCount: 0,
+      description: null,
+      cancellationDeadline: '2026-04-25T00:00:00.000Z',
+      maybeDeadline: null,
+      notificationOffsets: [],
+      sessions: statuses.map((myBookingStatus, i) => ({
+        id: `session-${i}`,
+        order: i + 1,
+        label: null,
+        meetingTime: '1970-01-01T09:00:00.000Z',
+        startTime: null,
+        endTime: null,
+        capacity: 10,
+        minBuddies: null,
+        participantCount: 0,
+        belowMinimum: false,
+        myBookingStatus,
+      })),
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    vi.mocked(fetchUpcomingTours).mockResolvedValueOnce({ ok: true, data: [tour] })
+  }
+
+  it("shows the buddy's own booking status on each session they are booked on", async () => {
+    mockTourWithBookings([
+      BookingStatusSchema.enum.confirmed,
+      BookingStatusSchema.enum.maybe,
+      BookingStatusSchema.enum.waitlist,
+    ])
+    mockStatus('active')
+    render(<BuddyTourPage />)
+    expect(await screen.findByText(BookingStatusSchema.enum.confirmed)).toBeInTheDocument()
+    expect(screen.getByText(BookingStatusSchema.enum.maybe)).toBeInTheDocument()
+    expect(screen.getByText(BookingStatusSchema.enum.waitlist)).toBeInTheDocument()
+  })
+
+  it('shows no booking status for a session not booked or declined', async () => {
+    mockTourWithBookings([null, BookingStatusSchema.enum.declined])
+    mockStatus('active')
+    render(<BuddyTourPage />)
+    expect(await screen.findByText('Test School')).toBeInTheDocument()
+    for (const status of BookingStatusSchema.options) {
+      expect(screen.queryByText(status)).not.toBeInTheDocument()
+    }
+  })
+
+  it('shows no tour status badge, since every tour listed here is published', async () => {
+    mockTourWithBookings([BookingStatusSchema.enum.confirmed])
+    mockStatus('active')
+    render(<BuddyTourPage />)
+    expect(await screen.findByText(BookingStatusSchema.enum.confirmed)).toBeInTheDocument()
+    expect(screen.queryByText(TourStatusSchema.enum.published)).not.toBeInTheDocument()
   })
 })

@@ -57,6 +57,7 @@ describe('listTours', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mdb.buddyProfile.findFirst.mockResolvedValue({ tier: 'junior' })
+    mdb.booking.findMany.mockResolvedValue([])
   })
 
   it('returns empty array for trainee buddy', async () => {
@@ -64,6 +65,49 @@ describe('listTours', () => {
     const result = await listTours('user-1')
     expect(result).toEqual([])
     expect(mdb.tour.findMany).not.toHaveBeenCalled()
+    expect(mdb.booking.findMany).not.toHaveBeenCalled()
+  })
+
+  it("returns the caller's booking status per session, from one query across all tours", async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([
+      { ...mockRow, sessions: [mockSessionRow, { ...mockSessionRow, id: 'session-2', order: 2 }] },
+      { ...mockRow, id: 'tour-2', sessions: [{ ...mockSessionRow, id: 'session-3' }] },
+    ])
+    mdb.booking.findMany.mockResolvedValueOnce([
+      { sessionId: 'session-1', status: 'confirmed' },
+      { sessionId: 'session-3', status: 'declined' },
+    ])
+
+    const result = await listTours('user-1')
+
+    expect(mdb.booking.findMany).toHaveBeenCalledTimes(1)
+    const call = mdb.booking.findMany.mock.calls[0][0] as { where: unknown }
+    expect(call.where).toEqual({
+      sessionId: { in: ['session-1', 'session-2', 'session-3'] },
+      buddy: { userId: 'user-1' },
+    })
+    expect(result[0].sessions.map((s) => s.myBookingStatus)).toEqual(['confirmed', null])
+    expect(result[1].sessions[0].myBookingStatus).toBe('declined')
+  })
+
+  it('sets myBookingStatus null when the caller has no booking', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([mockRow])
+    const result = await listTours('user-1')
+    expect(result[0].sessions[0].myBookingStatus).toBeNull()
+  })
+
+  it('skips the booking lookup when the caller has no buddy profile', async () => {
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce(null)
+    mdb.tour.findMany.mockResolvedValueOnce([mockRow])
+    const result = await listTours('user-1')
+    expect(mdb.booking.findMany).not.toHaveBeenCalled()
+    expect(result[0].sessions[0].myBookingStatus).toBeNull()
+  })
+
+  it('skips the booking lookup when no tours match', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([])
+    await listTours('user-1')
+    expect(mdb.booking.findMany).not.toHaveBeenCalled()
   })
 
   it('maps tourDate and other date fields to ISO strings', async () => {

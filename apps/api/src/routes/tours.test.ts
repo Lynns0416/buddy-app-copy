@@ -53,6 +53,7 @@ const mockSessionSummary = {
   minBuddies: null,
   participantCount: 0,
   belowMinimum: false,
+  myBookingStatus: null,
 }
 
 const mockTour: TourResponse = {

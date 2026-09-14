@@ -12,6 +12,53 @@ duplicate that state here.
 
 ---
 
+## 2026-09-14 — Buddy home cards show the caller's booking status, per session
+
+**Decision:** `GET /tours` carries `myBookingStatus` on each session
+(`TourListSessionResponse`), and `/buddy` shows it as a badge beside that
+session's meeting time. This reverses PRD §11.1's earlier "per-buddy booking
+statuses are not shown on this page": the first thing a volunteer asks on
+opening the app is whether they are in, and answering it took a trip to
+`/buddy/history`. Every listed session is resolved in one `booking.findMany`,
+not one query per tour.
+
+**Rejected — one status per tour on `TourResponse`:** bookings are per session
+(`@@unique([buddyId, sessionId])`), so a buddy can be confirmed at 09:00 and
+waitlisted at 13:00. A single field has to pick one by precedence and hides the
+other. Per session also matches `TourSessionDetailResponse` and `/buddy/history`.
+
+**Rejected — adding the field to `TourSessionResponse`:** that type is also the
+session shape of the admin tour and group responses, where "my booking" means
+nothing.
+
+**`declined` is returned but not shown on the card:** it means the buddy
+cancelled and can book the session again, so on the card it reads as not
+booked. The API keeps the raw value so another view can choose differently.
+
+**The tour status badge is removed from these cards.** The page never passes
+`status`, so `listTours` returns only `published` tours and every card read
+"Published". It carried no information, and it used the same `default` fill as
+the Confirmed badge beside it, so the two read as one signal. The page title
+says what the list is instead: "Tours looking for buddies" /
+「バディ募集中のツアー」. "Published" / 「公開中」 was tried first and dropped:
+it did not make sense to the reader.
+
+`bookingOpen` is a separate flag, so a listed tour can be closed for booking
+while the title says buddies are wanted. Accepted: the title names the page's
+purpose, and the tour detail page is where booking is gated.
+
+**Rejected — hiding tours with `bookingOpen` off so the title is always true:**
+a buddy already booked on a tour whose booking has closed would lose it from
+the home page, which is the "am I in?" answer this change exists to give.
+
+**Rejected — a separate colour set for booking statuses:** it would fix the
+clash but keep a badge that says nothing. Revisit if the home page ever lists
+tours in more than one status.
+
+**Current state:** `docs/PRD.md` §11.1, `docs/api.md` `GET /tours`. Closes #197.
+
+---
+
 ## 2026-09-13 — A second auth provider is linked from the profile page, not at sign-in
 
 **Decision:** A buddy who wants both Google and Apple on one account links the

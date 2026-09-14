@@ -493,7 +493,8 @@ List tours visible to the caller. Trainee buddies are excluded server-side.
           "capacity": 0,
           "minBuddies": 0,
           "participantCount": 0,
-          "belowMinimum": false
+          "belowMinimum": false,
+          "myBookingStatus": "confirmed | maybe | waitlist | declined | null"
         }
       ],
       "createdAt": "ISO8601",
@@ -502,6 +503,8 @@ List tours visible to the caller. Trainee buddies are excluded server-side.
   ]
 }
 ```
+
+`sessions[].myBookingStatus` is the caller's own booking on that session — `null` when they have none or have no buddy profile. All listed sessions are resolved in one booking query.
 
 ---
 

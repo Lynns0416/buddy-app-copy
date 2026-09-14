@@ -84,7 +84,7 @@ function mapTour(row: {
     minBuddies: number | null
     participantCount: number
   }>
-}): TourResponse {
+}, myBookingBySession: Map<string, BookingStatus>): TourResponse {
   const totalParticipants = row.sessions.reduce((s, sess) => s + sess.participantCount, 0)
   return {
     id: row.id,
@@ -99,7 +99,10 @@ function mapTour(row: {
     cancellationDeadline: row.cancellationDeadline.toISOString(),
     maybeDeadline: row.maybeDeadline ? row.maybeDeadline.toISOString() : null,
     notificationOffsets: row.notificationOffsets,
-    sessions: row.sessions.map(mapSession),
+    sessions: row.sessions.map((sess) => ({
+      ...mapSession(sess),
+      myBookingStatus: myBookingBySession.get(sess.id) ?? null,
+    })),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }
@@ -127,7 +130,21 @@ export async function listTours(userId: string, filters?: ToursQuery): Promise<T
     select: tourSelect,
     orderBy: { tourDate: 'asc' },
   })
-  return rows.map(mapTour)
+
+  // One lookup for the caller's bookings across every listed session, not one per tour.
+  const sessionIds = rows.flatMap((row) => row.sessions.map((sess) => sess.id))
+  const myBookings = buddyProfile && sessionIds.length > 0
+    ? await db.booking.findMany({
+        where: { sessionId: { in: sessionIds }, buddy: { userId } },
+        select: { sessionId: true, status: true },
+      })
+    : []
+  const myBookingBySession = new Map<string, BookingStatus>()
+  for (const b of myBookings) {
+    myBookingBySession.set(b.sessionId, b.status)
+  }
+
+  return rows.map((row) => mapTour(row, myBookingBySession))
 }
 
 export async function getTour(id: string, userId: string): Promise<TourDetailResponse | null> {
@@ -184,7 +201,7 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
     seatCountsBySession.set(r.sessionId, counts)
   }
 
-  const myBookingBySession = new Map<string, string>()
+  const myBookingBySession = new Map<string, BookingStatus>()
   for (const b of myBookings) {
     myBookingBySession.set(b.sessionId, b.status)
   }
@@ -228,12 +245,12 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
       remaining: sess.capacity - seatCounts.confirmed,
       myCapacity,
       myRemaining,
-      myBookingStatus: (myBookingBySession.get(sess.id) ?? null) as BookingStatus | null,
+      myBookingStatus: myBookingBySession.get(sess.id) ?? null,
     }
   })
 
   return {
-    ...mapTour(row),
+    ...mapTour(row, myBookingBySession),
     sessions: sessionDetails,
   }
 }
