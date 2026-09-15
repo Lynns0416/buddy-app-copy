@@ -691,5 +691,39 @@
       "network": "Network error. Please check your connection.",
       "unknown": "An error occurred. Please try again."
     }
+  },
+  "adminDashboard": {
+    "title": "Home",
+    "loadError": "Could not load the worklist.",
+    "viewAll": "View all",
+    "sessionFallback": "Session {order}",
+    "listSeparator": ", ",
+    "pending": {
+      "title": "Pending applications",
+      "empty": "No applications waiting.",
+      "detail": "Applied {date}"
+    },
+    "overdueMaybes": {
+      "title": "Unresolved Maybes past deadline",
+      "empty": "No Maybes left past their deadline.",
+      "detail": "{date} · {count, plural, one {# Maybe} other {# Maybes}} · deadline {deadline}"
+    },
+    "underfilled": {
+      "title": "Short of buddies (next {days} days)",
+      "empty": "Every upcoming session has its minimum.",
+      "detail": "{date} · {sessions}",
+      "session": "{session}: {confirmed} of {min} confirmed"
+    },
+    "missingEvaluations": {
+      "title": "Completed tours missing evaluations",
+      "empty": "Every completed tour has been evaluated.",
+      "detail": "{date} · {count, plural, one {# buddy not evaluated} other {# buddies not evaluated}}"
+    },
+    "notifications": {
+      "title": "Unread notifications",
+      "empty": "No unread notifications.",
+      "olderUnread": "Older unread notifications aren't shown here. Open View all to mark them read.",
+      "loadError": "Could not load notifications."
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Mock } from 'vitest'
-import { createTour, getAdminTourDetail, listAdminTours } from './adminTour.service'
+import { createTour, getAdminTourDetail, listAdminTours, listUnderfilledTours } from './adminTour.service'
 
 // TODO: add tests for updateTour, transitionTourStatus, deleteTour.
 // Session and tier-capacity tests live in adminSession.service.test.ts.
@@ -180,4 +180,89 @@ describe('adminTour.service todos', () => {
   it.todo('updateTour throws TourImmutableError when cancelled or completed')
   it.todo('transitionTourStatus throws TourTransitionError on invalid transition')
   it.todo('deleteTour throws TourNotDraftError when not in draft')
+})
+
+describe('listUnderfilledTours', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const NOW = new Date('2026-06-20T15:30:00Z') // JST 2026-06-21
+
+  function underfilledRow(sessions: Array<{ id: string; minBuddies: number | null; confirmed: number }>) {
+    return {
+      id: 'tour-1',
+      tourDate: new Date('2026-06-25T00:00:00.000Z'),
+      group: { name: 'Test School' },
+      sessions: sessions.map((s, i) => ({
+        id: s.id,
+        order: i + 1,
+        label: null,
+        minBuddies: s.minBuddies,
+        _count: { bookings: s.confirmed },
+      })),
+    }
+  }
+
+  it('queries published tours from the JST day of now through the lookahead', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([])
+
+    await listUnderfilledTours(NOW, 14)
+
+    const { where } = mdb.tour.findMany.mock.calls[0][0] as {
+      where: { status: string; tourDate: { gte: Date; lt: Date } }
+    }
+    expect(where.status).toBe('published')
+    expect(where.tourDate.gte.toISOString()).toBe('2026-06-21T00:00:00.000Z')
+    expect(where.tourDate.lt.toISOString()).toBe('2026-07-05T00:00:00.000Z')
+  })
+
+  it('counts only confirmed bookings on sessions that set minBuddies', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([])
+
+    await listUnderfilledTours(NOW, 14)
+
+    const { where, select } = mdb.tour.findMany.mock.calls[0][0] as {
+      where: { sessions: { some: { minBuddies: { not: null } } } }
+      select: {
+        sessions: {
+          where: { minBuddies: { not: null } }
+          select: { _count: { select: { bookings: { where: { status: string } } } } }
+        }
+      }
+    }
+    expect(where.sessions.some.minBuddies).toEqual({ not: null })
+    expect(select.sessions.where.minBuddies).toEqual({ not: null })
+    expect(select.sessions.select._count.select.bookings.where.status).toBe('confirmed')
+  })
+
+  it('returns only the sessions whose confirmed buddies are below minBuddies', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([
+      underfilledRow([
+        { id: 's1', minBuddies: 3, confirmed: 1 },
+        { id: 's2', minBuddies: 2, confirmed: 2 },
+      ]),
+    ])
+
+    const result = await listUnderfilledTours(NOW, 14)
+
+    expect(result).toEqual([
+      {
+        id: 'tour-1',
+        tourDate: '2026-06-25T00:00:00.000Z',
+        group: { name: 'Test School' },
+        sessions: [{ id: 's1', order: 1, label: null, minBuddies: 3, confirmedCount: 1 }],
+      },
+    ])
+  })
+
+  it('omits a tour whose every session meets its minimum', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([underfilledRow([{ id: 's1', minBuddies: 2, confirmed: 3 }])])
+
+    expect(await listUnderfilledTours(NOW, 14)).toEqual([])
+  })
+
+  it('never flags a session with no minBuddies', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([underfilledRow([{ id: 's1', minBuddies: null, confirmed: 0 }])])
+
+    expect(await listUnderfilledTours(NOW, 14)).toEqual([])
+  })
 })

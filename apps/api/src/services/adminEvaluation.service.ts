@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
-import type { CreateAdminEvaluation, UpdateAdminEvaluation, AdminEvaluationResponse } from '@peace-buddy/types'
+import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
+import type { CreateAdminEvaluation, UpdateAdminEvaluation, AdminEvaluationResponse, AdminDashboardMissingEvaluationTour } from '@peace-buddy/types'
 
 export class EvalNotFoundError extends Error {
   constructor() {
@@ -200,6 +201,35 @@ export async function listAdminEvaluations(filters: {
     orderBy: { createdAt: 'desc' },
   })
   return rows.map(mapResponse)
+}
+
+// Completed tours with a confirmed buddy whom no admin has evaluated for that
+// tour (PRD §11.7). One evaluation from any admin clears the buddy: per-admin
+// ownership (§9.2) decides who may edit, not whether the tour was reviewed.
+// Self-evaluations are optional for the buddy and are not counted.
+export async function listToursMissingEvaluations(): Promise<AdminDashboardMissingEvaluationTour[]> {
+  const rows = await db.tour.findMany({
+    where: {
+      status: TourStatusSchema.enum.completed,
+      bookings: { some: { status: BookingStatusSchema.enum.confirmed } },
+    },
+    select: {
+      id: true,
+      tourDate: true,
+      group: { select: { name: true } },
+      bookings: { where: { status: BookingStatusSchema.enum.confirmed }, select: { buddyId: true } },
+      adminEvaluations: { select: { buddyId: true } },
+    },
+    orderBy: { tourDate: 'desc' },
+  })
+
+  return rows.flatMap((row) => {
+    const evaluated = new Set(row.adminEvaluations.map((e) => e.buddyId))
+    // A buddy can hold a confirmed booking on more than one session of a tour.
+    const missing = new Set(row.bookings.map((b) => b.buddyId).filter((id) => !evaluated.has(id)))
+    if (missing.size === 0) return []
+    return [{ id: row.id, tourDate: row.tourDate.toISOString(), group: { name: row.group.name }, missingCount: missing.size }]
+  })
 }
 
 export async function getAdminEvaluation(id: string): Promise<AdminEvaluationResponse | null> {

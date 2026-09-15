@@ -12,6 +12,59 @@ duplicate that state here.
 
 ---
 
+## 2026-09-15 — Admin home is a worklist; each queue's query lives with its owner
+
+**Decision:** `/admin` renders five queues (PRD §11.7) instead of redirecting to
+`/admin/buddies`. `GET /admin/dashboard` aggregates four of them by calling one
+function in each owning service — `listBuddies`, `listOverdueMaybeTours`
+(`maybeDeadline.service`), `listUnderfilledTours` (`adminTour.service`) and
+`listToursMissingEvaluations` (`adminEvaluation.service`). The fifth, unread
+notifications, the page reads from `GET /me/notifications`. Closes #198.
+
+**Why the queries sit in the owning services:** #198's design note — a query
+copied into a dashboard service drifts from the page it links to.
+`listOverdueMaybeTours` shares `unresolvedMaybeWhere` with the
+`maybe-deadlines` cron for the same reason.
+
+**Rejected — notifications inside `GET /admin/dashboard`:** #198 names one
+endpoint for everything. The bell already polls `/me/notifications`, and the
+feed needs mark-as-read, which `useNotifications` already provides by
+refetching `/me/notifications`. A copy in the dashboard response would stay
+stale after an item is marked read unless the whole worklist were refetched.
+The page's `useNotifications` is its own instance, not the bell's, so marking
+read here leaves the bell badge stale until its next 60s poll — the same as
+`/notifications` already does.
+
+**Overdue Maybes are past deadline on a tour not yet held.** **Rejected — the
+cron's window exactly** (deadline fell yesterday): an unresolved Maybe would
+leave the worklist after one day while still unresolved. **Rejected — any tour
+date:** a Maybe on a tour already held is not actionable. The cron's
+assigned-admin filter is dropped: every admin reads the worklist, so a tour
+nobody is assigned to is more reason to show it, not less.
+
+**Short of buddies means confirmed bookings below `minBuddies`, next 14 days.**
+**Rejected — reusing `belowMinimum`:** that flag compares `participantCount`,
+the visiting group's size, to `minBuddies`, so it never counts buddies. The
+badge on `/admin/tours` is unchanged; whether it compares the right numbers is
+not settled here (see "Below-minimum stays a display-only signal").
+**Rejected — confirmed below capacity**, #198's own wording: a tour short of
+full is normal, so nearly every upcoming tour would be listed.
+
+**Missing evaluations means no `AdminEvaluation` from any admin.** **Rejected —
+per viewing admin:** per-admin ownership (PRD §9.2) decides who may edit, while
+the queue asks whether the tour has been reviewed. **Rejected — counting
+missing self-evaluations:** they are optional for the buddy, and no admin
+action resolves them.
+
+**Known residual:** the missing-evaluations queue has no date bound. A
+completed tour nobody ever evaluated stays listed until someone does.
+
+**Current state:** PRD §11.7, `docs/api.md` `GET /admin/dashboard`,
+`apps/api/src/services/adminDashboard.service.ts`,
+`apps/web/src/app/[locale]/admin/page.tsx`.
+
+---
+
 ## 2026-09-15 — Buddy home is an obligations screen built from `GET /me/bookings`
 
 **Decision:** `/buddy` now leads with the buddy's next confirmed tour. Under it

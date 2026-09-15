@@ -850,3 +850,46 @@ export type AdminSelfEvaluationResponse = SelfEvalScores & {
   createdAt: string
   updatedAt: string
 }
+
+// Admin home worklist — `GET /admin/dashboard`, PRD §11.7. Every queue is an
+// actionable list linking into an existing page.
+export type AdminDashboardPendingBuddy = {
+  id: string
+  displayName: string
+  createdAt: string
+}
+
+export type AdminDashboardTourRef = {
+  id: string
+  tourDate: string
+  group: { name: string }
+}
+
+export type AdminDashboardOverdueMaybeTour = AdminDashboardTourRef & {
+  maybeDeadline: string
+  maybeCount: number
+}
+
+export type AdminDashboardUnderfilledSession = {
+  id: string
+  order: number
+  label: string | null
+  minBuddies: number
+  confirmedCount: number
+}
+
+export type AdminDashboardUnderfilledTour = AdminDashboardTourRef & {
+  sessions: AdminDashboardUnderfilledSession[]
+}
+
+export type AdminDashboardMissingEvaluationTour = AdminDashboardTourRef & {
+  missingCount: number
+}
+
+export type AdminDashboardResponse = {
+  pendingBuddies: AdminDashboardPendingBuddy[]
+  overdueMaybeTours: AdminDashboardOverdueMaybeTour[]
+  underfilledTours: AdminDashboardUnderfilledTour[]
+  underfilledLookaheadDays: number
+  toursMissingEvaluations: AdminDashboardMissingEvaluationTour[]
+}

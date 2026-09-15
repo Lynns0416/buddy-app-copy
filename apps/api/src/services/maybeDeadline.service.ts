@@ -3,9 +3,11 @@ import {
   BookingStatusSchema,
   NotifEventKindSchema,
   TourStatusSchema,
+  type AdminDashboardOverdueMaybeTour,
   type MaybeDeadlineResult,
 } from '@peace-buddy/types'
 import { Prisma } from '@prisma/client'
+import { addDays, jstStartOfDayUtc } from '../lib/jstDay'
 import { payloadTourDate, type TourNameRef } from '../lib/notificationPayload'
 import {
   enqueueEmailForTourAdmins,
@@ -13,17 +15,13 @@ import {
   enqueueSlackForAdmins,
 } from './notification.service'
 
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000
-const MS_PER_DAY = 24 * 60 * 60 * 1000
-
-function jstStartOfDayUtc(now: Date): Date {
-  const jst = new Date(now.getTime() + JST_OFFSET_MS)
-  return new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()))
-}
-
-function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * MS_PER_DAY)
-}
+// A published tour still holding at least one Maybe booking. The cron narrows
+// this to deadlines that fell yesterday; the admin worklist to every passed
+// deadline whose tour has not happened yet.
+const unresolvedMaybeWhere = {
+  status: TourStatusSchema.enum.published,
+  bookings: { some: { status: BookingStatusSchema.enum.maybe } },
+} satisfies Prisma.TourWhereInput
 
 // Per PRD §10.5 — fires `maybe_deadline_missed` to assigned admins on the JST
 // day immediately after a tour's `maybeDeadline`, when at least one booking is
@@ -41,9 +39,8 @@ export async function enqueueMaybeDeadlineMissed(
 
   const tours = await db.tour.findMany({
     where: {
-      status: TourStatusSchema.enum.published,
+      ...unresolvedMaybeWhere,
       maybeDeadline: { gte: yesterday, lt: today },
-      bookings: { some: { status: BookingStatusSchema.enum.maybe } },
       // Per PRD §10.2 — no assigned admins means no tour-scoped notification.
       // Filtering here keeps the dispatch log honest: we never write a log row
       // for a tour that would produce zero notification jobs.
@@ -86,4 +83,44 @@ async function tryEnqueueForTour(tour: TourNameRef): Promise<'enqueued' | 'alrea
     }
     throw e
   }
+}
+
+// Every tour the admin worklist lists as an unresolved Maybe past its deadline
+// (PRD §11.7): the deadline's JST day has ended and the tour's has not. Unlike
+// the cron, a tour with no assigned admin is included — every admin reads the
+// worklist, so nobody being assigned is a reason to show the tour, not hide it.
+export async function listOverdueMaybeTours(
+  now: Date = new Date(),
+): Promise<AdminDashboardOverdueMaybeTour[]> {
+  const today = jstStartOfDayUtc(now)
+  const tours = await db.tour.findMany({
+    where: {
+      ...unresolvedMaybeWhere,
+      maybeDeadline: { lt: today },
+      tourDate: { gte: today },
+    },
+    select: {
+      id: true,
+      tourDate: true,
+      maybeDeadline: true,
+      group: { select: { name: true } },
+      _count: { select: { bookings: { where: { status: BookingStatusSchema.enum.maybe } } } },
+    },
+    orderBy: { tourDate: 'asc' },
+  })
+
+  // `lt` never matches NULL, so every row has a deadline; the guard narrows the type.
+  return tours.flatMap((tour) =>
+    tour.maybeDeadline
+      ? [
+          {
+            id: tour.id,
+            tourDate: tour.tourDate.toISOString(),
+            group: { name: tour.group.name },
+            maybeDeadline: tour.maybeDeadline.toISOString(),
+            maybeCount: tour._count.bookings,
+          },
+        ]
+      : [],
+  )
 }

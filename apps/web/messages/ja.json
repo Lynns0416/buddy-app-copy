@@ -691,5 +691,39 @@
       "network": "通信エラーが発生しました。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
+  },
+  "adminDashboard": {
+    "title": "ホーム",
+    "loadError": "ワークリストを読み込めませんでした。",
+    "viewAll": "すべて表示",
+    "sessionFallback": "セッション{order}",
+    "listSeparator": "、",
+    "pending": {
+      "title": "承認待ちの申請",
+      "empty": "承認待ちの申請はありません。",
+      "detail": "{date} 申請"
+    },
+    "overdueMaybes": {
+      "title": "期限を過ぎた未確定",
+      "empty": "期限を過ぎた未確定はありません。",
+      "detail": "{date} · 未確定 {count}件 · 期限 {deadline}"
+    },
+    "underfilled": {
+      "title": "バディ不足（今後{days}日間）",
+      "empty": "今後のセッションはすべて最低人数を満たしています。",
+      "detail": "{date} · {sessions}",
+      "session": "{session}：{min}名中{confirmed}名確定"
+    },
+    "missingEvaluations": {
+      "title": "評価が未入力の完了ツアー",
+      "empty": "完了したツアーはすべて評価済みです。",
+      "detail": "{date} · 未評価 {count}名"
+    },
+    "notifications": {
+      "title": "未読の通知",
+      "empty": "未読の通知はありません。",
+      "olderUnread": "古い未読の通知はここに表示されません。「すべて表示」から既読にできます。",
+      "loadError": "通知を読み込めませんでした。"
+    }
   }
 }

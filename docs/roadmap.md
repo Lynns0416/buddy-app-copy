@@ -53,6 +53,12 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 
 ---
 
+## Admin
+
+- [x] **Admin home worklist** — `/admin` lists pending applications, unresolved Maybes past deadline, tours short of buddies in the next 14 days, completed tours missing evaluations, and unread notifications. No metrics. PRD §11.7, #198.
+
+---
+
 ## Bookings / Tours
 
 - [ ] **Buddy suspend / un-suspend** — PRD §11.4 #788. `BuddyStatus.suspended` enum exists; the status endpoint does not accept it. Need API path + admin UI affordance.

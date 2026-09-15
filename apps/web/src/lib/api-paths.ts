@@ -16,6 +16,8 @@ export const apiPaths = {
   tourSessionBookingMe: (tourId: string, sessionId: string) => `/tours/${tourId}/sessions/${sessionId}/bookings/me`,
   tourSessionCantGo: (tourId: string, sessionId: string) => `/tours/${tourId}/sessions/${sessionId}/bookings/me/cant-go`,
 
+  adminDashboard: '/admin/dashboard',
+
   adminBuddies: '/admin/buddies',
   adminBuddy: (id: string) => `/admin/buddies/${id}`,
   adminBuddyStatus: (id: string) => `/admin/buddies/${id}/status`,

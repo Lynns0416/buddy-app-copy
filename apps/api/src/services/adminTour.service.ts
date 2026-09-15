@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
+import { addDays, jstStartOfDayUtc } from '../lib/jstDay'
 import { payloadTourDate } from '../lib/notificationPayload'
 import {
   TourStatusSchema,
@@ -17,6 +18,7 @@ import type {
   UpdateTour,
   AdminTourSummaryResponse,
   AdminTourDetailResponse,
+  AdminDashboardUnderfilledTour,
   TourAdminAssignedAdmin,
   TourSessionResponse,
   TourStatus,
@@ -169,6 +171,50 @@ export async function listAdminTours(params: { status?: TourStatus }): Promise<A
     orderBy: { tourDate: 'asc' },
   })
   return rows.map(mapSummary)
+}
+
+// Published tours in the next `days` JST days with a session whose confirmed
+// buddies are below its `minBuddies` (PRD §11.7). This is not `belowMinimum`:
+// that flag compares the visitor count to the threshold; this counts buddies.
+export async function listUnderfilledTours(
+  now: Date,
+  days: number,
+): Promise<AdminDashboardUnderfilledTour[]> {
+  const today = jstStartOfDayUtc(now)
+  const rows = await db.tour.findMany({
+    where: {
+      status: TourStatusSchema.enum.published,
+      tourDate: { gte: today, lt: addDays(today, days) },
+      sessions: { some: { minBuddies: { not: null } } },
+    },
+    select: {
+      id: true,
+      tourDate: true,
+      group: { select: { name: true } },
+      sessions: {
+        where: { minBuddies: { not: null } },
+        select: {
+          id: true,
+          order: true,
+          label: true,
+          minBuddies: true,
+          _count: { select: { bookings: { where: { status: BookingStatusSchema.enum.confirmed } } } },
+        },
+        orderBy: { order: 'asc' },
+      },
+    },
+    orderBy: { tourDate: 'asc' },
+  })
+
+  return rows.flatMap((row) => {
+    const sessions = row.sessions.flatMap((s) =>
+      s.minBuddies != null && s._count.bookings < s.minBuddies
+        ? [{ id: s.id, order: s.order, label: s.label, minBuddies: s.minBuddies, confirmedCount: s._count.bookings }]
+        : [],
+    )
+    if (sessions.length === 0) return []
+    return [{ id: row.id, tourDate: row.tourDate.toISOString(), group: { name: row.group.name }, sessions }]
+  })
 }
 
 export async function createTour(data: CreateTour): Promise<AdminTourDetailResponse> {

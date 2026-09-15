@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 const {
   mockBuddyFind,
   mockTourFind,
+  mockTourFindMany,
   mockCreate,
   mockFindMany,
   mockFindUnique,
@@ -12,6 +13,7 @@ const {
 } = vi.hoisted(() => ({
   mockBuddyFind: vi.fn(),
   mockTourFind: vi.fn(),
+  mockTourFindMany: vi.fn(),
   mockCreate: vi.fn(),
   mockFindMany: vi.fn(),
   mockFindUnique: vi.fn(),
@@ -22,7 +24,7 @@ const {
 vi.mock('../lib/db', () => ({
   db: {
     buddyProfile: { findUnique: mockBuddyFind },
-    tour: { findUnique: mockTourFind },
+    tour: { findUnique: mockTourFind, findMany: mockTourFindMany },
     adminEvaluation: {
       create: mockCreate,
       findMany: mockFindMany,
@@ -36,6 +38,7 @@ vi.mock('../lib/db', () => ({
 import {
   createAdminEvaluation,
   listAdminEvaluations,
+  listToursMissingEvaluations,
   getAdminEvaluation,
   updateAdminEvaluation,
   deleteAdminEvaluation,
@@ -221,5 +224,50 @@ describe('deleteAdminEvaluation', () => {
     })
     mockDelete.mockRejectedValueOnce(prismaError)
     await expect(deleteAdminEvaluation('eval-1', 'user-1')).rejects.toBeInstanceOf(EvalNotFoundError)
+  })
+})
+
+describe('listToursMissingEvaluations', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function completedRow(bookingBuddyIds: string[], evaluatedBuddyIds: string[]) {
+    return {
+      id: 'tour-1',
+      tourDate: new Date('2026-06-10T00:00:00.000Z'),
+      group: { name: 'Test School' },
+      bookings: bookingBuddyIds.map((buddyId) => ({ buddyId })),
+      adminEvaluations: evaluatedBuddyIds.map((buddyId) => ({ buddyId })),
+    }
+  }
+
+  it('queries completed tours that have confirmed bookings', async () => {
+    mockTourFindMany.mockResolvedValueOnce([])
+
+    await listToursMissingEvaluations()
+
+    const { where, select } = mockTourFindMany.mock.calls[0][0] as {
+      where: { status: string; bookings: { some: { status: string } } }
+      select: { bookings: { where: { status: string } } }
+    }
+    expect(where.status).toBe('completed')
+    expect(where.bookings.some.status).toBe('confirmed')
+    expect(select.bookings.where.status).toBe('confirmed')
+  })
+
+  it('counts each confirmed buddy with no evaluation from any admin once', async () => {
+    // b1 is booked on two sessions; b2 was evaluated by two admins.
+    mockTourFindMany.mockResolvedValueOnce([completedRow(['b1', 'b1', 'b2', 'b3'], ['b2', 'b2'])])
+
+    const result = await listToursMissingEvaluations()
+
+    expect(result).toEqual([
+      { id: 'tour-1', tourDate: '2026-06-10T00:00:00.000Z', group: { name: 'Test School' }, missingCount: 2 },
+    ])
+  })
+
+  it('omits a tour where every confirmed buddy has been evaluated', async () => {
+    mockTourFindMany.mockResolvedValueOnce([completedRow(['b1', 'b2'], ['b1', 'b2'])])
+
+    expect(await listToursMissingEvaluations()).toEqual([])
   })
 })

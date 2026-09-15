@@ -7,6 +7,7 @@ import { adminEvaluationRoutes } from './adminEvaluations'
 import { adminProfileEvaluationRoutes } from './adminProfileEvaluations'
 import { adminSelfEvaluationRoutes } from './adminSelfEvaluations'
 import { adminProfileRoutes } from './adminProfiles'
+import { adminDashboardRoutes } from './adminDashboard'
 import type { AuthEnv } from '../types'
 
 const adminRoutes = new Hono<AuthEnv>()
@@ -16,6 +17,7 @@ adminRoutes.route('/tours', adminTourRoutes)
 adminRoutes.route('/evaluations', adminEvaluationRoutes)
 adminRoutes.route('/profile-evaluations', adminProfileEvaluationRoutes)
 adminRoutes.route('/self-evaluations', adminSelfEvaluationRoutes)
+adminRoutes.route('/dashboard', adminDashboardRoutes)
 adminRoutes.route('', adminProfileRoutes)
 
 adminRoutes.get('/buddies', async (c) => {

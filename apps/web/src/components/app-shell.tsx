@@ -34,6 +34,7 @@ export function AppShell({ variant, children }: Props) {
   }
 
   const adminNavItems: NavItem[] = [
+    { href: routes.admin(locale), label: t('nav.home') },
     { href: routes.adminBuddiesPending(locale), label: t('nav.buddiesPending') },
     { href: routes.adminBuddies(locale), label: t('nav.buddies') },
     { href: routes.adminTrainees(locale), label: t('nav.trainees') },

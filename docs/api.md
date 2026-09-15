@@ -337,6 +337,41 @@ Soft-delete an admin profile (sets `deletedAt`). The admin's evaluations remain 
 
 ---
 
+## Admin Dashboard
+
+### Admin: `GET /admin/dashboard`
+The admin home worklist (PRD §11.7). Each queue is computed by the service that owns its data.
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminDashboardResponse`
+```json
+{
+  "pendingBuddies": [
+    { "id": "uuid", "displayName": "string", "createdAt": "ISO8601" }
+  ],
+  "overdueMaybeTours": [
+    { "id": "uuid", "tourDate": "ISO8601", "group": { "name": "string" }, "maybeDeadline": "ISO8601", "maybeCount": 2 }
+  ],
+  "underfilledTours": [
+    {
+      "id": "uuid",
+      "tourDate": "ISO8601",
+      "group": { "name": "string" },
+      "sessions": [{ "id": "uuid", "order": 1, "label": "string | null", "minBuddies": 3, "confirmedCount": 1 }]
+    }
+  ],
+  "underfilledLookaheadDays": 14,
+  "toursMissingEvaluations": [
+    { "id": "uuid", "tourDate": "ISO8601", "group": { "name": "string" }, "missingCount": 2 }
+  ]
+}
+```
+
+`underfilledTours[].sessions` holds only the sessions below their minimum. Unread notifications are not included — the page reads them from `GET /me/notifications`.
+
+---
+
 ## Groups
 
 All group endpoints are admin-only and mounted under `/admin/groups`. No public or buddy-facing group routes. Groups cannot be deleted in v1.

@@ -23,7 +23,7 @@ vi.mock('../lib/db', () => {
 })
 
 import { db } from '../lib/db'
-import { enqueueMaybeDeadlineMissed } from './maybeDeadline.service'
+import { enqueueMaybeDeadlineMissed, listOverdueMaybeTours } from './maybeDeadline.service'
 
 const mdb = db as unknown as MockDb
 
@@ -198,5 +198,74 @@ describe('enqueueMaybeDeadlineMissed', () => {
         tourDate: '2026-07-04',
       })
     }
+  })
+})
+
+describe('listOverdueMaybeTours', () => {
+  type OverdueFindManyArgs = {
+    where: {
+      status: string
+      maybeDeadline: { lt: Date; gte?: Date }
+      tourDate: { gte: Date }
+      bookings: { some: { status: string } }
+      adminAssignments?: unknown
+    }
+  }
+
+  it('queries published tours with Maybe bookings whose deadline day has ended and tour day has not', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([])
+
+    await listOverdueMaybeTours(NOW)
+
+    const { where } = mdb.tour.findMany.mock.calls[0][0] as OverdueFindManyArgs
+    expect(where.status).toBe('published')
+    expect(where.bookings.some.status).toBe('maybe')
+    expect(where.maybeDeadline.lt.getTime()).toBe(TODAY_UTC.getTime())
+    expect(where.maybeDeadline.gte).toBeUndefined()
+    expect(where.tourDate.gte.getTime()).toBe(TODAY_UTC.getTime())
+  })
+
+  it('counts only Maybe bookings', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([])
+
+    await listOverdueMaybeTours(NOW)
+
+    const { select } = mdb.tour.findMany.mock.calls[0][0] as {
+      select: { _count: { select: { bookings: { where: { status: string } } } } }
+    }
+    expect(select._count.select.bookings.where.status).toBe('maybe')
+  })
+
+  it('does not require an assigned admin, unlike the cron', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([])
+
+    await listOverdueMaybeTours(NOW)
+
+    const { where } = mdb.tour.findMany.mock.calls[0][0] as OverdueFindManyArgs
+    expect(where.adminAssignments).toBeUndefined()
+  })
+
+  it('maps each tour with its deadline and Maybe count', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([
+      {
+        id: 't1',
+        tourDate: TOUR_DATE,
+        maybeDeadline: new Date('2026-06-19T00:00:00Z'),
+        group: { name: 'Sakura School' },
+        _count: { bookings: 2 },
+      },
+    ])
+
+    const result = await listOverdueMaybeTours(NOW)
+
+    expect(result).toEqual([
+      {
+        id: 't1',
+        tourDate: '2026-07-04T00:00:00.000Z',
+        group: { name: 'Sakura School' },
+        maybeDeadline: '2026-06-19T00:00:00.000Z',
+        maybeCount: 2,
+      },
+    ])
   })
 })

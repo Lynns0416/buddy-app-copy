@@ -11,6 +11,7 @@ import type {
   TourDetailResponse,
   AdminTourSummaryResponse,
   AdminTourDetailResponse,
+  AdminDashboardResponse,
   BookingResponse,
   UpdateBookingBody,
   CancellationReasonBody,
@@ -46,6 +47,10 @@ import type {
 } from '@peace-buddy/types'
 
 export const apiClient = {
+  // Admin — Dashboard
+  getAdminDashboard: () =>
+    apiRequest<AdminDashboardResponse>(apiPaths.adminDashboard),
+
   // Admin — Profile
   getAdminProfile: () =>
     apiRequest<AdminProfileResponse>(apiPaths.adminProfile),

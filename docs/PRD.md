@@ -980,6 +980,24 @@ New additions:
 - `profile.*` — all profile page strings (field labels, placeholders, errors, photo coming-soon text)
 - `languages.*` — language display names (separate namespace for reuse in admin buddy detail)
 
+### 11.7 Admin Home (`/admin`)
+
+`/admin` is a worklist. It answers "what needs me today" with actionable queues, each linking into the page where the work is done. Login sends admins here, and it is the first item in the admin sidebar ("Home").
+
+It is not a metrics dashboard. Total buddy counts, signups over time and tier distribution are deliberately absent — at ~50 buddies and 5–6 admins they tell nobody anything new.
+
+| Queue | Listed | Links to |
+|---|---|---|
+| Pending applications | Buddies with status `pending`, oldest first | Each buddy to `/admin/buddies/:id`; the section to `/admin/buddies/pending` |
+| Unresolved Maybes past deadline | Published tours with at least one `maybe` booking whose `maybeDeadline` JST day has ended and whose tour date has not passed. Not limited to tours with assigned admins | `/admin/tours/:id` |
+| Short of buddies | Published tours in the next 14 JST days with a session whose `confirmed` bookings are below its `minBuddies`. Sessions without `minBuddies` are never listed. This is **not** `belowMinimum`, which compares the visitor count (`participantCount`) to the threshold | `/admin/tours/:id` |
+| Completed tours missing evaluations | `completed` tours with a confirmed buddy who has no `AdminEvaluation` for that tour from any admin, newest first. Self-evaluations are not counted | `/admin/tours/:id` |
+| Unread notifications | The viewing admin's five most recent unread in-app notifications, each markable as read | `/notifications` |
+
+The first four come from `GET /admin/dashboard`. Its service calls one query per owning service — `listBuddies`, `listOverdueMaybeTours`, `listUnderfilledTours`, `listToursMissingEvaluations` — rather than re-implementing any of them, and `listOverdueMaybeTours` shares its where-clause with the `maybe-deadlines` cron (§10.5). Notifications come from `GET /me/notifications`, the call the bell already polls.
+
+Every queue renders an empty state when nothing is waiting, so an empty section reads as done rather than not loaded.
+
 ---
 
 ## 12. Internationalisation
