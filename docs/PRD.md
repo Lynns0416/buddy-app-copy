@@ -741,15 +741,28 @@ via `GET / PUT /notification-preferences` (api.md). Slack target is governed by 
 
 ### 11.1 Buddy Home Screen
 
-Route: `/buddy`. Fetches `GET /tours?from=<today>` and renders a list of upcoming tour cards.
+Route: `/buddy`. An obligations screen: what the buddy has committed to and still owes comes first, tours they could book come last. It fetches `GET /me/bookings` and `GET /tours?from=<today>` and builds the three sections client-side (`apps/web/src/app/[locale]/buddy/buddy.home.ts`).
 
-**Per-tour card shows:** group name, tour date, each session's meeting time, location, total capacity (sum across sessions), participant count.
+1. **Your next tour** (`home.nextTour`) is the nearest `published` tour, dated today or later, where the buddy holds a `confirmed` booking. It shows group name, date, the meeting time of each confirmed session and location, and links to the tour. A Maybe or Waitlist booking never makes a tour "next"; those tours appear in section 2.
+2. **Needs your action** (`home.actions`), in this order:
+   - Every upcoming `published` tour where the buddy holds a `maybe` booking, whatever its distance from the deadline. It reads "confirm or cancel by {maybeDeadline}". Once the deadline has passed it is marked overdue instead, with the deadline day itself counting as passed, the same rule as the tour detail page (`isPastDeadline`). A tour with no `maybeDeadline` shows no date.
+   - Every `completed` tour where the buddy held a `confirmed` booking, dated within the last 30 days (`SELF_EVAL_PROMPT_DAYS`), with no self-evaluation submitted. It links to the tour detail page, where the form is.
+   - Every upcoming `published` tour where the buddy holds a `waitlist` booking.
+3. **Tours looking for buddies** (`tour.title`) is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after now. Nearest first. The first three are shown, and "Show all" expands the rest in place. Each card shows group name, tour date, each session's meeting time, location, total capacity (sum across sessions) and participant count.
 
-**Non-active buddy:** if the caller's status isn't `active`, the page replaces the list with a "you're not registered" message (`tour.notRegistered`).
+Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 shows no empty-state line until `GET /tours` has. Each section has its own empty-state line. A failed request shows a load error in place of its sections (`home.bookingsLoadError`, `tour.loadError`), so a failure never reads as "nothing here".
+
+**Today** is the date in Japan (`getTodayJst`) for every date rule on this page, including the `from` sent to `GET /tours`. Tours run in Japan and their dates are Japanese calendar dates. The tour detail page, `/buddy/history`, `isBookingAllowed` and the API still use other clocks, so between 00:00 and 09:00 JST they can disagree with this page. #209 moves them to JST.
+
+**Excluded:** tours-attended counts, hours volunteered and tier progress. At ~50 buddies they are decoration, and tier is a policy surface, not a UI one.
+
+**Onboarding redirect:** an approved buddy (`trainee` or `active`) with no `onboardingSeenAt` is sent to `/buddy/profile?onboarding=1`, and the visit is stamped. Neither request above is made for that buddy.
+
+**Non-active buddy:** a trainee sees `tour.traineeMessage` and any other non-active buddy sees `tour.notRegistered`, in place of the whole screen.
 
 **The caller's own booking status** is shown beside each session's meeting time as a badge (`bookingStatus.*`): Confirmed, Maybe or Waitlist. It is per session because bookings are — a two-session tour can read `09:00 Confirmed · 13:00 Waitlist`. A session with no booking shows nothing, and so does a `declined` one: the buddy cancelled it and can book it again. `GET /tours` returns this as `sessions[].myBookingStatus`, resolved for every listed session in one query.
 
-**No tour status badge:** the page requests `GET /tours` without `status`, which defaults to `published`, so every card would read "Published". It told the buddy nothing and shared the primary fill with the Confirmed badge. The page title says what the list is instead: "Tours looking for buddies" / 「バディ募集中のツアー」 (`tour.title`). Tours with `bookingOpen` off stay listed — the title names the page's purpose, and the tour detail page is where booking is gated.
+**No tour status badge:** the page requests `GET /tours` without `status`, which defaults to `published`, so every card would read "Published". It told the buddy nothing and shared the primary fill with the Confirmed badge. The page title says what the list is instead: "Tours looking for buddies" / 「バディ募集中のツアー」 (`tour.title`). Only bookable tours are listed, so the title holds for every card.
 
 The full booking list, including past tours, lives on `/buddy/history` (Upcoming / Past sections). Navigation to that page is via the "My bookings" link in the header. Profile is reached via the sidebar (`/dashboard/profile`).
 

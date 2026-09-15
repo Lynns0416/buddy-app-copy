@@ -4,25 +4,37 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { CalendarDays, MapPin, Users, Clock } from 'lucide-react'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { apiClient } from '@/lib/api-client'
 import type { TourResponse } from '@peace-buddy/types'
-import { BookingStatusSchema, BuddyStatusSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
-import { Badge } from '@/components/ui/badge'
+import { useMyBookings } from '@/hooks/use-my-bookings'
+import { getTodayJst } from '@/lib/date'
 import { fetchUpcomingTours } from './buddy.tour'
-import { bookingStatusBadgeVariant, getBookingStatusLabel } from '@/lib/status-display'
+import { bookableTours, findActionItems, findNextTour } from './buddy.home'
+import { NextTourCard } from './_components/next-tour-card'
+import { ActionItems } from './_components/action-items'
+import { OpenTours } from './_components/open-tours'
 
-export default function BuddyTourPage() {
+export default function BuddyHomePage() {
   const { firebaseUser, dbUser, loading, setBuddyProfile } = useAuth()
   const router = useRouter()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('tour')
-  const tBookingStatus = useTranslations('bookingStatus')
-  const [tours, setTours] = useState<TourResponse[]>([])
+  const tHome = useTranslations('home')
+  const [tours, setTours] = useState<TourResponse[] | null>(null)
+  const [toursError, setToursError] = useState(false)
   const sentToOnboarding = useRef(false)
+
+  // A buddy not yet sent to their profile is redirected there, so nothing is fetched for them.
+  const isActive =
+    !loading &&
+    !!firebaseUser &&
+    dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active &&
+    !!dbUser.buddyProfile.onboardingSeenAt
+  const { bookings, error: bookingsError } = useMyBookings(isActive)
 
   useEffect(() => {
     if (loading) return
@@ -42,7 +54,7 @@ export default function BuddyTourPage() {
 
     // An approved buddy still carries the display name upsertUser derived from
     // their email and an empty real name. Send them to their profile once, then
-    // stamp the visit so the tour list is theirs from then on whether or not
+    // stamp the visit so the home screen is theirs from then on whether or not
     // they changed anything.
     const approved =
       profile.status === BuddyStatusSchema.enum.trainee || profile.status === BuddyStatusSchema.enum.active
@@ -60,13 +72,13 @@ export default function BuddyTourPage() {
   }, [loading, firebaseUser, dbUser, locale, router, setBuddyProfile])
 
   useEffect(() => {
-    if (!loading && firebaseUser && dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active) {
-      const from = new Date().toISOString().split('T')[0]
-      void fetchUpcomingTours(from).then((result) => {
+    if (isActive) {
+      void fetchUpcomingTours(getTodayJst()).then((result) => {
         if (result.ok) setTours(result.data)
+        else setToursError(true)
       })
     }
-  }, [loading, firebaseUser, dbUser])
+  }, [isActive])
 
   if (loading || !dbUser) return null
 
@@ -82,59 +94,31 @@ export default function BuddyTourPage() {
     )
   }
 
+  const today = getTodayJst()
+
   return (
     <AppShell variant="buddy">
-      <h1 className="mb-6 text-xl font-semibold">{t('title')}</h1>
-
-      <div className="mb-6">
+      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-xl font-semibold">{tHome('title')}</h1>
         <Link href={routes.buddyHistory(locale)} className="text-sm font-medium text-primary hover:underline">
           {t('myBookingsLink')}
         </Link>
       </div>
 
-      {tours.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('noTours')}</p>
+      {bookingsError ? (
+        <p role="alert" className="mb-8 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {tHome('bookingsLoadError')}
+        </p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {tours.map((tour) => (
-            <Link key={tour.id} href={routes.buddyTour(locale, tour.id)} className="rounded-lg border bg-card p-4 hover:bg-accent transition-colors">
-              <p className="mb-3 font-medium">{tour.group.name}</p>
-              <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <CalendarDays size={14} />
-                  {tour.tourDate.slice(0, 10)}
-                </span>
-                <span className="flex flex-wrap items-center gap-1.5">
-                  <Clock size={14} />
-                  {tour.sessions.map((s) => (
-                    <span key={s.id} className="flex items-center gap-1.5 pr-1.5">
-                      {s.meetingTime.slice(11, 16)}
-                      {/* declined means the buddy cancelled and can book again — on the card that is not booked */}
-                      {s.myBookingStatus && s.myBookingStatus !== BookingStatusSchema.enum.declined && (
-                        <Badge variant={bookingStatusBadgeVariant[s.myBookingStatus]}>
-                          {getBookingStatusLabel(tBookingStatus, s.myBookingStatus)}
-                        </Badge>
-                      )}
-                    </span>
-                  ))}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={14} />
-                  {tour.location}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Users size={14} />
-                  {t('capacity')}: {tour.sessions.reduce((sum, s) => sum + s.capacity, 0)}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Users size={14} />
-                  {t('participantCount')}: {tour.participantCount}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        bookings && (
+          <>
+            <NextTourCard entry={findNextTour(bookings, today)} />
+            <ActionItems items={findActionItems(bookings, today)} />
+          </>
+        )
       )}
+
+      <OpenTours tours={tours && bookableTours(tours)} error={toursError} />
     </AppShell>
   )
 }

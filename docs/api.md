@@ -892,9 +892,11 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
   "data": [
     {
       "tourId": "uuid",
-      "tourDate": "YYYY-MM-DD",
+      "tourDate": "ISO8601",
       "location": "string",
       "status": "draft | published | cancelled | completed",
+      "maybeDeadline": "ISO8601 | null",
+      "selfEvaluationSubmitted": false,
       "group": { "name": "string" },
       "bookings": [
         {
@@ -902,7 +904,7 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
           "sessionId": "uuid",
           "sessionOrder": 1,
           "sessionLabel": "string | null",
-          "meetingTime": "HH:MM",
+          "meetingTime": "ISO8601",
           "bookingStatus": "confirmed | maybe | waitlist",
           "bookedAt": "ISO8601"
         }
@@ -911,6 +913,8 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
   ]
 }
 ```
+
+`maybeDeadline` is the tour's. `selfEvaluationSubmitted` is whether the caller has submitted a self-evaluation for that tour. `/buddy` builds its next-tour and needs-your-action sections from these (PRD §11.1).
 
 ---
 

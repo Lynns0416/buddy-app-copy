@@ -173,9 +173,31 @@
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
   },
+  "home": {
+    "title": "ホーム",
+    "nextTour": {
+      "title": "次の参加予定",
+      "empty": "参加が決まっているツアーはありません"
+    },
+    "actions": {
+      "title": "対応が必要なこと",
+      "empty": "対応が必要なことはありません",
+      "maybeBy": "{date}までに参加かキャンセルを決めてください",
+      "maybeNoDeadline": "未確定のままです。参加かキャンセルを決めてください",
+      "maybeOverdue": "未確定の期限（{date}）を過ぎています",
+      "selfEvaluation": "自己評価を提出してください",
+      "waitlist": "キャンセル待ち中です"
+    },
+    "open": {
+      "showAll": "すべて表示（{count}件）",
+      "showFewer": "表示を減らす"
+    },
+    "bookingsLoadError": "予約を読み込めませんでした。ページを再読み込みしてください。"
+  },
   "tour": {
     "title": "バディ募集中のツアー",
-    "noTours": "直近のツアーはありません",
+    "noTours": "現在バディ募集中のツアーはありません",
+    "loadError": "ツアーを読み込めませんでした。ページを再読み込みしてください。",
     "signOut": "ログアウト",
     "meetingTime": "集合時間",
     "location": "場所",
@@ -400,7 +422,7 @@
       "en": "English"
     },
     "nav": {
-      "tour": "ツアー",
+      "home": "ホーム",
       "history": "活動記録・予定",
       "profile": "プロフィール",
       "buddiesPending": "承認待ち",

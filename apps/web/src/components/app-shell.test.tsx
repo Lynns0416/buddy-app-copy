@@ -56,7 +56,7 @@ describe('AppShell', () => {
       dbUser: { buddyProfile: { status: 'active' } },
     } as never)
     render(<AppShell variant="buddy"><div /></AppShell>)
-    expect(screen.getAllByRole('link', { name: 'nav.tour' })[0]).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'nav.home' })[0]).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'nav.history' })[0]).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'nav.profile' })[0]).toBeInTheDocument()
   })
@@ -68,7 +68,7 @@ describe('AppShell', () => {
     } as never)
     render(<AppShell variant="buddy"><div /></AppShell>)
     expect(screen.getAllByRole('link', { name: 'nav.profile' })[0]).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'nav.tour' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'nav.home' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'nav.history' })).not.toBeInTheDocument()
   })
 

@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Mock } from 'vitest'
-import { createBooking, reportCantGo, updateBooking } from './booking.service'
+import { createBooking, listMyBookings, reportCantGo, updateBooking } from './booking.service'
 
 type MockFn = Mock<(...args: unknown[]) => unknown>
 interface MockDb {
   tourSession: { findUnique: MockFn }
   buddyProfile: { findUnique: MockFn }
   tierCapacity: { findMany: MockFn }
-  booking: { findUnique: MockFn; count: MockFn; create: MockFn; findFirst: MockFn; update: MockFn }
+  booking: { findUnique: MockFn; findMany: MockFn; count: MockFn; create: MockFn; findFirst: MockFn; update: MockFn }
   buddyCancellationDeadlineOverride: { findUnique: MockFn }
   cancellationReason: { create: MockFn }
   tourAdminAssignment: { findMany: MockFn }
@@ -22,7 +22,7 @@ vi.mock('../lib/db', () => {
     tourSession: { findUnique: vi.fn() },
     buddyProfile: { findUnique: vi.fn() },
     tierCapacity: { findMany: vi.fn() },
-    booking: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
+    booking: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     buddyCancellationDeadlineOverride: { findUnique: vi.fn() },
     cancellationReason: { create: vi.fn() },
     tourAdminAssignment: { findMany: vi.fn().mockResolvedValue([]) },
@@ -543,5 +543,87 @@ describe('notification payloads', () => {
         tourDate: '2099-05-01',
       },
     })
+  })
+})
+
+describe('listMyBookings', () => {
+  function bookingRow(overrides: {
+    tourId?: string
+    sessionId?: string
+    order?: number
+    maybeDeadline?: Date | null
+    selfEvaluations?: Array<{ id: string }>
+  } = {}) {
+    const sessionId = overrides.sessionId ?? 'session-1'
+    return {
+      id: `booking-${sessionId}`,
+      tourId: overrides.tourId ?? 'tour-1',
+      sessionId,
+      status: 'confirmed',
+      bookedAt: new Date('2099-04-01T00:00:00.000Z'),
+      session: {
+        order: overrides.order ?? 1,
+        label: null,
+        meetingTime: new Date('1970-01-01T09:00:00.000Z'),
+        tour: {
+          tourDate: new Date('2099-05-01'),
+          location: 'Nagasaki',
+          status: 'published',
+          maybeDeadline: overrides.maybeDeadline === undefined ? new Date('2099-04-25') : overrides.maybeDeadline,
+          group: { name: 'Sakura School' },
+          selfEvaluations: overrides.selfEvaluations ?? [],
+        },
+      },
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns the tour's maybe deadline", async () => {
+    mdb.booking.findMany.mockResolvedValue([bookingRow()])
+    const [entry] = await listMyBookings('user-1')
+    expect(entry.maybeDeadline).toBe('2099-04-25T00:00:00.000Z')
+  })
+
+  it('returns a null maybe deadline when the tour has none', async () => {
+    mdb.booking.findMany.mockResolvedValue([bookingRow({ maybeDeadline: null })])
+    const [entry] = await listMyBookings('user-1')
+    expect(entry.maybeDeadline).toBeNull()
+  })
+
+  it('says whether the caller has submitted a self-evaluation for the tour', async () => {
+    mdb.booking.findMany.mockResolvedValue([
+      bookingRow({ tourId: 'evaluated', sessionId: 's-evaluated', selfEvaluations: [{ id: 'eval-1' }] }),
+      bookingRow({ tourId: 'not-evaluated', sessionId: 's-not-evaluated' }),
+    ])
+    const entries = await listMyBookings('user-1')
+    expect(entries.map((e) => [e.tourId, e.selfEvaluationSubmitted])).toEqual([
+      ['evaluated', true],
+      ['not-evaluated', false],
+    ])
+  })
+
+  it("looks up only the caller's own self-evaluations", async () => {
+    mdb.booking.findMany.mockResolvedValue([])
+    await listMyBookings('user-1')
+    const args = mdb.booking.findMany.mock.calls[0][0] as {
+      select: { session: { select: { tour: { select: { selfEvaluations: unknown } } } } }
+    }
+    expect(args.select.session.select.tour.select.selfEvaluations).toEqual({
+      where: { buddy: { userId: 'user-1' } },
+      select: { id: true },
+    })
+  })
+
+  it('groups the sessions of one tour into one entry, in session order', async () => {
+    mdb.booking.findMany.mockResolvedValue([
+      bookingRow({ sessionId: 'session-2', order: 2 }),
+      bookingRow({ sessionId: 'session-1', order: 1 }),
+    ])
+    const entries = await listMyBookings('user-1')
+    expect(entries).toHaveLength(1)
+    expect(entries[0].bookings.map((b) => b.sessionId)).toEqual(['session-1', 'session-2'])
   })
 })

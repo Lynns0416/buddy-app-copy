@@ -40,6 +40,8 @@ const makeEntry = (overrides: Partial<MyTourBookingEntry> = {}): MyTourBookingEn
   tourDate: '2099-06-01T00:00:00.000Z',
   location: 'Tokyo Station',
   status: 'published',
+  maybeDeadline: null,
+  selfEvaluationSubmitted: false,
   group: { name: 'Test School' },
   bookings: [{
     bookingId: 'b1',

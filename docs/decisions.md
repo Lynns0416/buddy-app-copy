@@ -12,6 +12,66 @@ duplicate that state here.
 
 ---
 
+## 2026-09-15 — Buddy home is an obligations screen built from `GET /me/bookings`
+
+**Decision:** `/buddy` now leads with the buddy's next confirmed tour. Under it
+is "Needs your action": Maybe bookings with their deadline, missing
+self-evaluations and waitlist entries. The tours open for booking come last.
+`MyTourBookingEntry` gained `maybeDeadline` and `selfEvaluationSubmitted`, and
+the page builds every section client-side. Closes #206.
+
+**Rejected — a `GET /me/dashboard` endpoint,** the other option #206 offered.
+The page lacked two fields, not a response shape. A dashboard endpoint would be
+a second response built from the same booking rows, one more thing to test and
+document, and `/buddy/history` would not get the fields.
+
+**Self-evaluations are asked for until 30 days after the tour.** Submission has
+no deadline, so without a window every completed tour the buddy never evaluated
+would stay listed for good. Thirty is a chosen number, not policy: if the team
+settles on a policy, change `SELF_EVAL_PROMPT_DAYS`. Also rejected: no cutoff,
+and prompting for the most recent tour only.
+
+**Every Maybe is listed, however far off its deadline.** Rejected: listing a
+Maybe only once `maybe_reminder`'s 3-day offset arrives. Any Maybe is still
+unresolved, and hiding it until then hides something the buddy could settle now.
+
+**Tours looking for buddies are filtered through `isBookingAllowed`. This reverses
+#197's "Rejected — hiding tours with `bookingOpen` off"** (entry below). That
+rejection's reason was that a buddy booked on a closed tour would lose it from
+the home page. The new information is that the home page is no longer just that
+list, and booked tours are a separate concern from bookable ones. The next
+confirmed tour and every Maybe and Waitlist booking have sections of their own.
+Confirmed tours after the next one are reached through "My bookings"
+(`/buddy/history`).
+
+**Three are shown, and "Show all" expands the list in place.**
+Rejected: pointing "see all" at `/buddy/history`, which lists tours the buddy has
+booked, not tours they can book, so every tour after the third would be on no
+page. Rejected: a separate `/buddy/tours` page, which adds a route and a page
+for a list that is short enough to expand in place at ~50 buddies.
+
+**"Next tour" means a confirmed booking.** A Maybe or Waitlist booking is not a
+commitment yet, and those tours are listed under Needs your action.
+
+**"Today" on `/buddy` is the date in Japan, not the UTC date.** Tours run in
+Japan and every tour and deadline date is a Japanese calendar date. With a UTC
+"today", from 00:00 to 09:00 JST yesterday's tour showed as the next one and a
+Maybe still read as open on its deadline day. Rejected: the browser's own date
+(`getTodayLocal`), which ties the page to the viewer's device settings rather
+than to where tours happen. Rejected for this PR: moving the tour detail page,
+history, `isBookingAllowed` and the API at the same time. They use UTC, the
+server clock or a 09:00 JST cut-off, and changing booking rules is a change of
+its own (#209). Until #209 lands, this page can disagree with the tour detail
+page between 00:00 and 09:00 JST. "Tours looking for buddies" keeps
+`isBookingAllowed`, because listing a tour the detail page would refuse to book
+is worse than dropping it at 09:00 JST.
+
+**Excluded, as #206 specified:** attendance counts, hours and tier progress.
+
+**Current state:** `docs/PRD.md` §11.1, `docs/api.md` `GET /me/bookings`.
+
+---
+
 ## 2026-09-14 — Buddy home cards show the caller's booking status, per session
 
 **Decision:** `GET /tours` carries `myBookingStatus` on each session
@@ -50,6 +110,7 @@ purpose, and the tour detail page is where booking is gated.
 **Rejected — hiding tours with `bookingOpen` off so the title is always true:**
 a buddy already booked on a tour whose booking has closed would lose it from
 the home page, which is the "am I in?" answer this change exists to give.
+*Superseded 2026-09-15 — see "Buddy home is an obligations screen".*
 
 **Rejected — a separate colour set for booking statuses:** it would fix the
 clash but keep a badge that says nothing. Revisit if the home page ever lists

@@ -49,7 +49,7 @@ export function AppShell({ variant, children }: Props) {
   const buddyNavItems: NavItem[] =
     dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active
       ? [
-          { href: routes.buddy(locale), label: t('nav.tour') },
+          { href: routes.buddy(locale), label: t('nav.home') },
           { href: routes.buddyHistory(locale), label: t('nav.history') },
           { href: routes.buddyProfile(locale), label: t('nav.profile') },
         ]

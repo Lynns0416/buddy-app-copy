@@ -693,6 +693,9 @@ export type MyTourBookingEntry = {
   tourDate: string
   location: string
   status: TourStatus
+  maybeDeadline: string | null
+  // Whether the caller has submitted a self-evaluation for this tour.
+  selfEvaluationSubmitted: boolean
   group: { name: string }
   bookings: MySessionBookingEntry[]
 }

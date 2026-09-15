@@ -173,9 +173,31 @@
       "unknown": "An error occurred. Please try again."
     }
   },
+  "home": {
+    "title": "Home",
+    "nextTour": {
+      "title": "Your next tour",
+      "empty": "No confirmed tours coming up"
+    },
+    "actions": {
+      "title": "Needs your action",
+      "empty": "Nothing needs your action",
+      "maybeBy": "Confirm or cancel by {date}",
+      "maybeNoDeadline": "Still Maybe — confirm or cancel",
+      "maybeOverdue": "Maybe deadline {date} has passed",
+      "selfEvaluation": "Submit your self-evaluation",
+      "waitlist": "You're on the waitlist"
+    },
+    "open": {
+      "showAll": "Show all {count}",
+      "showFewer": "Show fewer"
+    },
+    "bookingsLoadError": "Couldn't load your bookings. Please reload the page."
+  },
   "tour": {
     "title": "Tours looking for buddies",
-    "noTours": "No upcoming tours",
+    "noTours": "No tours are looking for buddies right now",
+    "loadError": "Couldn't load tours. Please reload the page.",
     "signOut": "Sign out",
     "meetingTime": "Meeting time",
     "location": "Location",
@@ -400,7 +422,7 @@
       "en": "English"
     },
     "nav": {
-      "tour": "Tour",
+      "home": "Home",
       "history": "Upcoming & History",
       "profile": "Profile",
       "buddiesPending": "Pending Approval",
