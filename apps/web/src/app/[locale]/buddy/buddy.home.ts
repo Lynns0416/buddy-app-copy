@@ -46,6 +46,12 @@ export function findNextTour(bookings: MyTourBookingEntry[], today: string): MyT
   )
 }
 
+// The next confirmed tour is held today in Japan, so the home screen leads with
+// what the buddy needs for it instead of the usual next-tour card.
+export function isTourDay(nextTour: MyTourBookingEntry | null, today: string): nextTour is MyTourBookingEntry {
+  return nextTour !== null && dateOf(nextTour.tourDate) === today
+}
+
 export function findActionItems(bookings: MyTourBookingEntry[], today: string): ActionItem[] {
   const upcoming = bookings.filter((e) => isUpcoming(e, today)).sort(byTourDate)
   const evalSince = shiftDate(today, -SELF_EVAL_PROMPT_DAYS)

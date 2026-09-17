@@ -86,6 +86,7 @@ const mockSessionDetail: TourSessionDetailResponse = {
 const mockTourDetail: TourDetailResponse = {
   ...mockTour,
   sessions: [mockSessionDetail],
+  staffInCharge: null,
 }
 
 function buildApp() {

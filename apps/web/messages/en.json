@@ -179,6 +179,14 @@
       "title": "Your next tour",
       "empty": "No confirmed tours coming up"
     },
+    "tourDay": {
+      "title": "Your tour today",
+      "participants": "{count, plural, one {# participant} other {# participants}}",
+      "otherBuddies": "{count, plural, =0 {No other buddies} one {# other buddy} other {# other buddies}}",
+      "staffInCharge": "Staff in charge: {name}",
+      "brief": "About this tour",
+      "details": "View tour details"
+    },
     "actions": {
       "title": "Needs your action",
       "empty": "Nothing needs your action",

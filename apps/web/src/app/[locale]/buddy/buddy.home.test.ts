@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
 import type { BookingStatus, MyTourBookingEntry } from '@peace-buddy/types'
-import { findActionItems, findNextTour, SELF_EVAL_PROMPT_DAYS } from './buddy.home'
+import { findActionItems, findNextTour, isTourDay, SELF_EVAL_PROMPT_DAYS } from './buddy.home'
 
 const today = '2026-09-15'
 
@@ -56,6 +56,27 @@ describe('findNextTour', () => {
       makeEntry('cancelled', BookingStatusSchema.enum.confirmed, { status: TourStatusSchema.enum.cancelled }),
     ]
     expect(findNextTour(bookings, today)).toBeNull()
+  })
+})
+
+describe('isTourDay', () => {
+  const on = (tourDate: string, status: BookingStatus = BookingStatusSchema.enum.confirmed) =>
+    findNextTour([makeEntry('t', status, { tourDate })], today)
+
+  it('is true when the next confirmed tour is today', () => {
+    expect(isTourDay(on('2026-09-15T00:00:00.000Z'), today)).toBe(true)
+  })
+
+  it('is false when the next confirmed tour is tomorrow', () => {
+    expect(isTourDay(on('2026-09-16T00:00:00.000Z'), today)).toBe(false)
+  })
+
+  it('is false with no booking', () => {
+    expect(isTourDay(findNextTour([], today), today)).toBe(false)
+  })
+
+  it('is false for a Maybe-only booking today, which is not a commitment', () => {
+    expect(isTourDay(on('2026-09-15T00:00:00.000Z', BookingStatusSchema.enum.maybe), today)).toBe(false)
   })
 })
 

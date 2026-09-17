@@ -351,6 +351,28 @@ describe('getTour', () => {
     expect(result!.sessions[0].myRemaining).toBe(5)
   })
 
+  it('returns the staff in charge by name only', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce({ ...mockRow, staffInCharge: { name: 'Staff A', deletedAt: null } })
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce(null)
+    mdb.booking.groupBy.mockResolvedValueOnce([])
+
+    const result = await getTour('tour-1', 'user-1')
+    expect(result!.staffInCharge).toEqual({ name: 'Staff A' })
+    const call = mdb.tour.findUnique.mock.calls[0][0] as { select: { staffInCharge: { select: Record<string, unknown> } } }
+    expect(Object.keys(call.select.staffInCharge.select).sort()).toEqual(['deletedAt', 'name'])
+  })
+
+  it('returns staffInCharge null when none is designated or the admin is deleted', async () => {
+    mdb.tour.findUnique
+      .mockResolvedValueOnce({ ...mockRow, staffInCharge: null })
+      .mockResolvedValueOnce({ ...mockRow, staffInCharge: { name: 'Gone', deletedAt: new Date('2026-01-02') } })
+    mdb.buddyProfile.findFirst.mockResolvedValue(null)
+    mdb.booking.groupBy.mockResolvedValue([])
+
+    expect((await getTour('tour-1', 'user-1'))!.staffInCharge).toBeNull()
+    expect((await getTour('tour-1', 'user-1'))!.staffInCharge).toBeNull()
+  })
+
   it('does not include adminMemo in select', async () => {
     mdb.tour.findUnique.mockResolvedValueOnce(null)
     mdb.buddyProfile.findFirst.mockResolvedValueOnce(null)

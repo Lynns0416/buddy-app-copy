@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import BuddyHomePage from './page'
 
 vi.mock('next-intl', () => ({
@@ -36,7 +36,7 @@ vi.mock('@/hooks/use-my-bookings', () => ({
 }))
 
 vi.mock('@/lib/api-client', () => ({
-  apiClient: { markOnboardingSeen: vi.fn() },
+  apiClient: { markOnboardingSeen: vi.fn(), getTour: vi.fn() },
 }))
 
 import { useAuth } from '../../../lib/auth'
@@ -45,7 +45,7 @@ import { routes } from '@/lib/routes'
 import { fetchUpcomingTours } from './buddy.tour'
 import { useMyBookings } from '@/hooks/use-my-bookings'
 import { BookingStatusSchema, GroupTypeSchema, TourStatusSchema } from '@peace-buddy/types'
-import type { BookingStatus, MyTourBookingEntry, TourResponse } from '@peace-buddy/types'
+import type { BookingStatus, MyTourBookingEntry, TourDetailResponse, TourResponse } from '@peace-buddy/types'
 
 const setBuddyProfile = vi.fn()
 
@@ -105,6 +105,22 @@ function makeTour(
   }
 }
 
+function makeTourDetail(id: string, overrides: Partial<TourDetailResponse> = {}): TourDetailResponse {
+  const tour = makeTour(id, {}, [BookingStatusSchema.enum.confirmed])
+  return {
+    ...tour,
+    sessions: tour.sessions.map((s) => ({
+      ...s,
+      seatCounts: { confirmed: 4, maybe: 0, waitlist: 0, declined: 0 },
+      remaining: 6,
+      myCapacity: null,
+      myRemaining: null,
+    })),
+    staffInCharge: { name: 'Staff A' },
+    ...overrides,
+  }
+}
+
 function makeEntry(
   tourId: string,
   bookingStatus: BookingStatus,
@@ -137,6 +153,8 @@ describe('BuddyHomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBookings([])
+    // A tour-day detail that never arrives leaves the next-tour card in place.
+    vi.mocked(apiClient.getTour).mockReturnValue(new Promise(() => {}))
   })
 
   it('sends an approved buddy who has not been to their profile yet', async () => {
@@ -381,5 +399,74 @@ describe('BuddyHomePage', () => {
     render(<BuddyHomePage />)
     expect(await screen.findByText(BookingStatusSchema.enum.confirmed)).toBeInTheDocument()
     expect(screen.queryByText(TourStatusSchema.enum.published)).not.toBeInTheDocument()
+  })
+
+  describe('on the day of a tour', () => {
+    // 10:00 on 15 September in Japan.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-09-15T01:00:00.000Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('leads with the tour-day panel when a confirmed tour is today', async () => {
+      mockBookings([makeEntry('today', BookingStatusSchema.enum.confirmed, { tourDate: '2026-09-15T00:00:00.000Z' })])
+      vi.mocked(apiClient.getTour).mockResolvedValue(
+        makeTourDetail('today', { description: 'Brief for buddies', tourDate: '2026-09-15T00:00:00.000Z' }),
+      )
+      mockStatus('active')
+      render(<BuddyHomePage />)
+
+      const panel = await screen.findByRole('region', { name: 'tourDay.title' })
+      expect(apiClient.getTour).toHaveBeenCalledWith('today')
+      expect(screen.queryByRole('region', { name: 'nextTour.title' })).not.toBeInTheDocument()
+      expect(within(panel).getByText('Brief for buddies')).toBeInTheDocument()
+      expect(within(panel).getByText('tourDay.staffInCharge')).toBeInTheDocument()
+      expect(within(panel).getByText('tourDay.otherBuddies')).toBeInTheDocument()
+      expect(within(panel).getByRole('link', { name: 'tourDay.details' })).toHaveAttribute(
+        'href',
+        routes.buddyTour('en', 'today'),
+      )
+      expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+        'tourDay.title',
+        'actions.title',
+        'title',
+      ])
+    })
+
+    it('keeps the next-tour card when the confirmed tour is tomorrow', () => {
+      mockBookings([makeEntry('tomorrow', BookingStatusSchema.enum.confirmed, { tourDate: '2026-09-16T00:00:00.000Z' })])
+      mockStatus('active')
+      render(<BuddyHomePage />)
+      expect(screen.getByRole('region', { name: 'nextTour.title' })).toBeInTheDocument()
+      expect(apiClient.getTour).not.toHaveBeenCalled()
+    })
+
+    it('keeps the next-tour card with no booking', () => {
+      mockStatus('active')
+      render(<BuddyHomePage />)
+      expect(screen.getByText('nextTour.empty')).toBeInTheDocument()
+      expect(apiClient.getTour).not.toHaveBeenCalled()
+    })
+
+    it('shows no panel for a Maybe-only booking today', () => {
+      mockBookings([makeEntry('maybe', BookingStatusSchema.enum.maybe, { tourDate: '2026-09-15T00:00:00.000Z' })])
+      mockStatus('active')
+      render(<BuddyHomePage />)
+      expect(screen.getByText('nextTour.empty')).toBeInTheDocument()
+      expect(apiClient.getTour).not.toHaveBeenCalled()
+    })
+
+    it('falls back to the next-tour card when the tour detail fails to load', async () => {
+      mockBookings([makeEntry('today', BookingStatusSchema.enum.confirmed, { tourDate: '2026-09-15T00:00:00.000Z' })])
+      vi.mocked(apiClient.getTour).mockRejectedValue(new Error('network'))
+      mockStatus('active')
+      render(<BuddyHomePage />)
+      expect(apiClient.getTour).toHaveBeenCalledWith('today')
+      // Let the rejection settle before asserting, or this checks the loading state.
+      await act(async () => {})
+      expect(screen.getByRole('region', { name: 'nextTour.title' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'tourDay.title' })).not.toBeInTheDocument()
+    })
   })
 })

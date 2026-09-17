@@ -149,7 +149,10 @@ export async function listTours(userId: string, filters?: ToursQuery): Promise<T
 
 export async function getTour(id: string, userId: string): Promise<TourDetailResponse | null> {
   const [row, buddyProfile] = await Promise.all([
-    db.tour.findUnique({ where: { id }, select: tourSelect }),
+    db.tour.findUnique({
+      where: { id },
+      select: { ...tourSelect, staffInCharge: { select: { name: true, deletedAt: true } } },
+    }),
     db.buddyProfile.findFirst({
       where: { userId },
       select: { status: true, tier: true },
@@ -249,8 +252,11 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
     }
   })
 
+  // Name only: an admin's contact details are not shown to buddies.
+  const staff = row.staffInCharge
   return {
     ...mapTour(row, myBookingBySession),
     sessions: sessionDetails,
+    staffInCharge: staff && !staff.deletedAt ? { name: staff.name } : null,
   }
 }

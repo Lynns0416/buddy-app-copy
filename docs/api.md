@@ -561,11 +561,14 @@ Tour detail with per-session seat counts and the caller's tier-aware capacity. R
       "myRemaining": 0,
       "myBookingStatus": "confirmed | maybe | waitlist | declined | null"
     }
-  ]
+  ],
+  "staffInCharge": { "name": "string" }
 }
 ```
 
 `myCapacity` / `myRemaining` reflect the caller's tier pool (junior vs non-junior vs overflow into anyone).
+
+`staffInCharge` is the tour's designated admin by name only, or `null` when none is designated or that admin is deleted. It is on the detail response only, not on `GET /tours`.
 
 ---
 

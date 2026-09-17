@@ -12,6 +12,43 @@ duplicate that state here.
 
 ---
 
+## 2026-09-17 — Buddy home has a tour-day state, built from `GET /tours/:id`
+
+**Decision:** When the buddy's next confirmed tour is today in Japan, `/buddy`
+replaces the next-tour card with a tour-day panel: meeting time and place,
+participant count, how many other buddies are confirmed, the staff in charge by
+name, and `Tour.description` as the brief. The page gets it from
+`GET /tours/:id`, which gained `staffInCharge: { name } | null`. Closes #211.
+
+**Why no `GET /me/dashboard` after all:** #211 asked whether a chunkier set of
+fields, wanted on one screen on one day, reopens #206's rejection. It does not:
+the tour detail response already carried the description, group type,
+participant counts and per-session confirmed counts. The only missing value was
+one name, and a buddy-facing tour response is where it belongs.
+
+**Other buddies are a count, not names.** Rejected: names, which is a privacy
+call nobody needs made for the buddy to turn up. Rejected: names and tiers,
+which would also reverse "A buddy may see their own tier" (2026-09-10) and its
+"never another buddy's tier" rule.
+
+**The staff in charge is shown by name only.** Rejected: their email, which
+exposes an admin's contact details to every confirmed buddy. Rejected: a phone
+number, which needs a new `AdminProfile` field, a migration and an admin form
+for it.
+
+**`Tour.description` is the brief.** It was already buddy-visible on the tour
+detail page; `adminMemo` is the admin-only note. Rejected: a separate brief
+field on `Tour`, which would duplicate `description`. Rejected: making
+`Group.notes` buddy-visible, since it holds admin visit history.
+
+**The rest of the page stays, below the panel.** Action items and open tours
+still matter on a tour day, and hiding them would make the page change shape
+for no gain.
+
+**Current state:** `docs/PRD.md` §11.1, `docs/api.md` `GET /tours/:id`.
+
+---
+
 ## 2026-09-15 — "Today" is the date in Japan everywhere; a tour closes for booking on its own day
 
 **Decision:** Every rule that compares a tour or deadline date with today uses

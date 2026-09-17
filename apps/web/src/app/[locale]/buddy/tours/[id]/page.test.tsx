@@ -111,6 +111,7 @@ const mockTour: TourDetailResponse = {
   cancellationDeadline: '2099-01-01T00:00:00.000Z',
   maybeDeadline: null,
   notificationOffsets: [3, 1],
+  staffInCharge: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   sessions: [mockSession],

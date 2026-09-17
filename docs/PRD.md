@@ -236,7 +236,7 @@ A `Tour` carries metadata (date, location, deadlines, status, admin assignments)
 | `groupId` | UUID FK | Linked to a managed Group |
 | `tourDate` | Date | |
 | `location` | Text | |
-| `description` | Long text? | Visible to buddies |
+| `description` | Long text? | Visible to buddies — shown on tour detail and, on the tour day, as the brief on `/buddy` (§11.1) |
 | `adminMemo` | Long text? | **Admin-only** — never sent in buddy responses |
 | `bookingOpen` | Boolean | Default `false`. Admin toggles to open/close bookings for a Published tour. Buddies can only book while this is `true` (and tourDate is in the future). |
 | `cancellationDeadline` | Date | Default: 7 days before tour. Must be after (closer to tour than) the Maybe deadline. **Per-buddy override is Planned** — schema model (`BuddyCancellationDeadlineOverride`) exists but no admin API endpoint manages it yet. |
@@ -749,6 +749,8 @@ Route: `/buddy`. An obligations screen: what the buddy has committed to and stil
    - Every `completed` tour where the buddy held a `confirmed` booking, dated within the last 30 days (`SELF_EVAL_PROMPT_DAYS`), with no self-evaluation submitted. It links to the tour detail page, where the form is.
    - Every upcoming `published` tour where the buddy holds a `waitlist` booking.
 3. **Tours looking for buddies** (`tour.title`) is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after today. Nearest first. The first three are shown, and "Show all" expands the rest in place. Each card shows group name, tour date, each session's meeting time, location, total capacity (sum across sessions) and participant count.
+
+**On the day of a tour** section 1 becomes **Your tour today** (`home.tourDay`). It applies when the next confirmed tour (section 1's rule) is dated today, so a Maybe-only booking today never triggers it. The page then also fetches `GET /tours/:id` for that tour, and the panel shows, for each session the buddy is confirmed on, the meeting time in large type, the group's participant count and how many other buddies are confirmed (`seatCounts.confirmed` less the buddy). Below that: location, group name and type, the staff in charge by name, the tour's `description` as the brief, and a link to the tour. Other buddies are a count, not names or tiers, and the staff in charge carries no contact details. Sections 2 and 3 stay below the panel. Until the detail loads, or if it fails, the usual next-tour card is shown. On every other day the page is unchanged.
 
 Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 shows no empty-state line until `GET /tours` has. Each section has its own empty-state line. A failed request shows a load error in place of its sections (`home.bookingsLoadError`, `tour.loadError`), so a failure never reads as "nothing here".
 

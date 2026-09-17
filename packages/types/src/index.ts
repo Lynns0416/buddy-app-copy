@@ -574,6 +574,7 @@ export type TourSessionDetailResponse = TourListSessionResponse & {
 
 export type TourDetailResponse = Omit<TourResponse, 'sessions'> & {
   sessions: TourSessionDetailResponse[]
+  staffInCharge: { name: string } | null
 }
 
 export const CancellationReasonBodySchema = z.object({

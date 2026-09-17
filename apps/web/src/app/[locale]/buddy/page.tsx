@@ -7,13 +7,14 @@ import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { apiClient } from '@/lib/api-client'
-import type { TourResponse } from '@peace-buddy/types'
+import type { TourDetailResponse, TourResponse } from '@peace-buddy/types'
 import { BuddyStatusSchema, getTodayJst } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { useMyBookings } from '@/hooks/use-my-bookings'
 import { fetchUpcomingTours } from './buddy.tour'
-import { bookableTours, findActionItems, findNextTour } from './buddy.home'
+import { bookableTours, findActionItems, findNextTour, isTourDay } from './buddy.home'
 import { NextTourCard } from './_components/next-tour-card'
+import { TourDayPanel } from './_components/tour-day-panel'
 import { ActionItems } from './_components/action-items'
 import { OpenTours } from './_components/open-tours'
 
@@ -25,6 +26,7 @@ export default function BuddyHomePage() {
   const tHome = useTranslations('home')
   const [tours, setTours] = useState<TourResponse[] | null>(null)
   const [toursError, setToursError] = useState(false)
+  const [tourDayDetail, setTourDayDetail] = useState<TourDetailResponse | null>(null)
   const sentToOnboarding = useRef(false)
 
   // A buddy not yet sent to their profile is redirected there, so nothing is fetched for them.
@@ -79,6 +81,27 @@ export default function BuddyHomePage() {
     }
   }, [isActive])
 
+  // On the day of the next confirmed tour, the panel needs the tour's detail.
+  // Until it loads, or if it fails, the usual next-tour card stands in.
+  const today = getTodayJst()
+  const nextTour = bookings ? findNextTour(bookings, today) : null
+  const tourDayId = isTourDay(nextTour, today) ? nextTour.tourId : null
+  useEffect(() => {
+    if (!tourDayId) return
+    let cancelled = false
+    apiClient
+      .getTour(tourDayId)
+      .then((tour) => {
+        if (!cancelled) setTourDayDetail(tour)
+      })
+      .catch(() => {
+        // The next-tour card stays, which still gives time and place.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [tourDayId])
+
   if (loading || !dbUser) return null
 
   if (dbUser.buddyProfile?.status !== BuddyStatusSchema.enum.active) {
@@ -92,8 +115,6 @@ export default function BuddyHomePage() {
       </AppShell>
     )
   }
-
-  const today = getTodayJst()
 
   return (
     <AppShell variant="buddy">
@@ -111,7 +132,11 @@ export default function BuddyHomePage() {
       ) : (
         bookings && (
           <>
-            <NextTourCard entry={findNextTour(bookings, today)} />
+            {tourDayDetail && tourDayDetail.id === tourDayId ? (
+              <TourDayPanel tour={tourDayDetail} />
+            ) : (
+              <NextTourCard entry={nextTour} />
+            )}
             <ActionItems items={findActionItems(bookings, today)} />
           </>
         )

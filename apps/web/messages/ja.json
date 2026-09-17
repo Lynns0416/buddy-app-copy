@@ -179,6 +179,14 @@
       "title": "次の参加予定",
       "empty": "参加が決まっているツアーはありません"
     },
+    "tourDay": {
+      "title": "今日のツアー",
+      "participants": "参加者 {count}人",
+      "otherBuddies": "{count, plural, =0 {他のバディはいません} other {他のバディ {count}人}}",
+      "staffInCharge": "担当スタッフ：{name}",
+      "brief": "ツアーについて",
+      "details": "ツアーの詳細を見る"
+    },
     "actions": {
       "title": "対応が必要なこと",
       "empty": "対応が必要なことはありません",
