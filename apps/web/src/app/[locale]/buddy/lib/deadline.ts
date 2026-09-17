@@ -9,10 +9,11 @@ export function canSelectMaybeStatus(isPastMaybe: boolean, isPastCancellation: b
   return !isPastMaybe && !isPastCancellation
 }
 
-export function isBookingAllowed(tourStatus: TourStatus, bookingOpen: boolean, tourDate: string): boolean {
+// A tour closes for booking on its own day. `today` is getTodayJst().
+export function isBookingAllowed(tourStatus: TourStatus, bookingOpen: boolean, tourDate: string, today: string): boolean {
   return (
     tourStatus === TourStatusSchema.enum.published &&
     bookingOpen &&
-    new Date(tourDate) > new Date()
+    tourDate.slice(0, 10) > today
   )
 }

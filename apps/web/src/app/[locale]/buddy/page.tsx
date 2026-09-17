@@ -8,10 +8,9 @@ import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { apiClient } from '@/lib/api-client'
 import type { TourResponse } from '@peace-buddy/types'
-import { BuddyStatusSchema } from '@peace-buddy/types'
+import { BuddyStatusSchema, getTodayJst } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { useMyBookings } from '@/hooks/use-my-bookings'
-import { getTodayJst } from '@/lib/date'
 import { fetchUpcomingTours } from './buddy.tour'
 import { bookableTours, findActionItems, findNextTour } from './buddy.home'
 import { NextTourCard } from './_components/next-tour-card'
@@ -118,7 +117,7 @@ export default function BuddyHomePage() {
         )
       )}
 
-      <OpenTours tours={tours && bookableTours(tours)} error={toursError} />
+      <OpenTours tours={tours && bookableTours(tours, today)} error={toursError} />
     </AppShell>
   )
 }

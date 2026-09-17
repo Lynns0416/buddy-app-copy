@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { TourSessionDetailResponse, TourStatus, CancellationReasonBody, CancellationCategory } from '@peace-buddy/types'
-import { TourStatusSchema, BookingStatusSchema, CancellationCategorySchema } from '@peace-buddy/types'
+import { TourStatusSchema, BookingStatusSchema, CancellationCategorySchema, getTodayJst } from '@peace-buddy/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -50,10 +50,10 @@ export function SessionBookingCard({
   const [cantGoCategory, setCantGoCategory] = useState<CancellationCategory | ''>('')
   const [cantGoFreeText, setCantGoFreeText] = useState('')
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = getTodayJst()
   const isPastCancellationDeadline = isPastDeadline(todayStr, cancellationDeadline)
   const isPastMaybeDeadline = maybeDeadline ? isPastDeadline(todayStr, maybeDeadline) : false
-  const isBookable = isBookingAllowed(tourStatus, bookingOpen, tourDate)
+  const isBookable = isBookingAllowed(tourStatus, bookingOpen, tourDate, todayStr)
   const canSelectMaybe = canSelectMaybeStatus(isPastMaybeDeadline, isPastCancellationDeadline)
 
   const sessionLabel = session.label ?? (totalSessions > 1 ? t(`session.defaultLabel.${session.order}`) : null)
@@ -262,7 +262,7 @@ export function SessionBookingCard({
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {session.myBookingStatus === null && tourStatus === TourStatusSchema.enum.published && bookingOpen && (
+              {session.myBookingStatus === null && isBookable && (
                 <Button size="sm" onClick={() => void handleBook()} disabled={acting}>
                   {t('book')}
                 </Button>

@@ -8,6 +8,7 @@ import { routes } from '@/lib/routes'
 import { useMyBookings } from '@/hooks/use-my-bookings'
 import { AppShell } from '@/components/app-shell'
 import type { MyTourBookingEntry } from '@peace-buddy/types'
+import { getTodayJst } from '@peace-buddy/types'
 
 function BookingRow({ entry, viewLabel }: { entry: MyTourBookingEntry; viewLabel: string }) {
   const { locale } = useParams<{ locale: string }>()
@@ -44,7 +45,7 @@ export default function BuddyHistoryPage() {
 
   if (loading || (!bookings)) return null
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getTodayJst()
   const upcoming = bookings.filter((b) => b.tourDate.slice(0, 10) >= today)
   const past = bookings.filter((b) => b.tourDate.slice(0, 10) < today)
 

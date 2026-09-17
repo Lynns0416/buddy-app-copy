@@ -1,6 +1,6 @@
 import { TourStatus, BookingStatus as PrismaBookingStatus, BuddyTier as PrismaBuddyTier, CancellationCategory as PrismaCancellationCategory, Prisma } from '@prisma/client'
 import { db } from '../lib/db'
-import { BookingStatusSchema, NotifEventKindSchema } from '@peace-buddy/types'
+import { BookingStatusSchema, NotifEventKindSchema, getTodayJst } from '@peace-buddy/types'
 import type { BookingResponse, BookingStatus, BuddyTier, CancellationReasonBody, MyTourBookingEntry } from '@peace-buddy/types'
 import { getPoolCapacities, poolForTier, NON_JUNIOR_TIERS } from '../lib/pool'
 import { payloadTourDate } from '../lib/notificationPayload'
@@ -35,8 +35,10 @@ const bookingSelect = {
   updatedAt: true,
 } as const
 
-function localDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+// A `@db.Date` column comes back as UTC midnight, so its UTC date is the stored
+// calendar date. Compare it with getTodayJst(), never with the server's clock.
+function dateOf(d: Date): string {
+  return d.toISOString().slice(0, 10)
 }
 
 function mapBooking(row: {
@@ -97,7 +99,7 @@ export async function createBooking(
   if (!buddy) return { ok: false, code: 'BUDDY_NOT_FOUND' }
 
   const tour = session.tour
-  if (tour.status !== TourStatus.published || !tour.bookingOpen || localDateStr(tour.tourDate) < localDateStr(new Date())) {
+  if (tour.status !== TourStatus.published || !tour.bookingOpen || dateOf(tour.tourDate) <= getTodayJst()) {
     return { ok: false, code: 'NOT_BOOKABLE' }
   }
 
@@ -215,11 +217,11 @@ export async function updateBooking(
   if (!booking) return { ok: false, code: 'NOT_FOUND' }
 
   const effectiveDeadline = deadlineOverride?.deadline ?? session.tour.cancellationDeadline
-  if (localDateStr(new Date()) >= localDateStr(effectiveDeadline)) {
+  if (getTodayJst() >= dateOf(effectiveDeadline)) {
     return { ok: false, code: 'DEADLINE_PASSED' }
   }
 
-  if (newStatus === BookingStatusSchema.enum.maybe && session.tour.maybeDeadline && localDateStr(new Date()) >= localDateStr(session.tour.maybeDeadline)) {
+  if (newStatus === BookingStatusSchema.enum.maybe && session.tour.maybeDeadline && getTodayJst() >= dateOf(session.tour.maybeDeadline)) {
     return { ok: false, code: 'MAYBE_DEADLINE_PASSED' }
   }
 
@@ -362,7 +364,7 @@ export async function reportCantGo(
   if (!buddy) return { ok: false, code: 'BUDDY_NOT_FOUND' }
   if (!session || session.tourId !== tourId) return { ok: false, code: 'NOT_FOUND' }
 
-  if (localDateStr(new Date()) < localDateStr(session.tour.cancellationDeadline)) {
+  if (getTodayJst() < dateOf(session.tour.cancellationDeadline)) {
     return { ok: false, code: 'DEADLINE_NOT_PASSED' }
   }
 

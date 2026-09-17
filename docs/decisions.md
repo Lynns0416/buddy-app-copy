@@ -12,6 +12,44 @@ duplicate that state here.
 
 ---
 
+## 2026-09-15 — "Today" is the date in Japan everywhere; a tour closes for booking on its own day
+
+**Decision:** Every rule that compares a tour or deadline date with today uses
+`getTodayJst()`, the date in Japan as `YYYY-MM-DD`, and compares calendar-date
+strings. This covers the tour detail page, the booking card, `/buddy/history`,
+`isBookingAllowed`, the admin tours list, the API's booking checks and the
+notification jobs (`jstStartOfDayUtc`). Tour and deadline dates are Japanese
+calendar dates (`@db.Date`). Until now the app judged them by four clocks: UTC,
+the browser, the server and JST. Between 00:00 and 09:00 JST those clocks
+disagreed every day. Closes #209.
+
+**A tour cannot be booked on its own day.** Bookable means `tourDate > today`,
+both on the web (`isBookingAllowed`) and in the API (`createBooking`,
+`NOT_BOOKABLE`). Before this change the API accepted bookings all day, and the
+web closed booking at 09:00 JST. Rejected: booking open all day on the tour day,
+which would leave the Book button showing after the tour has started.
+
+**A deadline counts as passed from 00:00 JST on its own date**, the rule
+`isPastDeadline` and the API already applied. Only the clock they read changed.
+
+**The helper lives in `packages/types`.** It is the only export there that is
+not a schema or a type. Rejected: a new `packages/date` package, which needs its
+own package manifest, a build step in both Dockerfiles and CI wiring, all for
+about ten lines. The package has no test runner, so its tests are in
+`apps/web/src/lib/today-jst.test.ts`.
+
+**A fixed +9h offset, not `Asia/Tokyo` through `Intl` or a timezone library.**
+Japan has no daylight saving time, so all three give the same answer. The offset
+needs no dependency and cannot come out differently across runtimes.
+
+**Not changed:** the self-evaluation edit lock (`SELF_EVAL_EDIT_WINDOW_DAYS`). It
+is a duration measured from `createdAt`, not a calendar-date rule.
+
+**Current state:** `docs/PRD.md` §7.2, §8.4 and §11.1; `docs/api.md` booking
+endpoints.
+
+---
+
 ## 2026-09-15 — Admin home is a worklist; each queue's query lives with its owner
 
 **Decision:** `/admin` renders five queues (PRD §11.7) instead of redirecting to

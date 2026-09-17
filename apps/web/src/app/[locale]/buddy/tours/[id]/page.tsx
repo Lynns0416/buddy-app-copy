@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { CalendarDays, MapPin } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
-import { TourStatusSchema, BookingStatusSchema } from '@peace-buddy/types'
+import { TourStatusSchema, BookingStatusSchema, getTodayJst } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { useTourDetail } from '../../hooks/use-tour-detail'
 import { SessionBookingCard } from './_components/session-booking-card'
@@ -28,7 +28,7 @@ export default function TourDetailPage() {
     )
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = getTodayJst()
   const isPastCancellationDeadline = tour.cancellationDeadline.slice(0, 10) < todayStr
   const showMaybeDeadline = tour.maybeDeadline && !isPastCancellationDeadline
 

@@ -4,28 +4,18 @@ import {
   BuddyStatusSchema,
   NotifEventKindSchema,
   TourStatusSchema,
+  jstStartOfDayUtc,
   type MaybeReminderResult,
 } from '@peace-buddy/types'
 import { Prisma } from '@prisma/client'
+import { addDays } from '../lib/jstDay'
 import { enqueueEmail, enqueueInApp } from './notification.service'
 import { payloadTourDate, type TourNameRef } from '../lib/notificationPayload'
-
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 // Global offsets per PRD §10.5 — "Global offsets (default: 3 days, 1 day before
 // deadline)". PRD §11.5 calls `/admin/config.maybeReminderOffsets` aspirational,
 // so the constant is the spec, not a placeholder for a missing config surface.
 const MAYBE_REMINDER_OFFSETS = [3, 1]
-
-function jstStartOfDayUtc(now: Date): Date {
-  const jst = new Date(now.getTime() + JST_OFFSET_MS)
-  return new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()))
-}
-
-function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * MS_PER_DAY)
-}
 
 function dispatchKey(tourId: string, offsetDays: number, recipientUserId: string): string {
   return `maybe_reminder:${tourId}:${offsetDays}:${recipientUserId}`

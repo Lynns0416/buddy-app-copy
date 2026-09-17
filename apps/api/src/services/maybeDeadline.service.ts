@@ -3,11 +3,12 @@ import {
   BookingStatusSchema,
   NotifEventKindSchema,
   TourStatusSchema,
+  jstStartOfDayUtc,
   type AdminDashboardOverdueMaybeTour,
   type MaybeDeadlineResult,
 } from '@peace-buddy/types'
 import { Prisma } from '@prisma/client'
-import { addDays, jstStartOfDayUtc } from '../lib/jstDay'
+import { addDays } from '../lib/jstDay'
 import { payloadTourDate, type TourNameRef } from '../lib/notificationPayload'
 import {
   enqueueEmailForTourAdmins,

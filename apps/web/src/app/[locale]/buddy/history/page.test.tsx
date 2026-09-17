@@ -109,6 +109,20 @@ describe('BuddyHistoryPage', () => {
     expect(screen.queryByText('noPast')).not.toBeInTheDocument()
   })
 
+  it('judges upcoming by the date in Japan, not the UTC date', async () => {
+    // 01:00 on 15 September in Japan, still 14 September in UTC.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-14T16:00:00.000Z'))
+    try {
+      mockUseMyBookings.mockReturnValue({ bookings: [makeEntry({ tourDate: '2026-09-14T00:00:00.000Z' })], error: false })
+      render(<BuddyHistoryPage />)
+      await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
+      expect(screen.getByText('noUpcoming')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('renders tour date and location', async () => {
     mockUseMyBookings.mockReturnValue({ bookings: [makeEntry()], error: false })
     render(<BuddyHistoryPage />)

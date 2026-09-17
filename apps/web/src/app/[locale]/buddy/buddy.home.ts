@@ -76,6 +76,6 @@ export function findActionItems(bookings: MyTourBookingEntry[], today: string): 
   return [...maybe, ...selfEvaluation, ...waitlist]
 }
 
-export function bookableTours(tours: TourResponse[]): TourResponse[] {
-  return tours.filter((t) => isBookingAllowed(t.status, t.bookingOpen, t.tourDate))
+export function bookableTours(tours: TourResponse[], today: string): TourResponse[] {
+  return tours.filter((t) => isBookingAllowed(t.status, t.bookingOpen, t.tourDate, today))
 }

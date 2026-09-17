@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
 import type { AdminTourSummaryResponse, AppError } from '@peace-buddy/types'
-import { AppErrorCodeSchema } from '@peace-buddy/types'
+import { AppErrorCodeSchema, getTodayJst } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,6 @@ import {
 import { BelowMinimumBadge } from './_components/below-minimum-badge'
 import { TourFilterBar } from './_components/tour-filters'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
-import { getTodayLocal } from '@/lib/date'
 import { TodayDivider } from './_components/today-divider'
 
 export default function AdminToursPage() {
@@ -75,7 +74,7 @@ function AdminToursList() {
     setSortDir(next.dir)
   }
 
-  const todayStr = getTodayLocal()
+  const todayStr = getTodayJst()
 
   // Replace rather than push: a history entry per keystroke would make Back unusable.
   function applyFilters(next: TourFilters) {

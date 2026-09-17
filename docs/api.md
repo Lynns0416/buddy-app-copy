@@ -861,7 +861,7 @@ A previously declined booking is reused (upsert) — re-booking returns a fresh 
 - `404` — tour, session, or buddy not found
 - `409` — `ALREADY_BOOKED` (a non-declined booking exists)
 - `403` — `NOT_ELIGIBLE` (buddy is trainee or inactive)
-- `422` — `NOT_BOOKABLE` (tour not published, `bookingOpen = false`, or tour date passed)
+- `422` — `NOT_BOOKABLE` (tour not published, `bookingOpen = false`, or the tour date is today or earlier in Japan)
 
 ---
 
@@ -889,7 +889,7 @@ Update the caller's own booking status for a session.
 - `404` — booking not found
 - `400` — `REASON_REQUIRED` (`confirmed → declined` without `reason`)
 - `409` — `TOUR_FULL` (transitioning to `confirmed` but no pool slot remains)
-- `422` — `DEADLINE_PASSED` (cancellation deadline has passed; use `/cant-go`), `MAYBE_DEADLINE_PASSED` (transitioning to `maybe` after `maybeDeadline`), or `BUDDY_NOT_FOUND`
+- `422` — `DEADLINE_PASSED` (today in Japan is on or after the cancellation deadline; use `/cant-go`), `MAYBE_DEADLINE_PASSED` (transitioning to `maybe` on or after `maybeDeadline` in Japan), or `BUDDY_NOT_FOUND`
 
 ---
 
@@ -912,7 +912,7 @@ Post-deadline "I can't go" report. Only available after `cancellationDeadline` h
 
 **Errors**
 - `404` — booking or buddy not found
-- `422` — `DEADLINE_NOT_PASSED` (cancellation deadline still in the future — use the regular update endpoint instead), or `INVALID_STATUS` (booking is already `declined`)
+- `422` — `DEADLINE_NOT_PASSED` (today in Japan is before the cancellation deadline — use the regular update endpoint instead), or `INVALID_STATUS` (booking is already `declined`)
 
 ---
 

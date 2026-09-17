@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import TourDetailPage from './page'
 import type { TourDetailResponse, TourSessionDetailResponse } from '@peace-buddy/types'
@@ -314,5 +314,50 @@ describe('TourDetailPage', () => {
         expect.objectContaining({ category: 'health' }),
       )
     )
+  })
+
+  describe('between 00:00 and 09:00 JST', () => {
+    // 01:00 on 15 September in Japan, still 14 September in UTC.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-09-14T16:00:00.000Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    const confirmedOn = (tour: Partial<TourDetailResponse>): TourDetailResponse => ({
+      ...mockTour,
+      tourDate: '2026-09-20T00:00:00.000Z',
+      cancellationDeadline: '2026-09-18T00:00:00.000Z',
+      ...tour,
+      sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }],
+    })
+
+    it('hides the Maybe deadline once the cancellation deadline was yesterday in Japan', async () => {
+      mockGetTour.mockResolvedValue(confirmedOn({ cancellationDeadline: '2026-09-14T00:00:00.000Z', maybeDeadline: '2026-09-10T00:00:00.000Z' }))
+      render(<TourDetailPage />)
+      await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
+      expect(screen.queryByText('maybeDeadline')).not.toBeInTheDocument()
+    })
+
+    it('closes booking on the tour day in Japan', async () => {
+      mockGetTour.mockResolvedValue({ ...mockTour, tourDate: '2026-09-15T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: null }] })
+      render(<TourDetailPage />)
+      await waitFor(() => expect(screen.getByText('noBooking')).toBeInTheDocument())
+      expect(screen.queryByRole('button', { name: 'book' })).not.toBeInTheDocument()
+    })
+
+    it('treats the Maybe deadline day in Japan as passed', async () => {
+      mockGetTour.mockResolvedValue(confirmedOn({ maybeDeadline: '2026-09-15T00:00:00.000Z' }))
+      render(<TourDetailPage />)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'cancelBooking' })).toBeInTheDocument())
+      expect(screen.queryByRole('button', { name: 'setMaybe' })).not.toBeInTheDocument()
+    })
+
+    it('treats the cancellation deadline day in Japan as passed', async () => {
+      mockGetTour.mockResolvedValue(confirmedOn({ cancellationDeadline: '2026-09-15T00:00:00.000Z' }))
+      render(<TourDetailPage />)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'cantGo' })).toBeInTheDocument())
+      expect(screen.queryByRole('button', { name: 'cancelBooking' })).not.toBeInTheDocument()
+    })
   })
 })

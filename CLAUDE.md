@@ -15,6 +15,7 @@ Source of truth for completed work is `git log`.
 - **API**: route → service → Prisma. Business logic in service only.
 - **Prisma**: explicit `select` always. Never expose `internalNotes`, `adminMemo`. `tier` is buddy-visible on their own profile only — never another buddy's.
 - **Types**: Zod schemas, enums, and all response types → `packages/types`. `apps/api/src/types.ts` holds Hono env types only (`FirebaseEnv`, `AuthEnv`, etc.) and internal API types (`ToursQuery`). HTTP transport/validation schemas → route file.
+- **Today**: any comparison with a tour or deadline date uses `getTodayJst()` from `packages/types` against `YYYY-MM-DD` strings. Never compare against `new Date()`, the UTC date or the browser's date.
 - **Enum values**: always use `SchemaName.enum.value` (e.g. `BuddyStatusSchema.enum.active`), never magic strings.
 - **Zod**: validate at all system boundaries (routes). Parse, never cast.
 - **i18n**: every UI string via `useTranslations`. Update `en.json` + `ja.json` together, always.

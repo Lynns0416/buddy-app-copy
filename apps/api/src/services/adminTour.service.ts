@@ -1,11 +1,12 @@
 import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
-import { addDays, jstStartOfDayUtc } from '../lib/jstDay'
+import { addDays } from '../lib/jstDay'
 import { payloadTourDate } from '../lib/notificationPayload'
 import {
   TourStatusSchema,
   BookingStatusSchema,
   NotifEventKindSchema,
+  jstStartOfDayUtc,
 } from '@peace-buddy/types'
 import {
   enqueueEmailForActiveBuddies,

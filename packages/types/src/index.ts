@@ -893,3 +893,21 @@ export type AdminDashboardResponse = {
   underfilledLookaheadDays: number
   toursMissingEvaluations: AdminDashboardMissingEvaluationTour[]
 }
+
+// Dates
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+
+// Tours run in Japan, and tour and deadline dates are Japanese calendar dates
+// (`@db.Date`), so "today" is the date there, as `YYYY-MM-DD`. It is never the UTC
+// date, the viewer's device or the server's clock. Japan has no daylight saving,
+// so a fixed offset is exact. See docs/decisions.md.
+export function getTodayJst(now: Date = new Date()): string {
+  return new Date(now.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10)
+}
+
+// The same day as a UTC-midnight Date: the shape Prisma returns for a `@db.Date`
+// column, for comparing against those values in queries.
+export function jstStartOfDayUtc(now: Date = new Date()): Date {
+  return new Date(`${getTodayJst(now)}T00:00:00.000Z`)
+}

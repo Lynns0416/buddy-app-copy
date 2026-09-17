@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Mock } from 'vitest'
 import { createBooking, listMyBookings, reportCantGo, updateBooking } from './booking.service'
 
@@ -409,6 +409,81 @@ describe('updateBooking', () => {
 
     const result = await updateBooking('session-1', 'user-1', 'maybe')
     expect(result).toEqual({ ok: false, code: 'DEADLINE_PASSED' })
+  })
+})
+
+// 01:00 on 15 September in Japan, still 14 September in UTC. On a UTC clock every
+// date below would still be a day away.
+describe('date rules between 00:00 and 09:00 JST', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-14T16:00:00.000Z'))
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('createBooking returns NOT_BOOKABLE on the tour day', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({
+      ...futureSession,
+      tour: { ...futureSession.tour, tourDate: new Date('2026-09-15') },
+    })
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    const result = await createBooking('tour-1', 'session-1', 'user-1')
+    expect(result).toEqual({ ok: false, code: 'NOT_BOOKABLE' })
+  })
+
+  it('createBooking lets a tour dated tomorrow past the date check', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({
+      ...futureSession,
+      tour: { ...futureSession.tour, tourDate: new Date('2026-09-16') },
+    })
+    // The eligibility check comes right after the date check.
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce({ ...mockBuddy, status: 'suspended' })
+    const result = await createBooking('tour-1', 'session-1', 'user-1')
+    expect(result).toEqual({ ok: false, code: 'NOT_ELIGIBLE' })
+  })
+
+  it('updateBooking returns DEADLINE_PASSED on the cancellation deadline day', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    mdb.tourSession.findUnique.mockResolvedValueOnce({
+      ...sessionWithDeadline,
+      tour: { ...sessionWithDeadline.tour, cancellationDeadline: new Date('2026-09-15') },
+    })
+    mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'confirmed', buddyTier: 'junior' })
+    mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
+    const result = await updateBooking('session-1', 'user-1', 'maybe')
+    expect(result).toEqual({ ok: false, code: 'DEADLINE_PASSED' })
+  })
+
+  it('updateBooking returns MAYBE_DEADLINE_PASSED on the Maybe deadline day', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    mdb.tourSession.findUnique.mockResolvedValueOnce({
+      ...sessionWithDeadline,
+      tour: { ...sessionWithDeadline.tour, maybeDeadline: new Date('2026-09-15') },
+    })
+    mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'confirmed', buddyTier: 'junior' })
+    mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
+    const result = await updateBooking('session-1', 'user-1', 'maybe')
+    expect(result).toEqual({ ok: false, code: 'MAYBE_DEADLINE_PASSED' })
+  })
+
+  it('reportCantGo is accepted on the cancellation deadline day', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+    mdb.tourSession.findUnique.mockResolvedValueOnce({
+      id: 'session-1',
+      tourId: 'tour-1',
+      capacity: 10,
+      tour: {
+        cancellationDeadline: new Date('2026-09-15'),
+        tourDate: new Date('2099-05-01'),
+        group: { name: 'Sakura School' },
+      },
+    })
+    mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'maybe', buddyTier: 'junior' })
+    mdb.booking.update.mockResolvedValueOnce({ ...mockBookingRow, status: 'declined' })
+    mdb.cancellationReason.create.mockResolvedValueOnce({})
+    const result = await reportCantGo('tour-1', 'session-1', 'user-1', mockReason)
+    expect(result.ok).toBe(true)
   })
 })
 

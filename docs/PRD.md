@@ -287,7 +287,7 @@ stateDiagram-v2
 ```
 
 - **Draft:** Editable. Hard-delete allowed via `DELETE /admin/tours/:id` (draft only — other statuses reject with `TourNotDraftError`).
-- **Published:** Visible to Active buddies. Bookable while `bookingOpen = true`. Can be edited, cancelled, or completed.
+- **Published:** Visible to Active buddies. Bookable while `bookingOpen = true` and the tour date is after today in Japan: booking closes on the tour day itself (`isBookingAllowed` on the web, `NOT_BOOKABLE` from the API). Can be edited, cancelled, or completed.
 - **Cancelled:** Booking closed. All buddies with status Confirmed, Maybe, or Waitlist receive an in-app + email notification (`tour_cancelled`). **No further edits** — the API rejects updates with `TourImmutableError`.
 - **Completed:** Booking closed. The tour detail page surfaces the per-tour evaluation section as the natural prompt to add evaluations. **No further edits** — same `TourImmutableError`.
 
@@ -378,7 +378,7 @@ The buddy-update endpoint (`PUT /tours/:tourId/sessions/:sessionId/bookings/me`)
 † Requires a `reason` payload (`REASON_REQUIRED`) — a `CancellationReason` row is created.  
 ‡ Capacity-checked against the session's tier pools (`TOUR_FULL` if no slot available, taking the caller's tier and pool overflow into account).
 
-All transitions above are gated by `cancellationDeadline` — once it passes, the regular update endpoint rejects everything with `DEADLINE_PASSED`. Post-deadline, only the `/cant-go` endpoint works (→ `declined` only). Admins can override any booking status at any time via `PATCH /admin/bookings/:id/status` with no capacity or deadline checks.
+All transitions above are gated by `cancellationDeadline` — once it passes (from 00:00 JST on the deadline date, like every date rule; see `docs/decisions.md`), the regular update endpoint rejects everything with `DEADLINE_PASSED`. Post-deadline, only the `/cant-go` endpoint works (→ `declined` only). Admins can override any booking status at any time via `PATCH /admin/bookings/:id/status` with no capacity or deadline checks.
 
 ### 8.5 Maybe Flow
 
@@ -748,11 +748,11 @@ Route: `/buddy`. An obligations screen: what the buddy has committed to and stil
    - Every upcoming `published` tour where the buddy holds a `maybe` booking, whatever its distance from the deadline. It reads "confirm or cancel by {maybeDeadline}". Once the deadline has passed it is marked overdue instead, with the deadline day itself counting as passed, the same rule as the tour detail page (`isPastDeadline`). A tour with no `maybeDeadline` shows no date.
    - Every `completed` tour where the buddy held a `confirmed` booking, dated within the last 30 days (`SELF_EVAL_PROMPT_DAYS`), with no self-evaluation submitted. It links to the tour detail page, where the form is.
    - Every upcoming `published` tour where the buddy holds a `waitlist` booking.
-3. **Tours looking for buddies** (`tour.title`) is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after now. Nearest first. The first three are shown, and "Show all" expands the rest in place. Each card shows group name, tour date, each session's meeting time, location, total capacity (sum across sessions) and participant count.
+3. **Tours looking for buddies** (`tour.title`) is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after today. Nearest first. The first three are shown, and "Show all" expands the rest in place. Each card shows group name, tour date, each session's meeting time, location, total capacity (sum across sessions) and participant count.
 
 Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 shows no empty-state line until `GET /tours` has. Each section has its own empty-state line. A failed request shows a load error in place of its sections (`home.bookingsLoadError`, `tour.loadError`), so a failure never reads as "nothing here".
 
-**Today** is the date in Japan (`getTodayJst`) for every date rule on this page, including the `from` sent to `GET /tours`. Tours run in Japan and their dates are Japanese calendar dates. The tour detail page, `/buddy/history`, `isBookingAllowed` and the API still use other clocks, so between 00:00 and 09:00 JST they can disagree with this page. #209 moves them to JST.
+**Today** is the date in Japan (`getTodayJst`) for every date rule on this page, including the `from` sent to `GET /tours`, as it is everywhere else in the app. Tours run in Japan and their dates are Japanese calendar dates.
 
 **Excluded:** tours-attended counts, hours volunteered and tier progress. At ~50 buddies they are decoration, and tier is a policy surface, not a UI one.
 

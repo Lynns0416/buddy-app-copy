@@ -4,26 +4,13 @@ import {
   BuddyStatusSchema,
   NotifEventKindSchema,
   TourStatusSchema,
+  jstStartOfDayUtc,
   type TourReminderResult,
 } from '@peace-buddy/types'
 import { Prisma } from '@prisma/client'
+import { addDays } from '../lib/jstDay'
 import { enqueueEmail, enqueueInApp } from './notification.service'
 import { payloadTourDate, type TourNameRef } from '../lib/notificationPayload'
-
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000
-const MS_PER_DAY = 24 * 60 * 60 * 1000
-
-// Truncate `now` to the start of the JST day, expressed as a UTC midnight
-// Date. `Tour.tourDate` is stored as a Postgres DATE (no time), which Prisma
-// returns as UTC midnight, so we keep "today" in the same shape for arithmetic.
-function jstStartOfDayUtc(now: Date): Date {
-  const jst = new Date(now.getTime() + JST_OFFSET_MS)
-  return new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()))
-}
-
-function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * MS_PER_DAY)
-}
 
 function dispatchKey(tourId: string, offsetDays: number, recipientUserId: string): string {
   return `tour_reminder:${tourId}:${offsetDays}:${recipientUserId}`
