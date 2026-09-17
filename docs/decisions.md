@@ -12,6 +12,87 @@ duplicate that state here.
 
 ---
 
+## 2026-09-17 — The databases are queried from a jump VM reached through Bastion Developer
+
+**Decision:** An operator reaches either Postgres server from `vm-peace-buddy-jump`,
+a VM in `snet-jump` (`10.0.7.0/24`) inside `vnet-peace-buddy`. It has no public
+IP. The operator opens a shell on it through `bas-peace-buddy`, a Bastion
+Developer host, in the Azure portal. cloud-init installs `postgresql-client-16`.
+The VM stays deallocated unless someone is using it, and it deallocates itself
+at 21:00 JST every day. One VM serves prod and staging, because they share the
+VNet. `scripts/azure-provision.sh` step 8 creates it. That step also runs a
+check on the VM that the server hostname resolves and port 5432 answers.
+Closes #226.
+
+**Why:** both servers are private to the VNet, which stays (2026-09-10). Nothing
+gave a person a way in. The portal has no query editor for a private server,
+the hostname doesn't resolve from a laptop, and the api image has no `psql`. The
+only route was a throwaway Container Apps job or `node -e` through Prisma, which
+is too much for "update one record in staging".
+
+**Bastion Developer is offered in Japan East.** Checked on 2026-09-17 against
+Microsoft's SKU comparison page, which lists its regions. It is free and needs
+neither an `AzureBastionSubnet` nor a public IP. Accepted limits: it only works
+in the portal, it allows one session at a time, and the portal client only takes
+an RSA private key in PEM form. Microsoft says Developer "isn't suitable for
+production workloads". That warning is about Bastion carrying traffic for an
+application. Here it carries one operator's occasional session.
+
+**No network security group.** The VM has no public IP, so nothing outside the
+VNet can open a connection to it. The default rules already allow the traffic
+it needs inside the VNet: SSH in from Bastion and 5432 out to `snet-db`. An NSG
+would add rules and change nothing.
+
+**Default outbound access is turned on for the subnet on purpose.** cloud-init
+needs Ubuntu's package mirror, and Azure is moving new subnets to no outbound
+access by default.
+
+**Rejected — SSH on a public IP, with port 22 limited to the operator's IP:**
+this was the issue's fallback. It costs $0.005/hr for the IP, and it opens a
+port on the internet. The allow rule would also break whenever the operator's
+home or office IP changes.
+
+**Rejected — Bastion Basic:** $0.19/hr, about $1,660/yr, most of the grant.
+
+**Rejected — point-to-site VPN:** VpnGw1 is $0.19/hr. The ~$27/mo in #226 is
+the legacy Basic gateway, which the Retail Prices API no longer lists for Japan
+East.
+
+**Rejected — public access or IP firewall rules on the database:** already
+rejected on 2026-09-10.
+
+**Rejected — B1s,** which #226 named. The subscription gets
+`NotAvailableForSubscription` for B1s, B1ls, B1ms and B2ats_v2 in Japan East.
+B2pts_v2 is allowed and costs $0.0108/hr against B1s's $0.0136. It is Arm64, so
+the image is Ubuntu 24.04's arm64 build.
+
+**Rejected — Microsoft Entra ID sign-in to the VM:** it would remove the SSH
+key, but portal sign-in with Entra needs Bastion Basic.
+
+**Rejected — `az vm run-command` as the way to query:** it has no interactive
+session, and each call waits on the VM agent. The provisioning check uses it,
+because a check doesn't need a session.
+
+**Not compared on 2026-09-10 — VNet integration against a private endpoint.**
+That entry said private networking was permanent without comparing the two. A
+server behind a private endpoint can be switched to public access later. A
+VNet-integrated server can't. A private endpoint is billed, and #226 found that
+neither option gives terminal access on its own. Nothing is rebuilt for this.
+It is recorded so the comparison isn't taken as having been made.
+
+**Accepted consequences:**
+- The VM's disk bills while it is deallocated: an S4 Standard HDD at $1.536/mo,
+  so ~$18/yr.
+- Starting the VM doesn't start staging's server. Outside 08:45–20:45 JST,
+  start that too.
+- The operator pastes the password into the browser session. `psql` prompts for
+  it and doesn't store it. `~/.psql_history` on the VM keeps the queries.
+
+**Current state:** `docs/architecture.md` "Querying the database",
+`docs/azure-costs.md`, `scripts/azure-provision.sh` step 8.
+
+---
+
 ## 2026-09-17 — Buddy history shows attended tours only, grouped before filtered
 
 **Decision:** `/buddy/history` opens with a summary line and year-grouped past

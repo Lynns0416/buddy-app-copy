@@ -404,7 +404,7 @@ anyone else can read, and names the target in a coloured banner — red for prod
 
 Infrastructure is provisioned separately, and rarely: `scripts/azure-provision.sh`
 for the resource group, registry, VNet, Container Apps environment, Postgres
-server and Blob storage account, then `scripts/azure-db-roles.sh` for the two database roles, once per
+server, Blob storage account and the jump VM, then `scripts/azure-db-roles.sh` for the two database roles, once per
 environment. The deploy script creates nothing but the two apps.
 
 Images are built with `az acr build`, server-side, because the apps need
@@ -488,3 +488,70 @@ an action group. Open before choosing:
 - Log search alert rule pricing is unverified.
 - The workspace has no daily ingestion cap, so the "under 5 GB/mo, free"
   assumption in `docs/azure-costs.md` is not enforced.
+
+## Querying the database
+
+Both servers are private to `vnet-peace-buddy`, and their hostnames resolve only
+inside it. A person reaches them from `vm-peace-buddy-jump`, a VM in that VNet,
+by opening a shell in the portal through Bastion Developer. The VM has no
+public IP and holds no database password. It is deallocated unless in use, and
+it deallocates itself at 21:00 JST. See `docs/decisions.md` 2026-09-17.
+
+```mermaid
+flowchart LR
+    OP["operator's browser"] -->|"portal, Entra sign-in"| BAS["bas-peace-buddy<br/>Bastion Developer"]
+    subgraph VNET["vnet-peace-buddy"]
+        subgraph SJ["snet-jump 10.0.7.0/24"]
+            VM["vm-peace-buddy-jump<br/>B2pts_v2, psql 16<br/>no public IP"]
+        end
+        subgraph SD["snet-db 10.0.4.0/24"]
+            STG[("psql-peace-buddy-stg")]
+            PRD[("psql-peace-buddy")]
+        end
+        ZONE["private DNS zone<br/>peace-buddy.private.postgres.database.azure.com"]
+    end
+    BAS -->|"SSH 22, RSA key"| VM
+    VM -.->|resolve| ZONE
+    VM -->|"5432, TLS"| STG
+    VM -->|"5432, TLS"| PRD
+    VM -.->|"apt, outbound only"| NET["Ubuntu mirror"]
+```
+
+One-time setup: an RSA key pair in PEM form, the only kind the portal client
+accepts. `scripts/azure-provision.sh` refuses to create the VM without it.
+
+```sh
+ssh-keygen -t rsa -b 4096 -m PEM -f ~/.ssh/peace_buddy_jump
+```
+
+Each time:
+
+```sh
+az vm start -g rg-peace-buddy -n vm-peace-buddy-jump
+# staging outside 08:45–20:45 JST only:
+az postgres flexible-server start -g rg-peace-buddy -n psql-peace-buddy-stg
+```
+
+Then in the portal: `vm-peace-buddy-jump` → **Connect** → **Connect via
+Bastion**. Choose **SSH Private Key from Local File**, user `pbops`, and the
+file `~/.ssh/peace_buddy_jump`. In that shell:
+
+```sh
+psql "host=psql-peace-buddy-stg.postgres.database.azure.com dbname=peacebuddy user=pb_app sslmode=require"
+```
+
+Paste the password from `PG_APP_PASSWORD` in `scripts/azure.stg.env` when psql
+asks for it. For prod, use `psql-peace-buddy` and `scripts/azure.env`. Connect as
+`pb_app` for data fixes. Use `pb_migrate` or `pbadmin` only when a change needs
+their rights, because a table created as anyone but `pb_migrate` is unreadable
+to `pb_app` (`docs/decisions.md` 2026-09-12). Don't put a password in
+`PGPASSWORD`, `.pgpass` or a script on the VM.
+
+When done:
+
+```sh
+az vm deallocate -g rg-peace-buddy -n vm-peace-buddy-jump
+```
+
+Use `deallocate`, not `stop`: a stopped VM that isn't deallocated still bills
+compute. Bastion Developer allows one session at a time.

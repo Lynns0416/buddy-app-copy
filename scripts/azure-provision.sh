@@ -17,6 +17,9 @@
 #   Container Apps, scaled to zero   $0         free monthly grant covers it
 #   VNet, subnets, private DNS      ~$0.50/mo   the DNS zone; VNet is free
 #   Storage account, Hot LRS         ~$0        $0.02/GB/mo; photos are megabytes
+#   Jump VM disk, Standard HDD S4   ~$1.50/mo   bills while the VM is deallocated
+#   Jump VM B2pts_v2 compute         ~$0        $0.0108/hr, only while started
+#   Bastion Developer                 $0        free SKU
 set -euo pipefail
 
 ENV_FILE="${1:?usage: scripts/azure-provision.sh <env-file>}"
@@ -41,6 +44,21 @@ source "$ENV_FILE"
 : "${PG_SERVER:?}" "${PG_VERSION:?}" "${PG_TIER:?}" "${PG_SKU:?}" "${PG_STORAGE_GB:?}"
 : "${PG_DB_NAME:?}" "${PG_ADMIN_USER:?}" "${PG_ADMIN_PASSWORD:?}"
 : "${ENVIRONMENT:?}"
+: "${SUBNET_JUMP:?}" "${SUBNET_JUMP_CIDR:?}" "${BASTION_NAME:?}"
+: "${JUMP_VM:?}" "${JUMP_VM_SIZE:?}" "${JUMP_VM_IMAGE:?}" "${JUMP_VM_ADMIN:?}"
+: "${JUMP_VM_SSH_PUBLIC_KEY:?}" "${JUMP_VM_SHUTDOWN_UTC:?}"
+
+# Checked before the prompt, not at step 8, so a missing key fails before
+# anything is created. The portal's Bastion client accepts only an RSA private
+# key in PEM form, so any other key would create a VM nobody can log in to.
+JUMP_VM_PRIVATE_KEY="${JUMP_VM_SSH_PUBLIC_KEY%.pub}"
+if [ "$(head -c 8 "$JUMP_VM_SSH_PUBLIC_KEY" 2>/dev/null)" != "ssh-rsa " ] ||
+   [ "$(head -n 1 "$JUMP_VM_PRIVATE_KEY" 2>/dev/null)" != "-----BEGIN RSA PRIVATE KEY-----" ]; then
+  echo "error: $JUMP_VM_SSH_PUBLIC_KEY and $JUMP_VM_PRIVATE_KEY must be an RSA key pair in PEM form." >&2
+  echo "       Bastion's portal client accepts no other. Create one with:" >&2
+  echo "       ssh-keygen -t rsa -b 4096 -m PEM -f $JUMP_VM_PRIVATE_KEY" >&2
+  exit 1
+fi
 
 # --- 0. Confirm the target ---------------------------------------------
 # The prod and staging env files differ by a handful of lines, and two of the
@@ -69,6 +87,7 @@ cat <<CONFIRM
   Apps environment $ACA_ENV
   Database         $PG_SERVER ($PG_SKU, ${PG_STORAGE_GB}GB)
   Blob storage     $STORAGE_ACCOUNT, via $STORAGE_IDENTITY
+  Jump VM          $JUMP_VM ($JUMP_VM_SIZE), via $BASTION_NAME
 
 CONFIRM
 printf '%sProvision to %s?%s [y/N] ' "$BOLD" "$ENV_UPPER" "$RESET"
@@ -96,10 +115,11 @@ az group create --name "$RESOURCE_GROUP" --location "$LOCATION" --output none
 step "Register resource providers"
 for ns in Microsoft.App Microsoft.ContainerRegistry \
           Microsoft.DBforPostgreSQL Microsoft.OperationalInsights Microsoft.Network \
-          Microsoft.Storage; do
+          Microsoft.Storage Microsoft.Compute Microsoft.DevTestLab; do
   az provider register --namespace "$ns" --output none
 done
-for ns in Microsoft.App Microsoft.ContainerRegistry Microsoft.DBforPostgreSQL Microsoft.Storage; do
+for ns in Microsoft.App Microsoft.ContainerRegistry Microsoft.DBforPostgreSQL Microsoft.Storage \
+          Microsoft.Compute Microsoft.DevTestLab; do
   tries=0
   until [ "$(az provider show --namespace "$ns" --query registrationState -o tsv)" = "Registered" ]; do
     tries=$((tries + 1))
@@ -348,6 +368,119 @@ if ! exists az role assignment list --assignee "$STORAGE_PRINCIPAL" \
     --scope "$STORAGE_ID" --output none
 fi
 
+# --- 8. Jump VM --------------------------------------------------------
+# The only way a person reaches either database. Both servers are private to
+# this VNet, their hostnames resolve only inside it, and the portal has no
+# query editor for a private server. One VM serves prod and staging, like the
+# VNet it sits in, so a run with either env file creates or checks the same
+# resources. See docs/decisions.md 2026-09-17.
+#
+# Nothing on it is reachable from the internet: no public IP, reached through
+# Bastion Developer in the portal. It holds no database password; psql prompts
+# for one, and the passwords stay in the untracked env files.
+
+# Not delegated, and no network security group. With no public IP, nothing
+# outside the VNet can open a connection to it, and the default rules already
+# allow the VNet-internal traffic it needs: SSH in from Bastion, 5432 out to
+# snet-db.
+#
+# Outbound internet is set explicitly because cloud-init installs psql from
+# Ubuntu's mirror, and Azure is moving new subnets to no outbound access by
+# default. A NAT gateway would buy a static address nothing needs.
+step "Subnet $SUBNET_JUMP"
+if ! exists az network vnet subnet show -n "$SUBNET_JUMP" --vnet-name "$VNET_NAME" \
+     -g "$RESOURCE_GROUP" --query name -o tsv; then
+  az network vnet subnet create \
+    --resource-group "$RESOURCE_GROUP" --vnet-name "$VNET_NAME" \
+    --name "$SUBNET_JUMP" --address-prefixes "$SUBNET_JUMP_CIDR" \
+    --default-outbound-access true \
+    --output none
+fi
+
+# Developer is free and needs neither an AzureBastionSubnet nor a public IP.
+# It is portal-only and serves one session at a time. Basic, the next SKU up,
+# is $0.19/hr.
+step "Bastion $BASTION_NAME, Developer SKU"
+if ! exists az network bastion show -n "$BASTION_NAME" -g "$RESOURCE_GROUP" --query name -o tsv; then
+  az network bastion create \
+    --resource-group "$RESOURCE_GROUP" --name "$BASTION_NAME" \
+    --location "$LOCATION" --sku Developer --vnet-name "$VNET_NAME" \
+    --output none
+fi
+
+# Standard HDD is the cheapest disk, and a disk is all that bills while the VM
+# is deallocated. Deleting the VM deletes its disk and NIC with it.
+step "Jump VM $JUMP_VM"
+JUMP_CREATED=false
+if ! exists az vm show -n "$JUMP_VM" -g "$RESOURCE_GROUP" --query name -o tsv; then
+  az vm create \
+    --resource-group "$RESOURCE_GROUP" --name "$JUMP_VM" --location "$LOCATION" \
+    --image "$JUMP_VM_IMAGE" --size "$JUMP_VM_SIZE" \
+    --admin-username "$JUMP_VM_ADMIN" --authentication-type ssh \
+    --ssh-key-values "$JUMP_VM_SSH_PUBLIC_KEY" \
+    --vnet-name "$VNET_NAME" --subnet "$SUBNET_JUMP" \
+    --public-ip-address "" --nsg "" \
+    --storage-sku Standard_LRS \
+    --os-disk-delete-option Delete --nic-delete-option Delete \
+    --custom-data "#cloud-config
+package_update: true
+packages:
+  - postgresql-client-16" \
+    --output none
+  JUMP_CREATED=true
+fi
+
+# Deallocates the VM every day at this UTC time, so one left running bills a
+# day at most. A PUT, so a rerun applies a changed time.
+az vm auto-shutdown --resource-group "$RESOURCE_GROUP" --name "$JUMP_VM" \
+  --time "$JUMP_VM_SHUTDOWN_UTC" --output none
+
+# Proves the path instead of assuming it: psql installed, the server's hostname
+# resolving through the private zone, and, when the server is up, a connection
+# on 5432. run-command goes through the management API, so it needs no SSH.
+step "Check $JUMP_VM reaches $PG_SERVER"
+JUMP_POWER="$(az vm get-instance-view -n "$JUMP_VM" -g "$RESOURCE_GROUP" \
+  --query "instanceView.statuses[?starts_with(code, 'PowerState/')].code | [0]" -o tsv)"
+if [ "$JUMP_POWER" != "PowerState/running" ]; then
+  echo "  $JUMP_VM is ${JUMP_POWER#PowerState/}, skipped. Start it and rerun to check."
+else
+  PG_FQDN="$(az postgres flexible-server show -n "$PG_SERVER" -g "$RESOURCE_GROUP" \
+    --query fullyQualifiedDomainName -o tsv)"
+  JUMP_CHECK="cloud-init status --wait >/dev/null
+psql --version
+if getent hosts $PG_FQDN; then echo resolved; else echo unresolved; fi"
+  if [ "$PG_STATE" = "Ready" ]; then
+    JUMP_CHECK="$JUMP_CHECK
+pg_isready -h $PG_FQDN -p 5432 -t 10"
+  fi
+  JUMP_OUT="$(az vm run-command invoke -g "$RESOURCE_GROUP" -n "$JUMP_VM" \
+    --command-id RunShellScript --scripts "$JUMP_CHECK" --query 'value[0].message' -o tsv)"
+  printf '%s\n' "$JUMP_OUT" | sed 's/^/  /'
+  case "$JUMP_OUT" in
+    *"psql (PostgreSQL) 16"*) ;;
+    *) echo "error: psql 16 is not installed on $JUMP_VM. Read /var/log/cloud-init-output.log on it." >&2
+       exit 1 ;;
+  esac
+  case "$JUMP_OUT" in
+    *unresolved*)
+      echo "error: $PG_FQDN does not resolve on $JUMP_VM. Check the zone link in step 4." >&2
+      exit 1 ;;
+  esac
+  if [ "$PG_STATE" != "Ready" ]; then
+    echo "  $PG_SERVER is $PG_STATE, so port 5432 was not checked."
+  elif [[ "$JUMP_OUT" != *"accepting connections"* ]]; then
+    echo "error: $JUMP_VM resolves $PG_FQDN but cannot connect on 5432." >&2
+    exit 1
+  fi
+fi
+
+# A new VM is running once created. Left running only when something above
+# failed, and then auto-shutdown stops it tonight.
+if [ "$JUMP_CREATED" = true ]; then
+  step "Deallocate $JUMP_VM"
+  az vm deallocate -g "$RESOURCE_GROUP" -n "$JUMP_VM" --output none
+fi
+
 step "Done"
 cat <<SUMMARY
 
@@ -356,6 +489,7 @@ cat <<SUMMARY
   Apps environment $ACA_ENV
   Database         $PG_SERVER, private to $VNET_NAME
   Blob storage     $STORAGE_ACCOUNT/$STORAGE_PHOTOS_CONTAINER, reached as $STORAGE_IDENTITY
+  Jump VM          $JUMP_VM, deallocated, through $BASTION_NAME in the portal
 
   Private hostname, as the server reports it:
 

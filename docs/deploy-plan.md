@@ -81,13 +81,19 @@ flowchart LR
             subgraph SD["snet-db 10.0.4.0/24<br/>delegated to Postgres"]
                 DB[("psql-peace-buddy · B1ms<br/>no public endpoint")]
             end
+            subgraph SJ["snet-jump 10.0.7.0/24"]
+                VM["vm-peace-buddy-jump<br/>psql, no public IP<br/>deallocated by default"]
+            end
         end
+        BAS["Bastion Developer<br/>bas-peace-buddy"]
 
         ACR -.->|image pull| CAE
         CAE --- W
         CAE --- A
         CAE --- J
         A -->|private, never leaves the VNet| DB
+        BAS -->|SSH| VM
+        VM -->|"psql, 5432"| DB
     end
 
     FA["Firebase Auth 🇺🇸"]
@@ -472,11 +478,12 @@ the alternatives that were costed and rejected.
 | Two static public IPv4 | $0.005/hr each | $88 |
 | Private DNS zone | $0.50/mo | $6 |
 | Blob storage — buddy photos and nightly dumps | $0.02/GB/mo | ~$2 |
+| Jump VM, disk + hand-started B2pts_v2; Bastion Developer free | $1.536/mo + $0.0108/hr | ~$19 |
 | Container Apps, scaled to zero | free grant | $0 |
 | VNet and subnets | — | $0 |
 | Database backups to 32 GiB | included | $0 |
 | Load balancer | **unresolved** | $0 to $219 |
-| **Total** | | **$504 to $723 of $2,000** |
+| **Total** | | **$523 to $742 of $2,000** |
 
 Container Apps' free grant is per subscription per calendar month: 180,000
 vCPU-seconds, 360,000 GiB-seconds, 2M HTTP requests, shared across both
@@ -598,6 +605,7 @@ authority.*
 | Registry `crpeacebuddy`, Basic | ✅ |
 | Costs verified against the Retail Prices API | ✅ 2026-09-12, see `azure-costs.md` |
 | VNet, subnets, private DNS | ✅ 2026-09-12 — `snet-apps` `10.0.0.0/23`, `snet-db` `10.0.4.0/24`, zone `peace-buddy.private.postgres.database.azure.com` |
+| Jump VM `vm-peace-buddy-jump` + Bastion Developer `bas-peace-buddy`, for querying the databases | ✅ 2026-09-17, #226 — `azure-provision.sh` step 8 run against staging; check passed (DNS resolves, 5432 answers), portal login and `psql` as `pb_app` verified by hand. See `architecture.md` "Querying the database" |
 | Private DNS zone linked to the VNet | ✅ 2026-09-12 — missing until the first job run failed on NXDOMAIN; `link-vnet-peace-buddy`, and `azure-provision.sh` now creates it |
 | Container Apps environment | ✅ 2026-09-12 — VNet-injected into `snet-apps` |
 | Postgres — **staging** | ✅ 2026-09-12 — `psql-peace-buddy-stg`, B1ms, 32 GiB, public access disabled, HA disabled. Stopped by hand after creation |

@@ -25,13 +25,16 @@ account, sharing one VNet, one Container Apps environment and one registry.
 | Two static public IPv4 | $0.005 / hr each | $88 |
 | Private DNS zone | $0.50 / mo | $6 |
 | Blob storage — buddy photos and nightly dumps | $0.02 / GB / mo | ~$2 |
+| Jump VM disk, Standard HDD S4 | $1.536 / mo | $18 |
+| Jump VM B2pts_v2, started by hand | $0.0108 / hr | ~$1 at 100 hrs |
+| Bastion Developer | free | $0 |
 | Load balancer — **unresolved** | $0.025 / hr or $0 | $0 to $219 |
 | Web app, api app, cron job | free grant | $0 |
 | Container Apps environment | no management fee | $0 |
 | VNet and subnets | — | $0 |
 | Database backups to 32 GiB | included | $0 |
 | Log Analytics under 5 GB/mo | free tier | $0 |
-| **Total** | | **$504 to $723** |
+| **Total** | | **$523 to $742** |
 
 Against a **$2,000/yr** grant whose unused balance does not roll over.
 
@@ -116,6 +119,13 @@ rejected for paying for hours nobody uses during the weeks between feature
 cycles, not for the $25–$44 it adds.
 
 **Separate storage accounts per environment.** Free, so nothing to trade.
+
+**A jump VM through Bastion Developer, for querying the databases.** ~$19/yr:
+the S4 disk bills at $1.536/mo whether the VM runs or not, and B2pts_v2 compute
+is $0.0108/hr while started. Checked 2026-09-17 against the Retail Prices API.
+B1s ($0.0136/hr) isn't offered to this subscription in Japan East. Rejected:
+Bastion Basic at $0.19/hr (~$1,660/yr), a VpnGw1 gateway at $0.19/hr, and a
+public IP on the VM at $0.005/hr (~$44/yr). See `decisions.md` 2026-09-17.
 
 **Azurite for local photo upload.** `mcr.microsoft.com/azure-storage/azurite` in
 the existing compose file. Speaks the real Blob API, so local development
