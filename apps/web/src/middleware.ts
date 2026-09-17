@@ -1,6 +1,7 @@
 import createIntlMiddleware from 'next-intl/middleware'
 import { type NextRequest, NextResponse } from 'next/server'
 import { routing } from './i18n/routing'
+import { routes } from './lib/routes'
 
 const intlMiddleware = createIntlMiddleware(routing)
 
@@ -20,7 +21,7 @@ export default function middleware(request: NextRequest) {
     if (!token) {
       const localeMatch = pathname.match(/^\/(ja|en)/)
       const locale = localeMatch ? localeMatch[1] : routing.defaultLocale
-      return NextResponse.redirect(new URL(`/${locale}/login?reason=session_expired`, request.url))
+      return NextResponse.redirect(new URL(routes.login(locale), request.url))
     }
   }
 
