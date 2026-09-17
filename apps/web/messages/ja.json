@@ -40,7 +40,7 @@
       "maybe_reminder": "「保留」回答の期限が近づいています。",
       "waitlist_promoted": "キャンセル待ちから繰り上がり、確定となりました。",
       "waitlist_opened": "キャンセル待ちに空きが出ました。",
-      "self_eval_prompt": "自己評価をお願いします。",
+      "self_eval_prompt": "ふり返りをお願いします。",
       "new_signup": "新しいバディが登録されました。",
       "new_booking": "新しい予約が入りました。",
       "booking_cancelled": "バディが予約をキャンセルしました。",
@@ -60,15 +60,15 @@
   "admin": {
     "title": "管理",
     "buddies": "バディ一覧",
-    "groups": "グループ一覧",
+    "groups": "団体一覧",
     "tours": "ツアー一覧"
   },
   "adminGroups": {
-    "title": "グループ",
-    "createTitle": "新規グループ",
-    "editTitle": "グループ編集",
-    "newGroup": "新規グループ",
-    "noResults": "グループはありません",
+    "title": "団体",
+    "createTitle": "新規団体",
+    "editTitle": "団体編集",
+    "newGroup": "新規団体",
+    "noResults": "団体はありません",
     "name": "名前",
     "type": "種別",
     "contactName": "担当者名",
@@ -79,8 +79,8 @@
     "cancel": "キャンセル",
     "edit": "編集",
     "newTour": "新規ツアー",
-    "back": "グループ一覧に戻る",
-    "backToDetail": "グループ詳細に戻る",
+    "back": "団体一覧に戻る",
+    "backToDetail": "団体詳細に戻る",
     "tours": "ツアー履歴",
     "noTours": "ツアーはありません",
     "tourDate": "ツアー日",
@@ -89,7 +89,7 @@
     "capacity": "バディ数",
     "actionError": "操作に失敗しました。もう一度お試しください。",
     "error": {
-      "notFound": "このグループは存在しません。",
+      "notFound": "この団体は存在しません。",
       "forbidden": "この操作を行う権限がありません。",
       "conflict": "この操作はすでに実行できない状態です。",
       "network": "接続エラーです。ネットワークを確認してください。",
@@ -130,7 +130,7 @@
       "cancel": "キャンセル"
     },
     "bookingHistoryTitle": "予約履歴",
-    "bookingHistoryGroup": "グループ",
+    "bookingHistoryGroup": "団体",
     "bookingHistoryTourDate": "ツアー日",
     "bookingHistoryLocation": "場所",
     "bookingHistoryStatus": "ステータス",
@@ -193,7 +193,7 @@
       "maybeBy": "{date}までに参加かキャンセルを決めてください",
       "maybeNoDeadline": "未確定のままです。参加かキャンセルを決めてください",
       "maybeOverdue": "未確定の期限（{date}）を過ぎています",
-      "selfEvaluation": "自己評価を提出してください",
+      "selfEvaluation": "ふり返りを提出してください",
       "waitlist": "キャンセル待ち中です"
     },
     "open": {
@@ -223,9 +223,14 @@
     "noUpcoming": "参加予定のツアーはありません",
     "noPast": "参加済みのツアーはありません",
     "tourDate": "日付",
-    "group": "グループ",
+    "group": "団体",
     "location": "場所",
-    "viewTour": "詳細"
+    "viewTour": "詳細",
+    "summary": "ツアー {tours}件 · 団体 {groups}件 · {since}から",
+    "year": "{year}年 · {count}件",
+    "filterUnevaluated": "ふり返りが未提出 ({count})",
+    "searchGroup": "団体名で検索",
+    "noMatches": "条件に合う参加済みのツアーはありません"
   },
   "adminTours": {
     "title": "ツアー",
@@ -237,11 +242,11 @@
     "noMatches": "条件に一致するツアーはありません",
     "search": {
       "label": "ツアーを検索",
-      "placeholder": "グループ名・場所で検索"
+      "placeholder": "団体名・場所で検索"
     },
     "filters": {
       "status": "ステータス",
-      "groupType": "グループ種別",
+      "groupType": "団体種別",
       "dateRange": "日付",
       "dateRangeOption": {
         "all": "すべての日付",
@@ -253,14 +258,14 @@
       "resultCount": "{total}件中{count}件"
     },
     "groupPicker": {
-      "placeholder": "入力してグループを検索",
-      "noGroups": "グループがまだありません。先に作成してください。",
-      "noResults": "一致するグループはありません"
+      "placeholder": "入力して団体を検索",
+      "noGroups": "団体がまだありません。先に作成してください。",
+      "noResults": "一致する団体はありません"
     },
     "groupSummary": {
-      "viewGroup": "グループページを開く"
+      "viewGroup": "団体ページを開く"
     },
-    "group": "グループ",
+    "group": "団体",
     "tourDate": "ツアー日",
     "meetingTime": "集合時間",
     "startTime": "開始時間",
@@ -268,7 +273,7 @@
     "capacity": "最大バディ数",
     "minBuddies": "最小バディ数",
     "minBuddiesExceedsCapacity": "最小バディ数は最大バディ数以下にしてください",
-    "groupRequired": "グループを選択してください",
+    "groupRequired": "団体を選択してください",
     "belowMinimum": "最小未満",
     "participantCount": "参加者数",
     "description": "説明",
@@ -408,7 +413,7 @@
     "cantGo": "行けなくなった",
     "cantGoTitle": "不参加の報告",
     "cantGoSubmit": "報告する",
-    "selfEvalTitle": "自己評価",
+    "selfEvalTitle": "ふり返り",
     "book": "参加を希望",
     "notEligible": "このツアーには参加できません。",
     "sessions": "セッション",
@@ -436,7 +441,7 @@
       "buddiesPending": "承認待ち",
       "buddies": "バディ",
       "trainees": "研修中",
-      "groups": "グループ",
+      "groups": "団体",
       "tours": "ツアー",
       "adminProfile": "マイプロフィール",
       "adminRoster": "管理者一覧",
@@ -520,7 +525,7 @@
     "sections": {
       "profileEvaluation": "プロフィール評価",
       "perTourEvaluations": "ツアー別評価",
-      "selfEvaluations": "自己評価"
+      "selfEvaluations": "ふり返り"
     },
     "fields": {
       "overallRating": "総合評価",
@@ -529,7 +534,7 @@
       "reliabilityNote": "メモ",
       "communication": "コミュニケーション",
       "communicationNote": "メモ",
-      "groupEngagement": "グループへの関与",
+      "groupEngagement": "団体への関与",
       "groupEngagementNote": "メモ",
       "memory": "記憶力",
       "memoryNote": "メモ",
@@ -564,7 +569,7 @@
     },
     "empty": {
       "noEvaluations": "評価はありません",
-      "noSelfEvaluations": "自己評価はありません"
+      "noSelfEvaluations": "ふり返りはありません"
     },
     "table": {
       "tourDate": "ツアー日",
@@ -612,7 +617,7 @@
     "fields": {
       "overallRating": "総合評価",
       "communication": "コミュニケーション",
-      "groupEngagement": "グループ参加",
+      "groupEngagement": "団体参加",
       "memory": "記憶力",
       "knowledge": "知識",
       "dedication": "献身性",
@@ -629,7 +634,7 @@
     "lockedNote": "{date} に提出済み · 編集期間が終了しました",
     "error": {
       "notFound": "評価が見つかりませんでした。",
-      "notEligible": "このツアーの自己評価を提出する資格がありません。",
+      "notEligible": "このツアーのふり返りを提出する資格がありません。",
       "locked": "この評価の編集期間が終了しました。",
       "invalidRequest": "入力内容に誤りがあります。確認してもう一度お試しください。",
       "network": "接続エラーです。ネットワークを確認してください。",

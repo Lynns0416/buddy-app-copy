@@ -225,7 +225,12 @@
     "tourDate": "Date",
     "group": "Group",
     "location": "Location",
-    "viewTour": "View"
+    "viewTour": "View",
+    "summary": "{tours, plural, one {# tour} other {# tours}} · {groups, plural, one {# group} other {# groups}} · since {since}",
+    "year": "{year} · {count, plural, one {# tour} other {# tours}}",
+    "filterUnevaluated": "Self-evaluation not submitted ({count})",
+    "searchGroup": "Search by group name",
+    "noMatches": "No past tours match these filters"
   },
   "adminTours": {
     "title": "Tours",

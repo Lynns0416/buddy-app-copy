@@ -696,7 +696,7 @@ describe('listMyBookings', () => {
           location: 'Nagasaki',
           status: 'published',
           maybeDeadline: overrides.maybeDeadline === undefined ? new Date('2099-04-25') : overrides.maybeDeadline,
-          group: { name: 'Sakura School' },
+          group: { name: 'Sakura School', type: 'school' },
           selfEvaluations: overrides.selfEvaluations ?? [],
         },
       },
@@ -741,6 +741,12 @@ describe('listMyBookings', () => {
       where: { buddy: { userId: 'user-1' } },
       select: { id: true },
     })
+  })
+
+  it("returns the tour's group name and type", async () => {
+    mdb.booking.findMany.mockResolvedValue([bookingRow()])
+    const [entry] = await listMyBookings('user-1')
+    expect(entry.group).toEqual({ name: 'Sakura School', type: 'school' })
   })
 
   it('groups the sessions of one tour into one entry, in session order', async () => {

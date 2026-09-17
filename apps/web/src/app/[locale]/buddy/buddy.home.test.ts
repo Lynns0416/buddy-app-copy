@@ -17,7 +17,7 @@ function makeEntry(
     status: TourStatusSchema.enum.published,
     maybeDeadline: null,
     selfEvaluationSubmitted: false,
-    group: { name: `Group ${tourId}` },
+    group: { name: `Group ${tourId}`, type: 'school' },
     bookings: [
       {
         bookingId: `b-${tourId}`,

@@ -938,7 +938,7 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
       "status": "draft | published | cancelled | completed",
       "maybeDeadline": "ISO8601 | null",
       "selfEvaluationSubmitted": false,
-      "group": { "name": "string" },
+      "group": { "name": "string", "type": "school | company | community | other" },
       "bookings": [
         {
           "bookingId": "uuid",

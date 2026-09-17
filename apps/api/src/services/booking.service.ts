@@ -563,7 +563,7 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
               location: true,
               status: true,
               maybeDeadline: true,
-              group: { select: { name: true } },
+              group: { select: { name: true, type: true } },
               // At most one row: SelfEvaluation is unique per (buddy, tour).
               selfEvaluations: { where: { buddy: { userId } }, select: { id: true } },
             },
@@ -597,7 +597,7 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
         status: r.session.tour.status,
         maybeDeadline: r.session.tour.maybeDeadline ? r.session.tour.maybeDeadline.toISOString() : null,
         selfEvaluationSubmitted: r.session.tour.selfEvaluations.length > 0,
-        group: { name: r.session.tour.group.name },
+        group: { name: r.session.tour.group.name, type: r.session.tour.group.type },
         bookings: [sessionEntry],
       })
     }

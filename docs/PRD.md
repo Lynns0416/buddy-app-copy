@@ -447,7 +447,19 @@ Buddies never need to manually claim a freed seat. The promoted buddy receives a
 - All past bookings stored permanently per buddy — records are never deleted (declined bookings are reused on re-book via upsert; see §8.9)
 - History grows steadily — DB design must account for this (indexes documented in data-model.md)
 - Admins view full booking history for any buddy via `GET /admin/buddies/:id` (`AdminBuddyBookingEntry[]` includes all statuses)
-- Buddies view their own bookings via `GET /me/bookings` — **declined bookings are excluded** from this listing; the buddy history page splits results into Upcoming and Past sections by tour date
+- Buddies view their own bookings via `GET /me/bookings` — **declined bookings are excluded** from this listing
+
+#### Buddy history page (`/buddy/history`)
+
+Answers "what have I done". Tours are split by the date in Japan (`getTodayJst()`): **Upcoming** is every booked tour from today on, **Past** is every earlier tour the buddy attended.
+
+- **Attended** means the tour was not `cancelled` and the buddy has a `confirmed` booking on at least one session. There is no attendance record. Past tours the buddy did not attend (tour cancelled, or only Maybe/Waitlist bookings left when the date passed) are not shown on this page.
+- **Summary line** under the title: `N tours · M groups · since <date>`, counted over attended past tours. Groups are counted by distinct group name. Hidden when there are none.
+- **Past is grouped by year**, newest first, each header carrying that year's tour count after filters.
+- **Filters** (Past only, combinable):
+  - *Self-evaluation not submitted (N)*: shows past tours with `selfEvaluationSubmitted = false`. The home screen stops prompting 30 days after a tour (§11.1), so this is where an older unevaluated tour stays reachable. Hidden when N is 0.
+  - *Group name*: text search, case-insensitive substring match on the group name.
+- No filters for group type, location, tour status or cancellations.
 
 ### 8.9 Tier-Based Booking System
 

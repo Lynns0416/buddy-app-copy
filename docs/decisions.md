@@ -12,6 +12,37 @@ duplicate that state here.
 
 ---
 
+## 2026-09-17 — Buddy history shows attended tours only, grouped before filtered
+
+**Decision:** `/buddy/history` opens with a summary line and year-grouped past
+tours. It has two filters: past tours with no self-evaluation submitted, and a group
+name search. Past tours the buddy did not attend are not shown on the page at all. Closes #214.
+
+**Cancellations are hidden, not de-emphasised.** A tour counts as attended when
+it was not cancelled and the buddy held a confirmed seat on at least one session.
+There is no attendance record. Declined bookings were already excluded by the API.
+Rejected: a "show not attended" toggle, and listing them dimmed. Either keeps the
+buddy's own page a record of what they missed, and a one-click view of that is a
+self-surveillance surface. Admins already track cancellations and `unavoidable`
+separately (PRD §8.7), and the tour detail page is still reachable by URL.
+
+**Grouping and counting come before filtering.** A buddy doing a few tours a
+year has a history that fits on one screen, so a filter bar mostly gets in the
+way. The summary line answers "how much have I done" and year headers replace a
+date filter. Rejected: filters for location (most tours are in the same place)
+and tour status (an admin lifecycle concept a buddy doesn't think in terms of).
+
+**Rejected — a group-type filter,** which #214 proposed as the one meaningful
+narrowing axis. About 95% of tours are for schools, so it narrows almost nothing.
+Group name search answers "have I had this group before?" instead.
+
+**The self-evaluation filter hides itself when there are no unevaluated past
+tours.**
+
+**Current state:** `docs/PRD.md` §8.8, `docs/api.md` `GET /me/bookings`.
+
+---
+
 ## 2026-09-17 — Staging runs 08:45–20:45 JST on an Azure Automation schedule until 2026-10-31
 
 **Decision:** During dogfooding, `psql-peace-buddy-stg` is started at 08:45 and

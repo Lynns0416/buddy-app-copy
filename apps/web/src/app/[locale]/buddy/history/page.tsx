@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
@@ -7,8 +8,11 @@ import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
 import { useMyBookings } from '@/hooks/use-my-bookings'
 import { AppShell } from '@/components/app-shell'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { MyTourBookingEntry } from '@peace-buddy/types'
 import { getTodayJst } from '@peace-buddy/types'
+import { filterPast, findPastAttended, findUpcoming, groupByYear, summarize } from './buddy.history'
 
 function BookingRow({ entry, viewLabel }: { entry: MyTourBookingEntry; viewLabel: string }) {
   const { locale } = useParams<{ locale: string }>()
@@ -40,14 +44,20 @@ export default function BuddyHistoryPage() {
   const { firebaseUser, loading } = useAuth()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('history')
+  const [unevaluatedOnly, setUnevaluatedOnly] = useState(false)
+  const [groupName, setGroupName] = useState('')
 
   const { bookings } = useMyBookings(!loading && !!firebaseUser)
 
   if (loading || (!bookings)) return null
 
   const today = getTodayJst()
-  const upcoming = bookings.filter((b) => b.tourDate.slice(0, 10) >= today)
-  const past = bookings.filter((b) => b.tourDate.slice(0, 10) < today)
+  const upcoming = findUpcoming(bookings, today)
+  const past = findPastAttended(bookings, today)
+  const summary = summarize(past)
+  const unevaluatedCount = filterPast(past, { unevaluatedOnly: true, groupName: '' }).length
+  const groupNames = [...new Set(past.map((e) => e.group.name))].sort()
+  const years = groupByYear(filterPast(past, { unevaluatedOnly, groupName }))
 
   return (
     <AppShell variant="buddy">
@@ -57,9 +67,12 @@ export default function BuddyHistoryPage() {
         </Link>
       </div>
 
-      <h1 className="mb-6 text-xl font-semibold">{t('title')}</h1>
+      <h1 className="mb-2 text-xl font-semibold">{t('title')}</h1>
+      {summary && (
+        <p className="text-sm text-muted-foreground">{t('summary', summary)}</p>
+      )}
 
-      <section className="mb-8">
+      <section className="mb-8 mt-6">
         <h2 className="mb-3 text-base font-semibold">{t('upcoming')}</h2>
         {upcoming.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('noUpcoming')}</p>
@@ -77,11 +90,51 @@ export default function BuddyHistoryPage() {
         {past.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('noPast')}</p>
         ) : (
-          <div className="space-y-2">
-            {past.map((b) => (
-              <BookingRow key={b.tourId} entry={b} viewLabel={t('viewTour')} />
-            ))}
-          </div>
+          <>
+            <div className="mb-4 flex flex-wrap gap-2">
+              {unevaluatedCount > 0 && (
+                <Button
+                  size="sm"
+                  variant={unevaluatedOnly ? 'default' : 'outline'}
+                  aria-pressed={unevaluatedOnly}
+                  onClick={() => setUnevaluatedOnly((v) => !v)}
+                >
+                  {t('filterUnevaluated', { count: unevaluatedCount })}
+                </Button>
+              )}
+              <Input
+                className="h-8 w-full sm:w-56"
+                list="history-group-names"
+                aria-label={t('searchGroup')}
+                placeholder={t('searchGroup')}
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+              />
+              <datalist id="history-group-names">
+                {groupNames.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </div>
+            {years.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('noMatches')}</p>
+            ) : (
+              <div className="space-y-6">
+                {years.map(({ year, entries }) => (
+                  <div key={year}>
+                    <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
+                      {t('year', { year, count: entries.length })}
+                    </h3>
+                    <div className="space-y-2">
+                      {entries.map((b) => (
+                        <BookingRow key={b.tourId} entry={b} viewLabel={t('viewTour')} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </section>
     </AppShell>
