@@ -1,4 +1,5 @@
 import type { UpdateBookingBody, CancellationReasonBody, AppErrorCode } from '@peace-buddy/types'
+import type { BookingStatusSchema } from '@peace-buddy/types'
 import { apiClient } from '@/lib/api-client'
 import { ApiError } from '@/lib/api'
 import type { ActionResult } from '../../../../../lib/action'
@@ -6,12 +7,16 @@ import { classifyApiError } from '../../../../../lib/api-error'
 
 export type BookingActionResult = ActionResult<void> & { specialMessage?: string }
 
-export async function createInitialBooking(tourId: string, sessionId: string): Promise<BookingActionResult> {
+export async function createInitialBooking(
+  tourId: string,
+  sessionId: string,
+  status?: typeof BookingStatusSchema.enum.maybe,
+): Promise<BookingActionResult> {
   try {
-    await apiClient.createBooking(tourId, sessionId)
+    await apiClient.createBooking(tourId, sessionId, status)
     return { ok: true, data: undefined }
   } catch (err) {
-    return { ok: false, error: classifyApiError(err) }
+    return toBookingError(err)
   }
 }
 
@@ -29,12 +34,16 @@ export async function updateBookingStatus(
     await apiClient.updateBooking(tourId, sessionId, body.status, body.reason)
     return { ok: true, data: undefined }
   } catch (err) {
-    const result: BookingActionResult = { ok: false, error: classifyApiError(err) }
-    if (err instanceof ApiError && err.message === 'Maybe deadline has passed') {
-      result.specialMessage = 'maybeDeadlinePassed'
-    }
-    return result
+    return toBookingError(err)
   }
+}
+
+function toBookingError(err: unknown): BookingActionResult {
+  const result: BookingActionResult = { ok: false, error: classifyApiError(err) }
+  if (err instanceof ApiError && err.message === 'Maybe deadline has passed') {
+    result.specialMessage = 'maybeDeadlinePassed'
+  }
+  return result
 }
 
 export async function reportCantGo(

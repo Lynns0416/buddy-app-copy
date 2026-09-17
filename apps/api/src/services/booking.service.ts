@@ -15,7 +15,7 @@ import {
 
 type CreateBookingResult =
   | { ok: true; booking: BookingResponse }
-  | { ok: false; code: 'TOUR_NOT_FOUND' | 'SESSION_NOT_FOUND' | 'NOT_BOOKABLE' | 'ALREADY_BOOKED' | 'BUDDY_NOT_FOUND' | 'NOT_ELIGIBLE' }
+  | { ok: false; code: 'TOUR_NOT_FOUND' | 'SESSION_NOT_FOUND' | 'NOT_BOOKABLE' | 'ALREADY_BOOKED' | 'BUDDY_NOT_FOUND' | 'NOT_ELIGIBLE' | 'DEADLINE_PASSED' | 'MAYBE_DEADLINE_PASSED' }
 
 type UpdateBookingResult =
   | { ok: true; booking: BookingResponse }
@@ -75,6 +75,7 @@ export async function createBooking(
   tourId: string,
   sessionId: string,
   userId: string,
+  status?: typeof BookingStatusSchema.enum.maybe,
 ): Promise<CreateBookingResult> {
   const [session, buddy] = await Promise.all([
     db.tourSession.findUnique({
@@ -84,7 +85,14 @@ export async function createBooking(
         tourId: true,
         capacity: true,
         tour: {
-          select: { status: true, tourDate: true, bookingOpen: true, group: { select: { name: true } } },
+          select: {
+            status: true,
+            tourDate: true,
+            bookingOpen: true,
+            cancellationDeadline: true,
+            maybeDeadline: true,
+            group: { select: { name: true } },
+          },
         },
       },
     }),
@@ -108,23 +116,40 @@ export async function createBooking(
   }
 
   const buddyTier = buddy.tier as BuddyTier
-  const capacities = await getPoolCapacities(sessionId, session.capacity)
-  const primaryPool = poolForTier(buddyTier)
-  const otherPool: 'junior' | 'non_junior' = primaryPool === 'junior' ? 'non_junior' : 'junior'
-  const [primaryCount, otherCount, totalConfirmed] = await Promise.all([
-    getConfirmedCountByPool(sessionId, primaryPool),
-    getConfirmedCountByPool(sessionId, otherPool),
-    getConfirmedCountByPool(sessionId, 'anyone'),
-  ])
-  const anyoneConfirmed = Math.max(
-    0,
-    totalConfirmed - Math.min(primaryCount, capacities[primaryPool]) - Math.min(otherCount, capacities[otherPool]),
-  )
+  let finalStatus: PrismaBookingStatus
+  if (status === BookingStatusSchema.enum.maybe) {
+    const deadlineOverride = await db.buddyCancellationDeadlineOverride.findUnique({
+      where: { buddyId_tourId: { buddyId: buddy.id, tourId } },
+      select: { deadline: true },
+    })
+    const today = getTodayJst()
+    if (today >= dateOf(deadlineOverride?.deadline ?? tour.cancellationDeadline)) {
+      return { ok: false, code: 'DEADLINE_PASSED' }
+    }
+    if (tour.maybeDeadline && today >= dateOf(tour.maybeDeadline)) {
+      return { ok: false, code: 'MAYBE_DEADLINE_PASSED' }
+    }
+    // A Maybe holds no seat, so the tier pools do not decide it.
+    finalStatus = PrismaBookingStatus.maybe
+  } else {
+    const capacities = await getPoolCapacities(sessionId, session.capacity)
+    const primaryPool = poolForTier(buddyTier)
+    const otherPool: 'junior' | 'non_junior' = primaryPool === 'junior' ? 'non_junior' : 'junior'
+    const [primaryCount, otherCount, totalConfirmed] = await Promise.all([
+      getConfirmedCountByPool(sessionId, primaryPool),
+      getConfirmedCountByPool(sessionId, otherPool),
+      getConfirmedCountByPool(sessionId, 'anyone'),
+    ])
+    const anyoneConfirmed = Math.max(
+      0,
+      totalConfirmed - Math.min(primaryCount, capacities[primaryPool]) - Math.min(otherCount, capacities[otherPool]),
+    )
 
-  const finalStatus: PrismaBookingStatus =
-    primaryCount < capacities[primaryPool] || anyoneConfirmed < capacities.anyone
-      ? PrismaBookingStatus.confirmed
-      : PrismaBookingStatus.waitlist
+    finalStatus =
+      primaryCount < capacities[primaryPool] || anyoneConfirmed < capacities.anyone
+        ? PrismaBookingStatus.confirmed
+        : PrismaBookingStatus.waitlist
+  }
 
   try {
     const booking = await db.$transaction(async (tx) => {

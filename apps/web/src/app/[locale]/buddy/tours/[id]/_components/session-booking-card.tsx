@@ -58,10 +58,10 @@ export function SessionBookingCard({
 
   const sessionLabel = session.label ?? (totalSessions > 1 ? t(`session.defaultLabel.${session.order}`) : null)
 
-  const handleBook = async () => {
+  const handleBook = async (status?: typeof BookingStatusSchema.enum.maybe) => {
     setActing(true)
     setActionError(null)
-    const result = await createInitialBooking(tourId, session.id)
+    const result = await createInitialBooking(tourId, session.id, status)
     if (result.ok) {
       await onRefetch()
     } else {
@@ -265,6 +265,17 @@ export function SessionBookingCard({
               {session.myBookingStatus === null && isBookable && (
                 <Button size="sm" onClick={() => void handleBook()} disabled={acting}>
                   {t('book')}
+                </Button>
+              )}
+              {session.myBookingStatus === null && isBookable && canSelectMaybe && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary/10 hover:text-primary"
+                  onClick={() => void handleBook(BookingStatusSchema.enum.maybe)}
+                  disabled={acting}
+                >
+                  {t('respondMaybe')}
                 </Button>
               )}
               {session.myBookingStatus === BookingStatusSchema.enum.declined && isBookable && effectiveRemaining > 0 && (

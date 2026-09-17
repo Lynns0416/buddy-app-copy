@@ -266,7 +266,27 @@ describe('TourDetailPage', () => {
     render(<TourDetailPage />)
     await waitFor(() => expect(screen.getByRole('button', { name: 'book' })).toBeInTheDocument())
     screen.getByRole('button', { name: 'book' }).click()
-    await waitFor(() => expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', 'session-1'))
+    await waitFor(() => expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', 'session-1', undefined))
+  })
+
+  it('books as maybe from the respondMaybe button', async () => {
+    const bookableTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: null }] }
+    const maybeTour = { ...bookableTour, sessions: [{ ...mockSession, myBookingStatus: 'maybe' as const }] }
+    mockGetTour.mockResolvedValueOnce(bookableTour).mockResolvedValueOnce(maybeTour)
+    mockCreateBooking.mockResolvedValueOnce({ id: 'bk1', tourId: 'tour-1', sessionId: 'session-1', buddyTier: 'junior', status: 'maybe', bookedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' })
+
+    render(<TourDetailPage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'respondMaybe' })).toBeInTheDocument())
+    screen.getByRole('button', { name: 'respondMaybe' }).click()
+    await waitFor(() => expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', 'session-1', 'maybe'))
+  })
+
+  it('does not show respondMaybe when already booked', async () => {
+    const bookedTour = { ...mockTour, bookingOpen: true, status: 'published' as const, tourDate: '2099-05-01T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: 'waitlist' as const }] }
+    mockGetTour.mockResolvedValue(bookedTour)
+    render(<TourDetailPage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'cancelBooking' })).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'respondMaybe' })).not.toBeInTheDocument()
   })
 
   it('shows cancel button when booking is confirmed', async () => {
@@ -345,6 +365,13 @@ describe('TourDetailPage', () => {
       render(<TourDetailPage />)
       await waitFor(() => expect(screen.getByText('noBooking')).toBeInTheDocument())
       expect(screen.queryByRole('button', { name: 'book' })).not.toBeInTheDocument()
+    })
+
+    it('offers book but not respondMaybe on the Maybe deadline day in Japan', async () => {
+      mockGetTour.mockResolvedValue({ ...mockTour, tourDate: '2026-09-20T00:00:00.000Z', cancellationDeadline: '2026-09-18T00:00:00.000Z', maybeDeadline: '2026-09-15T00:00:00.000Z', sessions: [{ ...mockSession, myBookingStatus: null }] })
+      render(<TourDetailPage />)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'book' })).toBeInTheDocument())
+      expect(screen.queryByRole('button', { name: 'respondMaybe' })).not.toBeInTheDocument()
     })
 
     it('treats the Maybe deadline day in Japan as passed', async () => {

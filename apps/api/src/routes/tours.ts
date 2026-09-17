@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { TourStatusSchema, UpdateBookingBodySchema, CancellationReasonBodySchema } from '@peace-buddy/types'
+import { TourStatusSchema, BookingStatusSchema, UpdateBookingBodySchema, CancellationReasonBodySchema } from '@peace-buddy/types'
 import { listTours, getTour } from '../services/tour.service'
 import { createBooking, updateBooking, reportCantGo } from '../services/booking.service'
 import type { AuthEnv } from '../types'
@@ -13,6 +13,7 @@ const ToursQuerySchema = z.object({
 
 const CreateBookingBodySchema = z.object({
   sessionId: z.string().uuid(),
+  status: z.literal(BookingStatusSchema.enum.maybe).optional(),
 })
 
 const tourRoutes = new Hono<AuthEnv>()
@@ -52,12 +53,14 @@ tourRoutes.post('/:id/bookings', async (c) => {
   const parsed = CreateBookingBodySchema.safeParse(body)
   if (!parsed.success) return c.json({ error: 'Invalid request body' }, 400)
 
-  const result = await createBooking(tourId, parsed.data.sessionId, userId)
+  const result = await createBooking(tourId, parsed.data.sessionId, userId, parsed.data.status)
   if (!result.ok) {
     if (result.code === 'TOUR_NOT_FOUND' || result.code === 'SESSION_NOT_FOUND') return c.json({ error: 'Tour not found' }, 404)
     if (result.code === 'ALREADY_BOOKED') return c.json({ error: 'Already booked' }, 409)
     if (result.code === 'NOT_ELIGIBLE') return c.json({ error: 'Not eligible to book' }, 403)
     if (result.code === 'BUDDY_NOT_FOUND') return c.json({ error: 'Buddy profile not found' }, 404)
+    if (result.code === 'DEADLINE_PASSED') return c.json({ error: 'Cancellation deadline has passed' }, 422)
+    if (result.code === 'MAYBE_DEADLINE_PASSED') return c.json({ error: 'Maybe deadline has passed' }, 422)
     return c.json({ error: 'Tour is not open for booking' }, 422)
   }
   return c.json(result.booking, 201)

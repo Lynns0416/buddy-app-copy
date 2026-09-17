@@ -12,6 +12,32 @@ duplicate that state here.
 
 ---
 
+## 2026-09-17 — A first booking can be a Maybe, created by `POST /tours/:id/bookings`
+
+**Decision:** On a session the buddy has not booked, the tour detail page shows
+Join (「参加を希望」, was "Book" / 「予約する」) and Maybe (「未定」). Maybe calls
+`POST /tours/:id/bookings` with `status: "maybe"`, which creates the booking as
+`maybe` without consulting the tier pools. It is refused after the Maybe or
+cancellation deadline, the same rules as `→ maybe` on the update endpoint.
+Closes #219.
+
+**Rejected — booking, then changing to Maybe:** the first call takes a
+confirmed seat, which can put the next buddy on the waitlist for a moment, and
+the admins get a booking notification for a status the buddy never meant.
+
+**Rejected — `PUT …/bookings/me` creating the row when none exists:** that
+endpoint is "update my booking" and answers `404` when there is none. Making it
+an upsert for one status blurs which endpoint owns eligibility and
+`bookingOpen` checks, which only `createBooking` does.
+
+**Maybe is offered on an unbooked session only.** Rejected for #219: also on a
+declined or waitlisted session, which the transition matrix already allows but
+the issue did not ask for.
+
+**Current state:** `docs/api.md` `POST /tours/:id/bookings`, `docs/PRD.md` §8.5.
+
+---
+
 ## 2026-09-17 — Buddy home has a tour-day state, built from `GET /tours/:id`
 
 **Decision:** When the buddy's next confirmed tour is today in Japan, `/buddy`

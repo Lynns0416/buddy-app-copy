@@ -382,7 +382,7 @@ All transitions above are gated by `cancellationDeadline` — once it passes (fr
 
 ### 8.5 Maybe Flow
 
-1. Buddy selects "Maybe" (only available before cancellation deadline)
+1. Buddy selects "Maybe" (only available before the Maybe and cancellation deadlines), either on a session they have not booked (`POST /tours/:id/bookings` with `status: "maybe"`) or by changing an existing booking (§8.4)
 2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 9 days before tour if not set; configurable globally)
 3. Buddy receives reminders at **3 days** and **1 day** before the deadline. Default offsets are baked in code; the hourly cron job that fires these reminders is **Planned** (see §10.5). `/admin/config` to make offsets globally configurable is Planned — see §11.5; no per-tour override in v1.
 4. Buddy must update to **Confirmed** or **Declined** before deadline
@@ -513,7 +513,7 @@ When a `confirmed` booking is cancelled:
 #### UI Entry Point
 
 - `/dashboard/tours/[id]` — the tour detail page
-- When no booking exists and tour is published and `bookingOpen`: show Book button
+- When no booking exists and the tour is bookable: show Join (`参加を希望`) and, before the Maybe and cancellation deadlines, Maybe (`未定`)
 - When `waitlist`: show waitlist status badge and cancel option
 - When `confirmed`: show confirmed status, cancel and set-maybe options
 - No separate booking history page — buddy reaches history via tour list

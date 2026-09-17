@@ -836,14 +836,15 @@ Set or clear the staff-in-charge designation.
 Bookings are scoped to a **session** (one booking per `(buddyId, sessionId)`). All buddy-facing endpoints sit under tour-shaped paths; admin overrides live under `/admin/bookings`. There is no separate booking-create vs status-change endpoint shape — `POST` creates, `PUT /me` updates the caller's own.
 
 ### Buddy: `POST /tours/:id/bookings`
-Create a booking for one session of the tour. The server decides `confirmed` vs `waitlist` from the session's tier pool state (see PRD §8.9).
+Create a booking for one session of the tour. Without `status`, the server decides `confirmed` vs `waitlist` from the session's tier pool state (see PRD §8.9). With `status: "maybe"`, the booking is created as `maybe`: it holds no seat, so the pools are not consulted.
 
 **Auth:** any authenticated active buddy with a tier assigned
 
 **Request** — `CreateBookingBodySchema`
 ```json
-{ "sessionId": "uuid" }
+{ "sessionId": "uuid", "status": "maybe" }
 ```
+`status` is optional, and `maybe` is its only accepted value.
 
 **Response `201`** — `BookingResponse`
 ```json
@@ -852,7 +853,7 @@ Create a booking for one session of the tour. The server decides `confirmed` vs 
   "tourId": "uuid",
   "sessionId": "uuid",
   "buddyTier": "junior | buddy | star | blackstar",
-  "status": "confirmed | waitlist",
+  "status": "confirmed | waitlist | maybe",
   "bookedAt": "ISO8601",
   "updatedAt": "ISO8601"
 }
@@ -865,6 +866,8 @@ A previously declined booking is reused (upsert) — re-booking returns a fresh 
 - `409` — `ALREADY_BOOKED` (a non-declined booking exists)
 - `403` — `NOT_ELIGIBLE` (buddy is trainee or inactive)
 - `422` — `NOT_BOOKABLE` (tour not published, `bookingOpen = false`, or the tour date is today or earlier in Japan)
+- `422` — `DEADLINE_PASSED` (`status: "maybe"` only; the caller's cancellation deadline, after any override, is today or earlier in Japan)
+- `422` — `MAYBE_DEADLINE_PASSED` (`status: "maybe"` only; the tour's `maybeDeadline` is today or earlier in Japan)
 
 ---
 

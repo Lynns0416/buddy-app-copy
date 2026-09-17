@@ -53,7 +53,20 @@ describe('createInitialBooking', () => {
     mockCreateBooking.mockResolvedValue(stubBooking)
     const result = await createInitialBooking('t1', 's1')
     expect(result).toEqual({ ok: true, data: undefined })
-    expect(mockCreateBooking).toHaveBeenCalledWith('t1', 's1')
+    expect(mockCreateBooking).toHaveBeenCalledWith('t1', 's1', undefined)
+  })
+
+  it('passes status maybe through', async () => {
+    mockCreateBooking.mockResolvedValue({ ...stubBooking, status: BookingStatusSchema.enum.maybe })
+    await createInitialBooking('t1', 's1', BookingStatusSchema.enum.maybe)
+    expect(mockCreateBooking).toHaveBeenCalledWith('t1', 's1', 'maybe')
+  })
+
+  it('returns maybeDeadlinePassed special message when the maybe deadline has passed', async () => {
+    mockCreateBooking.mockRejectedValue(new ApiError('Maybe deadline has passed', 422))
+    const result = await createInitialBooking('t1', 's1', BookingStatusSchema.enum.maybe)
+    expect(result.ok).toBe(false)
+    expect(result.specialMessage).toBe('maybeDeadlinePassed')
   })
 
   it('returns error on tour full (409)', async () => {

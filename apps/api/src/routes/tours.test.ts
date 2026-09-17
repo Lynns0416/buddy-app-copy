@@ -295,7 +295,37 @@ describe('POST /tours/:id/bookings', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: SESSION_ID }),
     })
-    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', SESSION_ID, dbUser.id)
+    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', SESSION_ID, dbUser.id, undefined)
+  })
+
+  it('passes status maybe to createBooking', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: true, booking: { ...mockBooking, status: 'maybe' } })
+    await buildApp().request('/tours/tour-1/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: SESSION_ID, status: 'maybe' }),
+    })
+    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', SESSION_ID, dbUser.id, 'maybe')
+  })
+
+  it('returns 400 when status is anything but maybe', async () => {
+    const res = await buildApp().request('/tours/tour-1/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: SESSION_ID, status: 'confirmed' }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockCreateBooking).not.toHaveBeenCalled()
+  })
+
+  it.each(['DEADLINE_PASSED', 'MAYBE_DEADLINE_PASSED'] as const)('returns 422 on %s', async (code) => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: false, code })
+    const res = await buildApp().request('/tours/tour-1/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: SESSION_ID, status: 'maybe' }),
+    })
+    expect(res.status).toBe(422)
   })
 })
 

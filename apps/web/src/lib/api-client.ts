@@ -1,6 +1,7 @@
 import { apiRequest, apiUpload } from './api'
 import { apiPaths } from './api-paths'
 import type {
+  BookingStatusSchema,
   GroupResponse,
   GroupDetailResponse,
   CreateGroup,
@@ -228,10 +229,10 @@ export const apiClient = {
   getTour: (id: string) =>
     apiRequest<TourDetailResponse>(apiPaths.tour(id)),
 
-  createBooking: (tourId: string, sessionId: string) =>
+  createBooking: (tourId: string, sessionId: string, status?: typeof BookingStatusSchema.enum.maybe) =>
     apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), {
       method: 'POST',
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify({ sessionId, status }),
     }),
 
   updateBooking: (tourId: string, sessionId: string, status: UpdateBookingBody['status'], reason?: CancellationReasonBody) =>

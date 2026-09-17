@@ -228,6 +228,57 @@ describe('createBooking', () => {
       oc({ data: oc({ buddyId: 'buddy-1', tourId: 'tour-1', sessionId: 'session-1', buddyTier: 'junior' }) })
     )
   })
+
+  describe('as maybe', () => {
+    const maybeSession = {
+      ...futureSession,
+      tour: { ...futureSession.tour, cancellationDeadline: new Date('2099-04-24'), maybeDeadline: new Date('2099-04-22') },
+    }
+
+    it('creates the booking as maybe without counting seats', async () => {
+      mdb.tourSession.findUnique.mockResolvedValueOnce(maybeSession)
+      mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+      mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
+      mdb.booking.findUnique.mockResolvedValueOnce(null)
+      mdb.booking.create.mockResolvedValueOnce({ ...mockBookingRow, status: 'maybe' })
+
+      const result = await createBooking('tour-1', 'session-1', 'user-1', 'maybe')
+      expect(result.ok).toBe(true)
+      expect(mdb.booking.count).not.toHaveBeenCalled()
+      expect(mdb.booking.create).toHaveBeenCalledWith(oc({ data: oc({ status: 'maybe' }) }))
+    })
+
+    it('returns MAYBE_DEADLINE_PASSED once the maybe deadline has passed', async () => {
+      mdb.tourSession.findUnique.mockResolvedValueOnce({
+        ...maybeSession,
+        tour: { ...maybeSession.tour, maybeDeadline: new Date('2000-01-01') },
+      })
+      mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+      mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
+      const result = await createBooking('tour-1', 'session-1', 'user-1', 'maybe')
+      expect(result).toEqual({ ok: false, code: 'MAYBE_DEADLINE_PASSED' })
+      expect(mdb.booking.create).not.toHaveBeenCalled()
+    })
+
+    it('returns DEADLINE_PASSED once the cancellation deadline has passed', async () => {
+      mdb.tourSession.findUnique.mockResolvedValueOnce({
+        ...maybeSession,
+        tour: { ...maybeSession.tour, cancellationDeadline: new Date('2000-01-01'), maybeDeadline: null },
+      })
+      mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+      mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce(null)
+      const result = await createBooking('tour-1', 'session-1', 'user-1', 'maybe')
+      expect(result).toEqual({ ok: false, code: 'DEADLINE_PASSED' })
+    })
+
+    it('uses the buddy override of the cancellation deadline', async () => {
+      mdb.tourSession.findUnique.mockResolvedValueOnce(maybeSession)
+      mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+      mdb.buddyCancellationDeadlineOverride.findUnique.mockResolvedValueOnce({ deadline: new Date('2000-01-01') })
+      const result = await createBooking('tour-1', 'session-1', 'user-1', 'maybe')
+      expect(result).toEqual({ ok: false, code: 'DEADLINE_PASSED' })
+    })
+  })
 })
 
 describe('updateBooking', () => {
