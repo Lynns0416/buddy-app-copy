@@ -490,6 +490,11 @@ exists. **Read the first real bill rather than the pricing API.**
 
 ### Staging is started by hand
 
+**Changing for dogfooding (#208):** from 2026-09-17 to 2026-10-31, staging runs
+08:45–20:45 JST on an Azure Automation schedule. Setup is in progress; see
+`staging-schedule.md` and `decisions.md` 2026-09-17. This section still
+describes staging outside those dates.
+
 Staging holds a real database and storage account permanently; only its compute
 is switched off. Storage is $53/yr whether it runs or not, so the hours cost
 $0.026 each and nothing else — **$66/yr** all in at 500 hours, against $281/yr

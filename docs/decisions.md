@@ -12,6 +12,74 @@ duplicate that state here.
 
 ---
 
+## 2026-09-17 — Staging runs 08:45–20:45 JST on an Azure Automation schedule until 2026-10-31
+
+**Decision:** During dogfooding, `psql-peace-buddy-stg` is started at 08:45 and
+stopped at 20:45 JST every day. `aa-peace-buddy-stg` does this: an Azure
+Automation account whose runbook `rb-staging-power` calls ARM as the account's
+system-assigned identity. That identity holds a custom role, *Peace Buddy
+Postgres Start Stop* (read, start, stop), assigned on the server alone. Both
+schedules expire on 2026-10-31, so the window ends by itself. A failed job sends
+an email through a metric alert. For the same period the staging server budget
+rises from ¥1,600 to ¥2,600. For these dates this supersedes 2026-09-12,
+"Staging compute is started by hand, not scheduled". #208.
+
+**Why:** The 2026-09-12 entry rejected a daily window because use was bursty.
+Use is no longer bursty: staging is in daily dogfooding and was being left on
+around the clock. Nobody tests overnight. Twelve hours up costs ~$114/yr of
+compute, or $167/yr including storage, against $281/yr always on. A daily start
+also means the seven-day auto-restart can't happen during the window.
+
+**Why the budget is raised rather than removed:** At 12 hours a day a correct
+month is ~¥2,200, and a month with the stop job silently broken is ~¥3,700.
+¥2,600 sits between the two, so it still catches a server stuck on, days late.
+Left at ¥1,600 it would fire every month by design, and people would learn to
+ignore it.
+
+**Rejected — keep starting it by hand:** that model assumed bursty use, which no
+longer holds. In practice staging was left running.
+
+**Rejected — a GitHub Actions scheduled workflow:** recommended at first,
+because a temporary schedule should be cheap to remove and a workflow file is a
+single deletion. Its costs: it needs an Entra app registration and a federated
+credential that give GitHub rights inside the tenant. GitHub cron is UTC-only
+and runs late under load, and a 09:00 JST start falls on 00:00 UTC, its busiest
+slot. Overturned once the extra setup counted as worth doing rather than as a
+cost. Automation needs no credential, runs on time, and takes `Asia/Tokyo`
+directly.
+
+**Rejected — `Contributor` on the server:** it would also let the scheduler
+delete the server. The custom role's `AssignableScopes` is `rg-peace-buddy`
+because a custom role can't name a single resource; the assignment narrows the
+grant to the server.
+
+**Rejected — PowerShell 7.2:** the CLI extension creates `PowerShell` runbooks,
+which run on 5.1, and choosing 7.2 needs the separate runtime-environment API.
+The runbook only uses `Connect-AzAccount` and `Invoke-AzRestMethod`, both in
+5.1's preinstalled `Az.Accounts`, and it will exist for six weeks.
+
+**Rejected — a Consumption Logic App:** it has fewer parts, but its definition is
+workflow JSON. A runbook keeps the logic in a script file in `scripts/`, like
+every other Azure change in this repo.
+
+**Accepted consequences:**
+- Running `azure-db-roles.sh` outside the window starts staging, and it stays up
+  until 20:45.
+- The :45 minutes are kept because they're easy to remember. They were first
+  moved off the hour to avoid GitHub cron congestion, which Automation doesn't
+  have.
+- After the 20:45 stop on 2026-10-31, staging is left stopped and the seven-day
+  auto-restart applies again, unless the schedules are extended or the manual
+  model returns along with its ¥1,600 budget.
+
+**Not decided here:** three notification cron routes have had no caller since
+2026-09-13 (PRD §10.5). This account could call them, but that's a separate
+decision.
+
+**Current state:** `docs/staging-schedule.md`.
+
+---
+
 ## 2026-09-17 — A first booking can be a Maybe, created by `POST /tours/:id/bookings`
 
 **Decision:** On a session the buddy has not booked, the tour detail page shows
