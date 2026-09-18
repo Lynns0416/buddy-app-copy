@@ -209,7 +209,7 @@
     "signOut": "ログアウト",
     "meetingTime": "集合時間",
     "location": "場所",
-    "capacity": "バディ数",
+    "buddyCount": "バディ数",
     "participantCount": "参加者数",
     "notRegistered": "バディとして登録されていないようです。不明点がある場合は、PLABスタッフまでお問い合わせください。",
     "traineeMessage": "現在、研修中として登録されています。研修の予定は別途ご案内します。ご不明な点がある場合は、PLABスタッフまでお問い合わせください。",
@@ -519,7 +519,7 @@
     },
     "notificationPreferences": {
       "title": "メール通知",
-      "description": "受け取るメールを選べます。オフにしてもアプリ内のお知らせには引き続き表示されます。",
+      "description": "受け取るメールを選べます。オフにしてもこのページの「お知らせ」には引き続き表示されます。",
       "events": {
         "tour_published": "新しいツアーの公開",
         "tour_publishedHelp": "ツアーの受付が開始されるたびに、アクティブなバディ全員に送信されます。",

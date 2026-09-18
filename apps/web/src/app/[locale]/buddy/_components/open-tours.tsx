@@ -39,37 +39,44 @@ export function OpenTours({ tours, error }: { tours: TourResponse[] | null; erro
           {visible.map((tour) => (
             <Link key={tour.id} href={routes.buddyTour(locale, tour.id)} className="rounded-lg border bg-card p-4 hover:bg-accent transition-colors">
               <p className="mb-3 font-medium">{tour.group.name}</p>
-              <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
+              {/* Tour level: the date and the location are the same for every session */}
+              <div className="mb-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays size={14} />
                   {tour.tourDate.slice(0, 10)}
-                </span>
-                <span className="flex flex-wrap items-center gap-1.5">
-                  <Clock size={14} />
-                  {tour.sessions.map((s) => (
-                    <span key={s.id} className="flex items-center gap-1.5 pr-1.5">
-                      {s.meetingTime.slice(11, 16)}
-                      {/* declined means the buddy cancelled and can book again — on the card that is not booked */}
-                      {s.myBookingStatus && s.myBookingStatus !== BookingStatusSchema.enum.declined && (
-                        <Badge variant={bookingStatusBadgeVariant[s.myBookingStatus]}>
-                          {getBookingStatusLabel(tBookingStatus, s.myBookingStatus)}
-                        </Badge>
-                      )}
-                    </span>
-                  ))}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin size={14} />
                   {tour.location}
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Users size={14} />
-                  {t('capacity')}: {tour.sessions.reduce((sum, s) => sum + s.capacity, 0)}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Users size={14} />
-                  {t('participantCount')}: {tour.participantCount}
-                </span>
+              </div>
+              {/* One section per session — buddy numbers and participants are per session, never summed */}
+              <div className="flex flex-col gap-2">
+                {tour.sessions.map((s) => (
+                  <div key={s.id} className="border-t pt-2 first:border-t-0 first:pt-0">
+                    {s.label && <p className="mb-1 text-sm font-medium text-foreground">{s.label}</p>}
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Clock size={14} />
+                        {s.meetingTime.slice(11, 16)}
+                        {/* declined means the buddy cancelled and can book again — on the card that is not booked */}
+                        {s.myBookingStatus && s.myBookingStatus !== BookingStatusSchema.enum.declined && (
+                          <Badge variant={bookingStatusBadgeVariant[s.myBookingStatus]}>
+                            {getBookingStatusLabel(tBookingStatus, s.myBookingStatus)}
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Users size={14} />
+                        {t('buddyCount')}: {s.minBuddies ?? s.capacity}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Users size={14} />
+                        {t('participantCount')}: {s.participantCount}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </Link>
           ))}

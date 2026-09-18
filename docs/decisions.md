@@ -12,6 +12,30 @@ duplicate that state here.
 
 ---
 
+## 2026-09-18 — Buddy home cards show one section per session, with the minimum buddy number
+
+**Decision:** each card under "Tours looking for buddies" is a tour-level header
+(group, date, location) plus one section per session, and the buddy number in a
+section is `minBuddies ?? capacity` for that session. PRD §11.1 held the
+opposite and the code followed it. See §11.1 for the resulting layout.
+
+**Rejected — one buddy number per card, summed across sessions:** buddy numbers
+are per session, so a tour with a 1st and 2nd half of 5 each read 10, a number
+no session ever needs. Nothing on the card is a tour-level quantity except the
+location.
+
+**Rejected — showing `capacity`:** it is the *maximum* (admin label
+「最大バディ数」). A volunteer deciding whether to sign up needs the minimum the
+session asks for; the maximum answers a question they are not asking.
+
+**Rejected — two labels, one for the minimum and one for the capacity
+fallback:** the fallback only fires when the admin left `minBuddies` empty, and
+a label that changes meaning between two cards costs the reader more than the
+precision is worth. One label (`tour.buddyCount` / 「バディ数」) covers both,
+worded so it claims neither.
+
+---
+
 ## 2026-09-18 — The tour calendar is a view of `/admin/tours`, not its own page
 
 **Decision:** `/admin/tours` toggles between the list and a month calendar via
