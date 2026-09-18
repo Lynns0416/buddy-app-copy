@@ -38,7 +38,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mdb.$transaction.mockImplementation(txnPassthrough as unknown as (...args: unknown[]) => unknown)
   // Default: dispatchLog insert succeeds, no email recipient lookup magic.
-  mdb.user.findUnique.mockResolvedValue({ locale: 'ja' })
+  mdb.user.findUnique.mockResolvedValue({ locale: 'ja', notificationPrefs: [] })
 })
 
 type LogCreateArg = { data: { eventKey: string } }

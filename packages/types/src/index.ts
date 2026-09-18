@@ -47,6 +47,9 @@ export const LanguageSchema = z.enum([
 ] as const)
 export type Language = z.infer<typeof LanguageSchema>
 
+// The admin half of the Prisma `NotifEventType` enum. Kept as its own schema
+// rather than widened, so the admin screen and DEFAULT_ADMIN_EMAIL_PREFS cannot
+// pick up buddy events by accident.
 export const NotifEventTypeSchema = z.enum([
   'new_signup',
   'new_booking',
@@ -55,6 +58,33 @@ export const NotifEventTypeSchema = z.enum([
   'maybe_deadline_missed',
 ])
 export type NotifEventType = z.infer<typeof NotifEventTypeSchema>
+
+// The buddy half. Every value is also a NotifEventKind — buddy preferences need
+// no admin-style mapping, the preference key IS the dispatched event.
+//
+// Absent on purpose, and the omission is the enforcement rather than a UI
+// choice: `tour_cancelled` and `waitlist_promoted` (a buddy who muted either
+// turns up to a tour that isn't running, or misses that they hold a seat) and
+// `account_approved` / `account_rejected`. They are not in the Prisma enum, so
+// a row for them cannot be stored and the route rejects one.
+// `waitlist_opened` and `self_eval_prompt` have no email template at all, so
+// there is nothing to mute. See docs/decisions.md 2026-09-18.
+export const BuddyNotifEventTypeSchema = z.enum([
+  'tour_published',
+  'tour_details_changed',
+  'tour_reminder',
+  'maybe_reminder',
+])
+export type BuddyNotifEventType = z.infer<typeof BuddyNotifEventTypeSchema>
+
+// The Prisma `NotifEventType` column, which holds both halves. Used for rows
+// read back out of NotificationPreference, where a single query can return
+// admin and buddy events side by side.
+export const NotifPrefEventTypeSchema = z.enum([
+  ...NotifEventTypeSchema.options,
+  ...BuddyNotifEventTypeSchema.options,
+])
+export type NotifPrefEventType = z.infer<typeof NotifPrefEventTypeSchema>
 
 export const EmailModeSchema = z.enum(['immediate', 'digest'])
 export type EmailMode = z.infer<typeof EmailModeSchema>
@@ -74,6 +104,29 @@ export type UpdateNotificationPreferences = z.infer<typeof UpdateNotificationPre
 
 export type NotificationPreferencesResponse = {
   preferences: NotificationPreferenceItem[]
+}
+
+// Buddies get email on/off only. Slack is not a buddy channel (PRD §10.3) and
+// the daily digest is an admin concept, so neither `emailMode` nor
+// `slackEnabled` is exposed; buddy rows carry 'immediate' / false and nothing
+// reads them.
+export const BuddyNotificationPreferenceItemSchema = z.object({
+  eventType: BuddyNotifEventTypeSchema,
+  emailEnabled: z.boolean(),
+})
+export type BuddyNotificationPreferenceItem = z.infer<
+  typeof BuddyNotificationPreferenceItemSchema
+>
+
+export const UpdateBuddyNotificationPreferencesSchema = z.object({
+  preferences: z.array(BuddyNotificationPreferenceItemSchema),
+})
+export type UpdateBuddyNotificationPreferences = z.infer<
+  typeof UpdateBuddyNotificationPreferencesSchema
+>
+
+export type BuddyNotificationPreferencesResponse = {
+  preferences: BuddyNotificationPreferenceItem[]
 }
 
 export const BookingPoolSchema = z.enum(['junior', 'non_junior', 'anyone'])

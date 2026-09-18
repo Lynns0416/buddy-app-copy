@@ -644,6 +644,23 @@ Same scale as admin evaluations: **1 = Poor / 2 = Below Average / 3 = Average / 
 | Self-evaluation prompt (`self_eval_prompt`) | In-app only | On tour Completed, to Confirmed buddies | Planned (no enqueue site yet) |
 | Account approved / rejected (`account_approved` / `account_rejected`) | In-app + email | Immediate | Shipped |
 
+**Buddies configure email per event.** Four of the events above are mutable —
+`tour_published`, `tour_details_changed`, `tour_reminder`, `maybe_reminder` —
+via `GET / PUT /me/notification-preferences` (api.md), surfaced as a section of
+`/buddy/profile`. Default is on for all four, so a buddy who never opens the
+settings receives exactly what they did before preferences existed.
+
+The rest are **not** mutable and are enforced as such: `tour_cancelled`,
+`waitlist_promoted`, `account_approved` and `account_rejected` have no
+`NotifEventType` value, so no preference row can be stored and the enqueue path
+ignores one if it somehow exists. Muting them means turning up to a tour that
+isn't running, or never learning a seat opened up. `waitlist_opened` and
+`self_eval_prompt` have no email template, so there is nothing to mute.
+See `docs/decisions.md` 2026-09-18.
+
+In-app delivery is never configurable, for buddies or admins: the preference is
+about what lands in an inbox, and a muted event stays findable in the app.
+
 Tour-edit notifications fire **only** when `tourDate` or `location` changes on the tour. Changes to a session's `meetingTime`, to `adminMemo`, assigned admins, staff in charge, or pool percentages are silent today; wiring `meetingTime` to also trigger `tour_details_changed` is tracked in `docs/roadmap.md`.
 
 ### 10.2 Admin Notifications
@@ -740,12 +757,20 @@ Hourly cadence is sufficient because all offsets are day-granular. Idempotency f
 
 ### 10.6 Channel Config UI
 
-Each admin sets, per event type:
+Both audiences read and write the same `NotificationPreference` table, through
+separate endpoints and screens.
+
+**Admins** set, per event type, at `/admin/notification-preferences`:
 - `emailEnabled: Boolean`
 - `emailMode: 'immediate' | 'digest'`
 - `slackEnabled: Boolean`
 
-via `GET / PUT /notification-preferences` (api.md). Slack target is governed by §10.3.
+via `GET / PUT /admin/notification-preferences` (api.md). Slack target is governed by §10.3.
+
+**Buddies** set `emailEnabled` alone, for the four mutable events in §10.1, via
+`GET / PUT /me/notification-preferences`, in a section of `/buddy/profile`.
+There is no mode (the digest is an admin concept) and no Slack column (Slack is
+not a buddy channel — §10.3).
 
 ---
 

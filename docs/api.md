@@ -1308,17 +1308,21 @@ Marks one or more notifications as read.
 
 ## Notification Preferences *(admin)*
 
-> **⚠ Planned (not shipped).** No route or service implementation exists yet. The `NotificationPreference` table and `NotifEventType` / `EmailMode` enums are defined in schema; per-event `slackEnabled` may be replaced by a single global Slack opt-in on `AdminProfile` pending the §10.3 decision.
+Admin and buddy preferences share one `NotificationPreference` table but are
+reached through separate endpoints with separate event sets. `slackEnabled` is
+informational only — nothing reads it at enqueue time (PRD §10.3).
 
-### `GET /notification-preferences`
-Returns the authenticated admin's notification preferences.
+### `GET /admin/notification-preferences`
+Returns the authenticated admin's notification preferences. Every event type is
+present; those with no stored row are filled in from the defaults (email off —
+Slack is the admin channel).
 
 **Auth:** `admin`
 
 **Response `200`**
 ```json
 {
-  "data": [
+  "preferences": [
     {
       "eventType": "new_signup | new_booking | cancellation | maybe_resolved | maybe_deadline_missed",
       "emailEnabled": true,
@@ -1331,7 +1335,7 @@ Returns the authenticated admin's notification preferences.
 
 ---
 
-### `PUT /notification-preferences`
+### `PUT /admin/notification-preferences`
 Upserts notification preferences for the authenticated admin. Send the full array.
 
 **Auth:** `admin`
@@ -1341,7 +1345,7 @@ Upserts notification preferences for the authenticated admin. Send the full arra
 {
   "preferences": [
     {
-      "eventType": "string",
+      "eventType": "new_signup | new_booking | cancellation | maybe_resolved | maybe_deadline_missed",
       "emailEnabled": true,
       "emailMode": "immediate | digest",
       "slackEnabled": false
@@ -1351,6 +1355,61 @@ Upserts notification preferences for the authenticated admin. Send the full arra
 ```
 
 **Response `200`** — updated preferences
+
+**Errors:** `400 invalid_request` — malformed body, unknown `eventType`, or a duplicate `eventType`
+
+---
+
+## Notification Preferences *(buddy)*
+
+Email on/off per event. No delivery mode and no Slack column: the digest is an
+admin concept and Slack is not a buddy channel (PRD §10.3). In-app delivery is
+not configurable — a muted event still appears in `GET /me/notifications`.
+
+Only the four mutable events are addressable. `tour_cancelled`,
+`waitlist_promoted`, `account_approved` and `account_rejected` are not in the
+enum and a request naming one is rejected (PRD §10.1).
+
+### `GET /me/notification-preferences`
+Returns the authenticated buddy's email preferences. All four events are
+present; those with no stored row default to `emailEnabled: true`.
+
+**Auth:** authenticated
+
+**Response `200`**
+```json
+{
+  "preferences": [
+    {
+      "eventType": "tour_published | tour_details_changed | tour_reminder | maybe_reminder",
+      "emailEnabled": true
+    }
+  ]
+}
+```
+
+---
+
+### `PUT /me/notification-preferences`
+Upserts the authenticated buddy's email preferences. Send the full array.
+
+**Auth:** authenticated
+
+**Request**
+```json
+{
+  "preferences": [
+    {
+      "eventType": "tour_published | tour_details_changed | tour_reminder | maybe_reminder",
+      "emailEnabled": false
+    }
+  ]
+}
+```
+
+**Response `200`** — updated preferences
+
+**Errors:** `400 invalid_request` — malformed body, an `eventType` outside the mutable set, or a duplicate `eventType`
 
 ---
 

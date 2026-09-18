@@ -1,22 +1,25 @@
 import { db } from '../lib/db'
 import {
+  BuddyNotifEventTypeSchema,
   BuddyStatusSchema,
   BookingStatusSchema,
   EmailModeSchema,
   LocaleSchema,
   NotificationChannelSchema,
   UserRoleSchema,
+  type BuddyNotifEventType,
   type EmailMode,
   type MarkNotificationsRead,
   type NotifEventKind,
   type NotifEventType,
+  type NotifPrefEventType,
   type NotifPayload,
   type NotificationResponse,
 } from '@peace-buddy/types'
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { hasEmailTemplate } from './notificationTemplates'
 import { hasSlackTemplate } from './slackTemplates'
-import { DEFAULT_ADMIN_EMAIL_PREFS } from './adminNotificationDefaults'
+import { DEFAULT_ADMIN_EMAIL_PREFS, DEFAULT_BUDDY_EMAIL_PREFS } from './notificationDefaults'
 
 type Tx = PrismaClient | Prisma.TransactionClient
 
@@ -47,7 +50,7 @@ function adminPrefEnumFor(kind: NotifEventKind): NotifEventType | null {
   }
 }
 
-type AdminPrefRow = { eventType: NotifEventType; emailEnabled: boolean; emailMode: EmailMode }
+type AdminPrefRow = { eventType: NotifPrefEventType; emailEnabled: boolean; emailMode: EmailMode }
 
 // Returns 'immediate' (send now), 'digest' (buffer for daily flush — slice 5),
 // or 'off' (don't email). `cant_go_post_deadline` is always immediate per PRD.
@@ -65,6 +68,28 @@ function decideAdminEmail(kind: NotifEventKind, prefs: AdminPrefRow[]): AdminEma
     : DEFAULT_ADMIN_EMAIL_PREFS[prefEnum]
   if (!pref.enabled) return 'off'
   return pref.mode === EmailModeSchema.enum.immediate ? 'immediate' : 'digest'
+}
+
+// Maps a dispatchable kind to its buddy-preference enum value, when the buddy
+// may mute it. Returns null when they may not — `tour_cancelled`,
+// `waitlist_promoted`, `account_approved`, `account_rejected` — and for every
+// admin-targeted kind. A null here means "send regardless of what is stored",
+// which is what makes the unmutable set unmutable even if a row somehow exists.
+function buddyPrefEnumFor(kind: NotifEventKind): BuddyNotifEventType | null {
+  const parsed = BuddyNotifEventTypeSchema.safeParse(kind)
+  return parsed.success ? parsed.data : null
+}
+
+type BuddyPrefRow = { eventType: NotifPrefEventType; emailEnabled: boolean }
+
+// A buddy with no row for the event gets DEFAULT_BUDDY_EMAIL_PREFS, which is on
+// for everything — an existing buddy who never opens the settings sees no
+// change in what they receive (#213).
+function decideBuddyEmail(kind: NotifEventKind, prefs: BuddyPrefRow[]): boolean {
+  const prefEnum = buddyPrefEnumFor(kind)
+  if (prefEnum === null) return true
+  const row = prefs.find((p) => p.eventType === prefEnum)
+  return row ? row.emailEnabled : DEFAULT_BUDDY_EMAIL_PREFS[prefEnum].enabled
 }
 
 // Writes one in-app job per recipient. Caller MUST pass a txn client (`tx`)
@@ -234,7 +259,10 @@ export async function enqueueSlackForAdmins<K extends NotifEventKind>(
 //
 // Each mirrors its in-app counterpart and skips silently when no template is
 // registered for the event (slice-3 surface; later slices add more templates).
-// Admin-targeted helpers consult NotificationPreference. Digest-mode admins are
+// Every helper consults NotificationPreference — admin-targeted ones for
+// enabled + mode, buddy-targeted ones for enabled alone (#213). In-app is
+// deliberately not gated: the preference is about what lands in an inbox, and
+// a muted event must still be findable in the app. Digest-mode admins are
 // skipped and nothing buffers them — DigestQueue has no writer and no flush job
 // (docs/decisions.md 2026-08-15). Admin email is off by default, so this only
 // affects an admin who explicitly re-enables email and picks digest.
@@ -244,9 +272,13 @@ export async function enqueueEmail<K extends NotifEventKind>(args: EnqueueArgs<K
 
   const recipient = await tx.user.findUnique({
     where: { id: args.recipientUserId },
-    select: { locale: true },
+    select: {
+      locale: true,
+      notificationPrefs: { select: { eventType: true, emailEnabled: true } },
+    },
   })
   if (!recipient) return
+  if (!decideBuddyEmail(args.eventType, recipient.notificationPrefs)) return
 
   await tx.notificationJob.create({
     data: {
@@ -268,12 +300,23 @@ export async function enqueueEmailForActiveBuddies<K extends NotifEventKind>(
 
   const buddies = await tx.buddyProfile.findMany({
     where: { status: BuddyStatusSchema.enum.active },
-    select: { user: { select: { id: true, locale: true } } },
+    select: {
+      user: {
+        select: {
+          id: true,
+          locale: true,
+          notificationPrefs: { select: { eventType: true, emailEnabled: true } },
+        },
+      },
+    },
   })
-  if (buddies.length === 0) return
+  const recipients = buddies.filter((b) =>
+    decideBuddyEmail(args.eventType, b.user.notificationPrefs),
+  )
+  if (recipients.length === 0) return
 
   await tx.notificationJob.createMany({
-    data: buddies.map((b) => ({
+    data: recipients.map((b) => ({
       channel: NotificationChannelSchema.enum.email,
       eventType: args.eventType,
       recipientUserId: b.user.id,
@@ -302,14 +345,28 @@ export async function enqueueEmailForBookedBuddies<K extends NotifEventKind>(
         ],
       },
     },
-    select: { buddy: { select: { user: { select: { id: true, locale: true } } } } },
+    select: {
+      buddy: {
+        select: {
+          user: {
+            select: {
+              id: true,
+              locale: true,
+              notificationPrefs: { select: { eventType: true, emailEnabled: true } },
+            },
+          },
+        },
+      },
+    },
   })
   if (bookings.length === 0) return
 
   const seen = new Map<string, { id: string; locale: (typeof bookings)[number]['buddy']['user']['locale'] }>()
   for (const b of bookings) {
+    if (!decideBuddyEmail(args.eventType, b.buddy.user.notificationPrefs)) continue
     seen.set(b.buddy.user.id, { id: b.buddy.user.id, locale: b.buddy.user.locale })
   }
+  if (seen.size === 0) return
 
   await tx.notificationJob.createMany({
     data: Array.from(seen.values()).map((u) => ({

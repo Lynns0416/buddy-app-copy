@@ -12,6 +12,70 @@ duplicate that state here.
 
 ---
 
+## 2026-09-18 — Buddy notification preferences share the admin table; four events cannot be muted
+
+**Decision:** `NotificationPreference.adminId` is renamed to `userId` and the
+`NotifEventType` enum is widened with the four buddy events a buddy may turn
+off: `tour_published`, `tour_details_changed`, `tour_reminder`,
+`maybe_reminder`. Buddies read and write them at
+`GET / PUT /me/notification-preferences`, surfaced as a section of
+`/buddy/profile`. Every buddy email enqueue path now consults the table.
+Closes #213.
+
+**Why:** `enqueueEmail` consulted no preference of any kind on the buddy side.
+`tour_published` mails every Active buddy on every publish, with no opt-out — at
+~50 volunteers, the setting most likely to get the app's own mail marked as
+spam.
+
+**Rejected — a second table for buddies,** which #213 offered as the
+alternative. Two tables modelling one concept drift, and the
+defaults-derived-from-delivery discipline in `notificationDefaults.ts` (the
+table that decides what sends is the table the screen renders) is worth sharing.
+The cost is `emailMode` and `slackEnabled` sitting unused on buddy rows; they
+are written `immediate` / `false` and never read for a buddy.
+
+**The unmutable set is enforced by the absence of an enum value, not by the
+UI.** `tour_cancelled`, `waitlist_promoted`, `account_approved` and
+`account_rejected` have no `NotifEventType` value, so no row can be stored and
+`PUT` rejects a request naming one. The enqueue path additionally ignores any
+row for them, so a value added to the enum later does not silently make them
+mutable.
+
+**Rejected — `tour_details_changed` as unmutable.** It was argued for on the
+same ground as `tour_cancelled`: a buddy who mutes it turns up at the old time
+or place. Tour details change often enough that the mail is a volume problem of
+its own, and the tour page still shows the current date and location. Muted, it
+still arrives in-app.
+
+**`waitlist_promoted` is unmutable,** against the same volume argument: it fires
+once, for one buddy, and muting it means not knowing you hold a seat — a
+no-show.
+
+**Rejected — making in-app delivery configurable.** The preference is about what
+lands in an inbox. A muted event stays in `GET /me/notifications`, so nothing is
+lost, only unsent.
+
+**Defaults are all-on.** A buddy with no rows receives exactly what they
+received before preferences existed. Admin defaults stay all-off (2026-08-15) —
+the two audiences default in opposite directions because Slack covers admins and
+nothing covers buddies.
+
+**Not in scope: Slack to buddies.** Still deferred — it needs per-user Slack IDs
+and a bot token rather than the incoming webhook (2026-08-15,
+`docs/roadmap.md`).
+
+**Accepted consequences:**
+- `waitlist_opened` and `self_eval_prompt` get no toggle at all: neither has an
+  email template, so there is nothing to mute. Shipping an email for either
+  means deciding then whether it is mutable.
+- The migration renames the column rather than dropping and adding it, which is
+  what `prisma migrate diff` emits. Existing admin preferences survive.
+
+**Current state:** `docs/PRD.md` §10.1 and §10.6, `docs/api.md`,
+`docs/data-model.md`.
+
+---
+
 ## 2026-09-17 — The databases are queried from a jump VM reached through Bastion Developer
 
 **Decision:** An operator reaches either Postgres server from `vm-peace-buddy-jump`,

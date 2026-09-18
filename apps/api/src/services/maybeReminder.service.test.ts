@@ -35,7 +35,7 @@ const txnPassthrough = (fn: TxnCallback): unknown => fn(mdb)
 beforeEach(() => {
   vi.clearAllMocks()
   mdb.$transaction.mockImplementation(txnPassthrough as (...args: unknown[]) => unknown)
-  mdb.user.findUnique.mockResolvedValue({ locale: 'ja' })
+  mdb.user.findUnique.mockResolvedValue({ locale: 'ja', notificationPrefs: [] })
 })
 
 type TourFindManyArgs = { where: { status: string; maybeDeadline: { gte: Date } } }

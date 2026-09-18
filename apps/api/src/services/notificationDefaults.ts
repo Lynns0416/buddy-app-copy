@@ -1,7 +1,12 @@
-import { EmailModeSchema, type EmailMode, type NotifEventType } from '@peace-buddy/types'
+import {
+  EmailModeSchema,
+  type BuddyNotifEventType,
+  type EmailMode,
+  type NotifEventType,
+} from '@peace-buddy/types'
 
-// Single source of truth for admin notification defaults, used when no
-// NotificationPreference row exists for an admin.
+// Single source of truth for notification defaults, used when no
+// NotificationPreference row exists for a person.
 //
 // Two consumers, deliberately one table:
 // - notification.service.ts decides what actually sends
@@ -24,4 +29,19 @@ export const DEFAULT_ADMIN_EMAIL_PREFS: Record<
   cancellation: { enabled: false, mode: EmailModeSchema.enum.immediate },
   maybe_resolved: { enabled: false, mode: EmailModeSchema.enum.immediate },
   maybe_deadline_missed: { enabled: false, mode: EmailModeSchema.enum.immediate },
+}
+
+// Buddy defaults, same two consumers as above. Everything is on: a buddy who has
+// never opened the settings must receive exactly what they received before
+// preferences existed (#213).
+//
+// There is no mode and no Slack flag here — buddies get email on/off only
+// (PRD §10.1). Buddy rows written to NotificationPreference carry
+// `emailMode: 'immediate'` and `slackEnabled: false` to satisfy the shared
+// columns; nothing reads either for a buddy.
+export const DEFAULT_BUDDY_EMAIL_PREFS: Record<BuddyNotifEventType, { enabled: boolean }> = {
+  tour_published: { enabled: true },
+  tour_details_changed: { enabled: true },
+  tour_reminder: { enabled: true },
+  maybe_reminder: { enabled: true },
 }

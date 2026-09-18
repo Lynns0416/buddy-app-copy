@@ -21,7 +21,7 @@ erDiagram
     Tour ||--o{ SelfEvaluation : "evaluated for"
     Tour ||--o{ AdminEvaluation : "evaluated for"
 
-    User ||--o{ NotificationPreference : "configures [admin only]"
+    User ||--o{ NotificationPreference : "configures"
     User ||--o{ Notification : receives
     User ||--o{ NotificationJob : "recipient of"
     User ||--o{ DigestQueue : "queued for [admin only]"
@@ -349,21 +349,21 @@ Not in PRD. Stores per-buddy overrides of a tour's cancellation deadline.
 
 ### Notification Tables
 
-> **⚠ Planned (foundations only).** The three tables below exist in `prisma/schema.prisma` and the `NotifEventType` / `EmailMode` enums are exported from `packages/types`, but no service code reads or writes these tables yet. See PRD §10 for intended behaviour.
-
 ### NotificationPreference
-Per-admin, per-event channel and delivery mode configuration.
+Per-user, per-event email configuration, for admins and buddies alike.
 
 | Field | Type | Constraints |
 |---|---|---|
 | id | UUID | PK |
-| adminId | UUID | FK → User |
-| eventType | Enum | `new_signup` / `new_booking` / `cancellation` / `maybe_resolved` / `maybe_deadline_missed` |
+| userId | UUID | FK → User |
+| eventType | Enum | Admin: `new_signup` / `new_booking` / `cancellation` / `maybe_resolved` / `maybe_deadline_missed`. Buddy: `tour_published` / `tour_details_changed` / `tour_reminder` / `maybe_reminder` |
 | emailEnabled | Boolean | |
-| emailMode | Enum | `immediate` / `digest` |
-| slackEnabled | Boolean | |
+| emailMode | Enum | `immediate` / `digest`. Admin-only; buddy rows carry `immediate` and nothing reads it |
+| slackEnabled | Boolean | Admin-only and informational (PRD §10.3); buddy rows carry `false` |
 
-**Unique:** `(adminId, eventType)`
+**Unique:** `(userId, eventType)`
+
+The buddy events a buddy may **not** mute — `tour_cancelled`, `waitlist_promoted`, `account_approved`, `account_rejected` — have no `NotifEventType` value, so no row can exist for them. That absence *is* the enforcement; the enqueue path ignores any stored row for them regardless (`docs/decisions.md` 2026-09-18). `waitlist_opened` and `self_eval_prompt` have no email template at all.
 
 ### Notification
 In-app notifications for buddies and admins.

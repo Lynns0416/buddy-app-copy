@@ -62,12 +62,24 @@ enum CancellationCategory {
   other
 }
 
+// Every event a person can configure email for, across both audiences.
+// packages/types splits it back into the admin set (NotifEventTypeSchema) and
+// the buddy set (BuddyNotifEventTypeSchema) — the two screens are different.
+//
+// Buddy events a buddy MUST NOT be able to mute are deliberately absent:
+// tour_cancelled, waitlist_promoted, account_approved, account_rejected. A row
+// for them cannot be stored, so the opt-out is unreachable rather than merely
+// hidden (docs/decisions.md 2026-09-18).
 enum NotifEventType {
   new_signup
   new_booking
   cancellation
   maybe_resolved
   maybe_deadline_missed
+  tour_published
+  tour_details_changed
+  tour_reminder
+  maybe_reminder
 }
 
 enum EmailMode {
@@ -386,16 +398,19 @@ model BuddyCancellationDeadlineOverride {
   @@unique([buddyId, tourId])
 }
 
+// Per-user, per-event email configuration, for admins and buddies alike.
+// `emailMode` and `slackEnabled` are admin-only concepts: buddy rows carry
+// `immediate` / `false` and nothing reads them for a buddy.
 model NotificationPreference {
   id           String         @id @default(uuid())
-  adminId      String
+  userId       String
   eventType    NotifEventType
   emailEnabled Boolean
   emailMode    EmailMode
   slackEnabled Boolean
-  admin        User           @relation(fields: [adminId], references: [id])
+  user         User           @relation(fields: [userId], references: [id])
 
-  @@unique([adminId, eventType])
+  @@unique([userId, eventType])
 }
 
 model Notification {

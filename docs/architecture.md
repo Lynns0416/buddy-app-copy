@@ -282,9 +282,17 @@ flowchart TD
     Disp --> Dead
 ```
 
-Enqueue time decides *whether* an email is queued at all. `decideAdminEmail()` in
-`notification.service.ts` reads the admin's `NotificationPreference` and returns
-`immediate` (queue an email job), `digest` (skip — see below), or `off`.
+Enqueue time decides *whether* an email is queued at all, and both audiences are
+gated there. `decideAdminEmail()` in `notification.service.ts` reads the admin's
+`NotificationPreference` and returns `immediate` (queue an email job), `digest`
+(skip — see below), or `off`. `decideBuddyEmail()` in the same file reads the
+buddy's rows from the same table and returns a plain boolean — buddies have no
+mode and no Slack column (PRD §10.6). It returns `true` unconditionally for the
+events a buddy may not mute, so a stored row for one of those is ignored rather
+than honoured (`docs/decisions.md` 2026-09-18).
+
+In-app is deliberately *not* gated, for either audience: the preference is about
+what lands in an inbox, and a muted event stays findable in the app.
 
 Slack is enqueued differently: `enqueueSlackForAdmins()` writes **one** job per
 event with `recipientUserId: null`, because delivery is channel-wide rather than

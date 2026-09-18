@@ -45,6 +45,8 @@ import type {
   MarkNotificationsRead,
   NotificationPreferencesResponse,
   UpdateNotificationPreferences,
+  BuddyNotificationPreferencesResponse,
+  UpdateBuddyNotificationPreferences,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -308,6 +310,16 @@ export const apiClient = {
 
   updateAdminNotificationPreferences: (data: UpdateNotificationPreferences) =>
     apiRequest<NotificationPreferencesResponse>(apiPaths.adminNotificationPreferences, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Buddy — Notification preferences
+  getBuddyNotificationPreferences: () =>
+    apiRequest<BuddyNotificationPreferencesResponse>(apiPaths.meNotificationPreferences),
+
+  updateBuddyNotificationPreferences: (data: UpdateBuddyNotificationPreferences) =>
+    apiRequest<BuddyNotificationPreferencesResponse>(apiPaths.meNotificationPreferences, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),

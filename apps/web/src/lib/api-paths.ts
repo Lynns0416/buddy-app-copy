@@ -9,6 +9,7 @@ export const apiPaths = {
   meBookings: '/me/bookings',
   meNotifications: '/me/notifications',
   meNotificationsRead: '/me/notifications/read',
+  meNotificationPreferences: '/me/notification-preferences',
 
   tours: '/tours',
   tour: (id: string) => `/tours/${id}`,

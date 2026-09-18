@@ -503,6 +503,27 @@
         "alreadyInUse": "That {provider} account is already connected to another Peace Buddy account. Please ask an admin for help.",
         "unknown": "Could not connect that sign-in method. Please try again."
       }
+    },
+    "notificationPreferences": {
+      "title": "Email notifications",
+      "description": "Choose which emails you want to receive. Turning one off does not hide it — it still appears in your notifications in the app.",
+      "events": {
+        "tour_published": "New tour published",
+        "tour_publishedHelp": "Sent to every active buddy each time a tour opens for booking.",
+        "tour_details_changed": "Tour details changed",
+        "tour_details_changedHelp": "Sent when the date or location of a tour you are booked on changes.",
+        "tour_reminder": "Tour reminder",
+        "tour_reminderHelp": "Sent a few days before a tour you are booked on.",
+        "maybe_reminder": "Maybe deadline reminder",
+        "maybe_reminderHelp": "Sent before the deadline to confirm or decline a tour you marked Maybe."
+      },
+      "alwaysOnNotice": "Cancellations, waitlist promotions and account decisions are always emailed. They are too easy to miss otherwise.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveSuccess": "Notification settings saved",
+      "saveError": "Could not save. Please try again.",
+      "loading": "Loading…",
+      "loadError": "Could not load your notification settings."
     }
   },
   "languages": {

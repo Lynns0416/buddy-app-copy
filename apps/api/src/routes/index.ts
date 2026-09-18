@@ -10,7 +10,10 @@ import { tourRoutes } from './tours'
 import { adminRoutes } from './admin'
 import { selfEvaluationRoutes } from './selfEvaluations'
 import { notificationRoutes } from './notifications'
-import { notificationPreferenceRoutes } from './notificationPreferences'
+import {
+  notificationPreferenceRoutes,
+  buddyNotificationPreferenceRoutes,
+} from './notificationPreferences'
 import { jobRoutes } from './jobs'
 import type { FirebaseEnv, AuthEnv, SchedulerEnv } from '../types'
 
@@ -29,6 +32,7 @@ protectedApp.use('/me/*', authMiddleware)
 protectedApp.route('/me', buddyRoutes)
 protectedApp.route('/me/self-evaluations', selfEvaluationRoutes)
 protectedApp.route('/me/notifications', notificationRoutes)
+protectedApp.route('/me/notification-preferences', buddyNotificationPreferenceRoutes)
 protectedApp.use('/tours/*', authMiddleware)
 protectedApp.route('/tours', tourRoutes)
 protectedApp.use('/admin/*', authMiddleware)

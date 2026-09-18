@@ -7,6 +7,7 @@ import {
   enqueueEmailForBookedBuddies,
   enqueueEmailForTourAdmins,
   enqueueInApp,
+  enqueueInAppForActiveBuddies,
   enqueueInAppForAllAdmins,
   enqueueInAppForTourAdmins,
   enqueueSlackForAdmins,
@@ -250,7 +251,7 @@ describe('markRead', () => {
 
 describe('enqueueEmail', () => {
   it('writes an email job for events with a registered template', async () => {
-    mdb.user.findUnique.mockResolvedValueOnce({ locale: 'en' })
+    mdb.user.findUnique.mockResolvedValueOnce({ locale: 'en', notificationPrefs: [] })
     await enqueueEmail(
       { eventType: 'account_approved', recipientUserId: 'u1', payload: {} },
       mdb as any,
@@ -281,8 +282,8 @@ describe('enqueueEmail', () => {
 describe('enqueueEmailForActiveBuddies', () => {
   it('fans out to active buddies for events with a template', async () => {
     mdb.buddyProfile.findMany.mockResolvedValueOnce([
-      { user: { id: 'b1', locale: 'ja' } },
-      { user: { id: 'b2', locale: 'en' } },
+      { user: { id: 'b1', locale: 'ja', notificationPrefs: [] } },
+      { user: { id: 'b2', locale: 'en', notificationPrefs: [] } },
     ])
     await enqueueEmailForActiveBuddies(
       { eventType: 'tour_published', payload: tourPayload },
@@ -305,9 +306,9 @@ describe('enqueueEmailForActiveBuddies', () => {
 describe('enqueueEmailForBookedBuddies', () => {
   it('dedupes recipients across multiple bookings on the same tour', async () => {
     mdb.booking.findMany.mockResolvedValueOnce([
-      { buddy: { user: { id: 'b1', locale: 'ja' } } },
-      { buddy: { user: { id: 'b1', locale: 'ja' } } }, // duplicate: two sessions, same buddy
-      { buddy: { user: { id: 'b2', locale: 'en' } } },
+      { buddy: { user: { id: 'b1', locale: 'ja', notificationPrefs: [] } } },
+      { buddy: { user: { id: 'b1', locale: 'ja', notificationPrefs: [] } } }, // duplicate: two sessions, same buddy
+      { buddy: { user: { id: 'b2', locale: 'en', notificationPrefs: [] } } },
     ])
     await enqueueEmailForBookedBuddies(
       'tour-1',
@@ -409,5 +410,173 @@ describe('enqueueEmailForTourAdmins', () => {
     )
     const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ recipientUserId: string }>
     expect(data.map((d) => d.recipientUserId).sort()).toEqual(['a1', 'a2'])
+  })
+})
+
+// ---- Buddy preference gating (#213) ----
+//
+// One case per buddy event that has an email template. `waitlist_opened` and
+// `self_eval_prompt` have none, so there is nothing for a buddy to mute.
+describe('buddy email preferences', () => {
+  const off = (eventType: string) => [{ eventType, emailEnabled: false }]
+
+  function singleRecipient(prefs: Array<{ eventType: string; emailEnabled: boolean }>) {
+    mdb.user.findUnique.mockResolvedValueOnce({ locale: 'ja', notificationPrefs: prefs })
+  }
+  function oneActiveBuddy(prefs: Array<{ eventType: string; emailEnabled: boolean }>) {
+    mdb.buddyProfile.findMany.mockResolvedValueOnce([
+      { user: { id: 'b1', locale: 'ja', notificationPrefs: prefs } },
+    ])
+  }
+  function oneBookedBuddy(prefs: Array<{ eventType: string; emailEnabled: boolean }>) {
+    mdb.booking.findMany.mockResolvedValueOnce([
+      { buddy: { user: { id: 'b1', locale: 'ja', notificationPrefs: prefs } } },
+    ])
+  }
+
+  describe('mutable events are suppressed when the buddy turned them off', () => {
+    it('tour_published', async () => {
+      oneActiveBuddy(off('tour_published'))
+      await enqueueEmailForActiveBuddies(
+        { eventType: 'tour_published', payload: tourPayload },
+        mdb as any,
+      )
+      expect(mdb.notificationJob.createMany).not.toHaveBeenCalled()
+    })
+
+    it('tour_details_changed', async () => {
+      oneBookedBuddy(off('tour_details_changed'))
+      await enqueueEmailForBookedBuddies(
+        'tour-1',
+        { eventType: 'tour_details_changed', payload: tourPayload },
+        mdb as any,
+      )
+      expect(mdb.notificationJob.createMany).not.toHaveBeenCalled()
+    })
+
+    it('tour_reminder', async () => {
+      singleRecipient(off('tour_reminder'))
+      await enqueueEmail(
+        { eventType: 'tour_reminder', recipientUserId: 'b1', payload: reminderPayload },
+        mdb as any,
+      )
+      expect(mdb.notificationJob.create).not.toHaveBeenCalled()
+    })
+
+    it('maybe_reminder', async () => {
+      singleRecipient(off('maybe_reminder'))
+      await enqueueEmail(
+        { eventType: 'maybe_reminder', recipientUserId: 'b1', payload: reminderPayload },
+        mdb as any,
+      )
+      expect(mdb.notificationJob.create).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('unmutable events still send with every preference off', () => {
+    // These have no enum value, so a row naming one cannot exist. The fixture
+    // stores one anyway: the guarantee is that the enqueue path ignores it, not
+    // just that the route refuses to write it.
+    it('tour_cancelled', async () => {
+      oneBookedBuddy(off('tour_cancelled'))
+      await enqueueEmailForBookedBuddies(
+        'tour-1',
+        { eventType: 'tour_cancelled', payload: tourPayload },
+        mdb as any,
+      )
+      const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ recipientUserId: string }>
+      expect(data.map((d) => d.recipientUserId)).toEqual(['b1'])
+    })
+
+    it('waitlist_promoted', async () => {
+      singleRecipient(off('waitlist_promoted'))
+      await enqueueEmail(
+        {
+          eventType: 'waitlist_promoted',
+          recipientUserId: 'b1',
+          payload: { ...tourPayload, bookingId: 'b1', sessionId: 's1' },
+        },
+        mdb as any,
+      )
+      expect(mdb.notificationJob.create).toHaveBeenCalledTimes(1)
+    })
+
+    it('account_approved', async () => {
+      singleRecipient(off('account_approved'))
+      await enqueueEmail(
+        { eventType: 'account_approved', recipientUserId: 'b1', payload: {} },
+        mdb as any,
+      )
+      expect(mdb.notificationJob.create).toHaveBeenCalledTimes(1)
+    })
+
+    it('account_rejected', async () => {
+      singleRecipient(off('account_rejected'))
+      await enqueueEmail(
+        { eventType: 'account_rejected', recipientUserId: 'b1', payload: {} },
+        mdb as any,
+      )
+      expect(mdb.notificationJob.create).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  it('sends a mutable event to a buddy with no stored rows at all', async () => {
+    oneActiveBuddy([])
+    await enqueueEmailForActiveBuddies(
+      { eventType: 'tour_published', payload: tourPayload },
+      mdb as any,
+    )
+    const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ recipientUserId: string }>
+    expect(data.map((d) => d.recipientUserId)).toEqual(['b1'])
+  })
+
+  it('suppresses only the buddies who opted out, not the whole fan-out', async () => {
+    mdb.buddyProfile.findMany.mockResolvedValueOnce([
+      { user: { id: 'b1', locale: 'ja', notificationPrefs: off('tour_published') } },
+      { user: { id: 'b2', locale: 'en', notificationPrefs: [] } },
+    ])
+    await enqueueEmailForActiveBuddies(
+      { eventType: 'tour_published', payload: tourPayload },
+      mdb as any,
+    )
+    const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ recipientUserId: string }>
+    expect(data.map((d) => d.recipientUserId)).toEqual(['b2'])
+  })
+
+  it('leaves in-app delivery alone — a muted event is still findable in the app', async () => {
+    mdb.buddyProfile.findMany.mockResolvedValueOnce([
+      { user: { id: 'b1', locale: 'ja', notificationPrefs: off('tour_published') } },
+    ])
+    await enqueueInAppForActiveBuddies(
+      { eventType: 'tour_published', payload: tourPayload },
+      mdb as any,
+    )
+    const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ channel: string }>
+    expect(data).toHaveLength(1)
+    expect(data[0].channel).toBe('in_app')
+  })
+
+  it('does not apply buddy preferences to admin-targeted mail', async () => {
+    // `cancellation` is an admin pref key; a buddy row must not reach this path.
+    mdb.tourAdminAssignment.findMany.mockResolvedValueOnce([
+      {
+        admin: {
+          user: {
+            id: 'a1',
+            locale: 'ja',
+            notificationPrefs: [
+              { eventType: 'cancellation', emailEnabled: true, emailMode: 'immediate' },
+            ],
+          },
+        },
+      },
+    ])
+    await enqueueEmailForTourAdmins(
+      'tour-1',
+      { eventType: 'booking_cancelled', payload: bookingPayload },
+      mdb as any,
+    )
+    const data = (mdb.notificationJob.createMany.mock.calls[0][0] as any).data as Array<{ recipientUserId: string }>
+    expect(data.map((d) => d.recipientUserId)).toEqual(['a1'])
   })
 })

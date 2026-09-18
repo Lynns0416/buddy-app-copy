@@ -503,6 +503,27 @@
         "alreadyInUse": "この{provider}アカウントはすでに別のPeace Buddyアカウントと連携されています。管理者にお問い合わせください。",
         "unknown": "ログイン方法を連携できませんでした。もう一度お試しください。"
       }
+    },
+    "notificationPreferences": {
+      "title": "メール通知",
+      "description": "受け取るメールを選べます。オフにしてもアプリ内のお知らせには引き続き表示されます。",
+      "events": {
+        "tour_published": "新しいツアーの公開",
+        "tour_publishedHelp": "ツアーの受付が開始されるたびに、アクティブなバディ全員に送信されます。",
+        "tour_details_changed": "ツアー内容の変更",
+        "tour_details_changedHelp": "参加予定のツアーの日程または場所が変更されたときに送信されます。",
+        "tour_reminder": "ツアーのリマインド",
+        "tour_reminderHelp": "参加予定のツアーの数日前に送信されます。",
+        "maybe_reminder": "未定の回答期限のリマインド",
+        "maybe_reminderHelp": "「未定」のツアーを確定または辞退する期限の前に送信されます。"
+      },
+      "alwaysOnNotice": "ツアーの中止、キャンセル待ちからの繰り上げ、アカウントの審査結果は常にメールでお知らせします。見逃すと影響が大きいためです。",
+      "save": "保存",
+      "saving": "保存中…",
+      "saveSuccess": "通知設定を保存しました",
+      "saveError": "保存できませんでした。もう一度お試しください。",
+      "loading": "読み込み中…",
+      "loadError": "通知設定を読み込めませんでした。"
     }
   },
   "languages": {
