@@ -29,7 +29,7 @@ account, sharing one VNet, one Container Apps environment and one registry.
 | Jump VM B2pts_v2, started by hand | $0.0108 / hr | ~$1 at 100 hrs |
 | Bastion Developer | free | $0 |
 | Load balancer — **unresolved** | $0.025 / hr or $0 | $0 to $219 |
-| Web app, api app, cron job | free grant | $0 |
+| Web app, api app, cron job, nightly backup job | free grant | $0 |
 | Container Apps environment | no management fee | $0 |
 | VNet and subnets | — | $0 |
 | Database backups to 32 GiB | included | $0 |
@@ -69,7 +69,10 @@ environments, which is why each gets its own.
 - **Container Apps compute.** 180,000 vCPU-seconds, 360,000 GiB-seconds and
   2M HTTP requests per subscription per calendar month. Estimated load is
   ~8,400 vCPU-seconds and ~56k requests, so ~17,000 across both environments —
-  under 10% of the grant. A revision scaled to zero replicas incurs no resource
+  under 10% of the grant. The nightly backup job adds ~900 vCPU-seconds and
+  ~1,800 GiB-seconds a month at 1 vCPU / 2 GiB, assuming ~30 seconds a night —
+  an estimate, not a measurement, and two orders of magnitude below the grant
+  either way. A revision scaled to zero replicas incurs no resource
   charge at all. **This line is free only while every app scales to zero**: one
   app left at `--min-replicas 1` bills around the clock and costs 648,000
   vCPU-seconds a month at 0.25 vCPU, 3.6× the whole grant on its own. The
@@ -78,8 +81,13 @@ environments, which is why each gets its own.
   billed any plan management charges unless you use a Dedicated workload
   profile in your environment."* The Consumption profile stays clean. Private
   endpoints and planned maintenance would trigger the fee, and neither is used.
-- **Backups.** Up to 100% of provisioned storage is free, so 32 GiB of backup
-  against 32 GiB provisioned costs nothing. Excess is $0.095/GB/mo.
+- **Backups.** Two different things, both near zero. Azure's own Flexible
+  Server backups are free up to 100% of provisioned storage, so 32 GiB of
+  backup against 32 GiB provisioned costs nothing; excess is $0.095/GB/mo. The
+  nightly `pg_dump` into Blob is separate: 30 snapshots of a dump that is
+  currently under a megabyte is ~$0.01/yr of storage, plus 365 writes a year at
+  $0.065/10K, and the lifecycle rule's deletes are free. It stays under $0.50/yr
+  even if a dump grows to 50 MB.
 - **VNet injection.** Free. Private endpoints are not, and are not used.
 
 ## The one unresolved line

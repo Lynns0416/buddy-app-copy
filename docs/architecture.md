@@ -563,3 +563,97 @@ az vm deallocate -g rg-peace-buddy -n vm-peace-buddy-jump
 
 Use `deallocate`, not `stop`: a stopped VM that isn't deallocated still bills
 compute. Bastion Developer allows one session at a time.
+
+## Backups
+
+Two things stand between a bad migration and a lost database. Azure's own
+Flexible Server backups are the belt: automatic, inside the server, nothing to
+run. The braces is a nightly `pg_dump` into Blob, which survives the server
+being dropped and can be read on any Postgres 16. It is **prod only** —
+staging is stopped most of the year and holds nothing that is not reproducible.
+
+`caj-backup` is a scheduled Container Apps Job in `snet-apps`, separate from
+everything else for two reasons: the database hostname resolves only inside the
+VNet, and `pg_dump` has to come from the image, which the api image does not
+carry. It runs `scripts/backup/backup.sh` out of an image built from
+`scripts/backup/Dockerfile` — `postgres:16` plus `curl` and `jq`, none of which
+the base image carries — installed by `scripts/azure-backup.sh`. The job is
+named per environment (`caj-backup`, `caj-backup-stg`), because prod and
+staging share one Container Apps environment. The whole path — install, dump,
+upload, restore, assert — was rehearsed against staging on 2026-09-19 and the
+staging schedule deleted afterwards. Prod gets the standing job once it has a
+server (#175). Retention is the storage account's lifecycle rule,
+not code in the job: blobs under `backups/` are deleted 30 days after creation.
+
+```mermaid
+flowchart LR
+    CRON["Container Apps cron<br/>18:00 UTC = 03:00 JST"] --> JOB
+    subgraph VNET["vnet-peace-buddy"]
+        subgraph SA["snet-apps 10.0.0.0/23"]
+            JOB["caj-backup<br/>postgres:16 + curl, jq<br/>pg_dump | gzip"]
+        end
+        subgraph SD["snet-db 10.0.4.0/24"]
+            DB[("psql-peace-buddy<br/>peacebuddy")]
+        end
+    end
+    JOB -->|"5432, TLS, as pb_app"| DB
+    JOB -->|"IDENTITY_ENDPOINT, token for storage.azure.com"| MI["id-peace-buddy-blob<br/>Storage Blob Data Contributor"]
+    JOB -->|"PUT peacebuddy-YYYY-MM-DD.sql.gz"| BLOB[("stpeacebuddy/backups")]
+    LC["lifecycle rule<br/>delete 30 days after creation"] -.->|"daily sweep"| BLOB
+```
+
+The job connects as `pb_app`, the role that cannot run DDL. `pg_dump` needs
+`SELECT` on every table and sequence and nothing more, so no permanently
+scheduled container holds `pb_migrate`'s password. It writes the blob as
+`id-peace-buddy-blob`, the same identity the api uses for photos, so no key and
+no SAS exists in the job at all.
+
+### Checking a dump still loads
+
+```sh
+scripts/azure-backup-verify.sh scripts/azure.env                              # newest dump
+scripts/azure-backup-verify.sh scripts/azure.env peacebuddy-2026-09-18.sql.gz # a named one
+```
+
+This is the half of the backup that is worth anything: scripting a dump only
+proves a file was written. The script creates `peacebuddy_restore_test` on the
+same server, runs a one-shot job that downloads the dump and loads it as the
+server admin, and then asserts three things — the load raised no error, the
+restored schema holds the same tables as the live database, and
+`_prisma_migrations` matches `prisma/migrations`, so `migrate deploy` would run
+against it rather than refuse. Row counts are printed against the live database
+but not asserted: a difference there is the age of the dump, not a broken
+backup. The scratch database is dropped when the script exits, unless `--keep`.
+
+**It is a test, not a recovery tool.** It writes a scratch database and nothing
+else, and the job refuses any target whose name does not end in
+`_restore_test`. Run it whenever you like, including against prod.
+
+### Recovering the database — not wired up yet
+
+There is deliberately no script that overwrites a live database unattended, and
+the manual path has a gap that is worth knowing about *before* you need it.
+
+A restore needs the dump and the database in the same place, and today nothing
+is in both:
+
+| | reaches Blob | reaches Postgres |
+|---|---|---|
+| A laptop | yes, with a Storage Blob data role on the account | no — the server is private to the VNet |
+| `vm-peace-buddy-jump` | no — it has no managed identity and no `az`; cloud-init installs `postgresql-client-16` only | yes |
+| A Container Apps job | yes, as `id-peace-buddy-blob` | yes |
+
+So a recovery today means closing that gap first, by one of: assigning the jump
+VM a managed identity with Storage Blob Data Reader and installing `az` on it;
+or copying the dump onto it over the Bastion session; or running a one-shot job
+from the backup image, which is what `scripts/azure-backup-verify.sh` already
+does except that it refuses to write anything but a `*_restore_test` database.
+**None of the three has been tried.** Whichever is chosen belongs in
+`decisions.md` and in this section.
+
+What *is* known: the dump loads into an empty database unedited — that is what
+the check proves, and why it drops `public` before loading rather than
+filtering the file. After any restore, re-run `scripts/azure-db-roles.sh`:
+tables restored under another role are not covered by the default privileges
+granted for `pb_migrate`, so `pb_app` cannot read them until it is.
+

@@ -569,7 +569,25 @@ authority.*
 
 - [ ] Nightly `pg_dump` → **Azure Blob**, prod storage account, its own
       container, lifecycle rule expiring blobs older than **30 days** — and
-      **one tested restore**. **Prod only**: staging is stopped most of the year
+      **one tested restore**. **Written 2026-09-18 and rehearsed end to end against
+      staging 2026-09-19, #159; prod is waiting on a server**: `scripts/azure-backup.sh` creates the `backups`
+      container, the lifecycle rule and the scheduled job `caj-backup`;
+      `scripts/backup/` holds the image and the two scripts it runs;
+      `scripts/azure-backup-verify.sh` loads a dump into
+      `peacebuddy_restore_test` and asserts the table set and the migration
+      history — a test, not a recovery tool. Recovery itself is an open gap:
+      nothing today reaches both the dump and the database, see
+      `architecture.md` "Recovering the database". Both halves were first exercised against a local
+      Postgres 16 with a stubbed Blob endpoint, including the check's two
+      refusals — the live database, and any target not named
+      `*_restore_test` — and then run against staging on 2026-09-19:
+      `caj-backup-stg` wrote a dump to `stpeacebuddystg/backups`, and
+      `azure-backup-verify.sh` restored it into `peacebuddy_restore_test`
+      and asserted the table set and the migration history. The staging
+      schedule was deleted afterwards — staging is stopped most of the year
+      and a nightly job there would fail every night. Prod is one run of the
+      same script with `scripts/azure.env` once #175 gives it a server. See
+      `architecture.md` "Backups" and `decisions.md` 2026-09-18. **Prod only**: staging is stopped most of the year
       and holds nothing that is not reproducible. It runs as a **second
       Container Apps Job**, separate from the hourly notification cron in §2,
       because the same two constraints as the cutover apply — the private
@@ -628,8 +646,8 @@ authority.*
 | Data migrated off Neon | ✅ 2026-09-13, #153 — staging only; prod has no data to move |
 | `DATABASE_URL` repointed at Azure, api redeployed, smoke tested | ✅ 2026-09-13, #179 — the first Azure staging deploy |
 | Photos migrated off R2 | ✅ #155 — staging copied 2026-09-13 with `scripts/r2-to-blob.sh`, all 6 photos verified by MD5 and content type; prod has nothing on R2. No second copy: an upload made on GCP since then is referenced only by a Neon row, which is discarded; see `decisions.md` "GCP staging is retired now" |
-| Nightly `pg_dump` job + 30-day lifecycle rule, prod | ⬜ second Container Apps Job, in `snet-apps`, image carrying `pg_dump` |
-| One tested restore from a dump | ⬜ the checklist item that actually proves the backup |
+| Nightly `pg_dump` job + 30-day lifecycle rule, prod | ⬜ scripted 2026-09-18 and run against **staging** 2026-09-19, #159 — `scripts/azure-backup.sh`, job `caj-backup` in `snet-apps` from a `postgres:16` image carrying `pg_dump`. Prod has no server yet (#175); installing it there is one run of the same script with `scripts/azure.env` |
+| One tested restore from a dump | ✅ 2026-09-19, #159 — `scripts/azure-backup-verify.sh` restored a real `caj-backup-stg` dump out of `stpeacebuddystg/backups` into `peacebuddy_restore_test` on the staging server, asserted the table set and the migration history, and dropped it. Not repeated on prod, which has no server |
 | R2 account torn down — bucket and the five `R2_*` keys; code and deploy config dropped them in #154 | ✅ 2026-09-13, #155 — bucket deleted after Cloud Run (#156), API token revoked |
 | GCP/Neon stack decommissioned — in `peace-buddy-staging`: the Cloud Run services, Artifact Registry repo `asia-southeast1/peace-buddy`, the Cloud Build source bucket `gs://peace-buddy-staging_cloudbuild` and the `run.app` Firebase authorized domain (no custom domain, so no DNS record); and the Neon project. The project itself and its Firebase Auth **stay**: Azure staging signs in through them | ✅ 2026-09-13, #156 — all of the above deleted; see `decisions.md` "GCP staging is retired now" |
 

@@ -442,7 +442,14 @@ prune_registry() {
     return 1
   fi
 
-  for repo in api migrate web; do
+  # backup is built by scripts/azure-backup.sh rather than here, but the
+  # scheduled job that references it is in this resource group, so it is
+  # covered by IN_USE and prunes like the rest.
+  for repo in api migrate web backup; do
+    # A repository that does not exist yet is not an error: backup only
+    # appears once scripts/azure-backup.sh has run, and until then every
+    # deploy would otherwise warn that the registry was not pruned.
+    az acr repository show -n "$ACR_NAME" --repository "$repo" -o none 2>/dev/null || continue
     # Into a variable first: a failed listing read straight from a process
     # substitution is indistinguishable from an empty repository, and the prune
     # would report success having checked nothing.

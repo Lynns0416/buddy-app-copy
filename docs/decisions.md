@@ -12,6 +12,79 @@ duplicate that state here.
 
 ---
 
+## 2026-09-18 — The nightly dump runs as `pb_app` from a `postgres:16` image, and retention is a lifecycle rule
+
+**Decision:** `caj-backup`, a scheduled Container Apps Job in `snet-apps`, runs
+`pg_dump | gzip` at 18:00 UTC (03:00 JST) and PUTs one block blob,
+`peacebuddy-YYYY-MM-DD.sql.gz`, into the prod storage account's `backups`
+container. It connects to Postgres as **`pb_app`** and authenticates to Blob as
+**`id-peace-buddy-blob`**, the identity the api already uses for photos. Its
+image is `postgres:16` plus `curl` and `jq`, built from
+`scripts/backup/Dockerfile`. Retention is the storage account's **lifecycle
+rule**, deleting blobs under `backups/` 30 days after creation.
+`scripts/azure-backup.sh` installs all of it; `scripts/azure-backup-verify.sh`
+loads a dump into a scratch database and asserts it is usable — a test, not a
+recovery tool, and the job it runs refuses any target not named
+`*_restore_test`. Implements
+the 2026-09-12 decision below; closes #159. Current state:
+`architecture.md` "Backups".
+
+**Why `pb_app` and not `pb_migrate`:** `pg_dump` needs `SELECT` on every table
+and sequence, which `azure-db-roles.sql` already grants `pb_app`, and nothing
+more. `pb_migrate`'s password was deliberately kept out of any running
+container (2026-09-12); a job scheduled forever is the most running container
+there is. The cost is that the backup job's secret goes stale when
+`azure-db-roles.sh` rotates the password — re-running `azure-backup.sh` is what
+puts the new one in, and the script says so on exit.
+
+**Why `postgres:16` and not `:18`:** a dump taken by `pg_dump` 18 emits `SET
+transaction_timeout`, which a 16 server rejects on restore —
+`azure-db-restore.sh` has to filter that line and `CREATE SCHEMA public` out of
+the stream as it loads. Matching the server's major version means the stored
+dump loads into it unedited, which is the only property a backup is for. The
+restore job drops `public` in the scratch database before loading, for the same
+reason: the fix belongs on the empty target, not in the file.
+
+**Rejected — install `curl` in the job at runtime:** it would make every night's
+backup depend on a Debian mirror being reachable, to save building an image
+once. The layer adds ~3 MB to `postgres:16`'s ~160 MB, measured locally on
+arm64, in a registry that includes 10 GB.
+
+**Rejected — a second managed identity for backups:** it would add a name to
+remember and no isolation. Storage Blob Data Contributor is granted at account
+scope either way — that is where a user delegation key is issued — so a backup
+identity would hold exactly the rights the photo identity already holds on the
+same account.
+
+**Rejected — retention in the job:** 30 days is one rule on the account,
+evaluated daily by Azure, with deletes that cost nothing. In the job it would
+be a list-and-delete loop that only runs when the backup runs, and that deletes
+nothing on the nights it fails.
+
+**Rejected — one script that both checks a dump and recovers from one:** the
+check writes a scratch database and can be run against prod any day; a recovery
+overwrites the live one and should have a person and a `psql` prompt in front
+of it. **Recovery itself is not wired up**: the jump VM reaches Postgres but
+cannot read Blob, a laptop is the other way round, and which of the three ways
+round that closes it has not been decided or tried. Written up as a gap in
+`architecture.md` "Recovering the database".
+
+**Rejected — extending `azure-db-restore.sh` to read a blob:** that script
+moves one live database into another and asserts the two ends agree row for
+row. A restore test has neither a live source nor a reason to expect equal
+counts — the dump is up to a day old. Sharing the file would have meant two
+modes in one script and an assertion that is right for one of them.
+
+**Accepted consequences:**
+- The job holds `pb_app`'s password as a secret for as long as it exists, which
+  is the price of running unattended at 03:00.
+- Row counts are reported, not asserted, by the restore test. What is asserted
+  is the table set and the migration history.
+- A dump taken while a migration is mid-flight is a dump of that state.
+  `migrate deploy` runs in seconds during a deploy, and deploys are not at 03:00.
+
+---
+
 ## 2026-09-18 — Buddy home cards show one section per session, with the minimum buddy number
 
 **Decision:** each card under "Tours looking for buddies" is a tour-level header
