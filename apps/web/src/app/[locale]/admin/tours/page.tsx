@@ -20,14 +20,19 @@ import {
   filterTours,
   isTourFilterActive,
   tourFiltersFromParams,
-  tourFiltersToParams,
+  tourPageToParams,
+  tourViewFromParams,
+  tourMonthFromParams,
+  TourViewSchema,
   type TourFilters,
   type TourListSortField,
+  type TourView,
 } from './admin.tour'
 import { BelowMinimumBadge } from './_components/below-minimum-badge'
 import { TourFilterBar } from './_components/tour-filters'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { TodayDivider } from './_components/today-divider'
+import { TourCalendar } from './_components/tour-calendar'
 
 export default function AdminToursPage() {
   return (
@@ -49,6 +54,8 @@ function AdminToursList() {
   const [sortField, setSortField] = useState<TourListSortField>('tourDate')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [filters, setFilters] = useState<TourFilters>(() => tourFiltersFromParams(new URLSearchParams(searchParams.toString())))
+  const [view, setView] = useState<TourView>(() => tourViewFromParams(new URLSearchParams(searchParams.toString())))
+  const [month, setMonth] = useState<string>(() => tourMonthFromParams(new URLSearchParams(searchParams.toString()), getTodayJst()))
 
   function errorMessage(error: AppError): string {
     switch (error.code) {
@@ -77,12 +84,18 @@ function AdminToursList() {
   const todayStr = getTodayJst()
 
   // Replace rather than push: a history entry per keystroke would make Back unusable.
-  function applyFilters(next: TourFilters) {
-    setFilters(next)
-    const query = tourFiltersToParams(next).toString()
+  function syncUrl(next: { filters?: TourFilters; view?: TourView; month?: string }) {
+    const nextFilters = next.filters ?? filters
+    const nextView = next.view ?? view
+    const nextMonth = next.month ?? month
+    if (next.filters !== undefined) setFilters(next.filters)
+    if (next.view !== undefined) setView(next.view)
+    if (next.month !== undefined) setMonth(next.month)
+    const query = tourPageToParams(nextFilters, nextView, nextMonth, todayStr).toString()
     window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname)
   }
 
+  const isCalendar = view === TourViewSchema.enum.calendar
   const filtered = filterTours(tours, filters, todayStr)
   const sorted = sortTours(filtered, sortField, sortDir)
   const filtersActive = isTourFilterActive(filters)
@@ -111,11 +124,27 @@ function AdminToursList() {
 
   return (
     <AppShell variant="admin">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">{t('title')}</h1>
-        <Button asChild size="sm">
-          <Link href={routes.adminTourNew(locale)}>{t('newTour')}</Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-md border p-0.5" role="group" aria-label={t('view.label')}>
+            {TourViewSchema.options.map((option) => (
+              <button
+                key={option}
+                aria-pressed={view === option}
+                className={`rounded px-2.5 py-1 text-xs font-medium ${
+                  view === option ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => syncUrl({ view: option })}
+              >
+                {t(`view.${option}`)}
+              </button>
+            ))}
+          </div>
+          <Button asChild size="sm">
+            <Link href={routes.adminTourNew(locale)}>{t('newTour')}</Link>
+          </Button>
+        </div>
       </div>
 
       {fetchError && (
@@ -124,133 +153,145 @@ function AdminToursList() {
         </p>
       )}
 
-      <TourFilterBar
-        filters={filters}
-        onChange={applyFilters}
-        resultCount={sorted.length}
-        totalCount={tours.length}
-      />
-
-      {sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{filtersActive ? t('noMatches') : t('noResults')}</p>
+      {isCalendar ? (
+        <TourCalendar
+          tours={tours}
+          month={month}
+          today={todayStr}
+          locale={locale}
+          onMonthChange={(next) => syncUrl({ month: next })}
+        />
       ) : (
         <>
-          {/* Mobile cards */}
-          <div className="lg:hidden space-y-2">
-            <div className="flex flex-wrap gap-2 mb-3">
-              {([
-                { field: 'tourDate' as const, label: t('tourDate') },
-                { field: 'group' as const, label: t('group') },
-                { field: 'status' as const, label: t('status') },
-              ]).map(({ field, label }) => (
-                <button
-                  key={field}
-                  className="inline-flex items-center gap-0.5 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => handleSort(field)}
-                >
-                  {label}
-                  <SortIcon active={sortField === field} dir={sortDir} />
-                </button>
-              ))}
-            </div>
-            {sorted.map((tour, idx) => {
-              const showDivider = dividerEnabled && idx > 0 && isUpcoming(tour) !== isUpcoming(sorted[idx - 1])
-              return (
-                <Fragment key={tour.id}>
-                  {showDivider && (
-                    <div className="py-1">
-                      <TodayDivider date={todayStr} label={t('todayDivider')} />
-                    </div>
-                  )}
-                  <div
-                    className="rounded-lg border bg-card p-4 cursor-pointer active:bg-muted/50"
-                    onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{tour.group.name}</p>
-                        <p className="tabular-nums text-sm text-muted-foreground">{tour.tourDate.slice(0, 10)}</p>
-                      </div>
-                      <Badge variant={tourStatusBadgeVariant[tour.status]}>
-                        {getTourStatusLabel(tTourStatus, tour.status)}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{tour.location}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>{t('capacity')}: {tour.capacity}</span>
-                      <span>{t('participantCount')}: {tour.participantCount}</span>
-                      <span>{t('confirmedCount')}: {tour.confirmedCount}</span>
-                      {tour.sessions.some((s) => s.belowMinimum) && <BelowMinimumBadge />}
-                    </div>
-                  </div>
-                </Fragment>
-              )
-            })}
-          </div>
+        <TourFilterBar
+          filters={filters}
+          onChange={(next) => syncUrl({ filters: next })}
+          resultCount={sorted.length}
+          totalCount={tours.length}
+        />
 
-          {/* Desktop table */}
-          <div className="hidden lg:block rounded-lg border bg-card overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {desktopColumns.map(({ field, label, headClass }) => (
-                    <TableHead key={field} className={headClass}>
-                      <button
-                        className="inline-flex items-center font-medium transition-colors hover:text-foreground"
-                        onClick={() => handleSort(field)}
-                      >
-                        {label}
-                        <SortIcon active={sortField === field} dir={sortDir} />
-                      </button>
-                    </TableHead>
-                  ))}
-                  <TableHead className="w-px" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.map((tour, idx) => {
-                  const showDivider = dividerEnabled && idx > 0 && isUpcoming(tour) !== isUpcoming(sorted[idx - 1])
-                  return (
-                    <Fragment key={tour.id}>
-                      {showDivider && (
-                        <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={desktopColSpan} className="py-1">
-                            <TodayDivider date={todayStr} label={t('todayDivider')} />
+        {sorted.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{filtersActive ? t('noMatches') : t('noResults')}</p>
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="lg:hidden space-y-2">
+              <div className="flex flex-wrap gap-2 mb-3">
+                {([
+                  { field: 'tourDate' as const, label: t('tourDate') },
+                  { field: 'group' as const, label: t('group') },
+                  { field: 'status' as const, label: t('status') },
+                ]).map(({ field, label }) => (
+                  <button
+                    key={field}
+                    className="inline-flex items-center gap-0.5 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => handleSort(field)}
+                  >
+                    {label}
+                    <SortIcon active={sortField === field} dir={sortDir} />
+                  </button>
+                ))}
+              </div>
+              {sorted.map((tour, idx) => {
+                const showDivider = dividerEnabled && idx > 0 && isUpcoming(tour) !== isUpcoming(sorted[idx - 1])
+                return (
+                  <Fragment key={tour.id}>
+                    {showDivider && (
+                      <div className="py-1">
+                        <TodayDivider date={todayStr} label={t('todayDivider')} />
+                      </div>
+                    )}
+                    <div
+                      className="rounded-lg border bg-card p-4 cursor-pointer active:bg-muted/50"
+                      onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">{tour.group.name}</p>
+                          <p className="tabular-nums text-sm text-muted-foreground">{tour.tourDate.slice(0, 10)}</p>
+                        </div>
+                        <Badge variant={tourStatusBadgeVariant[tour.status]}>
+                          {getTourStatusLabel(tTourStatus, tour.status)}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{tour.location}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>{t('capacity')}: {tour.capacity}</span>
+                        <span>{t('participantCount')}: {tour.participantCount}</span>
+                        <span>{t('confirmedCount')}: {tour.confirmedCount}</span>
+                        {tour.sessions.some((s) => s.belowMinimum) && <BelowMinimumBadge />}
+                      </div>
+                    </div>
+                  </Fragment>
+                )
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden lg:block rounded-lg border bg-card overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {desktopColumns.map(({ field, label, headClass }) => (
+                      <TableHead key={field} className={headClass}>
+                        <button
+                          className="inline-flex items-center font-medium transition-colors hover:text-foreground"
+                          onClick={() => handleSort(field)}
+                        >
+                          {label}
+                          <SortIcon active={sortField === field} dir={sortDir} />
+                        </button>
+                      </TableHead>
+                    ))}
+                    <TableHead className="w-px" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sorted.map((tour, idx) => {
+                    const showDivider = dividerEnabled && idx > 0 && isUpcoming(tour) !== isUpcoming(sorted[idx - 1])
+                    return (
+                      <Fragment key={tour.id}>
+                        {showDivider && (
+                          <TableRow className="hover:bg-transparent">
+                            <TableCell colSpan={desktopColSpan} className="py-1">
+                              <TodayDivider date={todayStr} label={t('todayDivider')} />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        <TableRow
+                          className="cursor-pointer"
+                          onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
+                        >
+                          <TableCell className="whitespace-nowrap tabular-nums text-sm">{tour.tourDate.slice(0, 10)}</TableCell>
+                          <TableCell className="font-medium">{tour.group.name}</TableCell>
+                          <TableCell>{tour.location}</TableCell>
+                          <TableCell className="text-center">{tour.capacity}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="inline-flex items-center gap-2">
+                              <span className="tabular-nums">{tour.participantCount}</span>
+                              {tour.sessions.some((s) => s.belowMinimum) && <BelowMinimumBadge />}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{tour.confirmedCount}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge variant={tourStatusBadgeVariant[tour.status]}>
+                              {getTourStatusLabel(tTourStatus, tour.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <Button asChild variant="outline" size="sm">
+                              <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
+                            </Button>
                           </TableCell>
                         </TableRow>
-                      )}
-                      <TableRow
-                        className="cursor-pointer"
-                        onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
-                      >
-                        <TableCell className="whitespace-nowrap tabular-nums text-sm">{tour.tourDate.slice(0, 10)}</TableCell>
-                        <TableCell className="font-medium">{tour.group.name}</TableCell>
-                        <TableCell>{tour.location}</TableCell>
-                        <TableCell className="text-center">{tour.capacity}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="inline-flex items-center gap-2">
-                            <span className="tabular-nums">{tour.participantCount}</span>
-                            {tour.sessions.some((s) => s.belowMinimum) && <BelowMinimumBadge />}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">{tour.confirmedCount}</TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <Badge variant={tourStatusBadgeVariant[tour.status]}>
-                            {getTourStatusLabel(tTourStatus, tour.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={routes.adminTourDetail(locale, tour.id)}>{t('edit')}</Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    </Fragment>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                      </Fragment>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
         </>
       )}
     </AppShell>

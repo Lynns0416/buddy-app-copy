@@ -240,6 +240,19 @@
     "noResults": "No tours yet",
     "todayDivider": "Today",
     "noMatches": "No tours match the current search or filters",
+    "view": {
+      "label": "View",
+      "list": "List",
+      "calendar": "Calendar"
+    },
+    "calendar": {
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "today": "Today",
+      "more": "+{count} more",
+      "emptyMonth": "No tours this month",
+      "chipTitle": "{group} — {status} — {location}"
+    },
     "search": {
       "label": "Search tours",
       "placeholder": "Search by group or location"

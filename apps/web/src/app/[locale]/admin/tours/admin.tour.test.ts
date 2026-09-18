@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortTours, nextTourListSort, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchSessionTierCapacities, saveSessionTierCapacities, filterTours, isTourFilterActive, emptyTourFilters, tourFiltersFromParams, tourFiltersToParams, groupIdFromParams, type TourFilters } from './admin.tour'
+import { sortTours, nextTourListSort, monthGrid, shiftMonth, toursByDate, tourViewFromParams, tourMonthFromParams, tourPageToParams, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchSessionTierCapacities, saveSessionTierCapacities, filterTours, isTourFilterActive, emptyTourFilters, tourFiltersFromParams, tourFiltersToParams, groupIdFromParams, type TourFilters } from './admin.tour'
 import type { AdminTourDetailResponse, AdminTourSummaryResponse, GroupResponse, TierCapacities, TourSessionResponse } from '@peace-buddy/types'
+import { adminTourSummary } from '@/test/tour-fixtures'
 
 vi.mock('@/lib/api-client', () => ({
   apiClient: {
@@ -46,22 +47,7 @@ const stubGroup = { id: 'g1' } as GroupResponse
 
 // ── sortTours ──────────────────────────────────────────────────────────────
 
-const tour = (overrides: Partial<AdminTourSummaryResponse> = {}): AdminTourSummaryResponse => ({
-  id: 't1',
-  tourDate: '2025-06-01',
-  group: { id: 'g1', name: 'Alpha', type: 'school' },
-  location: 'Tokyo',
-  capacity: 10,
-  confirmedCount: 5,
-  participantCount: 0,
-  status: 'draft',
-  bookingOpen: false,
-  sessions: [],
-  createdAt: '2025-01-01T00:00:00Z',
-  description: null,
-  updatedAt: '2025-01-01T00:00:00Z',
-  ...overrides,
-} as AdminTourSummaryResponse)
+const tour = adminTourSummary
 
 const t1 = tour({ id: 't1', tourDate: '2025-06-01', group: { id: 'g1', name: 'Alpha', type: 'school' }, location: 'Osaka',  capacity: 5, confirmedCount: 2, status: 'draft' })
 const t2 = tour({ id: 't2', tourDate: '2025-07-01', group: { id: 'g2', name: 'Beta', type: 'company' },  location: 'Tokyo',  capacity: 10, confirmedCount: 8, status: 'published' })
@@ -681,5 +667,133 @@ describe('groupIdFromParams', () => {
 
   it('returns undefined when the param is not a uuid', () => {
     expect(groupIdFromParams(new URLSearchParams('groupId=not-a-uuid'))).toBeUndefined()
+  })
+})
+
+
+// ── Calendar view params ───────────────────────────────────────────────────
+
+describe('tourViewFromParams', () => {
+  it('reads the calendar view from the query string', () => {
+    expect(tourViewFromParams(new URLSearchParams('view=calendar'))).toBe('calendar')
+  })
+
+  it('defaults to the list when the param is absent', () => {
+    expect(tourViewFromParams(new URLSearchParams(''))).toBe('list')
+  })
+
+  it('falls back to the list for an unrecognised view', () => {
+    expect(tourViewFromParams(new URLSearchParams('view=gantt'))).toBe('list')
+  })
+})
+
+describe('tourMonthFromParams', () => {
+  it('reads a YYYY-MM month from the query string', () => {
+    expect(tourMonthFromParams(new URLSearchParams('month=2025-03'), TODAY)).toBe('2025-03')
+  })
+
+  it("falls back to today's month when the param is absent", () => {
+    expect(tourMonthFromParams(new URLSearchParams(''), TODAY)).toBe('2025-07')
+  })
+
+  it('rejects a malformed month rather than rendering an invalid grid', () => {
+    expect(tourMonthFromParams(new URLSearchParams('month=2025-13'), TODAY)).toBe('2025-07')
+    expect(tourMonthFromParams(new URLSearchParams('month=March'), TODAY)).toBe('2025-07')
+  })
+})
+
+describe('tourPageToParams', () => {
+  it('keeps the filters in the URL while the calendar is open', () => {
+    const params = tourPageToParams(f({ search: 'Alpha' }), 'calendar', '2025-07', TODAY)
+    expect(params.get('q')).toBe('Alpha')
+    expect(params.get('view')).toBe('calendar')
+  })
+
+  it('omits the view param for the list, which is the default', () => {
+    expect(tourPageToParams(emptyTourFilters, 'list', '2025-07', TODAY).has('view')).toBe(false)
+  })
+
+  it("omits the month param when the calendar is on today's month", () => {
+    expect(tourPageToParams(emptyTourFilters, 'calendar', '2025-07', TODAY).has('month')).toBe(false)
+  })
+
+  it('writes the month once the calendar has been navigated away from today', () => {
+    expect(tourPageToParams(emptyTourFilters, 'calendar', '2025-09', TODAY).get('month')).toBe('2025-09')
+  })
+
+  it('never writes a month while the list is showing', () => {
+    expect(tourPageToParams(emptyTourFilters, 'list', '2025-09', TODAY).has('month')).toBe(false)
+  })
+})
+
+// ── Month grid ─────────────────────────────────────────────────────────────
+
+describe('monthGrid', () => {
+  it('always returns six Monday-first weeks', () => {
+    const cells = monthGrid('2025-07')
+    expect(cells).toHaveLength(42)
+    expect(new Date(`${cells[0].date}T00:00:00.000Z`).getUTCDay()).toBe(1)
+  })
+
+  it('pads the start of the month back to its Monday', () => {
+    // 2025-07-01 is a Tuesday, so the grid opens on Monday 2025-06-30.
+    const cells = monthGrid('2025-07')
+    expect(cells[0]).toEqual({ date: '2025-06-30', inMonth: false })
+    expect(cells[1]).toEqual({ date: '2025-07-01', inMonth: true })
+  })
+
+  it('does not pad a month that already starts on a Monday', () => {
+    expect(monthGrid('2025-09')[0]).toEqual({ date: '2025-09-01', inMonth: true })
+  })
+
+  it('marks the trailing days as outside the month', () => {
+    const cells = monthGrid('2025-07')
+    expect(cells.filter((c) => c.inMonth)).toHaveLength(31)
+    expect(cells[41].inMonth).toBe(false)
+  })
+
+  it('covers February in a leap year', () => {
+    const cells = monthGrid('2024-02')
+    expect(cells.filter((c) => c.inMonth)).toHaveLength(29)
+  })
+})
+
+describe('shiftMonth', () => {
+  it('steps forward within a year', () => {
+    expect(shiftMonth('2025-07', 1)).toBe('2025-08')
+  })
+
+  it('rolls over into the next year', () => {
+    expect(shiftMonth('2025-12', 1)).toBe('2026-01')
+  })
+
+  it('rolls back into the previous year', () => {
+    expect(shiftMonth('2025-01', -1)).toBe('2024-12')
+  })
+})
+
+describe('toursByDate', () => {
+  const withTime = (id: string, date: string, meetingTime: string) =>
+    tour({ id, tourDate: date, sessions: [{ meetingTime } as TourSessionResponse] })
+
+  it('keys tours by their date, dropping any time component', () => {
+    const byDate = toursByDate([tour({ id: 't1', tourDate: '2025-07-04T00:00:00Z' })])
+    expect(byDate.get('2025-07-04')?.map((t) => t.id)).toEqual(['t1'])
+  })
+
+  it('collects several tours falling on one day', () => {
+    const byDate = toursByDate([
+      withTime('late', '2025-07-04', '1970-01-01T13:00:00.000Z'),
+      withTime('early', '2025-07-04', '1970-01-01T09:00:00.000Z'),
+    ])
+    expect(byDate.get('2025-07-04')?.map((t) => t.id)).toEqual(['early', 'late'])
+  })
+
+  it('sorts a sessionless tour last rather than ahead of every real one', () => {
+    const byDate = toursByDate([
+      tour({ id: 'no-sessions', tourDate: '2025-07-04', sessions: [] }),
+      withTime('scheduled', '2025-07-04', '1970-01-01T09:00:00.000Z'),
+    ])
+    expect(byDate.get('2025-07-04')?.map((t) => t.id)).toEqual(['scheduled', 'no-sessions'])
   })
 })

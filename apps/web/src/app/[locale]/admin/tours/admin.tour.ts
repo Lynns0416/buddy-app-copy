@@ -132,6 +132,112 @@ export function tourFiltersToParams(filters: TourFilters): URLSearchParams {
   return params
 }
 
+// ── Calendar view ⇄ URL query params ───────────────────────────────────────
+
+export const TourViewSchema = z.enum(['list', 'calendar'])
+export type TourView = z.infer<typeof TourViewSchema>
+
+const VIEW_PARAM = 'view'
+const MONTH_PARAM = 'month'
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
+
+/** Unrecognised values fall back to the list, as the query string is user-editable. */
+export function tourViewFromParams(params: URLSearchParams): TourView {
+  const parsed = TourViewSchema.safeParse(params.get(VIEW_PARAM))
+  return parsed.success ? parsed.data : TourViewSchema.enum.list
+}
+
+/** `YYYY-MM`; anything else means the month containing `today`. */
+export function tourMonthFromParams(params: URLSearchParams, today: string): string {
+  const raw = params.get(MONTH_PARAM)
+  return raw && MONTH_PATTERN.test(raw) ? raw : today.slice(0, 7)
+}
+
+/**
+ * The whole page's query state. Filters stay in the URL while the calendar is
+ * open even though it ignores them, so switching back to the list restores
+ * exactly what was being looked at.
+ */
+export function tourPageToParams(
+  filters: TourFilters,
+  view: TourView,
+  month: string,
+  today: string,
+): URLSearchParams {
+  const params = tourFiltersToParams(filters)
+  if (view !== TourViewSchema.enum.list) params.set(VIEW_PARAM, view)
+  if (view === TourViewSchema.enum.calendar && month !== today.slice(0, 7)) params.set(MONTH_PARAM, month)
+  return params
+}
+
+// ── Month grid ─────────────────────────────────────────────────────────────
+
+export type CalendarCell = { date: string; inMonth: boolean }
+
+const DAY_MS = 86_400_000
+
+// Built in UTC throughout: the grid is a run of calendar dates, and local-time
+// arithmetic would drop or repeat a day across a DST boundary.
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+/**
+ * Six Monday-first weeks covering `month` (`YYYY-MM`). Always 42 cells, so the
+ * grid does not change height from month to month; `inMonth` marks the padding.
+ */
+export function monthGrid(month: string): CalendarCell[] {
+  const first = new Date(`${month}-01T00:00:00.000Z`)
+  const mondayOffset = (first.getUTCDay() + 6) % 7
+  const start = first.getTime() - mondayOffset * DAY_MS
+  return Array.from({ length: 42 }, (_, i) => {
+    const date = isoDate(new Date(start + i * DAY_MS))
+    return { date, inMonth: date.slice(0, 7) === month }
+  })
+}
+
+export function shiftMonth(month: string, delta: number): string {
+  const [year, monthNo] = month.split('-').map(Number)
+  const total = year * 12 + (monthNo - 1) + delta
+  return `${String(Math.floor(total / 12)).padStart(4, '0')}-${String((total % 12) + 1).padStart(2, '0')}`
+}
+
+/**
+ * Tours keyed by `YYYY-MM-DD`, each day ordered by its earliest meeting time so
+ * a cell reads top-to-bottom as the day runs.
+ */
+export function toursByDate(tours: AdminTourSummaryResponse[]): Map<string, AdminTourSummaryResponse[]> {
+  const byDate = new Map<string, AdminTourSummaryResponse[]>()
+  for (const tour of tours) {
+    const date = tour.tourDate.slice(0, 10)
+    const day = byDate.get(date)
+    if (day) day.push(tour)
+    else byDate.set(date, [tour])
+  }
+  for (const day of byDate.values()) {
+    day.sort(byEarliestMeetingTime)
+  }
+  return byDate
+}
+
+// A tour always has at least one session, but the type does not say so. There is
+// no sentinel to compare a sessionless tour against — `meetingTime` is an ISO
+// timestamp, and any placeholder would only sort last by accident — so it is
+// ordered last explicitly instead.
+function byEarliestMeetingTime(a: AdminTourSummaryResponse, b: AdminTourSummaryResponse): number {
+  const at = earliestMeetingTime(a)
+  const bt = earliestMeetingTime(b)
+  if (at === null || bt === null) return at === bt ? 0 : at === null ? 1 : -1
+  return at.localeCompare(bt)
+}
+
+function earliestMeetingTime(tour: AdminTourSummaryResponse): string | null {
+  return tour.sessions.reduce<string | null>(
+    (min, s) => (min === null || s.meetingTime.localeCompare(min) < 0 ? s.meetingTime : min),
+    null,
+  )
+}
+
 // ── New tour group prefill ⇄ URL query param ───────────────────────────────
 
 const GROUP_ID_PARAM = 'groupId'

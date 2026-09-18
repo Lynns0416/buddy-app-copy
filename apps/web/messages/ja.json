@@ -240,6 +240,19 @@
     "noResults": "ツアーはありません",
     "todayDivider": "今日",
     "noMatches": "条件に一致するツアーはありません",
+    "view": {
+      "label": "表示",
+      "list": "リスト",
+      "calendar": "カレンダー"
+    },
+    "calendar": {
+      "previousMonth": "前の月",
+      "nextMonth": "次の月",
+      "today": "今日",
+      "more": "他{count}件",
+      "emptyMonth": "今月のツアーはありません",
+      "chipTitle": "{group} — {status} — {location}"
+    },
     "search": {
       "label": "ツアーを検索",
       "placeholder": "団体名・場所で検索"

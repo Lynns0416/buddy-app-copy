@@ -51,3 +51,12 @@ export const groupTypeBadgeClass: Record<GroupType, string> = {
   community: 'bg-green-100 text-green-800 border-green-200',
   other: 'bg-slate-100 text-slate-700 border-slate-200',
 }
+
+// Calendar chips carry no status word — the dot is the whole signal, so the four
+// statuses have to be distinguishable at 8px rather than share the badge palette.
+export const tourStatusDotClass: Record<TourStatus, string> = {
+  draft: 'bg-slate-400',
+  published: 'bg-blue-500',
+  cancelled: 'bg-red-500',
+  completed: 'bg-green-600',
+}

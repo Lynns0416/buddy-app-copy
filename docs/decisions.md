@@ -12,6 +12,56 @@ duplicate that state here.
 
 ---
 
+## 2026-09-18 — The tour calendar is a view of `/admin/tours`, not its own page
+
+**Decision:** `/admin/tours` toggles between the list and a month calendar via
+`?view=calendar`, with `?month=YYYY-MM` for the month. The calendar ignores the
+list's filters and hides the filter bar; the filter params stay in the URL so
+switching back to the list restores what was being looked at. A day cell shows
+one chip per tour — status dot, group name, `confirmed/capacity`, and a
+below-minimum marker — three chips before the rest collapse into a count. All
+four statuses appear, distinguished by dot colour, with cancelled struck
+through. The grid's leading and trailing padding days are structural only and
+carry no chips, so the grid, the mobile agenda and the "no tours this month"
+notice all read the same `inMonth` rule. Closes #212.
+
+**Why:** list and calendar are two shapes of the same question about the same
+collection, and every product that offers both (Asana, Notion, Linear, Jira)
+attaches the switch to the resource rather than to a separate route. The data is
+already on the page: `listAdminTours` is unpaginated, so the month grid is a
+client-side view over an array the list already holds. No API change.
+
+**Rejected — a separate `/admin/calendar` route:** it was argued for on the
+grounds that nobody wants meticulous filtering on a calendar, which is true and
+is why the filter bar is hidden. But that is an argument about controls, not
+about location. A second route would fetch the same unpaginated list again and
+give an admin who filtered in the list a calendar showing everything, with no
+visible control explaining the change. Duplicate-fetch cost specifically is
+*not* the reason — 2–3 admins and a few tours a month make it negligible.
+
+**Rejected — putting the calendar on the admin home screen:** `/admin` is a
+worklist of five sections, every item something to clear (pending approvals,
+overdue maybes, underfilled tours, missing evaluations, notifications). A
+calendar never clears and answers "what is happening", not "what needs me".
+Stacking it there pushes the action queue below the fold and makes one screen do
+two jobs.
+
+**Rejected — hiding `draft` and `cancelled` tours:** proposed as noise
+reduction. An admin scanning a month needs to see a draft that was never
+published and a cancellation that freed a date; silently omitting them makes the
+month lie. Colour carries the distinction instead.
+
+**Current state:** `docs/PRD.md` §11.2,
+`apps/web/src/app/[locale]/admin/tours/page.tsx`,
+`apps/web/src/app/[locale]/admin/tours/_components/tour-calendar.tsx`,
+`apps/web/src/app/[locale]/admin/tours/admin.tour.ts`.
+
+**Revisit when** the buddy side gets the same view over `GET /tours` (#212 notes
+it as a follow-up), or when a week/day view is wanted — the month grid is
+currently the only zoom level.
+
+---
+
 ## 2026-09-18 — Buddy notification preferences share the admin table; four events cannot be muted
 
 **Decision:** `NotificationPreference.adminId` is renamed to `userId` and the

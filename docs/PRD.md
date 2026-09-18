@@ -811,7 +811,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 
 | Route | Purpose |
 |---|---|
-| `/admin/tours` | List tours. Client-side search on group name and location; filters for status, date range (upcoming / past / all), group type and below-minimum-only, combined with AND and kept in the URL query string; sortable by every column; "today" divider in list |
+| `/admin/tours` | List or month-calendar view of tours, chosen by `?view=`. **List:** client-side search on group name and location; filters for status, date range (upcoming / past / all), group type and below-minimum-only, combined with AND and kept in the URL query string; sortable by every column; "today" divider in list. **Calendar:** six Monday-first weeks for `?month=YYYY-MM`, one chip per tour (status dot, group name, `confirmed/capacity`, below-minimum marker), three chips per day before the rest collapse into a count. The leading and trailing days belong to the neighbouring months and carry no chips — they hold the grid at six rows, and a tour landing on one is only shown by that month's own grid. All four statuses appear; cancelled is struck through. The calendar ignores the list's filters and hides the filter bar, but leaves the filter params in the URL so switching back to the list restores them |
 | `/admin/tours/new` | Create tour form. The group picker is a type-to-filter combobox; the selected group shows a summary (type, contact fields, notes) and a new-tab link to its detail page |
 | `/admin/tours/:id` | Tour detail — metadata, sessions, tier capacities, bookings, admin assignments, evaluations |
 | `/admin/tours/:id/edit` | Edit tour form — same group picker and selected-group summary as the create form |
