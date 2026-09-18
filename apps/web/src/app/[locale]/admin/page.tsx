@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import type { AdminDashboardResponse } from '@peace-buddy/types'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
@@ -39,7 +40,15 @@ export default function AdminHomePage() {
 
   return (
     <AppShell variant="admin">
-      <h1 className="mb-6 text-xl font-semibold">{t('title')}</h1>
+      <div className="mb-6 flex items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">{t('title')}</h1>
+        <Link
+          href={routes.adminToursCalendar(locale)}
+          className="text-sm text-muted-foreground underline hover:text-foreground"
+        >
+          {t('calendarLink')}
+        </Link>
+      </div>
 
       {loadError && (
         <p className="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{t('loadError')}</p>

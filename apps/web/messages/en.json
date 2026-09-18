@@ -743,6 +743,7 @@
     "title": "Home",
     "loadError": "Could not load the worklist.",
     "viewAll": "View all",
+    "calendarLink": "View calendar",
     "sessionFallback": "Session {order}",
     "listSeparator": ", ",
     "pending": {

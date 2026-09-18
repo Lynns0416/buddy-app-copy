@@ -743,6 +743,7 @@
     "title": "ホーム",
     "loadError": "ワークリストを読み込めませんでした。",
     "viewAll": "すべて表示",
+    "calendarLink": "カレンダーを表示",
     "sessionFallback": "セッション{order}",
     "listSeparator": "、",
     "pending": {

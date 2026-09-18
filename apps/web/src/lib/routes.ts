@@ -13,6 +13,7 @@ export const routes = {
   adminGroupDetail: (locale: string, id: string) => `/${locale}/admin/groups/${id}`,
   adminGroupEdit: (locale: string, id: string) => `/${locale}/admin/groups/${id}/edit`,
   adminTours: (locale: string) => `/${locale}/admin/tours`,
+  adminToursCalendar: (locale: string) => `/${locale}/admin/tours?view=calendar`,
   adminTourNew: (locale: string, groupId?: string) =>
     `/${locale}/admin/tours/new${groupId ? `?groupId=${encodeURIComponent(groupId)}` : ''}`,
   adminTourDetail: (locale: string, id: string) => `/${locale}/admin/tours/${id}`,
