@@ -7,6 +7,7 @@ import {
   updateTour,
   transitionTourStatus,
   deleteTour,
+  getAdminTourIcs,
   TourNotFoundError,
   TourTransitionError,
   TourImmutableError,
@@ -68,6 +69,16 @@ adminTourRoutes.get('/:id', async (c) => {
   const tour = await getAdminTourDetail(id)
   if (!tour) return c.json(apiError('not_found'), 404)
   return c.json(tour)
+})
+
+adminTourRoutes.get('/:id/calendar.ics', async (c) => {
+  const id = c.req.param('id')
+  const ics = await getAdminTourIcs(id)
+  if (!ics) return c.json(apiError('not_found'), 404)
+  return c.body(ics, 200, {
+    'Content-Type': 'text/calendar; charset=utf-8',
+    'Content-Disposition': `attachment; filename="tour-${id}.ics"`,
+  })
 })
 
 adminTourRoutes.put('/:id', async (c) => {

@@ -12,6 +12,131 @@ duplicate that state here.
 
 ---
 
+## 2026-09-19 — `.ics` download is one VEVENT per session, hand-rolled, confirmed-only for buddies
+
+**Decision:** `GET /tours/:id/calendar.ics` (buddy) and `GET /admin/tours/:id/calendar.ics`
+(admin) return a static iCalendar file: one `VEVENT` per session, not one
+event for the whole tour. The buddy endpoint includes only sessions the
+caller holds a **confirmed** booking on — not maybe or waitlist — and `404`s
+if there are none; the admin endpoint includes every session, since an admin
+has no personal booking to filter by. RFC 5545 encoding (escaping, 75-octet
+line folding, VCALENDAR/VEVENT assembly) is hand-rolled in
+`apps/api/src/lib/ics.ts`, generic and tour-agnostic; the tour→event mapping
+lives in `apps/api/src/lib/tourIcs.ts` and is shared by both routes' services
+so the two endpoints cannot drift on field mapping, escaping or the UID
+scheme. Closes #199.
+
+**One VEVENT per session, not one per tour.** Sessions carry distinct
+`meetingTime`s (a school visit can have a 1st and 2nd half), so a single
+tour-level event would either pick one session's time arbitrarily or span a
+misleadingly long block. The download is still one file — most calendar apps
+happily import a `.ics` containing several `VEVENT`s from one drag-and-drop or
+one URL fetch.
+
+**Buddy scope is confirmed sessions only, not every session in the tour.**
+The problem this issue names is "get a tour date into their own calendar" —
+their own, meaning what they actually committed to. Putting a session the
+buddy never signed up for on their personal calendar would be actively wrong,
+not just unnecessary. This matches the "confirmed = commitment" bar used
+everywhere else (2026-09-15, "Buddy home is an obligations screen"). A buddy
+with zero confirmed sessions gets `404` — there is nothing to download.
+**Rejected — every session in the tour, matching admin:** simpler (one
+code path, no filter), but wrong for a personal calendar.
+
+**Hand-rolled RFC 5545 encoding, no new dependency.** No `ical-generator`/`ics`
+package was installed, and this is the first non-JSON response the API has
+ever returned. `apps/api/src/lib/ics.ts` follows the same shape as the
+`escapeSlack`/`escapeHtml`/`escapePlain` channel-escaper pattern already in
+`templateRender.ts` (2026-09-13, "Notification payloads snapshot the names
+they display"): a shared control-character strip plus a channel-specific
+escape map, here also handling comma/semicolon/backslash and the `\n`
+newline encoding RFC 5545 TEXT values require. Line folding is byte-based
+(UTF-8 octets, not JS string length) and backs off to the nearest character
+boundary rather than cutting mid-character — Japanese group/location names
+are mostly 3-byte characters, so a naive `slice(0, 75)` would corrupt one.
+Both are covered directly in `apps/api/src/lib/ics.test.ts`, including a
+multi-byte-boundary case. **Rejected — the `ics` npm package:** more
+battle-tested RFC 5545 compliance out of the box, but it would be the first
+runtime dependency in `apps/api` that isn't an infra SDK or Zod, for logic
+that fits in under 100 lines and is fully unit-testable on its own.
+
+**Timezone: UTC instants (`Z` suffix), no `VTIMEZONE` block.** `TourSession`'s
+`meetingTime`/`startTime`/`endTime` (`@db.Time`) are written by
+`adminTour.service`'s `parseTime` via `setUTCHours` directly on the admin's
+entered `HH:MM` — so the stored UTC hour/minute already *is* the intended JST
+wall-clock hour/minute, not a real UTC time (this was true before this
+change and is unrelated to it; recorded here because generating a correct
+calendar event depends on knowing it). Building the real instant means
+combining that HH:MM with the tour's JST calendar date and subtracting the
+fixed 9h offset — the same offset `getTodayJst` uses (2026-09-15, "'Today' is
+the date in Japan everywhere") — rather than pulling in `Asia/Tokyo` through
+`Intl` or a timezone library. Emitting the result as a `Z`-suffixed UTC
+instant is unambiguous on its own; a full `VTIMEZONE` component would be
+boilerplate for a zone with no DST.
+
+**`UID` is `session-<sessionId>@peace-buddy.internal`, stable across
+re-download.** `peace-buddy.internal` is not a resolvable hostname — RFC 5545
+only requires a UID to be a globally unique token, never a live address. Per
+session, not per tour, so re-downloading after a time change updates the same
+calendar entry instead of creating a duplicate.
+
+**`STATUS` carries the tour's status, and a cancelled tour is still served.**
+`cancelled` → `CANCELLED`, `draft` → `TENTATIVE`, `published`/`completed` →
+`CONFIRMED`. This exists because `transitionTourStatus` does not touch
+`Booking` rows: after a cancellation the buddy still holds a `confirmed`
+booking, so the download stays available and the first version of this feature
+would have handed them a dead event that still read as live.
+**Rejected — refusing to serve a cancelled tour (404), or hiding the button:**
+that leaves the buddy who *already* downloaded the file with the stale event
+and no way to clear it. Serving it with `STATUS:CANCELLED` under the same UID
+is what turns a re-download into a retraction, which is the whole point of the
+stable UID. **Known gap:** no `SEQUENCE` is emitted — there is no revision
+counter on `TourSession` to derive one from — so a strict client may not apply
+the retraction without the user re-importing.
+
+**`DTEND` falls back to `DTSTART` + 1 hour unless `endTime` resolves to after
+`DTSTART`.** RFC 5545 requires `DTEND > DTSTART`. `startTime` and `endTime` are
+independent optional fields: `CreateTourSessionSchema` and
+`UpdateTourSessionSchema` only `.refine` on `minBuddies <= capacity`, and
+`adminSession.service.ts` adds no ordering check, so the API accepts an
+`endTime` with no `startTime` (measured here against `meetingTime`) or an
+`endTime` before `startTime`. Unreachable through the admin UI, which renders
+neither field (PRD §7.1), but reachable through the endpoints.
+**Rejected — validating the ordering in the schema instead:** correct, and a
+better fix, but it changes what `POST /admin/tours` accepts, which is a
+separate decision from how a calendar file is generated. The generator must not
+emit an invalid event either way.
+
+**Default event duration is 1 hour when `endTime` is unset.** `startTime`/
+`endTime` are schema-only fields the create/edit form does not render (PRD
+§7.1), so in practice almost every session has only `meetingTime`. `DTSTART`
+prefers `startTime` over `meetingTime` when both are set; `DTEND` prefers
+`endTime`, defaulting to `DTSTART` + 1 hour otherwise. An arbitrary but
+easily-changed choice — `DEFAULT_DURATION_MS` in `apps/api/src/lib/tourIcs.ts`.
+
+**Fields:** `SUMMARY` is the group name, plus the session's `label` in
+parentheses when set (no i18n fallback to "1st Half"/"2nd Half" — that
+translation is a web-layer concern via `session.defaultLabel.*`, and the API
+is locale-agnostic). `LOCATION` is `Tour.location`. `DESCRIPTION` is
+`Tour.description`, never `adminMemo` — the same buddy/admin field boundary
+every other tour response already enforces.
+
+**Auth is the existing bearer-token middleware, no separate download
+mechanism.** The endpoint sits behind the same `authMiddleware` (buddy) /
+`adminAuthMiddleware` (admin) chain as every other route — no signed link, no
+public token. The consequence is that a plain `<a href>` can't carry the
+token, so the web side fetches the file as a blob with the bearer header and
+triggers the save itself (`apps/web/src/lib/api.ts`'s `apiDownload` +
+`triggerBlobDownload`) rather than linking directly to the API URL.
+
+**Current state:** `apps/api/src/lib/ics.ts`, `apps/api/src/lib/tourIcs.ts`,
+`apps/api/src/services/tour.service.ts` (`getTourIcs`),
+`apps/api/src/services/adminTour.service.ts` (`getAdminTourIcs`),
+`docs/api.md` `GET /tours/:id/calendar.ics` and
+`GET /admin/tours/:id/calendar.ics`, `docs/PRD.md` §15/§16.
+
+---
+
 ## 2026-09-18 — The nightly dump runs as `pb_app` from a `postgres:16` image, and retention is a lifecycle rule
 
 **Decision:** `caj-backup`, a scheduled Container Apps Job in `snet-apps`, runs

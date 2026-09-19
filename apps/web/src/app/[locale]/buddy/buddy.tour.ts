@@ -10,3 +10,11 @@ export async function fetchUpcomingTours(fromDate: string): Promise<ActionResult
     return { ok: false, error: classifyApiError(err) }
   }
 }
+
+export async function downloadTourCalendar(id: string): Promise<ActionResult<Blob>> {
+  try {
+    return { ok: true, data: await apiClient.downloadTourCalendar(id) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}

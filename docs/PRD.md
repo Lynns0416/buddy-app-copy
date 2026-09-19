@@ -54,7 +54,7 @@ A web-first internal booking application for managing group tour assignments. Th
 - Advanced analytics or reporting dashboards
 - Peer evaluation between buddies
 - Payment handling
-- Calendar integration (planned for v1.5)
+- Live calendar subscription / Google & Apple OAuth sync (planned for v1.5; see §16)
 
 ---
 
@@ -1124,7 +1124,7 @@ so the database stays portable to any managed Postgres.
 
 | Version | Feature |
 |---|---|
-| v1.5 | Calendar integration (Google Calendar, Apple Calendar) |
+| v1.5 | Live calendar subscription (`webcal://` feed) and OAuth Google/Apple Calendar sync — an `.ics` download shipped separately as the cheap substitute (§16); revisit whether this is still wanted |
 | v1.5 | PWA improvements |
 | v2+ | Native mobile app (Flutter) |
 | v2+ | Reporting / export for admins |
@@ -1138,14 +1138,17 @@ so the database stays portable to any managed Postgres.
 
 - Participant-facing features
 - Travel agency integration
-- Calendar integration (v1.5)
+- Live calendar subscription and Google/Apple OAuth sync (v1.5)
 - Native mobile apps (post-v1.5)
 - Advanced analytics or reporting
 - Peer evaluations
 - Payment or compensation tracking
 - Structured availability input (free text in v1)
 
-(Automated waitlist promotion *is* in scope and shipped — see §8.6.)
+(Automated waitlist promotion *is* in scope and shipped — see §8.6. A static
+`.ics` download — one file, no OAuth, no sync — is also in scope and shipped,
+as the cheap substitute for the live-subscription/OAuth item above; see
+`docs/api.md` `GET /tours/:id/calendar.ics` and `GET /admin/tours/:id/calendar.ics`.)
 
 ---
 

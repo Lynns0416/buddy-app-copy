@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchUpcomingTours } from './buddy.tour'
+import { fetchUpcomingTours, downloadTourCalendar } from './buddy.tour'
 import type { TourResponse } from '@peace-buddy/types'
 import { TourStatusSchema } from '@peace-buddy/types'
 
 vi.mock('@/lib/api-client', () => ({
   apiClient: {
     listTours: vi.fn(),
+    downloadTourCalendar: vi.fn(),
   },
 }))
 
@@ -22,6 +23,7 @@ vi.mock('../../../lib/api-error', () => {
 import { apiClient } from '@/lib/api-client'
 
 const mockListTours = vi.mocked(apiClient.listTours)
+const mockDownloadTourCalendar = vi.mocked(apiClient.downloadTourCalendar)
 
 const stubTours: TourResponse[] = [
   {
@@ -57,5 +59,23 @@ describe('fetchUpcomingTours', () => {
     mockListTours.mockRejectedValue(new Error('network'))
     const result = await fetchUpcomingTours('2025-04-15')
     expect(result.ok).toBe(false)
+  })
+})
+
+describe('downloadTourCalendar', () => {
+  beforeEach(() => vi.resetAllMocks())
+
+  it('returns ok with the blob on success', async () => {
+    const blob = new Blob(['BEGIN:VCALENDAR'], { type: 'text/calendar' })
+    mockDownloadTourCalendar.mockResolvedValue(blob)
+    const result = await downloadTourCalendar('tour-1')
+    expect(result).toEqual({ ok: true, data: blob })
+    expect(mockDownloadTourCalendar).toHaveBeenCalledWith('tour-1')
+  })
+
+  it('returns error on API failure', async () => {
+    mockDownloadTourCalendar.mockRejectedValue(new Error('not found'))
+    const result = await downloadTourCalendar('tour-1')
+    expect(result).toEqual({ ok: false, error: { code: 'not_found' } })
   })
 })

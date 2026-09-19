@@ -58,16 +58,24 @@ vi.mock('@/lib/auth', () => ({
 }))
 
 vi.mock('@/lib/api-client', () => ({
-  apiClient: { getTour: vi.fn(), createBooking: vi.fn(), updateBooking: vi.fn() },
+  apiClient: { getTour: vi.fn(), createBooking: vi.fn(), updateBooking: vi.fn(), downloadTourCalendar: vi.fn() },
+}))
+
+vi.mock('@/lib/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api')>()),
+  triggerBlobDownload: vi.fn(),
 }))
 
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api-client'
+import { triggerBlobDownload } from '@/lib/api'
 
 const mockUseAuth = vi.mocked(useAuth)
 const mockGetTour = vi.mocked(apiClient.getTour)
 const mockCreateBooking = vi.mocked(apiClient.createBooking)
 const mockUpdateBooking = vi.mocked(apiClient.updateBooking)
+const mockDownloadTourCalendar = vi.mocked(apiClient.downloadTourCalendar)
+const mockTriggerBlobDownload = vi.mocked(triggerBlobDownload)
 
 const mockDbUser = {
   id: 'user-1',
@@ -335,6 +343,38 @@ describe('TourDetailPage', () => {
         expect.objectContaining({ category: 'health' }),
       )
     )
+  })
+
+  it('hides the Add to Calendar button when the buddy has no confirmed session', async () => {
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, myBookingStatus: 'maybe' as const }] })
+    render(<TourDetailPage />)
+    await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'addToCalendar' })).not.toBeInTheDocument()
+  })
+
+  it('shows the Add to Calendar button when the buddy has a confirmed session, and downloads on click', async () => {
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }] })
+    const blob = new Blob(['BEGIN:VCALENDAR'], { type: 'text/calendar' })
+    mockDownloadTourCalendar.mockResolvedValueOnce(blob)
+
+    render(<TourDetailPage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'addToCalendar' })).toBeInTheDocument())
+    screen.getByRole('button', { name: 'addToCalendar' }).click()
+
+    await waitFor(() => expect(mockDownloadTourCalendar).toHaveBeenCalledWith('tour-1'))
+    expect(mockTriggerBlobDownload).toHaveBeenCalledWith(blob, 'tour-tour-1.ics')
+  })
+
+  it('shows an error message when the calendar download fails', async () => {
+    mockGetTour.mockResolvedValue({ ...mockTour, sessions: [{ ...mockSession, myBookingStatus: 'confirmed' as const }] })
+    mockDownloadTourCalendar.mockRejectedValueOnce(new Error('failed'))
+
+    render(<TourDetailPage />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'addToCalendar' })).toBeInTheDocument())
+    screen.getByRole('button', { name: 'addToCalendar' }).click()
+
+    await waitFor(() => expect(screen.getByText('addToCalendarError')).toBeInTheDocument())
+    expect(mockTriggerBlobDownload).not.toHaveBeenCalled()
   })
 
   describe('between 00:00 and 09:00 JST', () => {

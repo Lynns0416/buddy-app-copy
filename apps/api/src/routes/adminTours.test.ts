@@ -57,6 +57,7 @@ vi.mock('../services/adminTour.service', () => ({
   updateTour: vi.fn(),
   transitionTourStatus: vi.fn(),
   deleteTour: vi.fn(),
+  getAdminTourIcs: vi.fn(),
   TourNotFoundError: class TourNotFoundError extends Error {
     constructor() { super('Tour not found') }
   },
@@ -108,6 +109,7 @@ import {
   updateTour,
   transitionTourStatus,
   deleteTour,
+  getAdminTourIcs,
   TourNotFoundError,
   TourTransitionError,
   TourImmutableError,
@@ -139,6 +141,7 @@ import {
 const mockListAdminTours = vi.mocked(listAdminTours)
 const mockCreateTour = vi.mocked(createTour)
 const mockGetAdminTourDetail = vi.mocked(getAdminTourDetail)
+const mockGetAdminTourIcs = vi.mocked(getAdminTourIcs)
 const mockUpdateTour = vi.mocked(updateTour)
 const mockTransitionTourStatus = vi.mocked(transitionTourStatus)
 const mockDeleteTour = vi.mocked(deleteTour)
@@ -369,6 +372,26 @@ describe('GET /admin/tours/:id', () => {
   it('returns 404 with code when not found', async () => {
     mockGetAdminTourDetail.mockResolvedValueOnce(null)
     const res = await buildApp().request('/admin/tours/missing')
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+})
+
+describe('GET /admin/tours/:id/calendar.ics', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns the .ics body with calendar headers', async () => {
+    mockGetAdminTourIcs.mockResolvedValueOnce('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n')
+    const res = await buildApp().request('/admin/tours/tour-1/calendar.ics')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Type')).toBe('text/calendar; charset=utf-8')
+    expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="tour-tour-1.ics"')
+    expect(await res.text()).toBe('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n')
+  })
+
+  it('returns 404 with code when not found', async () => {
+    mockGetAdminTourIcs.mockResolvedValueOnce(null)
+    const res = await buildApp().request('/admin/tours/missing/calendar.ics')
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ code: 'not_found' })
   })

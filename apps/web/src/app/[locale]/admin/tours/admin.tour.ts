@@ -306,6 +306,14 @@ export async function fetchTour(id: string): Promise<ActionResult<AdminTourDetai
   }
 }
 
+export async function downloadTourCalendar(id: string): Promise<ActionResult<Blob>> {
+  try {
+    return { ok: true, data: await apiClient.downloadAdminTourCalendar(id) }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
 export async function createTour(data: Record<string, unknown>): Promise<ActionResult<AdminTourDetailResponse>> {
   try {
     return { ok: true, data: await apiClient.createAdminTour(data) }

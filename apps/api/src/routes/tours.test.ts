@@ -13,6 +13,7 @@ vi.mock('../lib/firebase', () => ({
 vi.mock('../services/tour.service', () => ({
   listTours: vi.fn(),
   getTour: vi.fn(),
+  getTourIcs: vi.fn(),
 }))
 
 vi.mock('../services/booking.service', () => ({
@@ -20,11 +21,12 @@ vi.mock('../services/booking.service', () => ({
   updateBooking: vi.fn(),
 }))
 
-import { listTours, getTour } from '../services/tour.service'
+import { listTours, getTour, getTourIcs } from '../services/tour.service'
 import { createBooking, updateBooking } from '../services/booking.service'
 
 const mockListTours = vi.mocked(listTours)
 const mockGetTour = vi.mocked(getTour)
+const mockGetTourIcs = vi.mocked(getTourIcs)
 const mockCreateBooking = vi.mocked(createBooking)
 const mockUpdateBooking = vi.mocked(updateBooking)
 
@@ -192,6 +194,37 @@ describe('GET /tours/:id', () => {
     const res = await buildApp().request('/tours/tour-1')
     const body = await res.json() as Record<string, unknown>
     expect(body.adminMemo).toBeUndefined()
+  })
+})
+
+describe('GET /tours/:id/calendar.ics', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 401 with no token', async () => {
+    const res = await routes.request('/tours/tour-1/calendar.ics')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns the .ics body with calendar headers', async () => {
+    mockGetTourIcs.mockResolvedValueOnce('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n')
+    const res = await buildApp().request('/tours/tour-1/calendar.ics')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Type')).toBe('text/calendar; charset=utf-8')
+    expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="tour-tour-1.ics"')
+    expect(await res.text()).toBe('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n')
+  })
+
+  it('returns 404 with code when there is nothing to download', async () => {
+    mockGetTourIcs.mockResolvedValueOnce(null)
+    const res = await buildApp().request('/tours/tour-1/calendar.ics')
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('passes tour id and user id to getTourIcs', async () => {
+    mockGetTourIcs.mockResolvedValueOnce('BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n')
+    await buildApp().request('/tours/tour-1/calendar.ics')
+    expect(mockGetTourIcs).toHaveBeenCalledWith('tour-1', dbUser.id)
   })
 })
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Mock } from 'vitest'
-import { createTour, getAdminTourDetail, listAdminTours, listUnderfilledTours } from './adminTour.service'
+import { createTour, getAdminTourDetail, getAdminTourIcs, listAdminTours, listUnderfilledTours } from './adminTour.service'
 
 // TODO: add tests for updateTour, transitionTourStatus, deleteTour.
 // Session and tier-capacity tests live in adminSession.service.test.ts.
@@ -155,6 +155,40 @@ describe('getAdminTourDetail', () => {
 
     expect(result!.sessions[0].minBuddies).toBeNull()
     expect(result!.sessions[0].belowMinimum).toBe(false)
+  })
+})
+
+describe('getAdminTourIcs', () => {
+  const icsRow = {
+    tourDate: new Date('2026-06-01'),
+    status: 'published',
+    location: 'Tokyo',
+    description: null,
+    group: { name: 'Test School' },
+    sessions: [
+      makeSessionRow({ id: 's1' }),
+      makeSessionRow({ id: 's2', order: 2, meetingTime: new Date('1970-01-01T13:00:00.000Z') }),
+    ],
+  }
+
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns null when the tour is not found', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce(null)
+    expect(await getAdminTourIcs('missing')).toBeNull()
+  })
+
+  it('includes every session in the tour, not just some', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce(icsRow)
+    const ics = await getAdminTourIcs('tour-1')
+    expect(ics).toContain('session-s1@peace-buddy.internal')
+    expect(ics).toContain('session-s2@peace-buddy.internal')
+  })
+
+  it('carries the tour status into each VEVENT', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce({ ...icsRow, status: 'cancelled' })
+    const ics = await getAdminTourIcs('tour-1')
+    expect(ics!.match(/STATUS:CANCELLED/g)).toHaveLength(2)
   })
 })
 

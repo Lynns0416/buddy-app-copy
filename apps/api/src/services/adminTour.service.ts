@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
 import { addDays } from '../lib/jstDay'
 import { payloadTourDate } from '../lib/notificationPayload'
+import { buildTourIcs, icsTourSelect } from '../lib/tourIcs'
 import {
   TourStatusSchema,
   BookingStatusSchema,
@@ -494,5 +495,17 @@ export async function deleteTour(id: string): Promise<void> {
   if (existing.status !== TourStatusSchema.enum.draft) throw new TourNotDraftError()
 
   await db.tour.delete({ where: { id } })
+}
+
+// Every session in the tour — an admin has no personal booking to filter by.
+// See #199.
+export async function getAdminTourIcs(id: string): Promise<string | null> {
+  const row = await db.tour.findUnique({
+    where: { id },
+    select: icsTourSelect,
+  })
+  if (!row) return null
+
+  return buildTourIcs(row, row.sessions)
 }
 

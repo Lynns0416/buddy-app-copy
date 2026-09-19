@@ -1,4 +1,4 @@
-import { apiRequest, apiUpload } from './api'
+import { apiRequest, apiUpload, apiDownload } from './api'
 import { apiPaths } from './api-paths'
 import type {
   BookingStatusSchema,
@@ -123,6 +123,9 @@ export const apiClient = {
   getAdminTour: (id: string) =>
     apiRequest<AdminTourDetailResponse>(apiPaths.adminTour(id)),
 
+  downloadAdminTourCalendar: (id: string) =>
+    apiDownload(apiPaths.adminTourCalendar(id)),
+
   createAdminTour: (data: Record<string, unknown>) =>
     apiRequest<AdminTourDetailResponse>(apiPaths.adminTours, {
       method: 'POST',
@@ -230,6 +233,9 @@ export const apiClient = {
 
   getTour: (id: string) =>
     apiRequest<TourDetailResponse>(apiPaths.tour(id)),
+
+  downloadTourCalendar: (id: string) =>
+    apiDownload(apiPaths.tourCalendar(id)),
 
   createBooking: (tourId: string, sessionId: string, status?: typeof BookingStatusSchema.enum.maybe) =>
     apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), {

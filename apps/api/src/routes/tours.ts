@@ -1,8 +1,9 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { TourStatusSchema, BookingStatusSchema, UpdateBookingBodySchema, CancellationReasonBodySchema } from '@peace-buddy/types'
-import { listTours, getTour } from '../services/tour.service'
+import { listTours, getTour, getTourIcs } from '../services/tour.service'
 import { createBooking, updateBooking, reportCantGo } from '../services/booking.service'
+import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
 
 const ToursQuerySchema = z.object({
@@ -37,6 +38,17 @@ tourRoutes.get('/:id', async (c) => {
   const tour = await getTour(id, userId)
   if (!tour) return c.json({ error: 'Tour not found' }, 404)
   return c.json(tour)
+})
+
+tourRoutes.get('/:id/calendar.ics', async (c) => {
+  const id = c.req.param('id')
+  const userId = c.get('user').id
+  const ics = await getTourIcs(id, userId)
+  if (!ics) return c.json(apiError('not_found'), 404)
+  return c.body(ics, 200, {
+    'Content-Type': 'text/calendar; charset=utf-8',
+    'Content-Disposition': `attachment; filename="tour-${id}.ics"`,
+  })
 })
 
 tourRoutes.post('/:id/bookings', async (c) => {

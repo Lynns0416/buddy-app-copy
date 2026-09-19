@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { sortTours, nextTourListSort, monthGrid, shiftMonth, toursByDate, tourViewFromParams, tourMonthFromParams, tourPageToParams, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, fetchSessionTierCapacities, saveSessionTierCapacities, filterTours, isTourFilterActive, emptyTourFilters, tourFiltersFromParams, tourFiltersToParams, groupIdFromParams, type TourFilters } from './admin.tour'
+import { sortTours, nextTourListSort, monthGrid, shiftMonth, toursByDate, tourViewFromParams, tourMonthFromParams, tourPageToParams, sortBookings, nextBookingSort, fetchTours, fetchGroups, fetchTour, createTour, updateTour, transitionTour, toggleTourBooking, deleteTour, downloadTourCalendar, fetchSessionTierCapacities, saveSessionTierCapacities, filterTours, isTourFilterActive, emptyTourFilters, tourFiltersFromParams, tourFiltersToParams, groupIdFromParams, type TourFilters } from './admin.tour'
 import type { AdminTourDetailResponse, AdminTourSummaryResponse, GroupResponse, TierCapacities, TourSessionResponse } from '@peace-buddy/types'
 import { adminTourSummary } from '@/test/tour-fixtures'
 
@@ -12,6 +12,7 @@ vi.mock('@/lib/api-client', () => ({
     updateAdminTour: vi.fn(),
     transitionAdminTourStatus: vi.fn(),
     deleteAdminTour: vi.fn(),
+    downloadAdminTourCalendar: vi.fn(),
     getSessionTierCapacities: vi.fn(),
     saveSessionTierCapacities: vi.fn(),
   },
@@ -38,6 +39,7 @@ const mockCreateAdminTour = vi.mocked(apiClient.createAdminTour)
 const mockUpdateAdminTour = vi.mocked(apiClient.updateAdminTour)
 const mockTransition = vi.mocked(apiClient.transitionAdminTourStatus)
 const mockDeleteAdminTour = vi.mocked(apiClient.deleteAdminTour)
+const mockDownloadAdminTourCalendar = vi.mocked(apiClient.downloadAdminTourCalendar)
 const mockGetTierCapacities = vi.mocked(apiClient.getSessionTierCapacities)
 const mockSaveTierCapacities = vi.mocked(apiClient.saveSessionTierCapacities)
 
@@ -307,6 +309,26 @@ describe('fetchTour', () => {
     mockGetAdminTour.mockRejectedValue(new TypeError('Failed to fetch'))
     const result = await fetchTour('t1')
     expect(result).toEqual({ ok: false, error: { code: 'network' } })
+  })
+})
+
+// ── downloadTourCalendar ──────────────────────────────────────────────────
+
+describe('downloadTourCalendar', () => {
+  beforeEach(() => vi.resetAllMocks())
+
+  it('returns ok with the blob on success', async () => {
+    const blob = new Blob(['BEGIN:VCALENDAR'], { type: 'text/calendar' })
+    mockDownloadAdminTourCalendar.mockResolvedValue(blob)
+    const result = await downloadTourCalendar('t1')
+    expect(result).toEqual({ ok: true, data: blob })
+    expect(mockDownloadAdminTourCalendar).toHaveBeenCalledWith('t1')
+  })
+
+  it('returns not_found for 404', async () => {
+    mockDownloadAdminTourCalendar.mockRejectedValue(new ApiError('not found', 404))
+    const result = await downloadTourCalendar('t1')
+    expect(result).toEqual({ ok: false, error: { code: 'not_found' } })
   })
 })
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Mock } from 'vitest'
-import { listTours, getTour } from './tour.service'
+import { listTours, getTour, getTourIcs } from './tour.service'
 
 type MockFn = Mock<(...args: unknown[]) => unknown>
 
@@ -389,5 +389,89 @@ describe('getTour', () => {
     await getTour('tour-1', 'user-42')
     const call = mdb.booking.findMany.mock.calls[0][0] as { where: { buddy: { userId: string } } }
     expect(call.where.buddy.userId).toBe('user-42')
+  })
+})
+
+describe('getTourIcs', () => {
+  const icsRow = {
+    tourDate: new Date('2026-05-01'),
+    status: 'published',
+    location: 'Tokyo Station',
+    description: 'A visit.',
+    group: { name: 'Test School' },
+    sessions: [
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null },
+    ],
+  }
+
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns null when the tour is not found', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce(null)
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce(null)
+    expect(await getTourIcs('nonexistent', 'user-1')).toBeNull()
+  })
+
+  it('returns null for a trainee buddy even when the tour exists', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce(icsRow)
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ status: 'trainee' })
+    expect(await getTourIcs('tour-1', 'user-1')).toBeNull()
+  })
+
+  it('returns null when the buddy has no confirmed session', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce(icsRow)
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ status: 'active' })
+    mdb.booking.findMany.mockResolvedValueOnce([])
+    expect(await getTourIcs('tour-1', 'user-1')).toBeNull()
+  })
+
+  it('filters bookings to confirmed only, in the query itself', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce(icsRow)
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ status: 'active' })
+    mdb.booking.findMany.mockResolvedValueOnce([])
+    await getTourIcs('tour-1', 'user-1')
+    const call = mdb.booking.findMany.mock.calls[0][0] as { where: { status: string } }
+    expect(call.where.status).toBe('confirmed')
+  })
+
+  it('returns an .ics calendar containing only the confirmed session', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce(icsRow)
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ status: 'active' })
+    mdb.booking.findMany.mockResolvedValueOnce([{ sessionId: 'session-1' }])
+
+    const ics = await getTourIcs('tour-1', 'user-1')
+    expect(ics).not.toBeNull()
+    expect(ics).toContain('SUMMARY:Test School')
+    expect(ics).toContain('LOCATION:Tokyo Station')
+    expect(ics).toContain('UID:session-session-1@peace-buddy.internal')
+  })
+
+  it('marks a cancelled tour STATUS:CANCELLED under the same UID, so a re-download can retract the event', async () => {
+    // Cancelling a tour leaves the Booking rows untouched, so the buddy still
+    // holds a confirmed seat and the file is still served — it has to say the
+    // tour is off rather than look live.
+    mdb.tour.findUnique.mockResolvedValueOnce({ ...icsRow, status: 'cancelled' })
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ status: 'active' })
+    mdb.booking.findMany.mockResolvedValueOnce([{ sessionId: 'session-1' }])
+
+    const ics = await getTourIcs('tour-1', 'user-1')
+    expect(ics).toContain('STATUS:CANCELLED')
+    expect(ics).toContain('UID:session-session-1@peace-buddy.internal')
+  })
+
+  it('filters out sessions the buddy is not confirmed on', async () => {
+    mdb.tour.findUnique.mockResolvedValueOnce({
+      ...icsRow,
+      sessions: [
+        ...icsRow.sessions,
+        { id: 'session-2', label: '2nd Half', meetingTime: new Date('1970-01-01T13:00:00.000Z'), startTime: null, endTime: null },
+      ],
+    })
+    mdb.buddyProfile.findFirst.mockResolvedValueOnce({ status: 'active' })
+    mdb.booking.findMany.mockResolvedValueOnce([{ sessionId: 'session-1' }])
+
+    const ics = await getTourIcs('tour-1', 'user-1')
+    expect(ics).toContain('session-session-1@peace-buddy.internal')
+    expect(ics).not.toContain('session-session-2@peace-buddy.internal')
   })
 })

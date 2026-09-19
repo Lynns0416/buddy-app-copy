@@ -11,7 +11,8 @@ import type { AdminTourDetailResponse, TourAction, AppError } from '@peace-buddy
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { fetchTour, transitionTour, toggleTourBooking, deleteTour, removeTourSession } from '../admin.tour'
+import { fetchTour, transitionTour, toggleTourBooking, deleteTour, removeTourSession, downloadTourCalendar } from '../admin.tour'
+import { triggerBlobDownload } from '@/lib/api'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { TourBookingsTable } from '../_components/tour-bookings-table'
 import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
@@ -95,6 +96,15 @@ export default function AdminTourDetailPage() {
       setActionError(errorMessage(result.error))
       setActing(false)
     }
+  }
+
+  async function handleDownloadCalendar() {
+    setActing(true)
+    setActionError(null)
+    const result = await downloadTourCalendar(id)
+    if (result.ok) triggerBlobDownload(result.data, `tour-${id}.ics`)
+    else setActionError(errorMessage(result.error))
+    setActing(false)
   }
 
   async function handleRemoveSession(sessionId: string) {
@@ -276,6 +286,9 @@ export default function AdminTourDetailPage() {
 
       {/* Actions */}
       <div className="mb-6 flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" disabled={acting} onClick={handleDownloadCalendar}>
+          {t('addToCalendar')}
+        </Button>
         {isEditable && (
           <Button
             size="sm"

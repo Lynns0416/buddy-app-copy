@@ -572,6 +572,19 @@ Tour detail with per-session seat counts and the caller's tier-aware capacity. R
 
 ---
 
+### Buddy: `GET /tours/:id/calendar.ics`
+Downloads an iCalendar (`.ics`) file for the tour, with one `VEVENT` per session the caller holds a **confirmed** booking on — not every session in the tour, and not maybe/waitlist. `404` if the tour isn't visible to the caller (same rule as `GET /tours/:id`) or if the caller has no confirmed session on it.
+
+**Auth:** any authenticated active buddy
+
+**Response `200`** — `text/calendar; charset=utf-8`, `Content-Disposition: attachment; filename="tour-:id.ics"`. Each event's `SUMMARY` is the group name (plus the session label in parentheses, if set), `LOCATION` is `Tour.location`, `DESCRIPTION` is `Tour.description` (never `adminMemo`). Times are emitted as UTC instants (no `VTIMEZONE`), computed from the tour's JST calendar date and the session's `meetingTime`/`startTime`/`endTime` via the same fixed +9h offset as `getTodayJst`. `UID` is `session-<sessionId>@peace-buddy.internal`, stable across re-download.
+
+`STATUS` follows the tour: `cancelled` → `CANCELLED`, `draft` → `TENTATIVE`, `published`/`completed` → `CONFIRMED`. Cancelling a tour does not change booking rows, so a buddy keeps their confirmed seat and the file is still served — re-downloading it retracts the event in their calendar rather than leaving a dead one. Note that no `SEQUENCE` is emitted, so a client that requires one may not apply the retraction automatically.
+
+`DTEND` is the session's `endTime` when that resolves to *after* `DTSTART`, otherwise `DTSTART` + 1 hour. The fallback matters because `startTime` and `endTime` carry no ordering constraint in `CreateTourSessionSchema` / `UpdateTourSessionSchema` and none in the session service, so the API accepts an `endTime` on its own or one earlier than `startTime`.
+
+---
+
 ### Admin: `GET /admin/tours`
 List all tours, including drafts.
 
@@ -653,6 +666,18 @@ Tour detail with admin-only fields.
   "staffInChargeId": "uuid | null"
 }
 ```
+
+**Errors**
+- `404` — not found
+
+---
+
+### Admin: `GET /admin/tours/:id/calendar.ics`
+Downloads an iCalendar (`.ics`) file for the tour, with one `VEVENT` per session — every session, not filtered by any booking (an admin has no personal booking to filter by).
+
+**Auth:** `admin`
+
+**Response `200`** — same shape and field mapping as `GET /tours/:id/calendar.ics` (buddy), minus the confirmed-session filter.
 
 **Errors**
 - `404` — not found

@@ -2,6 +2,8 @@ import { TourStatus, BuddyStatus as PrismaBuddyStatus } from '@prisma/client'
 import { db } from '../lib/db'
 import { getPoolCapacities, poolForTier, tiersInPool } from '../lib/pool'
 import type { TierPool } from '../lib/pool'
+import { buildTourIcs, icsTourSelect } from '../lib/tourIcs'
+import { BookingStatusSchema } from '@peace-buddy/types'
 import type { TourResponse, TourDetailResponse, TourSessionDetailResponse, TourSeatCounts, GroupType, BookingStatus, TourSessionResponse } from '@peace-buddy/types'
 import type { ToursQuery } from '../types'
 
@@ -259,4 +261,34 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
     sessions: sessionDetails,
     staffInCharge: staff && !staff.deletedAt ? { name: staff.name } : null,
   }
+}
+
+// One VEVENT per session the buddy is confirmed on — not every session in
+// the tour, and not maybe/waitlist. Returns null (404) when the tour isn't
+// visible to the caller, same as getTour, and also when the buddy holds no
+// confirmed session — nothing to put on a personal calendar. See #199.
+export async function getTourIcs(id: string, userId: string): Promise<string | null> {
+  const [row, buddyProfile] = await Promise.all([
+    db.tour.findUnique({
+      where: { id },
+      select: icsTourSelect,
+    }),
+    db.buddyProfile.findFirst({ where: { userId }, select: { status: true } }),
+  ])
+
+  if (!row) return null
+  if (buddyProfile?.status === PrismaBuddyStatus.trainee) return null
+
+  const sessionIds = row.sessions.map((s) => s.id)
+  const confirmedBookings = sessionIds.length > 0
+    ? await db.booking.findMany({
+        where: { sessionId: { in: sessionIds }, buddy: { userId }, status: BookingStatusSchema.enum.confirmed },
+        select: { sessionId: true },
+      })
+    : []
+  const confirmedSessionIds = new Set(confirmedBookings.map((b) => b.sessionId))
+  const confirmedSessions = row.sessions.filter((s) => confirmedSessionIds.has(s.id))
+  if (confirmedSessions.length === 0) return null
+
+  return buildTourIcs(row, confirmedSessions)
 }
