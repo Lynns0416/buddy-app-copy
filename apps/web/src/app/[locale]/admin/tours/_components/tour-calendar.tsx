@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { routes } from '@/lib/routes'
 import { getTourStatusLabel, tourStatusDotClass } from '@/lib/status-display'
 import { monthGrid, shiftMonth, toursByDate, type CalendarCell } from '../admin.tour'
+import { formatDate } from '@/lib/format-date'
 
 type Props = {
   tours: AdminTourSummaryResponse[]
@@ -100,7 +101,7 @@ export function TourCalendar({ tours, month, today, locale, onMonthChange }: Pro
           .map((cell) => (
             <div key={cell.date}>
               <p className="mb-1 text-xs font-medium tabular-nums text-muted-foreground">
-                {cell.date}
+                {formatDate(cell.date)}
                 {cell.date === today && <span className="ml-2">{t('calendar.today')}</span>}
               </p>
               <div className="space-y-1">

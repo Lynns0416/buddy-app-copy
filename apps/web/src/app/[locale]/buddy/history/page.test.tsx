@@ -213,7 +213,7 @@ describe('BuddyHistoryPage', () => {
     mockUseMyBookings.mockReturnValue({ bookings: [makeEntry()], error: false })
     render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
-    expect(screen.getByText(/2099-06-01/)).toBeInTheDocument()
+    expect(screen.getByText(/2099\/06\/01/)).toBeInTheDocument()
     expect(screen.getByText(/Tokyo Station/)).toBeInTheDocument()
   })
 

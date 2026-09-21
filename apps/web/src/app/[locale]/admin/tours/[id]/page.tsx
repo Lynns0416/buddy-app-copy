@@ -22,6 +22,7 @@ import { AddSessionForm } from '../_components/add-session-form'
 import { BelowMinimumBadge } from '../_components/below-minimum-badge'
 import { TourAdminAssignment } from '../_components/tour-admin-assignment'
 import { useAllAdmins } from '../hooks/use-all-admins'
+import { formatDate } from '@/lib/format-date'
 
 export default function AdminTourDetailPage() {
   const { ready, locale } = useAdminGuard()
@@ -161,7 +162,7 @@ export default function AdminTourDetailPage() {
         <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">{t('tourDate')}</dt>
-            <dd className="font-medium tabular-nums">{tour.tourDate.slice(0, 10)}</dd>
+            <dd className="font-medium tabular-nums">{formatDate(tour.tourDate)}</dd>
           </div>
           {firstSession?.startTime && (
             <div>
@@ -183,12 +184,12 @@ export default function AdminTourDetailPage() {
           </div>
           <div>
             <dt className="text-muted-foreground">{t('cancellationDeadline')}</dt>
-            <dd className="font-medium tabular-nums">{tour.cancellationDeadline.slice(0, 10)}</dd>
+            <dd className="font-medium tabular-nums">{formatDate(tour.cancellationDeadline)}</dd>
           </div>
           {tour.maybeDeadline && (
             <div>
               <dt className="text-muted-foreground">{t('maybeDeadline')}</dt>
-              <dd className="font-medium tabular-nums">{tour.maybeDeadline.slice(0, 10)}</dd>
+              <dd className="font-medium tabular-nums">{formatDate(tour.maybeDeadline)}</dd>
             </div>
           )}
           {tour.description && (

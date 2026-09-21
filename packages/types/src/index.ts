@@ -950,7 +950,7 @@ export type AdminDashboardResponse = {
 
 // Dates
 
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+export const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 
 // Tours run in Japan, and tour and deadline dates are Japanese calendar dates
 // (`@db.Date`), so "today" is the date there, as `YYYY-MM-DD`. It is never the UTC

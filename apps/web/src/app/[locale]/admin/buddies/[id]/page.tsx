@@ -18,6 +18,7 @@ import { BuddyBookingHistory } from '../_components/buddy-booking-history'
 import { BuddyPerTourEvaluations } from '../_components/buddy-per-tour-evaluations'
 import { BuddySelfEvaluations } from '../_components/buddy-self-evaluations'
 import { AdminProfileEvaluationSummary } from '../_components/admin-profile-evaluation-summary'
+import { formatDate } from '@/lib/format-date'
 
 export default function AdminBuddyDetailPage() {
   const { ready } = useAdminGuard()
@@ -95,7 +96,7 @@ export default function AdminBuddyDetailPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">{t('createdAt')}</p>
-              <p>{new Date(buddy.createdAt).toLocaleDateString(locale)}</p>
+              <p>{formatDate(buddy.createdAt)}</p>
             </div>
           </div>
         </div>

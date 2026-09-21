@@ -15,6 +15,7 @@ import { useTourDetail } from '../../hooks/use-tour-detail'
 import { downloadTourCalendar } from '../../buddy.tour'
 import { SessionBookingCard } from './_components/session-booking-card'
 import { TourSelfEvalSection } from '../../self-evaluations/_components/tour-self-eval-section'
+import { formatDate } from '@/lib/format-date'
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -83,7 +84,7 @@ export default function TourDetailPage() {
             <dt className="text-muted-foreground">{t('tourDate')}</dt>
             <dd className="flex items-center gap-1.5 font-medium">
               <CalendarDays size={14} className="text-muted-foreground" />
-              {tour.tourDate.slice(0, 10)}
+              {formatDate(tour.tourDate)}
             </dd>
           </div>
           <div>
@@ -100,14 +101,14 @@ export default function TourDetailPage() {
           <div>
             <dt className="text-muted-foreground">{t('cancellationDeadline')}</dt>
             <dd className={`font-medium tabular-nums${isPastCancellationDeadline ? ' text-destructive' : ''}`}>
-              {tour.cancellationDeadline.slice(0, 10)}
+              {formatDate(tour.cancellationDeadline)}
             </dd>
           </div>
           {showMaybeDeadline && (
             <div>
               <dt className="text-muted-foreground">{t('maybeDeadline')}</dt>
               <dd className="font-medium tabular-nums">
-                {tour.maybeDeadline ? tour.maybeDeadline.slice(0, 10) : ''}
+                {tour.maybeDeadline ? formatDate(tour.maybeDeadline) : ''}
               </dd>
             </div>
           )}

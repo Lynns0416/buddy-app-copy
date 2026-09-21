@@ -1,9 +1,10 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import type { BuddyProfileResponse } from '@peace-buddy/types'
 import { Badge } from '@/components/ui/badge'
 import { getBuddyStatusLabel, getBuddyTierLabel, buddyStatusBadgeVariant } from '@/lib/status-display'
+import { formatDate } from '@/lib/format-date'
 import { ProfilePhoto } from './profile-photo'
 
 interface ProfileHeaderProps {
@@ -15,13 +16,8 @@ export function ProfileHeader({ profile, onPhotoSaved }: ProfileHeaderProps) {
   const t = useTranslations('profile')
   const tBuddyStatus = useTranslations('buddyStatus')
   const tBuddyTier = useTranslations('buddyTier')
-  const locale = useLocale()
 
-  const memberSince = new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date(profile.createdAt))
+  const memberSince = formatDate(profile.createdAt)
 
   return (
     <div className="mb-6 rounded-lg border bg-card p-4">

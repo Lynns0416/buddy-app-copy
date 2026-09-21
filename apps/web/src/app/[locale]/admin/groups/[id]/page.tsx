@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { SortIcon } from '@/components/sort-icon'
 import { fetchGroup, sortGroupTours, nextGroupTourSort, type GroupTourSortField } from '../admin.group'
 import { getTourStatusLabel, getGroupTypeLabel, tourStatusBadgeVariant, groupTypeBadgeClass } from '@/lib/status-display'
+import { formatDate } from '@/lib/format-date'
 
 export default function AdminGroupDetailPage() {
   const { ready, locale } = useAdminGuard()
@@ -130,7 +131,7 @@ export default function AdminGroupDetailPage() {
                 onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="tabular-nums text-sm font-medium">{tour.tourDate.slice(0, 10)}</span>
+                  <span className="tabular-nums text-sm font-medium">{formatDate(tour.tourDate)}</span>
                   <Badge variant={tourStatusBadgeVariant[tour.status]}>
                     {getTourStatusLabel(tTourStatus, tour.status)}
                   </Badge>
@@ -171,7 +172,7 @@ export default function AdminGroupDetailPage() {
                     className="cursor-pointer"
                     onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
                   >
-                    <TableCell className="tabular-nums">{tour.tourDate.slice(0, 10)}</TableCell>
+                    <TableCell className="tabular-nums">{formatDate(tour.tourDate)}</TableCell>
                     <TableCell>
                       <Badge variant={tourStatusBadgeVariant[tour.status]}>
                         {getTourStatusLabel(tTourStatus, tour.status)}

@@ -11,13 +11,9 @@ import { NotificationRow } from '@/components/notification-row'
 import { routes } from '@/lib/routes'
 import { fetchAdminDashboard } from './admin.dashboard'
 import { WorklistItem, WorklistSection } from './_components/worklist-section'
+import { formatDate } from '@/lib/format-date'
 
 const NOTIFICATION_FEED_SIZE = 5
-
-// Tour dates are `@db.Date`, serialised as UTC midnight: the date part is the day.
-function dateOnly(iso: string): string {
-  return iso.slice(0, 10)
-}
 
 export default function AdminHomePage() {
   const { ready, locale } = useAdminGuard()
@@ -74,7 +70,7 @@ export default function AdminHomePage() {
                   key={b.id}
                   href={routes.adminBuddyDetail(locale, b.id)}
                   title={b.displayName}
-                  detail={t('pending.detail', { date: new Date(b.createdAt).toLocaleDateString(locale) })}
+                  detail={t('pending.detail', { date: formatDate(b.createdAt) })}
                 />
               ))}
             </WorklistSection>
@@ -90,9 +86,9 @@ export default function AdminHomePage() {
                   href={routes.adminTourDetail(locale, tour.id)}
                   title={tour.group.name}
                   detail={t('overdueMaybes.detail', {
-                    date: dateOnly(tour.tourDate),
+                    date: formatDate(tour.tourDate),
                     count: tour.maybeCount,
-                    deadline: dateOnly(tour.maybeDeadline),
+                    deadline: formatDate(tour.maybeDeadline),
                   })}
                 />
               ))}
@@ -109,7 +105,7 @@ export default function AdminHomePage() {
                   href={routes.adminTourDetail(locale, tour.id)}
                   title={tour.group.name}
                   detail={t('underfilled.detail', {
-                    date: dateOnly(tour.tourDate),
+                    date: formatDate(tour.tourDate),
                     sessions: tour.sessions
                       .map((s) =>
                         t('underfilled.session', {
@@ -134,7 +130,7 @@ export default function AdminHomePage() {
                   key={tour.id}
                   href={routes.adminTourDetail(locale, tour.id)}
                   title={tour.group.name}
-                  detail={t('missingEvaluations.detail', { date: dateOnly(tour.tourDate), count: tour.missingCount })}
+                  detail={t('missingEvaluations.detail', { date: formatDate(tour.tourDate), count: tour.missingCount })}
                 />
               ))}
             </WorklistSection>

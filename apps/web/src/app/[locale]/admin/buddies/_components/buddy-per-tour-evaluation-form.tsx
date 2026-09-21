@@ -14,6 +14,7 @@ import {
   buildPayload,
   mapEvalError,
 } from '../../evaluations/evaluation-form'
+import { formatDate } from '@/lib/format-date'
 
 interface BuddyPerTourEvaluationFormProps {
   buddyId: string
@@ -78,7 +79,7 @@ export function BuddyPerTourEvaluationForm({
           <option value="">—</option>
           {completedBookings.map((b) => (
             <option key={b.tourId} value={b.tourId}>
-              {b.tour.tourDate.slice(0, 10)} — {b.tour.group.name}
+              {formatDate(b.tour.tourDate)} — {b.tour.group.name}
             </option>
           ))}
         </select>

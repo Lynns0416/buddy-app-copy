@@ -33,6 +33,7 @@ import { TourFilterBar } from './_components/tour-filters'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { TodayDivider } from './_components/today-divider'
 import { TourCalendar } from './_components/tour-calendar'
+import { formatDate } from '@/lib/format-date'
 
 export default function AdminToursPage() {
   return (
@@ -198,7 +199,7 @@ function AdminToursList() {
                   <Fragment key={tour.id}>
                     {showDivider && (
                       <div className="py-1">
-                        <TodayDivider date={todayStr} label={t('todayDivider')} />
+                        <TodayDivider date={formatDate(todayStr)} label={t('todayDivider')} />
                       </div>
                     )}
                     <div
@@ -208,7 +209,7 @@ function AdminToursList() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="font-medium">{tour.group.name}</p>
-                          <p className="tabular-nums text-sm text-muted-foreground">{tour.tourDate.slice(0, 10)}</p>
+                          <p className="tabular-nums text-sm text-muted-foreground">{formatDate(tour.tourDate)}</p>
                         </div>
                         <Badge variant={tourStatusBadgeVariant[tour.status]}>
                           {getTourStatusLabel(tTourStatus, tour.status)}
@@ -254,7 +255,7 @@ function AdminToursList() {
                         {showDivider && (
                           <TableRow className="hover:bg-transparent">
                             <TableCell colSpan={desktopColSpan} className="py-1">
-                              <TodayDivider date={todayStr} label={t('todayDivider')} />
+                              <TodayDivider date={formatDate(todayStr)} label={t('todayDivider')} />
                             </TableCell>
                           </TableRow>
                         )}
@@ -262,7 +263,7 @@ function AdminToursList() {
                           className="cursor-pointer"
                           onClick={() => router.push(routes.adminTourDetail(locale, tour.id))}
                         >
-                          <TableCell className="whitespace-nowrap tabular-nums text-sm">{tour.tourDate.slice(0, 10)}</TableCell>
+                          <TableCell className="whitespace-nowrap tabular-nums text-sm">{formatDate(tour.tourDate)}</TableCell>
                           <TableCell className="font-medium">{tour.group.name}</TableCell>
                           <TableCell>{tour.location}</TableCell>
                           <TableCell className="text-center">{tour.capacity}</TableCell>

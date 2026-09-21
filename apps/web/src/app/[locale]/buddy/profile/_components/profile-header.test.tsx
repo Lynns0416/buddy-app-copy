@@ -57,7 +57,7 @@ describe('ProfileHeader', () => {
 
   it('renders formatted member since date', () => {
     render(<ProfileHeader profile={stubProfile} onPhotoSaved={vi.fn()} />)
-    expect(screen.getByText(/January 15, 2026/)).toBeInTheDocument()
+    expect(screen.getByText(/2026\/01\/15/)).toBeInTheDocument()
   })
 
   it('renders correct badge variant for pending status', () => {

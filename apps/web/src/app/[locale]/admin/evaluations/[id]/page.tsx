@@ -25,6 +25,7 @@ import {
   buildPayload,
   mapEvalError,
 } from '../evaluation-form'
+import { formatDate } from '@/lib/format-date'
 
 export default function AdminEvaluationDetailPage() {
   const { ready, locale } = useAdminGuard()
@@ -133,7 +134,7 @@ export default function AdminEvaluationDetailPage() {
           {' · '}
           {t('detail.tour')}:{' '}
           <Link href={routes.adminTourDetail(locale, ev.tourId)} className="hover:underline">
-            {ev.tourDate.slice(0, 10)} — {ev.tourGroupName}
+            {formatDate(ev.tourDate)} — {ev.tourGroupName}
           </Link>
           {' · '}
           {t('table.evaluator')}: {ev.createdByName}

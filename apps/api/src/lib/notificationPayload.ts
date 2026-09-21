@@ -1,9 +1,10 @@
 // The calendar date a notification message displays.
 //
-// `Tour.tourDate` is a Postgres DATE, which Prisma returns as UTC midnight, and
-// the API serialises it with `.toISOString()` for the web app to `.slice(0, 10)`.
-// Slicing the same way here keeps a Slack post and the admin table from
-// disagreeing about which day a tour is on.
+// `Tour.tourDate` is a Postgres DATE, which Prisma returns as UTC midnight.
+// Slicing the ISO string takes the day as stored, which is the Japanese calendar
+// date — the same day `formatDate` shows in the web app, so a Slack post and the
+// admin table never disagree about when a tour is. The separator differs: message
+// payloads stay `YYYY-MM-DD`, the UI renders `yyyy/MM/dd`.
 export function payloadTourDate(tourDate: Date): string {
   return tourDate.toISOString().slice(0, 10)
 }

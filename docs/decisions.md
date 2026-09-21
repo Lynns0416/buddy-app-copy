@@ -12,6 +12,55 @@ duplicate that state here.
 
 ---
 
+## 2026-09-20 — Every date in the UI is `yyyy/MM/dd` in Japan time, in both locales
+
+**Decision:** `apps/web/src/lib/format-date.ts` holds the only two date
+formatters the web app uses: `formatDate` renders `yyyy/MM/dd` and
+`formatDateTime` renders `yyyy/MM/dd HH:mm`, for the two places that show when
+something happened (the tour bookings table and the notification row). Every
+display call site goes through them. Both read the calendar date **in Japan**,
+via the `JST_OFFSET_MS` that `getTodayJst` already uses, so a `@db.Date` value
+(UTC midnight) keeps its day and a timestamp shows the day it happened there.
+Closes #129.
+
+**Why one format in both `ja` and `en`, not one per locale.** The app is used in
+Japan by both languages' readers, and `yyyy/MM/dd` is unambiguous to both —
+unlike `9/10/2026`, which two readers date two months apart. Rejected:
+`toLocaleDateString(locale)`, which gives `2026/9/10` in `ja` and `9/10/2026` in
+`en` for the same tour, so the same list read differently depending on who
+opened it.
+
+**Rejected — leaving the format to the browser.** Four of the call sites called
+`toLocaleDateString()` or `toLocaleString()` with no locale at all, so the output
+followed the viewer's device rather than the app. Two more built an
+`Intl.DateTimeFormat` inline. That is what produced four different date renderings
+across the app, which is what #129 reported.
+
+**Rejected — `Intl.DateTimeFormat` with `timeZone: 'Asia/Tokyo'`.** Same answer
+as the fixed offset, because Japan has no daylight saving, but it depends on the
+runtime's ICU data being present and matching between server render and client
+hydration. The offset is arithmetic and cannot come out differently. Same
+reasoning as the 2026-09-15 entry below.
+
+**A `YYYY-MM-DD` string that is already the right day still goes through the
+formatter**, so that the today divider on the admin tours list and the calendar's
+mobile agenda headings read `2026/09/20` like the rows around them, not
+`2026-09-20`. The formatter is what the format is; no call site renders a raw
+date, however correct its day already is.
+
+**Not changed:** `slice(0, 10)` stays where it is not a rendering — date
+comparisons, `input[type=date]` values in the tour form, the calendar's
+`data-date` attributes, and the map keys in `admin.tour.ts` and `buddy.home.ts`.
+Those need `YYYY-MM-DD`, not a display string. So do the API's notification
+payloads (`payloadTourDate`), which feed Slack and email and cannot import from
+the web app; they carry the same day, only a different separator. The tour
+calendar's weekday and month headings stay locale-formatted: they are names, not
+dates.
+
+**Current state:** `apps/web/src/lib/format-date.ts` and its test.
+
+---
+
 ## 2026-09-19 — `.ics` download is one VEVENT per session, hand-rolled, confirmed-only for buddies
 
 **Decision:** `GET /tours/:id/calendar.ics` (buddy) and `GET /admin/tours/:id/calendar.ics`

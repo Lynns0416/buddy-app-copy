@@ -18,6 +18,7 @@ import {
   type AdminProfileSortField,
 } from './admin-profiles'
 import { DeleteAdminModal } from './_components/delete-admin-modal'
+import { formatDate } from '@/lib/format-date'
 
 export default function AdminProfilesPage() {
   const { ready } = useAdminGuard()
@@ -118,7 +119,7 @@ export default function AdminProfilesPage() {
                     )}
                   </TableCell>
                   <TableCell className="tabular-nums text-sm text-muted-foreground">
-                    {new Date(p.createdAt).toLocaleDateString()}
+                    {formatDate(p.createdAt)}
                   </TableCell>
                   {isSuperAdmin && (
                     <TableCell className="text-right">

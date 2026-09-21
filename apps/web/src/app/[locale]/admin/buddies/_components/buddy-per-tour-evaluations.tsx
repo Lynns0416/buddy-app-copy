@@ -13,13 +13,14 @@ import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
 import { listAdminEvaluations } from '../../evaluations/admin.evaluation'
 import { BuddyPerTourEvaluationForm } from './buddy-per-tour-evaluation-form'
+import { formatDate } from '@/lib/format-date'
 
 type SortField = 'tourDate' | 'overallRating' | 'updatedAt'
 type SortDir = 'asc' | 'desc'
 
 function tourLabel(bookings: AdminBuddyBookingEntry[], tourId: string): string {
   const b = bookings.find((b) => b.tourId === tourId)
-  return b ? `${b.tour.tourDate.slice(0, 10)} — ${b.tour.group.name}` : tourId
+  return b ? `${formatDate(b.tour.tourDate)} — ${b.tour.group.name}` : tourId
 }
 
 function sortEvals(
@@ -129,7 +130,7 @@ export function BuddyPerTourEvaluations({ buddyId, bookings }: BuddyPerTourEvalu
                 <div>
                   <p className="text-sm font-medium">{tourLabel(bookings, ev.tourId)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {ev.createdByName} · {new Date(ev.updatedAt).toLocaleDateString()}
+                    {ev.createdByName} · {formatDate(ev.updatedAt)}
                     {ev.absentWithoutReport && (
                       <span className="ml-2 font-medium text-destructive">· {t('fields.absentWithoutReport')}</span>
                     )}

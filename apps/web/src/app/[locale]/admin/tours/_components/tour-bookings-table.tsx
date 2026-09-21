@@ -8,6 +8,7 @@ import { SortIcon } from '@/components/sort-icon'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { sortBookings, nextBookingSort, updateCancellationReason, updateBookingStatus, type BookingSortField } from '../admin.tour'
 import { getBookingStatusLabel } from '@/lib/status-display'
+import { formatDateTime } from '@/lib/format-date'
 
 const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
@@ -151,7 +152,7 @@ export function TourBookingsTable({ bookings: initialBookings, totalSessions }: 
                   </select>
                 </TableCell>
                 <TableCell className="tabular-nums text-sm text-muted-foreground">
-                  {new Date(b.bookedAt).toLocaleString()}
+                  {formatDateTime(b.bookedAt)}
                 </TableCell>
               </TableRow>
               {b.cancellationReason && (

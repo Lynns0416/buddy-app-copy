@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import type { NotifEventKind, NotificationResponse } from '@peace-buddy/types'
+import { formatDateTime } from '@/lib/format-date'
 
 type Props = {
   item: NotificationResponse
@@ -18,7 +19,7 @@ export function NotificationRow({ item, onMarkRead }: Props) {
     >
       <div>
         <p className="text-sm">{t(item.type as NotifEventKind)}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(item.createdAt)}</p>
       </div>
       {unread && (
         <button

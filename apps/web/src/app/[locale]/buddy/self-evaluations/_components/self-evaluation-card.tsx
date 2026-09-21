@@ -4,19 +4,12 @@ import { useTranslations } from 'next-intl'
 import type { SelfEvaluationResponse } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { EvaluationScorePips } from '@/components/evaluation-score-pips'
+import { formatDate } from '@/lib/format-date'
 
 interface SelfEvaluationCardProps {
   evaluation: SelfEvaluationResponse
   onEdit?: () => void
   savedFlash?: boolean
-}
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(iso))
 }
 
 const SCORE_FIELDS = [

@@ -11,6 +11,7 @@ import { routes } from '@/lib/routes'
 import { Badge } from '@/components/ui/badge'
 import { bookingStatusBadgeVariant, getBookingStatusLabel } from '@/lib/status-display'
 import { OPEN_TOURS_PREVIEW } from '../buddy.home'
+import { formatDate } from '@/lib/format-date'
 
 // `tours` is null until loaded, then expected already filtered to what the buddy
 // can book, nearest first.
@@ -43,7 +44,7 @@ export function OpenTours({ tours, error }: { tours: TourResponse[] | null; erro
               <div className="mb-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <CalendarDays size={14} />
-                  {tour.tourDate.slice(0, 10)}
+                  {formatDate(tour.tourDate)}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin size={14} />

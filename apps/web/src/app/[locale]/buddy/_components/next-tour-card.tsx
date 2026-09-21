@@ -8,6 +8,7 @@ import { CalendarDays, Clock, MapPin } from 'lucide-react'
 import type { MyTourBookingEntry } from '@peace-buddy/types'
 import { BookingStatusSchema } from '@peace-buddy/types'
 import { routes } from '@/lib/routes'
+import { formatDate } from '@/lib/format-date'
 
 export function NextTourCard({ entry }: { entry: MyTourBookingEntry | null }) {
   const { locale } = useParams<{ locale: string }>()
@@ -26,7 +27,7 @@ export function NextTourCard({ entry }: { entry: MyTourBookingEntry | null }) {
           <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <CalendarDays size={14} />
-              {entry.tourDate.slice(0, 10)}
+              {formatDate(entry.tourDate)}
             </span>
             <span className="flex items-center gap-1.5">
               <Clock size={14} />

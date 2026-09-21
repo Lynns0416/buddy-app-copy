@@ -12,6 +12,7 @@ import { routes } from '@/lib/routes'
 import { sortBuddies, nextBuddySort, buddyName, type BuddySortField } from '../buddies/admin.buddy'
 import { useTrainees } from './use-trainees'
 import { BuddyAvatar } from '@/components/buddy-avatar'
+import { formatDate } from '@/lib/format-date'
 
 export default function AdminTraineesPage() {
   const { ready } = useAdminGuard()
@@ -74,7 +75,7 @@ export default function AdminTraineesPage() {
                   <p className="font-medium">{buddyName(t, trainee)}</p>
                   <p className="text-sm text-muted-foreground">{trainee.email}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {new Date(trainee.createdAt).toLocaleDateString(locale)}
+                    {formatDate(trainee.createdAt)}
                   </p>
                 </div>
               </div>
@@ -122,7 +123,7 @@ export default function AdminTraineesPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{trainee.email}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(trainee.createdAt).toLocaleDateString(locale)}
+                      {formatDate(trainee.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}

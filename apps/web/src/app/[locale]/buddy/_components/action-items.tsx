@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { routes } from '@/lib/routes'
 import type { ActionItem } from '../buddy.home'
+import { formatDate } from '@/lib/format-date'
 
 function useActionLabel() {
   const t = useTranslations('home')
@@ -14,7 +15,7 @@ function useActionLabel() {
       case 'maybe': {
         const deadline = item.entry.maybeDeadline
         if (deadline === null) return t('actions.maybeNoDeadline')
-        const date = deadline.slice(0, 10)
+        const date = formatDate(deadline)
         return item.deadlinePassed ? t('actions.maybeOverdue', { date }) : t('actions.maybeBy', { date })
       }
       case 'selfEvaluation':
@@ -46,7 +47,7 @@ export function ActionItems({ items }: { items: ActionItem[] }) {
               >
                 <p className="font-medium">{label(item)}</p>
                 <p className="text-muted-foreground">
-                  {item.entry.group.name} · {item.entry.tourDate.slice(0, 10)}
+                  {item.entry.group.name} · {formatDate(item.entry.tourDate)}
                 </p>
               </Link>
             </li>

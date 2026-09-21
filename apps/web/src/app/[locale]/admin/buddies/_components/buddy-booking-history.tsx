@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { routes } from '@/lib/routes'
 import { sortBookingHistory, nextBookingSort, updateCancellationReason, updateBookingStatus, type BookingHistorySortField } from '../admin.buddy'
 import { getBookingStatusLabel } from '@/lib/status-display'
+import { formatDate } from '@/lib/format-date'
 
 const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
@@ -147,7 +148,7 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
                 >
                   {booking.tour.group.name}
                 </Link>
-                <p className="tabular-nums text-xs text-muted-foreground">{booking.tour.tourDate.slice(0, 10)}</p>
+                <p className="tabular-nums text-xs text-muted-foreground">{formatDate(booking.tour.tourDate)}</p>
               </div>
               <select
                 value={booking.status}
@@ -244,7 +245,7 @@ export function BuddyBookingHistory({ bookings: initialBookings }: BuddyBookingH
                     </Link>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {booking.tour.tourDate.slice(0, 10)}
+                    {formatDate(booking.tour.tourDate)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{booking.tour.location}</TableCell>
                   <TableCell>

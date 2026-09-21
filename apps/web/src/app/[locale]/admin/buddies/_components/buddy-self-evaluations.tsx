@@ -6,6 +6,7 @@ import type { AdminSelfEvaluationResponse } from '@peace-buddy/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { listAdminSelfEvaluations } from '../../evaluations/admin.evaluation'
+import { formatDate } from '@/lib/format-date'
 
 type SortField = 'overallRating' | 'submittedAt'
 type SortDir = 'asc' | 'desc'
@@ -102,7 +103,7 @@ export function BuddySelfEvaluations({ buddyId }: BuddySelfEvaluationsProps) {
               >
                 <TableCell>{ev.overallRating ?? '—'}</TableCell>
                 <TableCell className="tabular-nums text-sm text-muted-foreground">
-                  {new Date(ev.createdAt).toLocaleDateString()}
+                  {formatDate(ev.createdAt)}
                 </TableCell>
               </TableRow>
               {expandedId === ev.id && (
