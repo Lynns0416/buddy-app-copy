@@ -2,16 +2,16 @@ import type { MyTourBookingEntry, TourResponse, BookingStatus } from '@peace-bud
 import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
 import { isBookingAllowed, isPastDeadline } from './lib/deadline'
 
-// How long after a tour a missing self-evaluation is still asked for. Submission
-// has no deadline, so without a window every tour never evaluated stays listed.
-export const SELF_EVAL_PROMPT_DAYS = 30
+// How long after a tour a missing reflection is still asked for. Writing one has
+// no deadline, so without a window every tour never reflected on stays listed.
+export const REFLECTION_PROMPT_DAYS = 30
 
 // Open tours shown before the buddy expands the list.
 export const OPEN_TOURS_PREVIEW = 3
 
 export type ActionItem =
   | { kind: 'maybe'; entry: MyTourBookingEntry; deadlinePassed: boolean }
-  | { kind: 'selfEvaluation'; entry: MyTourBookingEntry }
+  | { kind: 'reflection'; entry: MyTourBookingEntry }
   | { kind: 'waitlist'; entry: MyTourBookingEntry }
 
 function dateOf(iso: string): string {
@@ -54,7 +54,7 @@ export function isTourDay(nextTour: MyTourBookingEntry | null, today: string): n
 
 export function findActionItems(bookings: MyTourBookingEntry[], today: string): ActionItem[] {
   const upcoming = bookings.filter((e) => isUpcoming(e, today)).sort(byTourDate)
-  const evalSince = shiftDate(today, -SELF_EVAL_PROMPT_DAYS)
+  const reflectSince = shiftDate(today, -REFLECTION_PROMPT_DAYS)
 
   const maybe: ActionItem[] = upcoming
     .filter((e) => hasBooking(e, BookingStatusSchema.enum.maybe))
@@ -64,22 +64,22 @@ export function findActionItems(bookings: MyTourBookingEntry[], today: string): 
       deadlinePassed: entry.maybeDeadline !== null && isPastDeadline(today, entry.maybeDeadline),
     }))
 
-  const selfEvaluation: ActionItem[] = bookings
+  const reflection: ActionItem[] = bookings
     .filter(
       (e) =>
         e.status === TourStatusSchema.enum.completed &&
         hasBooking(e, BookingStatusSchema.enum.confirmed) &&
-        !e.selfEvaluationSubmitted &&
-        dateOf(e.tourDate) >= evalSince,
+        !e.reflectionSubmitted &&
+        dateOf(e.tourDate) >= reflectSince,
     )
     .sort(byTourDate)
-    .map((entry) => ({ kind: 'selfEvaluation', entry }))
+    .map((entry) => ({ kind: 'reflection', entry }))
 
   const waitlist: ActionItem[] = upcoming
     .filter((e) => hasBooking(e, BookingStatusSchema.enum.waitlist))
     .map((entry) => ({ kind: 'waitlist', entry }))
 
-  return [...maybe, ...selfEvaluation, ...waitlist]
+  return [...maybe, ...reflection, ...waitlist]
 }
 
 export function bookableTours(tours: TourResponse[], today: string): TourResponse[] {

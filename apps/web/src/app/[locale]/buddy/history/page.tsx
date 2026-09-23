@@ -45,7 +45,7 @@ export default function BuddyHistoryPage() {
   const { firebaseUser, loading } = useAuth()
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('history')
-  const [unevaluatedOnly, setUnevaluatedOnly] = useState(false)
+  const [unreflectedOnly, setUnreflectedOnly] = useState(false)
   const [groupName, setGroupName] = useState('')
 
   const { bookings } = useMyBookings(!loading && !!firebaseUser)
@@ -56,9 +56,9 @@ export default function BuddyHistoryPage() {
   const upcoming = findUpcoming(bookings, today)
   const past = findPastAttended(bookings, today)
   const summary = summarize(past)
-  const unevaluatedCount = filterPast(past, { unevaluatedOnly: true, groupName: '' }).length
+  const unreflectedCount = filterPast(past, { unreflectedOnly: true, groupName: '' }).length
   const groupNames = [...new Set(past.map((e) => e.group.name))].sort()
-  const years = groupByYear(filterPast(past, { unevaluatedOnly, groupName }))
+  const years = groupByYear(filterPast(past, { unreflectedOnly, groupName }))
 
   return (
     <AppShell variant="buddy">
@@ -93,14 +93,14 @@ export default function BuddyHistoryPage() {
         ) : (
           <>
             <div className="mb-4 flex flex-wrap gap-2">
-              {unevaluatedCount > 0 && (
+              {unreflectedCount > 0 && (
                 <Button
                   size="sm"
-                  variant={unevaluatedOnly ? 'default' : 'outline'}
-                  aria-pressed={unevaluatedOnly}
-                  onClick={() => setUnevaluatedOnly((v) => !v)}
+                  variant={unreflectedOnly ? 'default' : 'outline'}
+                  aria-pressed={unreflectedOnly}
+                  onClick={() => setUnreflectedOnly((v) => !v)}
                 >
-                  {t('filterUnevaluated', { count: unevaluatedCount })}
+                  {t('filterUnreflected', { count: unreflectedCount })}
                 </Button>
               )}
               <Input

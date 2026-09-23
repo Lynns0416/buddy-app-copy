@@ -8,7 +8,7 @@ const {
   mockDeleteAdminEvaluation,
   mockGetAdminProfileEvaluation,
   mockUpsertAdminProfileEvaluation,
-  mockListAdminSelfEvaluations,
+  mockListAdminReflections,
 } = vi.hoisted(() => ({
   mockListAdminEvaluations: vi.fn(),
   mockGetAdminEvaluation: vi.fn(),
@@ -17,7 +17,7 @@ const {
   mockDeleteAdminEvaluation: vi.fn(),
   mockGetAdminProfileEvaluation: vi.fn(),
   mockUpsertAdminProfileEvaluation: vi.fn(),
-  mockListAdminSelfEvaluations: vi.fn(),
+  mockListAdminReflections: vi.fn(),
 }))
 
 vi.mock('@/lib/api-client', () => ({
@@ -29,7 +29,7 @@ vi.mock('@/lib/api-client', () => ({
     deleteAdminEvaluation: mockDeleteAdminEvaluation,
     getAdminProfileEvaluation: mockGetAdminProfileEvaluation,
     upsertAdminProfileEvaluation: mockUpsertAdminProfileEvaluation,
-    listAdminSelfEvaluations: mockListAdminSelfEvaluations,
+    listAdminReflections: mockListAdminReflections,
   },
 }))
 
@@ -52,11 +52,11 @@ import {
   deleteAdminEvaluation,
   getAdminProfileEvaluation,
   upsertAdminProfileEvaluation,
-  listAdminSelfEvaluations,
+  listAdminReflections,
 } from './admin.evaluation'
 import { ApiError } from '@/lib/api'
 
-import type { AdminEvaluationResponse, AdminProfileEvaluationResponse, AdminSelfEvaluationResponse } from '@peace-buddy/types'
+import type { AdminEvaluationResponse, AdminProfileEvaluationResponse, AdminTourReflectionResponse } from '@peace-buddy/types'
 
 const mockEval: AdminEvaluationResponse = {
   id: 'eval-1',
@@ -263,20 +263,20 @@ describe('upsertAdminProfileEvaluation', () => {
   })
 })
 
-describe('listAdminSelfEvaluations', () => {
+describe('listAdminReflections', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns ok with list on success', async () => {
-    const mockSelf: AdminSelfEvaluationResponse[] = []
-    mockListAdminSelfEvaluations.mockResolvedValueOnce(mockSelf)
-    const result = await listAdminSelfEvaluations({ buddyId: 'buddy-1' })
+    const mockReflections: AdminTourReflectionResponse[] = []
+    mockListAdminReflections.mockResolvedValueOnce(mockReflections)
+    const result = await listAdminReflections({ buddyId: 'buddy-1' })
     expect(result).toEqual({ ok: true, data: [] })
-    expect(mockListAdminSelfEvaluations).toHaveBeenCalledWith({ buddyId: 'buddy-1' })
+    expect(mockListAdminReflections).toHaveBeenCalledWith({ buddyId: 'buddy-1' })
   })
 
   it('returns error on failure', async () => {
-    mockListAdminSelfEvaluations.mockRejectedValueOnce(new Error('Network failure'))
-    const result = await listAdminSelfEvaluations({})
+    mockListAdminReflections.mockRejectedValueOnce(new Error('Network failure'))
+    const result = await listAdminReflections({})
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error.code).toBe('network')
   })

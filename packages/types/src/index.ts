@@ -748,8 +748,8 @@ export type MyTourBookingEntry = {
   location: string
   status: TourStatus
   maybeDeadline: string | null
-  // Whether the caller has submitted a self-evaluation for this tour.
-  selfEvaluationSubmitted: boolean
+  // Whether the caller has written a reflection on any session of this tour.
+  reflectionSubmitted: boolean
   group: { name: string; type: GroupType }
   bookings: MySessionBookingEntry[]
 }
@@ -782,28 +782,6 @@ const adminEvalScoreFields = {
   confidenceNote: z.string().nullish(),
 }
 
-const selfEvalScoreFields = {
-  overallRating: adminEvalScoreFields.overallRating,
-  overallRatingNote: adminEvalScoreFields.overallRatingNote,
-  communication: adminEvalScoreFields.communication,
-  communicationNote: adminEvalScoreFields.communicationNote,
-  groupEngagement: adminEvalScoreFields.groupEngagement,
-  groupEngagementNote: adminEvalScoreFields.groupEngagementNote,
-  memory: adminEvalScoreFields.memory,
-  memoryNote: adminEvalScoreFields.memoryNote,
-  knowledge: adminEvalScoreFields.knowledge,
-  knowledgeNote: adminEvalScoreFields.knowledgeNote,
-  dedication: adminEvalScoreFields.dedication,
-  dedicationNote: adminEvalScoreFields.dedicationNote,
-  dialogue: adminEvalScoreFields.dialogue,
-  dialogueNote: adminEvalScoreFields.dialogueNote,
-  adaptability: adminEvalScoreFields.adaptability,
-  adaptabilityNote: adminEvalScoreFields.adaptabilityNote,
-  emotionNote: adminEvalScoreFields.emotionNote,
-  confidence: adminEvalScoreFields.confidence,
-  confidenceNote: adminEvalScoreFields.confidenceNote,
-}
-
 // Admin per-tour evaluation
 
 export const CreateAdminEvaluationSchema = z.object({
@@ -824,17 +802,6 @@ export type UpdateAdminEvaluation = z.infer<typeof UpdateAdminEvaluationSchema>
 
 export const UpsertAdminProfileEvaluationSchema = z.object(adminEvalScoreFields)
 export type UpsertAdminProfileEvaluation = z.infer<typeof UpsertAdminProfileEvaluationSchema>
-
-// Buddy self-evaluation
-
-export const CreateSelfEvaluationSchema = z.object({
-  tourId: z.string().uuid(),
-  ...selfEvalScoreFields,
-})
-export type CreateSelfEvaluation = z.infer<typeof CreateSelfEvaluationSchema>
-
-export const UpdateSelfEvaluationSchema = z.object(selfEvalScoreFields)
-export type UpdateSelfEvaluation = z.infer<typeof UpdateSelfEvaluationSchema>
 
 // Evaluation response types
 
@@ -862,8 +829,6 @@ export type AdminEvalScores = {
   confidenceNote: string | null
 }
 
-type SelfEvalScores = Omit<AdminEvalScores, 'reliability' | 'reliabilityNote'>
-
 export type AdminEvaluationResponse = AdminEvalScores & {
   id: string
   buddyId: string
@@ -887,20 +852,73 @@ export type AdminProfileEvaluationResponse = AdminEvalScores & {
   updatedAt: string
 }
 
-export type SelfEvaluationResponse = SelfEvalScores & {
+// Buddy tour reflections — five free-text prompts about a session the buddy
+// guided, in place of the scored self-evaluation that used to live here (#236).
+
+export const REFLECTION_PROMPTS = [
+  'didWell',
+  'couldImprove',
+  'memorableMoment',
+  'notesForOthers',
+  'openQuestions',
+] as const
+
+export type ReflectionPrompt = (typeof REFLECTION_PROMPTS)[number]
+
+const reflectionPromptFields = {
+  didWell: z.string().nullish(),
+  couldImprove: z.string().nullish(),
+  memorableMoment: z.string().nullish(),
+  notesForOthers: z.string().nullish(),
+  openQuestions: z.string().nullish(),
+}
+
+// Four of the five may be blank, but not all five: nobody finishes a session
+// with no thoughts at all, and an empty row would silence the reminder while
+// recording nothing.
+function hasAnyPrompt(value: Partial<Record<ReflectionPrompt, string | null>>): boolean {
+  return REFLECTION_PROMPTS.some((key) => (value[key] ?? '').trim().length > 0)
+}
+
+const AT_LEAST_ONE_PROMPT = { message: 'At least one prompt must be filled in' }
+
+export const CreateTourReflectionSchema = z
+  .object({ sessionId: z.string().uuid(), ...reflectionPromptFields })
+  .refine(hasAnyPrompt, AT_LEAST_ONE_PROMPT)
+export type CreateTourReflection = z.infer<typeof CreateTourReflectionSchema>
+
+// A PUT replaces all five prompts, so the same rule holds on an edit without
+// having to read the stored row back.
+export const UpdateTourReflectionSchema = z
+  .object(reflectionPromptFields)
+  .refine(hasAnyPrompt, AT_LEAST_ONE_PROMPT)
+export type UpdateTourReflection = z.infer<typeof UpdateTourReflectionSchema>
+
+export type TourReflectionPrompts = Record<ReflectionPrompt, string | null>
+
+// `tourId`, `sessionOrder` and `sessionLabel` are read through the session
+// relation — TourReflection stores none of them.
+export type TourReflectionResponse = TourReflectionPrompts & {
   id: string
   buddyId: string
+  sessionId: string
+  sessionOrder: number
+  sessionLabel: string | null
   tourId: string
   createdAt: string
   updatedAt: string
   locked: boolean
 }
 
-export type AdminSelfEvaluationResponse = SelfEvalScores & {
+export type AdminTourReflectionResponse = TourReflectionPrompts & {
   id: string
   buddyId: string
   buddyDisplayName: string
+  sessionId: string
+  sessionOrder: number
+  sessionLabel: string | null
   tourId: string
+  tourDate: string
   createdAt: string
   updatedAt: string
 }

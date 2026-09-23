@@ -59,11 +59,11 @@ vi.mock('../services/adminProfileEvaluation.service', () => ({
   },
 }))
 
-vi.mock('../services/selfEvaluation.service', () => ({}))
+vi.mock('../services/reflection.service', () => ({}))
 
-vi.mock('../services/adminSelfEvaluation.service', () => ({
-  listSelfEvaluations: vi.fn(),
-  getSelfEvaluation: vi.fn(),
+vi.mock('../services/adminReflection.service', () => ({
+  listReflections: vi.fn(),
+  getReflection: vi.fn(),
 }))
 
 vi.mock('../services/adminSession.service', () => ({

@@ -24,6 +24,7 @@ export const routes = {
   adminNotificationPreferences: (locale: string) => `/${locale}/admin/notification-preferences`,
   adminBuddyProfileEvaluation: (locale: string, buddyId: string) => `/${locale}/admin/buddies/${buddyId}/profile-evaluation`,
   buddyTour: (locale: string, id: string) => `/${locale}/buddy/tours/${id}`,
+  buddyTourReflection: (locale: string, id: string) => `/${locale}/buddy/tours/${id}/reflection`,
   buddyHistory: (locale: string) => `/${locale}/buddy/history`,
   buddyProfile: (locale: string) => `/${locale}/buddy/profile`,
   buddyProfileOnboarding: (locale: string) => `/${locale}/buddy/profile?onboarding=1`,

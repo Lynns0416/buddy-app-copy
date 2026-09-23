@@ -40,7 +40,7 @@
       "maybe_reminder": "「保留」回答の期限が近づいています。",
       "waitlist_promoted": "キャンセル待ちから繰り上がり、確定となりました。",
       "waitlist_opened": "キャンセル待ちに空きが出ました。",
-      "self_eval_prompt": "ふり返りをお願いします。",
+      "self_eval_prompt": "ふり返りを記入してください。",
       "new_signup": "新しいバディが登録されました。",
       "new_booking": "新しい予約が入りました。",
       "booking_cancelled": "バディが予約をキャンセルしました。",
@@ -193,8 +193,8 @@
       "maybeBy": "{date}までに参加かキャンセルを決めてください",
       "maybeNoDeadline": "未確定のままです。参加かキャンセルを決めてください",
       "maybeOverdue": "未確定の期限（{date}）を過ぎています",
-      "selfEvaluation": "ふり返りを提出してください",
-      "waitlist": "キャンセル待ち中です"
+      "waitlist": "キャンセル待ち中です",
+      "reflection": "ふり返りを書いてください"
     },
     "open": {
       "showAll": "すべて表示（{count}件）",
@@ -228,9 +228,9 @@
     "viewTour": "詳細",
     "summary": "ツアー {tours}件 · 団体 {groups}件 · {since}から",
     "year": "{year}年 · {count}件",
-    "filterUnevaluated": "ふり返りが未提出 ({count})",
     "searchGroup": "団体名で検索",
-    "noMatches": "条件に合う参加済みのツアーはありません"
+    "noMatches": "条件に合う参加済みのツアーはありません",
+    "filterUnreflected": "ふり返りが未記入 ({count})"
   },
   "adminTours": {
     "title": "ツアー",
@@ -429,7 +429,6 @@
     "cantGo": "行けなくなった",
     "cantGoTitle": "不参加の報告",
     "cantGoSubmit": "報告する",
-    "selfEvalTitle": "ふり返り",
     "book": "参加を希望",
     "notEligible": "このツアーには参加できません。",
     "sessions": "セッション",
@@ -438,7 +437,10 @@
         "1": "前半",
         "2": "後半"
       }
-    }
+    },
+    "reflectionTitle": "ふり返り",
+    "reflectionPrompt": "記憶が新しいうちに、その日のことを書き残しましょう。",
+    "reflectionLink": "ふり返りを書く"
   },
   "shell": {
     "appName": "Peace Buddy",
@@ -562,7 +564,7 @@
     "sections": {
       "profileEvaluation": "プロフィール評価",
       "perTourEvaluations": "ツアー別評価",
-      "selfEvaluations": "ふり返り"
+      "reflections": "ふり返り"
     },
     "fields": {
       "overallRating": "総合評価",
@@ -606,7 +608,7 @@
     },
     "empty": {
       "noEvaluations": "評価はありません",
-      "noSelfEvaluations": "ふり返りはありません"
+      "noReflections": "ふり返りはありません"
     },
     "table": {
       "tourDate": "ツアー日",
@@ -615,7 +617,8 @@
       "submittedAt": "提出日時",
       "locked": "ロック済み",
       "actions": "操作",
-      "evaluator": "評価者"
+      "evaluator": "評価者",
+      "session": "セッション"
     },
     "tourPicker": "ツアーを選択",
     "scoreLegend": "1 = 不十分 · 2 = やや不十分 · 3 = 普通 · 4 = 良い · 5 = 優秀",
@@ -642,40 +645,13 @@
       "editLink": "評価を編集 →"
     },
     "scoreMin": "不十分",
-    "scoreMax": "優秀"
-  },
-  "selfEvaluations": {
-    "summary": {
-      "edit": "編集",
-      "saved": "保存しました",
-      "locked": "編集期間終了",
-      "submittedAt": "{date} に提出済み"
-    },
-    "fields": {
-      "overallRating": "総合評価",
-      "communication": "コミュニケーション",
-      "groupEngagement": "団体参加",
-      "memory": "記憶力",
-      "knowledge": "知識",
-      "dedication": "献身性",
-      "dialogue": "対話力",
-      "adaptability": "適応力",
-      "confidence": "自信",
-      "emotionNote": "感情メモ"
-    },
-    "scoreLegend": "1 = 不十分 · 2 = 平均以下 · 3 = 平均 · 4 = 良好 · 5 = 優秀",
-    "actions": {
-      "save": "提出する",
-      "cancel": "キャンセル"
-    },
-    "lockedNote": "{date} に提出済み · 編集期間が終了しました",
-    "error": {
-      "notFound": "評価が見つかりませんでした。",
-      "notEligible": "このツアーのふり返りを提出する資格がありません。",
-      "locked": "この評価の編集期間が終了しました。",
-      "invalidRequest": "入力内容に誤りがあります。確認してもう一度お試しください。",
-      "network": "接続エラーです。ネットワークを確認してください。",
-      "unknown": "エラーが発生しました。もう一度お試しください。"
+    "scoreMax": "優秀",
+    "reflectionPrompts": {
+      "didWell": "うまくできたこと",
+      "couldImprove": "次に活かしたいこと",
+      "memorableMoment": "印象に残った場面",
+      "notesForOthers": "他のバディや運営に共有したいこと",
+      "openQuestions": "答えられなかった質問"
     }
   },
   "buddyTier": {
@@ -775,6 +751,39 @@
       "empty": "未読の通知はありません。",
       "olderUnread": "古い未読の通知はここに表示されません。「すべて表示」から既読にできます。",
       "loadError": "通知を読み込めませんでした。"
+    }
+  },
+  "reflections": {
+    "title": "ふり返り",
+    "backToTour": "ツアーに戻る",
+    "sessionHeading": "ふり返り",
+    "atLeastOne": "少なくとも1つ、お答えください。この記録は今後、自分で確認することができます。",
+    "notEligible": "ふり返りは、ツアーが完了になったあと、担当したセッションについて書けるようになります。",
+    "prompts": {
+      "didWell": "うまくできたこと",
+      "couldImprove": "次に活かしたいこと",
+      "memorableMoment": "印象に残った場面（参加者の言葉や反応など）",
+      "notesForOthers": "他のバディや運営に共有したいこと",
+      "openQuestions": "答えられなかった質問"
+    },
+    "summary": {
+      "edit": "編集",
+      "saved": "保存しました",
+      "locked": "編集期間終了",
+      "submittedAt": "{date} に記入"
+    },
+    "actions": {
+      "save": "提出する",
+      "cancel": "キャンセル"
+    },
+    "error": {
+      "notFound": "ふり返りが見つかりませんでした。",
+      "notEligible": "このセッションのふり返りは書けません。",
+      "locked": "このふり返りの編集期間が終了しました。",
+      "alreadyExists": "このセッションのふり返りはすでに提出されています。ページを再読み込みしてください。",
+      "invalidRequest": "入力内容に誤りがあります。確認してもう一度お試しください。",
+      "network": "接続エラーです。ネットワークを確認してください。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
     }
   }
 }

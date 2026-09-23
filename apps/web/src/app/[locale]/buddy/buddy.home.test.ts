@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
 import type { BookingStatus, MyTourBookingEntry } from '@peace-buddy/types'
-import { findActionItems, findNextTour, isTourDay, SELF_EVAL_PROMPT_DAYS } from './buddy.home'
+import { findActionItems, findNextTour, isTourDay, REFLECTION_PROMPT_DAYS } from './buddy.home'
 
 const today = '2026-09-15'
 
@@ -16,7 +16,7 @@ function makeEntry(
     location: 'Nagasaki',
     status: TourStatusSchema.enum.published,
     maybeDeadline: null,
-    selfEvaluationSubmitted: false,
+    reflectionSubmitted: false,
     group: { name: `Group ${tourId}`, type: 'school' },
     bookings: [
       {
@@ -122,14 +122,14 @@ describe('findActionItems', () => {
     expect(findActionItems([entry], today)).toEqual([])
   })
 
-  it(`asks for a missing self-evaluation on a tour completed in the last ${SELF_EVAL_PROMPT_DAYS} days`, () => {
+  it(`asks for a missing reflection on a tour completed in the last ${REFLECTION_PROMPT_DAYS} days`, () => {
     const recent = completed('recent', '2026-08-16T00:00:00.000Z')
     const old = completed('old', '2026-08-15T00:00:00.000Z')
-    expect(findActionItems([recent, old], today)).toEqual([{ kind: 'selfEvaluation', entry: recent }])
+    expect(findActionItems([recent, old], today)).toEqual([{ kind: 'reflection', entry: recent }])
   })
 
-  it('does not ask for a self-evaluation already submitted, or without a confirmed booking', () => {
-    const submitted = completed('submitted', '2026-09-10T00:00:00.000Z', { selfEvaluationSubmitted: true })
+  it('does not ask for a reflection already written, or without a confirmed booking', () => {
+    const submitted = completed('submitted', '2026-09-10T00:00:00.000Z', { reflectionSubmitted: true })
     const waitlisted = makeEntry('waitlisted', BookingStatusSchema.enum.waitlist, {
       status: TourStatusSchema.enum.completed,
       tourDate: '2026-09-10T00:00:00.000Z',
@@ -142,13 +142,13 @@ describe('findActionItems', () => {
     expect(findActionItems([entry], today)).toEqual([{ kind: 'waitlist', entry }])
   })
 
-  it('orders Maybe bookings first, then self-evaluations, then waitlist entries', () => {
+  it('orders Maybe bookings first, then reflections, then waitlist entries', () => {
     const waitlist = makeEntry('w', BookingStatusSchema.enum.waitlist, { tourDate: '2026-09-16T00:00:00.000Z' })
-    const selfEval = completed('e', '2026-09-10T00:00:00.000Z')
+    const reflection = completed('e', '2026-09-10T00:00:00.000Z')
     const maybe = makeEntry('m', BookingStatusSchema.enum.maybe, { tourDate: '2026-12-01T00:00:00.000Z' })
-    expect(findActionItems([waitlist, selfEval, maybe], today).map((i) => i.kind)).toEqual([
+    expect(findActionItems([waitlist, reflection, maybe], today).map((i) => i.kind)).toEqual([
       'maybe',
-      'selfEvaluation',
+      'reflection',
       'waitlist',
     ])
   })

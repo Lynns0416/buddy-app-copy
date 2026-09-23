@@ -7,7 +7,7 @@ import type {
   UpdateAdminEvaluation,
   AdminProfileEvaluationResponse,
   UpsertAdminProfileEvaluation,
-  AdminSelfEvaluationResponse,
+  AdminTourReflectionResponse,
 } from '@peace-buddy/types'
 import { ApiError } from '@/lib/api'
 
@@ -96,11 +96,11 @@ export async function listAdminProfileEvaluations(
   }
 }
 
-export async function listAdminSelfEvaluations(
+export async function listAdminReflections(
   params: { buddyId?: string },
-): Promise<ActionResult<AdminSelfEvaluationResponse[]>> {
+): Promise<ActionResult<AdminTourReflectionResponse[]>> {
   try {
-    return { ok: true, data: await apiClient.listAdminSelfEvaluations(params) }
+    return { ok: true, data: await apiClient.listAdminReflections(params) }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }

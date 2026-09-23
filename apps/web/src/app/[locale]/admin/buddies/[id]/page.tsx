@@ -16,7 +16,7 @@ import { ProfilePhoto } from '../../../buddy/profile/_components/profile-photo'
 import { BuddyForm } from '../_components/buddy-form'
 import { BuddyBookingHistory } from '../_components/buddy-booking-history'
 import { BuddyPerTourEvaluations } from '../_components/buddy-per-tour-evaluations'
-import { BuddySelfEvaluations } from '../_components/buddy-self-evaluations'
+import { BuddyReflections } from '../_components/buddy-reflections'
 import { AdminProfileEvaluationSummary } from '../_components/admin-profile-evaluation-summary'
 import { formatDate } from '@/lib/format-date'
 
@@ -157,8 +157,8 @@ export default function AdminBuddyDetailPage() {
         <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.perTourEvaluations')}</h2>
         <BuddyPerTourEvaluations buddyId={buddy.id} bookings={buddy.bookings} />
 
-        <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.selfEvaluations')}</h2>
-        <BuddySelfEvaluations buddyId={buddy.id} />
+        <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.reflections')}</h2>
+        <BuddyReflections buddyId={buddy.id} />
       </div>
     </AppShell>
   )

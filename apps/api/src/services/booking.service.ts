@@ -564,14 +564,27 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
               status: true,
               maybeDeadline: true,
               group: { select: { name: true, type: true } },
-              // At most one row: SelfEvaluation is unique per (buddy, tour).
-              selfEvaluations: { where: { buddy: { userId } }, select: { id: true } },
             },
           },
         },
       },
     },
   })
+
+  // A reflection is written per session, but the obligation is per tour — one
+  // anywhere in the tour marks it done (docs/decisions.md 2026-09-23). The
+  // reflection has no tourId column, so this reads the tour through the session.
+  const reflectedTourIds = new Set(
+    (
+      await db.tourReflection.findMany({
+        where: {
+          buddy: { userId },
+          session: { tourId: { in: rows.map((r) => r.tourId) } },
+        },
+        select: { session: { select: { tourId: true } } },
+      })
+    ).map((r) => r.session.tourId),
+  )
 
   // Group by tourId, preserving order from first booking of each tour
   const tourMap = new Map<string, MyTourBookingEntry>()
@@ -596,7 +609,7 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
         location: r.session.tour.location,
         status: r.session.tour.status,
         maybeDeadline: r.session.tour.maybeDeadline ? r.session.tour.maybeDeadline.toISOString() : null,
-        selfEvaluationSubmitted: r.session.tour.selfEvaluations.length > 0,
+        reflectionSubmitted: reflectedTourIds.has(r.tourId),
         group: { name: r.session.tour.group.name, type: r.session.tour.group.type },
         bookings: [sessionEntry],
       })

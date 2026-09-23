@@ -5,7 +5,7 @@ export type HistorySummary = { tours: number; groups: number; since: string }
 
 export type YearGroup = { year: string; entries: MyTourBookingEntry[] }
 
-export type PastFilter = { unevaluatedOnly: boolean; groupName: string }
+export type PastFilter = { unreflectedOnly: boolean; groupName: string }
 
 function dateOf(iso: string): string {
   return iso.slice(0, 10)
@@ -56,7 +56,7 @@ export function filterPast(entries: MyTourBookingEntry[], filter: PastFilter): M
   const name = filter.groupName.trim().toLowerCase()
   return entries.filter(
     (e) =>
-      (!filter.unevaluatedOnly || !e.selfEvaluationSubmitted) &&
+      (!filter.unreflectedOnly || !e.reflectionSubmitted) &&
       e.group.name.toLowerCase().includes(name),
   )
 }

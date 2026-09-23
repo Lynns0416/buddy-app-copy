@@ -12,6 +12,88 @@ duplicate that state here.
 
 ---
 
+## 2026-09-23 — The buddy writes a reflection, not a self-evaluation
+
+**Decision:** `SelfEvaluation` is gone. In its place `TourReflection` holds five
+free-text prompts — `didWell`, `couldImprove`, `memorableMoment`,
+`notesForOthers`, `openQuestions` — all `String?`, with **at least one
+non-empty** required to submit. The nine 1–5 scores, their nine notes and the
+emotional note are dropped outright: nothing is in production, so there is no
+data migration. Admin evaluations are untouched and still scored;
+`EvaluationScoreField` and `evaluation-score-grid` now serve the admin forms
+only. Closes #236.
+
+**Why free text, not scores.** The old form was the admin appraisal form minus
+`reliability` and `absentWithoutReport` — same component, same "Poor →
+Excellent" legend pulled from the `adminEvaluations` namespace. It asked a
+volunteer to grade themselves on nine abstract traits across 19 inputs, and
+produced numbers nobody acted on. What the org actually wants back from a tour
+is what happened. **Rejected — keeping a single overall score alongside the
+prompts:** one number nobody uses is still one number nobody uses, and its
+presence reinstates the "you are being appraised" frame the rest of the change
+removes.
+
+**Rows are per session; the obligation is per tour.** `TourReflection` is keyed
+on `sessionId` with `@@unique([buddyId, sessionId])`, so a buddy who worked a
+tour's 1st and 2nd half may write each up separately if the groups felt
+different. They are only ever *asked* once: any row on any session of the tour
+silences `self_eval_prompt` and sets `reflectionSubmitted` on `GET /me/bookings`.
+`Tour.tourDate` is a single date, so a tour is one day and its sessions are time
+slots within it — per-tour would flatten two genuinely different groups into one
+box, and per-session-obligation would nag a buddy twice for one afternoon.
+**Rejected — keying on `tourId` as before:** it is the shape that forced the
+flattening.
+
+**No denormalised `tourId` column.** The tour is reachable through
+`session.tourId`; storing it too would be a partial dependency on the key, and
+there is no measured query that needs the join removed — `listMyBookings` reads
+it back with one extra `tourReflection.findMany` scoped to the tours already
+listed. `Booking` carries both `tourId` and `sessionId` only because
+`@@index([tourId, status])` serves per-tour capacity queries; reflections have
+no equivalent. **Rejected — mirroring `Booking`:** consistency with a table that
+has a reason is not itself a reason.
+
+**`PUT /me/reflections/:id` replaces all five prompts rather than patching
+them.** The five are one document, and a replacement lets the "at least one
+non-empty" rule live in the Zod schema, where it is checked at the boundary,
+instead of in the service after reading the stored row back and merging.
+**Rejected — the old `!== undefined` partial-update pattern:** with a partial
+payload the schema cannot tell "leave this alone" from "clear this", so it
+cannot enforce the rule at all, and clearing the last filled prompt would slip
+through.
+
+**Not changed — a reflection still requires the tour to be `completed`.** #236's
+validation list names only the confirmed-booking check, but dropping the status
+check would let a buddy write up a tour that has not happened. Same bar as
+before, now applied to the session's tour.
+
+**The reflection is its own page,** `/{locale}/buddy/tours/{tourId}/reflection`,
+with one form per session the buddy holds a confirmed booking on; tour detail
+links to it instead of hosting the form. This is also where past reflections are
+read back, which absorbs the self-evaluation recall half of #215. **Rejected —
+keeping the form inline on tour detail:** with per-session rows that page would
+carry two or three forms below the booking cards, on a screen whose job is the
+booking.
+
+**Renamed with the model,** so that no name in the codebase still says
+"evaluation" for something the buddy writes: `SELF_EVAL_EDIT_WINDOW_DAYS` →
+`REFLECTION_EDIT_WINDOW_DAYS`, `SELF_EVAL_PROMPT_DAYS` →
+`REFLECTION_PROMPT_DAYS`, `MyTourBookingEntry.selfEvaluationSubmitted` →
+`reflectionSubmitted`, the `selfEvaluation` action-item kind → `reflection`,
+`/me/self-evaluations` → `/me/reflections`, `/admin/self-evaluations` →
+`/admin/reflections`. The `self_eval_prompt` notification event keeps its name:
+it is a persisted Prisma enum value with rows and preferences potentially keyed
+to it, and renaming it buys a word at the cost of a data migration.
+
+**Out of scope, needs its own issue:** surfacing `notesForOthers` and
+`openQuestions` to *other* buddies. Both prompts are named for sharing, but
+access is unchanged — the buddy's own rows, plus admin.
+
+**Current state:** `prisma/schema.prisma` `TourReflection`, `docs/data-model.md`,
+`docs/api.md` "Buddy Tour Reflections", PRD §9.3.
+
+---
+
 ## 2026-09-20 — Every date in the UI is `yyyy/MM/dd` in Japan time, in both locales
 
 **Decision:** `apps/web/src/lib/format-date.ts` holds the only two date

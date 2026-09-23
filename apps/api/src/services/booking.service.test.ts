@@ -12,6 +12,7 @@ interface MockDb {
   cancellationReason: { create: MockFn }
   tourAdminAssignment: { findMany: MockFn }
   notificationJob: { create: MockFn; createMany: MockFn }
+  tourReflection: { findMany: MockFn }
   user: { findUnique: MockFn }
   $transaction: MockFn
 }
@@ -27,6 +28,7 @@ vi.mock('../lib/db', () => {
     cancellationReason: { create: vi.fn() },
     tourAdminAssignment: { findMany: vi.fn().mockResolvedValue([]) },
     notificationJob: { create: vi.fn(), createMany: vi.fn() },
+    tourReflection: { findMany: vi.fn().mockResolvedValue([]) },
     user: { findUnique: vi.fn() },
     $transaction,
   }
@@ -678,7 +680,6 @@ describe('listMyBookings', () => {
     sessionId?: string
     order?: number
     maybeDeadline?: Date | null
-    selfEvaluations?: Array<{ id: string }>
   } = {}) {
     const sessionId = overrides.sessionId ?? 'session-1'
     return {
@@ -697,7 +698,6 @@ describe('listMyBookings', () => {
           status: 'published',
           maybeDeadline: overrides.maybeDeadline === undefined ? new Date('2099-04-25') : overrides.maybeDeadline,
           group: { name: 'Sakura School', type: 'school' },
-          selfEvaluations: overrides.selfEvaluations ?? [],
         },
       },
     }
@@ -705,6 +705,7 @@ describe('listMyBookings', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mdb.tourReflection.findMany.mockResolvedValue([])
   })
 
   it("returns the tour's maybe deadline", async () => {
@@ -719,28 +720,33 @@ describe('listMyBookings', () => {
     expect(entry.maybeDeadline).toBeNull()
   })
 
-  it('says whether the caller has submitted a self-evaluation for the tour', async () => {
+  it('marks a tour reflected when a reflection exists on any of its sessions', async () => {
     mdb.booking.findMany.mockResolvedValue([
-      bookingRow({ tourId: 'evaluated', sessionId: 's-evaluated', selfEvaluations: [{ id: 'eval-1' }] }),
-      bookingRow({ tourId: 'not-evaluated', sessionId: 's-not-evaluated' }),
+      bookingRow({ tourId: 'reflected', sessionId: 's-reflected' }),
+      bookingRow({ tourId: 'not-reflected', sessionId: 's-not-reflected' }),
     ])
+    // The reflection sits on a second session of the same tour — the buddy wrote
+    // one of the two slots up, which discharges the obligation for the tour.
+    mdb.tourReflection.findMany.mockResolvedValue([{ session: { tourId: 'reflected' } }])
+
     const entries = await listMyBookings('user-1')
-    expect(entries.map((e) => [e.tourId, e.selfEvaluationSubmitted])).toEqual([
-      ['evaluated', true],
-      ['not-evaluated', false],
+    expect(entries.map((e) => [e.tourId, e.reflectionSubmitted])).toEqual([
+      ['reflected', true],
+      ['not-reflected', false],
     ])
   })
 
-  it("looks up only the caller's own self-evaluations", async () => {
-    mdb.booking.findMany.mockResolvedValue([])
+  it("looks up only the caller's own reflections, scoped to the tours listed", async () => {
+    mdb.booking.findMany.mockResolvedValue([bookingRow({ tourId: 'tour-1' })])
     await listMyBookings('user-1')
-    const args = mdb.booking.findMany.mock.calls[0][0] as {
-      select: { session: { select: { tour: { select: { selfEvaluations: unknown } } } } }
-    }
-    expect(args.select.session.select.tour.select.selfEvaluations).toEqual({
-      where: { buddy: { userId: 'user-1' } },
-      select: { id: true },
-    })
+    expect(mdb.tourReflection.findMany).toHaveBeenCalledWith(
+      oc({
+        where: {
+          buddy: { userId: 'user-1' },
+          session: { tourId: { in: ['tour-1'] } },
+        },
+      }),
+    )
   })
 
   it("returns the tour's group name and type", async () => {

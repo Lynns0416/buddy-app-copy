@@ -18,8 +18,8 @@ function useActionLabel() {
         const date = formatDate(deadline)
         return item.deadlinePassed ? t('actions.maybeOverdue', { date }) : t('actions.maybeBy', { date })
       }
-      case 'selfEvaluation':
-        return t('actions.selfEvaluation')
+      case 'reflection':
+        return t('actions.reflection')
       case 'waitlist':
         return t('actions.waitlist')
     }
@@ -42,7 +42,11 @@ export function ActionItems({ items }: { items: ActionItem[] }) {
           {items.map((item) => (
             <li key={`${item.kind}-${item.entry.tourId}`}>
               <Link
-                href={routes.buddyTour(locale, item.entry.tourId)}
+                href={
+                  item.kind === 'reflection'
+                    ? routes.buddyTourReflection(locale, item.entry.tourId)
+                    : routes.buddyTour(locale, item.entry.tourId)
+                }
                 className="block rounded-md border bg-card p-3 text-sm hover:bg-accent transition-colors"
               >
                 <p className="font-medium">{label(item)}</p>

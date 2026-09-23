@@ -14,7 +14,6 @@ import { AppShell } from '@/components/app-shell'
 import { useTourDetail } from '../../hooks/use-tour-detail'
 import { downloadTourCalendar } from '../../buddy.tour'
 import { SessionBookingCard } from './_components/session-booking-card'
-import { TourSelfEvalSection } from '../../self-evaluations/_components/tour-self-eval-section'
 import { formatDate } from '@/lib/format-date'
 
 export default function TourDetailPage() {
@@ -143,8 +142,11 @@ export default function TourDetailPage() {
 
       {tour.status === TourStatusSchema.enum.completed && hasConfirmedBooking && (
         <div className="mt-6 rounded-lg border bg-card p-6">
-          <h2 className="mb-4 text-base font-semibold">{t('selfEvalTitle')}</h2>
-          <TourSelfEvalSection tourId={id} />
+          <h2 className="mb-2 text-base font-semibold">{t('reflectionTitle')}</h2>
+          <p className="mb-4 text-sm text-muted-foreground">{t('reflectionPrompt')}</p>
+          <Button asChild size="sm">
+            <Link href={routes.buddyTourReflection(locale, id)}>{t('reflectionLink')}</Link>
+          </Button>
         </div>
       )}
     </AppShell>

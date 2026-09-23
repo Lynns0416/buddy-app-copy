@@ -1,6 +1,7 @@
 'use client'
 
-// Shared by admin evaluation forms and buddy self-evaluation form.
+// Shared by the admin per-tour and profile evaluation forms. The buddy's own
+// account of a tour is a TourReflection now — free text, no scores (#236).
 // Uses adminEvaluations namespace (scoreMin, scoreMax, notePlaceholder).
 
 import { useTranslations } from 'next-intl'

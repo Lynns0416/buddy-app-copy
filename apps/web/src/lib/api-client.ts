@@ -32,10 +32,10 @@ import type {
   AdminProfileEvaluationResponse,
   UpsertAdminProfileEvaluation,
   AdminProfileResponse,
-  AdminSelfEvaluationResponse,
-  SelfEvaluationResponse,
-  CreateSelfEvaluation,
-  UpdateSelfEvaluation,
+  AdminTourReflectionResponse,
+  TourReflectionResponse,
+  CreateTourReflection,
+  UpdateTourReflection,
   TierCapacities,
   CreateTourSession,
   UpdateTourSession,
@@ -217,13 +217,13 @@ export const apiClient = {
   upsertAdminProfileEvaluation: (buddyId: string, data: UpsertAdminProfileEvaluation) =>
     apiRequest<AdminProfileEvaluationResponse>(apiPaths.adminProfileEvaluation(buddyId), { method: 'PUT', body: JSON.stringify(data) }),
 
-  listAdminSelfEvaluations: (params: { buddyId?: string }) =>
-    apiRequest<AdminSelfEvaluationResponse[]>(
-      params.buddyId ? `${apiPaths.adminSelfEvaluations}?buddyId=${params.buddyId}` : apiPaths.adminSelfEvaluations,
+  listAdminReflections: (params: { buddyId?: string }) =>
+    apiRequest<AdminTourReflectionResponse[]>(
+      params.buddyId ? `${apiPaths.adminReflections}?buddyId=${params.buddyId}` : apiPaths.adminReflections,
     ),
 
-  getAdminSelfEvaluation: (id: string) =>
-    apiRequest<AdminSelfEvaluationResponse>(apiPaths.adminSelfEvaluation(id)),
+  getAdminReflection: (id: string) =>
+    apiRequest<AdminTourReflectionResponse>(apiPaths.adminReflection(id)),
 
   // Buddy — Tours
   listTours: (from?: string) =>
@@ -270,17 +270,17 @@ export const apiClient = {
   getMyBookings: () =>
     apiRequest<MyTourBookingEntry[]>(apiPaths.meBookings),
 
-  // Buddy — Self-evaluations
-  listMySelfEvaluations: (params: { tourId?: string } = {}) =>
-    apiRequest<SelfEvaluationResponse[]>(
-      params.tourId ? `${apiPaths.selfEvaluations}?tourId=${params.tourId}` : apiPaths.selfEvaluations,
+  // Buddy — Tour reflections
+  listMyReflections: (params: { tourId?: string } = {}) =>
+    apiRequest<TourReflectionResponse[]>(
+      params.tourId ? `${apiPaths.reflections}?tourId=${params.tourId}` : apiPaths.reflections,
     ),
 
-  createSelfEvaluation: (data: CreateSelfEvaluation) =>
-    apiRequest<SelfEvaluationResponse>(apiPaths.selfEvaluations, { method: 'POST', body: JSON.stringify(data) }),
+  createReflection: (data: CreateTourReflection) =>
+    apiRequest<TourReflectionResponse>(apiPaths.reflections, { method: 'POST', body: JSON.stringify(data) }),
 
-  updateSelfEvaluation: (id: string, data: UpdateSelfEvaluation) =>
-    apiRequest<SelfEvaluationResponse>(apiPaths.selfEvaluation(id), { method: 'PUT', body: JSON.stringify(data) }),
+  updateReflection: (id: string, data: UpdateTourReflection) =>
+    apiRequest<TourReflectionResponse>(apiPaths.reflection(id), { method: 'PUT', body: JSON.stringify(data) }),
 
   // Buddy — Profile
   getMyProfile: () =>

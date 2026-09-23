@@ -32,7 +32,7 @@
 
 ## 1. Overview
 
-A web-first internal booking application for managing group tour assignments. The app serves two user types: **Buddies** (tour guides) and **Admins** (our team). Buddies can view upcoming tours, book a session (server auto-assigns Confirmed or Waitlist based on tier-pool capacity — see §8.9), manage their profile, submit self-evaluations, and track their history. Admins manage tours, groups, approve buddies, configure rules, and evaluate buddy performance.
+A web-first internal booking application for managing group tour assignments. The app serves two user types: **Buddies** (tour guides) and **Admins** (our team). Buddies can view upcoming tours, book a session (server auto-assigns Confirmed or Waitlist based on tier-pool capacity — see §8.9), manage their profile, write a reflection on each tour they guided, and track their history. Admins manage tours, groups, approve buddies, configure rules, and evaluate buddy performance.
 
 **Primary language:** Japanese
 **Supported languages:** Japanese, English (i18n from day one)
@@ -62,7 +62,7 @@ A web-first internal booking application for managing group tour assignments. Th
 
 | Role | Description |
 |---|---|
-| **Buddy** | Tour guide. Can book tours, manage own profile, submit self-evaluations, view history. |
+| **Buddy** | Tour guide. Can book tours, manage own profile, write tour reflections, view history. |
 | **Admin** | Regular admin. Can manage tours, groups, buddies, bookings, and evaluations. |
 | **Super Admin** | All admin capabilities plus admin account management and system configuration. |
 
@@ -457,7 +457,7 @@ Answers "what have I done". Tours are split by the date in Japan (`getTodayJst()
 - **Summary line** under the title: `N tours · M groups · since <date>`, counted over attended past tours. Groups are counted by distinct group name. Hidden when there are none.
 - **Past is grouped by year**, newest first, each header carrying that year's tour count after filters.
 - **Filters** (Past only, combinable):
-  - *Self-evaluation not submitted (N)*: shows past tours with `selfEvaluationSubmitted = false`. The home screen stops prompting 30 days after a tour (§11.1), so this is where an older unevaluated tour stays reachable. Hidden when N is 0.
+  - *No reflection written (N)*: shows past tours with `reflectionSubmitted = false` — no reflection on any of the tour's sessions. The home screen stops prompting 30 days after a tour (§11.1), so this is where an older tour with no reflection stays reachable. Hidden when N is 0.
   - *Group name*: text search, case-insensitive substring match on the group name.
 - No filters for group type, location, tour status or cancellations.
 
@@ -536,7 +536,7 @@ When a `confirmed` booking is cancelled:
 
 ### 9.1 Overview
 
-There are two distinct evaluation types: **admin evaluations** (internal, hidden from buddies) and **buddy self-evaluations** (visible to admins and the buddy themselves).
+There are two distinct records of how a tour went: **admin evaluations** (scored, internal, hidden from buddies) and **buddy tour reflections** (free text, written by the buddy, visible to admins and the buddy themselves).
 
 ### 9.2 Admin Evaluations
 
@@ -556,7 +556,7 @@ All score fields use the scale: **1 = Poor / 2 = Below Average / 3 = Average / 4
 | Field | Score | Text | Per-tour | Profile | Notes |
 |---|---|---|---|---|---|
 | Overall rating | 1–5 | ✅ | ✅ | ✅ | |
-| Reliability | 1–5 | ✅ | ✅ | ✅ | Admin-only metric (not in self-eval) |
+| Reliability | 1–5 | ✅ | ✅ | ✅ | Admin-only metric |
 | Communication | 1–5 | ✅ | ✅ | ✅ | |
 | Group engagement | 1–5 | ✅ | ✅ | ✅ | |
 | Memory | 1–5 | ✅ | ✅ | ✅ | Remembering names, details, preferences |
@@ -586,41 +586,44 @@ All score fields use the scale: **1 = Poor / 2 = Below Average / 3 = Average / 4
 - Admin confirms in that modal; the tour is marked completed and the page refreshes
 - The existing evaluation section on the tour detail page serves as the natural prompt to add evaluations — no second modal is shown
 
-### 9.3 Buddy Self-Evaluations
+### 9.3 Buddy Tour Reflections
+
+A buddy is not asked to grade themselves. They are asked what happened.
 
 #### Trigger
-- When a tour is marked **Completed**, buddies who had **Confirmed** status are eligible to submit a self-evaluation for that tour
-- Eligibility is enforced server-side: `POST /me/self-evaluations` rejects with 403 unless the buddy had a `confirmed` booking and the tour is in `completed` status
-- Self-evaluation is optional — buddy can skip
+- When a tour is marked **Completed**, a buddy who held a **Confirmed** booking may write a reflection on each session they guided
+- Eligibility is enforced server-side: `POST /me/reflections` rejects with 403 unless the buddy holds a `confirmed` booking **on that session** and the tour is in `completed` status
+- Writing one is optional — a buddy can skip
 
-#### Fields
+#### Prompts
 
-Same scale as admin evaluations: **1 = Poor / 2 = Below Average / 3 = Average / 4 = Good / 5 = Excellent**. All text fields are optional. Reliability is admin-only and does not appear here.
+Five free-text prompts, no scores. **At least one must be non-empty**; the other four may be blank. Nobody finishes a session with no thoughts at all, and a fully blank row would silence the reminder while recording nothing.
 
-| Field | Score | Text |
-|---|---|---|
-| Overall rating | 1–5 | ✅ |
-| Communication | 1–5 | ✅ |
-| Group engagement | 1–5 | ✅ |
-| Memory | 1–5 | ✅ |
-| Knowledge | 1–5 | ✅ |
-| Dedication | 1–5 | ✅ |
-| Dialogue | 1–5 | ✅ |
-| Adaptability | 1–5 | ✅ |
-| Emotion | — | ✅ |
-| Confidence | 1–5 | ✅ |
-| Date | — | Auto-filled |
+| Prompt | Column |
+|---|---|
+| What I did well | `didWell` |
+| What I could have done better | `couldImprove` |
+| An impressive moment (a participant's remark, a reaction) | `memorableMoment` |
+| To share with other buddies and admins | `notesForOthers` |
+| Questions I couldn't answer | `openQuestions` |
+
+#### Rows per session, obligation per tour
+
+`Tour.tourDate` is a single date, so a tour is one day and its `TourSession` rows are time slots within it. A buddy working two slots may write two reflections if the groups felt different, but is only ever asked for one: any reflection on any session of the tour silences the `self_eval_prompt` reminder (§10.1) and sets `reflectionSubmitted` on `GET /me/bookings`.
 
 #### Edit window
-- Buddies can edit their own self-evaluation via `PUT /me/self-evaluations/:id`
-- Edit window is **7 days from creation** (`SELF_EVAL_EDIT_WINDOW_DAYS = 7`); after that the evaluation is locked
-- The response includes `locked: Boolean` so UI can disable the edit form once the window has passed
-- One self-evaluation per buddy per tour (unique constraint `(buddyId, tourId)`)
+- Buddies edit their own reflection via `PUT /me/reflections/:id`, which **replaces** all five prompts
+- Edit window is **7 days from creation** (`REFLECTION_EDIT_WINDOW_DAYS = 7`); after that the row is locked
+- The response includes `locked: Boolean` so the UI can drop back to a read-only card once the window has passed
+- One reflection per buddy per session (unique constraint `(buddyId, sessionId)`)
+
+#### Where it lives
+- Its own page, `/{locale}/buddy/tours/{tourId}/reflection`, one form per session the buddy guided. The tour detail page links to it rather than hosting the form. Past reflections are read back on the same page.
 
 #### Access
-- Buddies can submit and view their own self-evaluations
-- Admins can view all buddy self-evaluations via `GET /admin/self-evaluations`
-- Buddies cannot see other buddies' self-evaluations
+- Buddies write and read their own reflections
+- Admins read all reflections via `GET /admin/reflections`
+- Buddies cannot see other buddies' reflections — including `notesForOthers` and `openQuestions`, which are named for sharing but not yet surfaced to anyone but admins
 
 ---
 
@@ -641,7 +644,7 @@ Same scale as admin evaluations: **1 = Poor / 2 = Below Average / 3 = Average / 
 | Maybe deadline reminder (`maybe_reminder`) | In-app + email | Global offsets (default: 3 days, 1 day before deadline); evaluated hourly | Planned (§10.5) |
 | Waitlist seat opened (`waitlist_opened`) | In-app + email | Immediate, to all buddies on the waitlist for the freed pool | Planned (no enqueue site yet) |
 | Waitlist auto-promotion (`waitlist_promoted`) | In-app + email | Immediate, to the promoted buddy | Shipped |
-| Self-evaluation prompt (`self_eval_prompt`) | In-app only | On tour Completed, to Confirmed buddies | Planned (no enqueue site yet) |
+| Reflection prompt (`self_eval_prompt`) | In-app only | On tour Completed, to Confirmed buddies with no reflection on any session of that tour | Planned (no enqueue site yet) |
 | Account approved / rejected (`account_approved` / `account_rejected`) | In-app + email | Immediate | Shipped |
 
 **Buddies configure email per event.** Four of the events above are mutable —
@@ -783,7 +786,7 @@ Route: `/buddy`. An obligations screen: what the buddy has committed to and stil
 1. **Your next tour** (`home.nextTour`) is the nearest `published` tour, dated today or later, where the buddy holds a `confirmed` booking. It shows group name, date, the meeting time of each confirmed session and location, and links to the tour. A Maybe or Waitlist booking never makes a tour "next"; those tours appear in section 2.
 2. **Needs your action** (`home.actions`), in this order:
    - Every upcoming `published` tour where the buddy holds a `maybe` booking, whatever its distance from the deadline. It reads "confirm or cancel by {maybeDeadline}". Once the deadline has passed it is marked overdue instead, with the deadline day itself counting as passed, the same rule as the tour detail page (`isPastDeadline`). A tour with no `maybeDeadline` shows no date.
-   - Every `completed` tour where the buddy held a `confirmed` booking, dated within the last 30 days (`SELF_EVAL_PROMPT_DAYS`), with no self-evaluation submitted. It links to the tour detail page, where the form is.
+   - Every `completed` tour where the buddy held a `confirmed` booking, dated within the last 30 days (`REFLECTION_PROMPT_DAYS`), with no reflection on any of its sessions. It links to the tour's reflection page.
    - Every upcoming `published` tour where the buddy holds a `waitlist` booking.
 3. **Tours looking for buddies** (`tour.title`) is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after today. Nearest first. The first three are shown, and "Show all" expands the rest in place. Each card is one tour-level header plus **one section per session**. The header carries group name, tour date and location — location is `Tour.location`, so it is shown once, not per section. Each section carries the session's `label` when set, its meeting time, the booking badge, the **buddy number** and that session's `participantCount`. A single-session tour renders one section, in the same layout.
 
@@ -1156,7 +1159,7 @@ as the cheap substitute for the live-subscription/OAuth item above; see
 
 | # | Question | Owner | Status |
 |---|---|---|---|
-| 1 | Final enum values for evaluation fields (admin and self-evaluation) | Team | **Resolved** — see §9 |
+| 1 | Final enum values for admin evaluation fields | Team | **Resolved** — see §9 |
 | 2 | Exact fields to migrate from Google Sheets | Team | Open |
 | 3 | Slack workspace / webhook setup | Admin | **Resolved** — single shared channel (e.g. `#peace-buddy-ops`) with one webhook URL in `SLACK_WEBHOOK_URL`; per-admin opt-in via account settings. See §10.3. |
 | 4 | Apple Developer account for Apple login | Dev | Open |

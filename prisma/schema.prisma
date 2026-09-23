@@ -149,7 +149,7 @@ model BuddyProfile {
   updatedAt        DateTime                            @updatedAt
   user             User                                @relation(fields: [userId], references: [id])
   bookings         Booking[]
-  selfEvaluations    SelfEvaluation[]
+  reflections        TourReflection[]
   adminEvaluations   AdminEvaluation[]
   profileEvaluations AdminProfileEvaluation[]
   deadlineOverrides BuddyCancellationDeadlineOverride[]
@@ -201,7 +201,6 @@ model Tour {
   sessions             TourSession[]
   bookings             Booking[]
   adminEvaluations     AdminEvaluation[]
-  selfEvaluations      SelfEvaluation[]
   deadlineOverrides    BuddyCancellationDeadlineOverride[]
   adminAssignments     TourAdminAssignment[]
 
@@ -235,6 +234,7 @@ model TourSession {
   tour             Tour          @relation(fields: [tourId], references: [id])
   bookings         Booking[]
   tierCapacities   TierCapacity[]
+  reflections      TourReflection[]
 
   @@unique([tourId, order])
   @@index([tourId])
@@ -353,35 +353,25 @@ model AdminProfileEvaluation {
   @@unique([buddyId, createdBy])
 }
 
-model SelfEvaluation {
-  id                  String       @id @default(uuid())
-  buddyId             String
-  tourId              String
-  overallRating       Int?
-  overallRatingNote   String?
-  communication       Int?
-  communicationNote   String?
-  groupEngagement     Int?
-  groupEngagementNote String?
-  memory              Int?
-  memoryNote          String?
-  knowledge           Int?
-  knowledgeNote       String?
-  dedication          Int?
-  dedicationNote      String?
-  dialogue            Int?
-  dialogueNote        String?
-  adaptability        Int?
-  adaptabilityNote    String?
-  emotionNote         String?
-  confidence          Int?
-  confidenceNote      String?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
-  buddy               BuddyProfile @relation(fields: [buddyId], references: [id])
-  tour                Tour         @relation(fields: [tourId], references: [id])
+// A buddy's own account of a session they guided: five free-text prompts, no
+// scores. Keyed on the session, but the obligation is per tour — one reflection
+// anywhere in a tour silences the prompt (docs/decisions.md 2026-09-23).
+model TourReflection {
+  id              String       @id @default(uuid())
+  buddyId         String
+  sessionId       String
+  didWell         String?
+  couldImprove    String?
+  memorableMoment String?
+  notesForOthers  String?
+  openQuestions   String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  buddy           BuddyProfile @relation(fields: [buddyId], references: [id])
+  session         TourSession  @relation(fields: [sessionId], references: [id])
 
-  @@unique([buddyId, tourId])
+  @@unique([buddyId, sessionId])
+  @@index([sessionId])
 }
 
 model BuddyCancellationDeadlineOverride {

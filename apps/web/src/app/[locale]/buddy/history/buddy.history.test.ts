@@ -15,7 +15,7 @@ function entry(
     location: 'Hiroshima',
     status: 'completed',
     maybeDeadline: null,
-    selfEvaluationSubmitted: true,
+    reflectionSubmitted: true,
     group: { name: `Group ${tourId}`, type: 'school' },
     bookings: [{
       bookingId: `b-${tourId}`,
@@ -99,23 +99,23 @@ describe('groupByYear', () => {
 describe('filterPast', () => {
   const past = [
     entry('school-done', '2026-01-01'),
-    entry('school-open', '2026-01-02', { selfEvaluationSubmitted: false }),
-    entry('company-open', '2026-01-03', { selfEvaluationSubmitted: false, group: { name: 'Minato Co.', type: 'company' } }),
+    entry('school-open', '2026-01-02', { reflectionSubmitted: false }),
+    entry('company-open', '2026-01-03', { reflectionSubmitted: false, group: { name: 'Minato Co.', type: 'company' } }),
   ]
 
   it('returns everything with no filter', () => {
-    expect(ids(filterPast(past, { unevaluatedOnly: false, groupName: '' }))).toEqual(['school-done', 'school-open', 'company-open'])
+    expect(ids(filterPast(past, { unreflectedOnly: false, groupName: '' }))).toEqual(['school-done', 'school-open', 'company-open'])
   })
 
-  it('keeps only tours without a self-evaluation', () => {
-    expect(ids(filterPast(past, { unevaluatedOnly: true, groupName: '' }))).toEqual(['school-open', 'company-open'])
+  it('keeps only tours without a reflection', () => {
+    expect(ids(filterPast(past, { unreflectedOnly: true, groupName: '' }))).toEqual(['school-open', 'company-open'])
   })
 
   it('keeps only group names containing the text, ignoring case', () => {
-    expect(ids(filterPast(past, { unevaluatedOnly: false, groupName: 'm' }))).toEqual(['company-open'])
+    expect(ids(filterPast(past, { unreflectedOnly: false, groupName: 'm' }))).toEqual(['company-open'])
   })
 
   it('applies both filters together', () => {
-    expect(ids(filterPast(past, { unevaluatedOnly: true, groupName: 'school' }))).toEqual(['school-open'])
+    expect(ids(filterPast(past, { unreflectedOnly: true, groupName: 'school' }))).toEqual(['school-open'])
   })
 })

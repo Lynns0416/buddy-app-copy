@@ -11,14 +11,14 @@ erDiagram
     User ||--o| BuddyProfile : "has [buddy only]"
     User ||--o| AdminProfile : "has [admin only]"
 
-    BuddyProfile ||--o{ SelfEvaluation : "subject of"
+    BuddyProfile ||--o{ TourReflection : "author of"
     BuddyProfile ||--o{ AdminEvaluation : "subject of"
     BuddyProfile ||--o{ AdminProfileEvaluation : "subject of"
 
     User ||--o{ AdminEvaluation : "createdBy [admin only]"
     User ||--o{ AdminProfileEvaluation : "createdBy [admin only]"
 
-    Tour ||--o{ SelfEvaluation : "evaluated for"
+    TourSession ||--o{ TourReflection : "reflected on"
     Tour ||--o{ AdminEvaluation : "evaluated for"
 
     User ||--o{ NotificationPreference : "configures"
@@ -36,6 +36,7 @@ erDiagram
     Group ||--o{ Tour : organizes
     Tour ||--o{ TourSession : "split into"
     TourSession ||--o{ TierCapacity : "capped per tier"
+    TourSession ||--o{ TourReflection : "reflected on"
 
     BuddyProfile ||--o{ Booking : places
     Tour ||--o{ Booking : "booked for"
@@ -300,38 +301,29 @@ Overall profile-level evaluation of a buddy, not tied to a specific tour. Same s
 
 **Unique:** `(buddyId, createdBy)` — one per admin per buddy
 
-### SelfEvaluation
+### TourReflection
 
-Same score scale as AdminEvaluation. All note fields optional. `reliability` does not appear in self-evaluations.
+The buddy's own account of a session they guided: five free-text prompts, no scores. Replaces the scored `SelfEvaluation` (#236).
+
+Keyed on the **session**, not the tour — a buddy who works two slots of one tour may write one up per slot. The obligation is still per tour: one row anywhere in a tour silences the `self_eval_prompt` reminder and sets `reflectionSubmitted` on `GET /me/bookings`. There is no `tourId` column; the tour is read through `session`.
+
+All five prompt fields are nullable, but **at least one must be non-empty** — enforced by `CreateTourReflectionSchema` / `UpdateTourReflectionSchema` in `packages/types`, not by a DB constraint. A `PUT` replaces all five, so the rule holds on an edit without reading the stored row back.
 
 | Field | Type | Constraints |
 |---|---|---|
 | id | UUID | PK |
 | buddyId | UUID | FK → BuddyProfile |
-| tourId | UUID | FK → Tour |
-| overallRating | Int? | 1–5 |
-| overallRatingNote | Text? | |
-| communication | Int? | 1–5 |
-| communicationNote | Text? | |
-| groupEngagement | Int? | 1–5 |
-| groupEngagementNote | Text? | |
-| memory | Int? | 1–5 |
-| memoryNote | Text? | |
-| knowledge | Int? | 1–5 |
-| knowledgeNote | Text? | |
-| dedication | Int? | 1–5 |
-| dedicationNote | Text? | |
-| dialogue | Int? | 1–5 |
-| dialogueNote | Text? | |
-| adaptability | Int? | 1–5 |
-| adaptabilityNote | Text? | |
-| emotionNote | Text? | No score — text only |
-| confidence | Int? | 1–5 |
-| confidenceNote | Text? | |
+| sessionId | UUID | FK → TourSession |
+| didWell | Text? | What I did well |
+| couldImprove | Text? | What I could have done better |
+| memorableMoment | Text? | An impressive moment — a participant's remark, a reaction |
+| notesForOthers | Text? | To share with other buddies and admins |
+| openQuestions | Text? | Questions I couldn't answer |
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
 
-**Unique:** `(buddyId, tourId)`
+**Unique:** `(buddyId, sessionId)`
+**Index:** `(sessionId)`
 
 ### BuddyCancellationDeadlineOverride
 Not in PRD. Stores per-buddy overrides of a tour's cancellation deadline.

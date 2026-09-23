@@ -8,7 +8,7 @@ import { registerHandler, authRoutes } from './auth'
 import { buddyRoutes } from './buddies'
 import { tourRoutes } from './tours'
 import { adminRoutes } from './admin'
-import { selfEvaluationRoutes } from './selfEvaluations'
+import { reflectionRoutes } from './reflections'
 import { notificationRoutes } from './notifications'
 import {
   notificationPreferenceRoutes,
@@ -30,7 +30,7 @@ protectedApp.use('/auth/*', authMiddleware)
 protectedApp.route('/auth', authRoutes)
 protectedApp.use('/me/*', authMiddleware)
 protectedApp.route('/me', buddyRoutes)
-protectedApp.route('/me/self-evaluations', selfEvaluationRoutes)
+protectedApp.route('/me/reflections', reflectionRoutes)
 protectedApp.route('/me/notifications', notificationRoutes)
 protectedApp.route('/me/notification-preferences', buddyNotificationPreferenceRoutes)
 protectedApp.use('/tours/*', authMiddleware)

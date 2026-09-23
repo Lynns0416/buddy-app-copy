@@ -132,7 +132,7 @@ function makeEntry(
     location: 'Nagasaki',
     status: TourStatusSchema.enum.published,
     maybeDeadline: null,
-    selfEvaluationSubmitted: false,
+    reflectionSubmitted: false,
     group: { name: `Group ${tourId}`, type: 'school' },
     bookings: [
       {
@@ -262,6 +262,28 @@ describe('BuddyHomePage', () => {
       'href',
       routes.buddyTour('en', 'm'),
     )
+  })
+
+  it('links a missing reflection straight to the tour reflection page', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-15T01:00:00.000Z'))
+    try {
+      mockBookings([
+        makeEntry('done', BookingStatusSchema.enum.confirmed, {
+          status: TourStatusSchema.enum.completed,
+          tourDate: '2026-09-10T00:00:00.000Z',
+        }),
+      ])
+      mockStatus('active')
+      render(<BuddyHomePage />)
+      const actions = screen.getByRole('region', { name: 'actions.title' })
+      expect(within(actions).getByRole('link', { name: /^actions\.reflection/ })).toHaveAttribute(
+        'href',
+        routes.buddyTourReflection('en', 'done'),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('says so when no tour is confirmed and nothing needs action', () => {

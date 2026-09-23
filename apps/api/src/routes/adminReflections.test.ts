@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
 import type { AuthEnv } from '../types'
-import type { AdminSelfEvaluationResponse } from '@peace-buddy/types'
+import type { AdminTourReflectionResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -68,30 +68,30 @@ vi.mock('../services/adminProfileEvaluation.service', () => ({
   BuddyNotFoundError: class extends Error {},
 }))
 
-vi.mock('../services/selfEvaluation.service', () => ({
-  createSelfEvaluation: vi.fn(),
-  listMySelfEvaluations: vi.fn(),
-  updateSelfEvaluation: vi.fn(),
-  EvalNotFoundError: class extends Error {},
-  EvalAlreadyExistsError: class extends Error {},
-  EvalLockedError: class extends Error {},
+vi.mock('../services/reflection.service', () => ({
+  createReflection: vi.fn(),
+  listMyReflections: vi.fn(),
+  updateReflection: vi.fn(),
+  ReflectionNotFoundError: class extends Error {},
+  ReflectionAlreadyExistsError: class extends Error {},
+  ReflectionLockedError: class extends Error {},
   NotEligibleError: class extends Error {},
   BuddyNotFoundError: class extends Error {},
-  SELF_EVAL_EDIT_WINDOW_DAYS: 7,
+  REFLECTION_EDIT_WINDOW_DAYS: 7,
 }))
 
-vi.mock('../services/adminSelfEvaluation.service', () => ({
-  listSelfEvaluations: vi.fn(),
-  getSelfEvaluation: vi.fn(),
+vi.mock('../services/adminReflection.service', () => ({
+  listReflections: vi.fn(),
+  getReflection: vi.fn(),
 }))
 
 import {
-  listSelfEvaluations,
-  getSelfEvaluation,
-} from '../services/adminSelfEvaluation.service'
+  listReflections,
+  getReflection,
+} from '../services/adminReflection.service'
 
-const mockList = vi.mocked(listSelfEvaluations)
-const mockGet = vi.mocked(getSelfEvaluation)
+const mockList = vi.mocked(listReflections)
+const mockGet = vi.mocked(getReflection)
 
 function buildApp() {
   const app = new Hono<AuthEnv>()
@@ -105,68 +105,58 @@ function buildApp() {
   return app
 }
 
-const mockSelfEval: AdminSelfEvaluationResponse = {
-  id: 'seval-1',
+const mockReflection: AdminTourReflectionResponse = {
+  id: 'refl-1',
   buddyId: 'buddy-1',
   buddyDisplayName: 'Test Buddy',
+  sessionId: 'session-1',
+  sessionOrder: 1,
+  sessionLabel: null,
   tourId: 'tour-1',
-  overallRating: 3,
-  overallRatingNote: null,
-  communication: null,
-  communicationNote: null,
-  groupEngagement: null,
-  groupEngagementNote: null,
-  memory: null,
-  memoryNote: null,
-  knowledge: null,
-  knowledgeNote: null,
-  dedication: null,
-  dedicationNote: null,
-  dialogue: null,
-  dialogueNote: null,
-  adaptability: null,
-  adaptabilityNote: null,
-  emotionNote: null,
-  confidence: null,
-  confidenceNote: null,
+  tourDate: '2026-01-01T00:00:00.000Z',
+  didWell: 'Kept everyone together',
+  couldImprove: null,
+  memorableMoment: null,
+  notesForOthers: null,
+  openQuestions: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 }
 
-describe('GET /admin/self-evaluations', () => {
+describe('GET /admin/reflections', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns self-evaluation list', async () => {
-    mockList.mockResolvedValueOnce([mockSelfEval])
-    const res = await buildApp().request('/admin/self-evaluations')
+  it('returns the reflection list', async () => {
+    mockList.mockResolvedValueOnce([mockReflection])
+    const res = await buildApp().request('/admin/reflections')
     expect(res.status).toBe(200)
-    const body = await res.json() as AdminSelfEvaluationResponse[]
+    const body = await res.json() as AdminTourReflectionResponse[]
     expect(body).toHaveLength(1)
     expect(mockList).toHaveBeenCalledWith({ buddyId: undefined })
   })
 
   it('passes buddyId filter', async () => {
     mockList.mockResolvedValueOnce([])
-    const res = await buildApp().request('/admin/self-evaluations?buddyId=buddy-1')
+    const res = await buildApp().request('/admin/reflections?buddyId=buddy-1')
     expect(res.status).toBe(200)
     expect(mockList).toHaveBeenCalledWith({ buddyId: 'buddy-1' })
   })
 })
 
-describe('GET /admin/self-evaluations/:id', () => {
+describe('GET /admin/reflections/:id', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns self-evaluation', async () => {
-    mockGet.mockResolvedValueOnce(mockSelfEval)
-    const res = await buildApp().request('/admin/self-evaluations/seval-1')
+  it('returns the reflection', async () => {
+    mockGet.mockResolvedValueOnce(mockReflection)
+    const res = await buildApp().request('/admin/reflections/refl-1')
     expect(res.status).toBe(200)
-    const body = await res.json() as AdminSelfEvaluationResponse
-    expect(body.id).toBe('seval-1')
+    const body = await res.json() as AdminTourReflectionResponse
+    expect(body.id).toBe('refl-1')
   })
 
   it('returns 404 when not found', async () => {
     mockGet.mockResolvedValueOnce(null)
-    const res = await buildApp().request('/admin/self-evaluations/missing')
+    const res = await buildApp().request('/admin/reflections/missing')
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ code: 'not_found' })
   })

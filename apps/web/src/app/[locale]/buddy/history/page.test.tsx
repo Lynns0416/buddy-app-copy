@@ -41,7 +41,7 @@ const makeEntry = (overrides: Partial<MyTourBookingEntry> = {}): MyTourBookingEn
   location: 'Tokyo Station',
   status: 'published',
   maybeDeadline: null,
-  selfEvaluationSubmitted: false,
+  reflectionSubmitted: false,
   group: { name: 'Test School', type: 'school' },
   bookings: [{
     bookingId: 'b1',
@@ -151,16 +151,16 @@ describe('BuddyHistoryPage', () => {
     expect(screen.getAllByRole('heading', { level: 3, name: 'year' })).toHaveLength(2)
   })
 
-  it('isolates past tours without a self-evaluation in one action', async () => {
+  it('isolates past tours without a reflection in one action', async () => {
     mockUseMyBookings.mockReturnValue({
       bookings: [
-        makeEntry({ tourId: 't1', tourDate: '2020-01-01T00:00:00.000Z', group: { name: 'Evaluated', type: 'school' }, selfEvaluationSubmitted: true }),
+        makeEntry({ tourId: 't1', tourDate: '2020-01-01T00:00:00.000Z', group: { name: 'Evaluated', type: 'school' }, reflectionSubmitted: true }),
         makeEntry({ tourId: 't2', tourDate: '2020-02-01T00:00:00.000Z', group: { name: 'Not evaluated', type: 'school' } }),
       ],
       error: false,
     })
     render(<BuddyHistoryPage />)
-    const toggle = await screen.findByRole('button', { name: 'filterUnevaluated' })
+    const toggle = await screen.findByRole('button', { name: 'filterUnreflected' })
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-pressed', 'true')
@@ -168,14 +168,14 @@ describe('BuddyHistoryPage', () => {
     expect(screen.getByText('Not evaluated')).toBeInTheDocument()
   })
 
-  it('offers no self-evaluation filter when every past tour is evaluated', async () => {
+  it('offers no reflection filter when every past tour has one', async () => {
     mockUseMyBookings.mockReturnValue({
-      bookings: [makeEntry({ tourDate: '2020-01-01T00:00:00.000Z', selfEvaluationSubmitted: true })],
+      bookings: [makeEntry({ tourDate: '2020-01-01T00:00:00.000Z', reflectionSubmitted: true })],
       error: false,
     })
     render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: 'filterUnevaluated' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'filterUnreflected' })).not.toBeInTheDocument()
   })
 
   it('filters past tours by group name', async () => {
@@ -198,14 +198,14 @@ describe('BuddyHistoryPage', () => {
   it('says so when the filters match no past tour', async () => {
     mockUseMyBookings.mockReturnValue({
       bookings: [
-        makeEntry({ tourId: 't1', tourDate: '2020-01-01T00:00:00.000Z', group: { name: 'Sakura School', type: 'school' }, selfEvaluationSubmitted: true }),
+        makeEntry({ tourId: 't1', tourDate: '2020-01-01T00:00:00.000Z', group: { name: 'Sakura School', type: 'school' }, reflectionSubmitted: true }),
         makeEntry({ tourId: 't2', tourDate: '2020-02-01T00:00:00.000Z', group: { name: 'Minato Co.', type: 'company' } }),
       ],
       error: false,
     })
     render(<BuddyHistoryPage />)
     fireEvent.change(await screen.findByRole('combobox', { name: 'searchGroup' }), { target: { value: 'sakura' } })
-    fireEvent.click(screen.getByRole('button', { name: 'filterUnevaluated' }))
+    fireEvent.click(screen.getByRole('button', { name: 'filterUnreflected' }))
     expect(screen.getByText('noMatches')).toBeInTheDocument()
   })
 

@@ -40,7 +40,7 @@
       "maybe_reminder": "Maybe deadline reminder.",
       "waitlist_promoted": "A waitlist seat opened up for you — you're now confirmed.",
       "waitlist_opened": "A waitlist seat is open.",
-      "self_eval_prompt": "Please complete your self-evaluation.",
+      "self_eval_prompt": "Please write your reflection.",
       "new_signup": "A new buddy signed up.",
       "new_booking": "A new booking was made.",
       "booking_cancelled": "A buddy cancelled their booking.",
@@ -193,8 +193,8 @@
       "maybeBy": "Confirm or cancel by {date}",
       "maybeNoDeadline": "Still Maybe — confirm or cancel",
       "maybeOverdue": "Maybe deadline {date} has passed",
-      "selfEvaluation": "Submit your self-evaluation",
-      "waitlist": "You're on the waitlist"
+      "waitlist": "You're on the waitlist",
+      "reflection": "Write your reflection"
     },
     "open": {
       "showAll": "Show all {count}",
@@ -228,9 +228,9 @@
     "viewTour": "View",
     "summary": "{tours, plural, one {# tour} other {# tours}} · {groups, plural, one {# group} other {# groups}} · since {since}",
     "year": "{year} · {count, plural, one {# tour} other {# tours}}",
-    "filterUnevaluated": "Self-evaluation not submitted ({count})",
     "searchGroup": "Search by group name",
-    "noMatches": "No past tours match these filters"
+    "noMatches": "No past tours match these filters",
+    "filterUnreflected": "No reflection written ({count})"
   },
   "adminTours": {
     "title": "Tours",
@@ -429,7 +429,6 @@
     "cantGo": "I can't go",
     "cantGoTitle": "Report inability to attend",
     "cantGoSubmit": "Submit report",
-    "selfEvalTitle": "Self-Evaluation",
     "book": "Join",
     "notEligible": "You are not currently eligible to book this tour.",
     "sessions": "Sessions",
@@ -438,7 +437,10 @@
         "1": "1st Half",
         "2": "2nd Half"
       }
-    }
+    },
+    "reflectionTitle": "Reflection",
+    "reflectionPrompt": "Write up what happened, while it is fresh.",
+    "reflectionLink": "Write your reflection"
   },
   "shell": {
     "appName": "Peace Buddy",
@@ -562,7 +564,7 @@
     "sections": {
       "profileEvaluation": "Profile Evaluation",
       "perTourEvaluations": "Per-Tour Evaluations",
-      "selfEvaluations": "Self-Evaluations"
+      "reflections": "Reflections"
     },
     "fields": {
       "overallRating": "Overall Rating",
@@ -606,7 +608,7 @@
     },
     "empty": {
       "noEvaluations": "No evaluations yet",
-      "noSelfEvaluations": "No self-evaluations yet"
+      "noReflections": "No reflections yet"
     },
     "table": {
       "tourDate": "Tour Date",
@@ -615,7 +617,8 @@
       "submittedAt": "Submitted At",
       "locked": "Locked",
       "actions": "Actions",
-      "evaluator": "Evaluator"
+      "evaluator": "Evaluator",
+      "session": "Session"
     },
     "tourPicker": "Select Tour",
     "scoreLegend": "1 = Poor · 2 = Below average · 3 = Average · 4 = Good · 5 = Excellent",
@@ -642,40 +645,13 @@
       "editLink": "Edit evaluation →"
     },
     "scoreMin": "Poor",
-    "scoreMax": "Excellent"
-  },
-  "selfEvaluations": {
-    "summary": {
-      "edit": "Edit",
-      "saved": "Saved",
-      "locked": "no longer editable",
-      "submittedAt": "Submitted on {date}"
-    },
-    "fields": {
-      "overallRating": "Overall Rating",
-      "communication": "Communication",
-      "groupEngagement": "Group Engagement",
-      "memory": "Memory",
-      "knowledge": "Knowledge",
-      "dedication": "Dedication",
-      "dialogue": "Dialogue",
-      "adaptability": "Adaptability",
-      "confidence": "Confidence",
-      "emotionNote": "Emotional Note"
-    },
-    "scoreLegend": "1 = Poor · 2 = Below average · 3 = Average · 4 = Good · 5 = Excellent",
-    "actions": {
-      "save": "Submit",
-      "cancel": "Cancel"
-    },
-    "lockedNote": "Submitted on {date} · no longer editable",
-    "error": {
-      "notFound": "Evaluation not found.",
-      "notEligible": "You are not eligible to submit a self-evaluation for this tour.",
-      "locked": "The edit window for this evaluation has closed.",
-      "invalidRequest": "Invalid data. Please check your input and try again.",
-      "network": "Network error. Please check your connection.",
-      "unknown": "An error occurred. Please try again."
+    "scoreMax": "Excellent",
+    "reflectionPrompts": {
+      "didWell": "What I did well",
+      "couldImprove": "What I could have done better",
+      "memorableMoment": "An impressive moment",
+      "notesForOthers": "To share with other buddies and admins",
+      "openQuestions": "Questions I couldn't answer"
     }
   },
   "buddyTier": {
@@ -775,6 +751,39 @@
       "empty": "No unread notifications.",
       "olderUnread": "Older unread notifications aren't shown here. Open View all to mark them read.",
       "loadError": "Could not load notifications."
+    }
+  },
+  "reflections": {
+    "title": "Reflection",
+    "backToTour": "Back to tour",
+    "sessionHeading": "Reflection",
+    "atLeastOne": "Answer at least one. You can review this record yourself later.",
+    "notEligible": "Reflections open once the tour is marked completed, for the sessions you guided.",
+    "prompts": {
+      "didWell": "What I did well",
+      "couldImprove": "What I could have done better",
+      "memorableMoment": "An impressive moment — a participant's remark, a reaction",
+      "notesForOthers": "To share with other buddies and admins",
+      "openQuestions": "Questions I couldn't answer"
+    },
+    "summary": {
+      "edit": "Edit",
+      "saved": "Saved",
+      "locked": "no longer editable",
+      "submittedAt": "Written on {date}"
+    },
+    "actions": {
+      "save": "Submit",
+      "cancel": "Cancel"
+    },
+    "error": {
+      "notFound": "Reflection not found.",
+      "notEligible": "You cannot write a reflection for this session.",
+      "locked": "The edit window for this reflection has closed.",
+      "alreadyExists": "You have already written a reflection for this session. Reload the page to see it.",
+      "invalidRequest": "Invalid data. Please check your input and try again.",
+      "network": "Network error. Please check your connection.",
+      "unknown": "An error occurred. Please try again."
     }
   }
 }

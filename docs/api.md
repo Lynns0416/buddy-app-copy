@@ -962,7 +962,7 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
       "location": "string",
       "status": "draft | published | cancelled | completed",
       "maybeDeadline": "ISO8601 | null",
-      "selfEvaluationSubmitted": false,
+      "reflectionSubmitted": false,
       "group": { "name": "string", "type": "school | company | community | other" },
       "bookings": [
         {
@@ -980,7 +980,7 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
 }
 ```
 
-`maybeDeadline` is the tour's. `selfEvaluationSubmitted` is whether the caller has submitted a self-evaluation for that tour. `/buddy` builds its next-tour and needs-your-action sections from these (PRD §11.1).
+`maybeDeadline` is the tour's. `reflectionSubmitted` is whether the caller has written a reflection on **any** session of that tour — reflections are per session, the obligation is per tour. `/buddy` builds its next-tour and needs-your-action sections from these (PRD §11.1).
 
 ---
 
@@ -1039,7 +1039,7 @@ Update the `unavoidable` flag on an existing `CancellationReason`. Setting `null
 
 ## Evaluations
 
-Backed by three distinct database models (see data-model.md): `AdminEvaluation` (per-tour), `AdminProfileEvaluation` (overall profile), `SelfEvaluation` (buddy self). Routes are namespaced by audience: admin-authored evaluations live under `/admin/*`, buddy-authored self-evaluations under `/me/*`. Admin read-only access to self-evaluations lives under `/admin/self-evaluations`.
+Backed by three distinct database models (see data-model.md): `AdminEvaluation` (per-tour), `AdminProfileEvaluation` (overall profile), `TourReflection` (the buddy's own account of a session, free text, no scores). Routes are namespaced by audience: admin-authored evaluations live under `/admin/*`, buddy-authored reflections under `/me/reflections`. Admin read-only access to reflections lives under `/admin/reflections`.
 
 Score range for all `*Rating` / score fields: **1–5** (`EvaluationScoreSchema`). Note fields are optional strings. `emotionNote` is text-only (no score).
 
@@ -1204,82 +1204,102 @@ List all admins' profile evaluations for a buddy.
 
 ---
 
-### Buddy Self-Evaluations
+### Buddy Tour Reflections
 
-#### `POST /me/self-evaluations`
-Buddy submits a self-evaluation for a completed tour.
+Five free-text prompts about a session the buddy guided. No scores — see data-model.md `TourReflection` and PRD §9.3.
+
+#### `POST /me/reflections`
+Buddy writes a reflection on one session of a completed tour.
 
 **Auth:** `buddy`
 
-**Request** — `CreateSelfEvaluationSchema` (same shape as admin per-tour minus `buddyId`, `reliability`, `reliabilityNote`, `absentWithoutReport`)
+**Request** — `CreateTourReflectionSchema`
+```json
+{
+  "sessionId": "uuid",
+  "didWell": "string | null",
+  "couldImprove": "string | null",
+  "memorableMoment": "string | null",
+  "notesForOthers": "string | null",
+  "openQuestions": "string | null"
+}
+```
+At least one of the five prompts must be non-empty; the other four may be blank or omitted.
 
-**Response `201`** — `SelfEvaluationResponse`
+**Response `201`** — `TourReflectionResponse`
 ```json
 {
   "id": "uuid",
   "buddyId": "uuid",
+  "sessionId": "uuid",
+  "sessionOrder": 1,
+  "sessionLabel": "string | null",
   "tourId": "uuid",
-  "overallRating": 1, "overallRatingNote": "string | null",
-  "...": "all other score/note pairs (no reliability)",
-  "emotionNote": "string | null",
+  "didWell": "string | null",
+  "couldImprove": "string | null",
+  "memorableMoment": "string | null",
+  "notesForOthers": "string | null",
+  "openQuestions": "string | null",
   "locked": false,
   "createdAt": "ISO8601",
   "updatedAt": "ISO8601"
 }
 ```
+`tourId`, `sessionOrder` and `sessionLabel` are read through the session relation — `TourReflection` stores none of them.
 
 **Errors**
-- `403` — buddy did not have a `confirmed` booking, or tour is not in `completed` status
-- `409` — self-evaluation already exists for this tour
+- `400` — all five prompts blank
+- `403` — buddy holds no `confirmed` booking on that session, or the tour is not in `completed` status
+- `409` — a reflection already exists for this session
 
 ---
 
-#### `GET /me/self-evaluations`
-List the authenticated buddy's own self-evaluations.
+#### `GET /me/reflections`
+List the authenticated buddy's own reflections.
 
 **Auth:** `buddy`
 
-**Query params:** `?tourId=uuid` (optional)
+**Query params:** `?tourId=uuid` (optional) — filters through the session relation, returning every session of that tour the buddy wrote up
 
-**Response `200`** — array of `SelfEvaluationResponse`, ordered by `createdAt` descending
+**Response `200`** — array of `TourReflectionResponse`, ordered by `createdAt` descending
 
 ---
 
-#### `PUT /me/self-evaluations/:id`
-Edit own self-evaluation within the 7-day edit window.
+#### `PUT /me/reflections/:id`
+Edit own reflection within the 7-day edit window.
 
 **Auth:** `buddy` (must equal owner)
 
-**Request** — `UpdateSelfEvaluationSchema` (partial; same fields as create, no `tourId`)
+**Request** — `UpdateTourReflectionSchema` (the five prompts, no `sessionId`). This is a **replacement**, not a patch: a prompt left out is cleared, and at least one must survive non-empty.
 
-**Response `200`** — `SelfEvaluationResponse`
+**Response `200`** — `TourReflectionResponse`
 
 **Errors**
-- `403` — requester is not the owner
-- `404` — not found
+- `400` — all five prompts blank
+- `404` — not found, or owned by another buddy
 - `409` — edit window (7 days from creation) has closed
 
 ---
 
-### Self-Evaluations (admin read access)
+### Reflections (admin read access)
 
-#### `GET /admin/self-evaluations`
-Admins read all buddy self-evaluations.
+#### `GET /admin/reflections`
+Admins read all buddy reflections.
 
 **Auth:** `admin`
 
 **Query params:** `?buddyId=uuid` (optional)
 
-**Response `200`** — array of `AdminSelfEvaluationResponse` (includes buddy display name), ordered by `createdAt` descending
+**Response `200`** — array of `AdminTourReflectionResponse` (adds `buddyDisplayName` and `tourDate`, drops `locked`), ordered by `createdAt` descending
 
 ---
 
-#### `GET /admin/self-evaluations/:id`
-Fetch a single self-evaluation.
+#### `GET /admin/reflections/:id`
+Fetch a single reflection.
 
 **Auth:** `admin`
 
-**Response `200`** — `AdminSelfEvaluationResponse` or `404`
+**Response `200`** — `AdminTourReflectionResponse` or `404`
 
 ---
 

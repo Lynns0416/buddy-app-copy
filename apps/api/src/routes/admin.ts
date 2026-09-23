@@ -5,7 +5,7 @@ import { adminGroupRoutes } from './adminGroups'
 import { adminTourRoutes } from './adminTours'
 import { adminEvaluationRoutes } from './adminEvaluations'
 import { adminProfileEvaluationRoutes } from './adminProfileEvaluations'
-import { adminSelfEvaluationRoutes } from './adminSelfEvaluations'
+import { adminReflectionRoutes } from './adminReflections'
 import { adminProfileRoutes } from './adminProfiles'
 import { adminDashboardRoutes } from './adminDashboard'
 import type { AuthEnv } from '../types'
@@ -16,7 +16,7 @@ adminRoutes.route('/groups', adminGroupRoutes)
 adminRoutes.route('/tours', adminTourRoutes)
 adminRoutes.route('/evaluations', adminEvaluationRoutes)
 adminRoutes.route('/profile-evaluations', adminProfileEvaluationRoutes)
-adminRoutes.route('/self-evaluations', adminSelfEvaluationRoutes)
+adminRoutes.route('/reflections', adminReflectionRoutes)
 adminRoutes.route('/dashboard', adminDashboardRoutes)
 adminRoutes.route('', adminProfileRoutes)
 

@@ -26,6 +26,16 @@ describe('routes', () => {
     })
   })
 
+  describe('buddyTourReflection', () => {
+    it('nests the reflection page under the tour', () => {
+      expect(routes.buddyTourReflection('en', 'tour-123')).toBe('/en/buddy/tours/tour-123/reflection')
+    })
+
+    it('uses locale', () => {
+      expect(routes.buddyTourReflection('ja', 'tour-123')).toBe('/ja/buddy/tours/tour-123/reflection')
+    })
+  })
+
   describe('adminBuddyProfileEvaluation', () => {
     it('returns correct path', () => {
       expect(routes.adminBuddyProfileEvaluation('en', 'buddy-123')).toBe(

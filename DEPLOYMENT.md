@@ -74,7 +74,8 @@ Estimated DB growth based on current `prisma/schema.prisma`:
 **Conclusion**: 500 MB free tier comfortably covers 3–5 years. Worst case (every note field filled, more tours/year) could hit ~500–600 MB by year 5 → upgrade to Neon paid at that point, or archive old years.
 
 **Storage drivers to watch**:
-- `AdminEvaluation` / `AdminProfileEvaluation` / `SelfEvaluation` — 11 `xxxNote` fields each. Most will be null/short, but bloat possible if evaluators write essays.
+- `AdminEvaluation` / `AdminProfileEvaluation` — 11 `xxxNote` fields each. Most will be null/short, but bloat possible if evaluators write essays.
+- `TourReflection` — five free-text columns per session guided, and unlike the note fields these are the point of the row rather than an aside, so expect most to be filled.
 - `Notification.payload` / `DigestQueue.payload` — keep JSON payloads lean (no full embedded objects).
 - Don't store binary data in Postgres — `photoUrl` references point to **Cloudflare R2** (free egress vs Firebase Storage's paid egress at scale).
 

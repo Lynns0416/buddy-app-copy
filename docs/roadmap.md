@@ -42,7 +42,7 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 ### Missing enqueue sites (events declared in `NotifEventKindSchema` but never enqueued)
 
 - [ ] `waitlist_opened` — PRD §10.1 says immediate to all buddies on the waitlist for the freed pool. Today only `waitlist_promoted` fires.
-- [ ] `self_eval_prompt` — PRD §10.1 says in-app on tour Completed to Confirmed buddies. No call site.
+- [ ] `self_eval_prompt` — PRD §10.1 says in-app on tour Completed to Confirmed buddies. No call site. The filter it needs is specified: send to a Confirmed buddy with no `TourReflection` on **any** session of that tour (PRD §9.3, `docs/decisions.md` 2026-09-23).
 - [ ] `tour_details_changed` on session `meetingTime` change — PRD §10.1 lists meeting time as a trigger but `adminSession.service.ts:updateSession` does not enqueue today. Decide: wire it, or drop `meetingTime` from PRD §10.1.
 
 ### Slack channel (PRD §10.3)

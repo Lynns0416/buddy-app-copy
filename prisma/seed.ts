@@ -748,25 +748,17 @@ async function main() {
       },
     })
 
-    // Buddy self-evaluation for tourPast
-    await prisma.selfEvaluation.upsert({
-      where: { buddyId_tourId: { buddyId: b(0)!, tourId: ID.tourPast } },
+    // Buddy reflection on the session they guided on tourPast
+    await prisma.tourReflection.upsert({
+      where: { buddyId_sessionId: { buddyId: b(0)!, sessionId: ID.sessionPast } },
       update: {},
       create: {
         buddyId: b(0)!,
-        tourId: ID.tourPast,
-        overallRating: 3,
-        overallRatingNote: '知識の整理ができていなかった部分があります。',
-        communication: 4,
-        groupEngagement: 4,
-        memory: 3,
-        memoryNote: '資料の復習が必要だと感じました。',
-        knowledge: 3,
-        dedication: 4,
-        dialogue: 3,
-        adaptability: 4,
-        confidence: 3,
-        confidenceNote: '緊張してしまった場面がありました。',
+        sessionId: ID.sessionPast,
+        didWell: '参加者一人ひとりに声をかけ、緊張をほぐせたと思います。',
+        couldImprove: '資料の復習が足りず、年号を一度言い間違えました。',
+        memorableMoment: '「自分の街でも同じことが起きたのかも」と言った生徒がいました。',
+        openQuestions: '被爆二世の支援制度について聞かれ、答えられませんでした。',
       },
     })
   }
