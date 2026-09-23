@@ -80,7 +80,7 @@ All commands use the modern `docker-compose` syntax. Run all one-off commands wi
 | Task | Command |
 |------|---------|
 | Start dev servers | `docker-compose up --build` |
-| Seed database | `docker-compose exec api npx tsx prisma/seed.ts` |
+| Re-seed database (also runs on start) | `docker-compose exec api npx tsx prisma/seed.ts` |
 | Reset database | `docker-compose down -v && docker compose up --build` |
 | Stop all services | `docker-compose down` |
 | Create a migration | `docker-compose exec api pnpm exec prisma migrate dev --name <change>` |
@@ -149,9 +149,13 @@ docker-compose up --build
 - DB: localhost:5432 (peacebuddy / peacebuddy)
 - Azurite (buddy photos): localhost:10000
 
-Migrations run automatically on API container start.
+Migrations and the seed run automatically on API container start. The seed is
+all upserts, so re-running it never duplicates rows — but it does reset the
+fields its `update` clauses set (e.g. `bookingOpen` on two seed tours). It needs
+the Firebase emulator export; if that is missing, the api logs a warning and
+starts without seed data.
 
-To seed the database with dummy data for local development:
+To re-run the seed by hand:
 
 ```bash
 docker-compose exec api npx tsx prisma/seed.ts

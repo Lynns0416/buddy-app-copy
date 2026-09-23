@@ -12,7 +12,7 @@ import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { MarkdownEditor } from '@/components/markdown-editor'
 import { getGroupTypeLabel } from '@/lib/status-display'
 import { fetchGroup, updateGroup } from '../../admin.group'
 import type { UpdateGroup } from '@peace-buddy/types'
@@ -125,7 +125,7 @@ export default function AdminGroupEditPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="notes">{t('notes')}</Label>
-              <Textarea id="notes" name="notes" rows={3} defaultValue={group.notes ?? ''} />
+              <MarkdownEditor id="notes" name="notes" rows={3} defaultValue={group.notes ?? ''} />
             </div>
           </div>
 

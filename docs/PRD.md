@@ -210,7 +210,7 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 | `contactName` | Text | Optional |
 | `contactEmail` | Email | Optional. Validated as email format on create/update |
 | `contactPhone` | Text | Optional |
-| `notes` | Long text | Optional. Admin-maintained; visit history, special considerations, etc. |
+| `notes` | Long text | Optional. Admin-maintained; visit history, special considerations, etc. Limited Markdown (bold, lists, links) via the editor toolbar |
 | `createdAt` / `updatedAt` | Timestamp | Auto |
 
 ### 6.2 Rules
@@ -236,8 +236,8 @@ A `Tour` carries metadata (date, location, deadlines, status, admin assignments)
 | `groupId` | UUID FK | Linked to a managed Group |
 | `tourDate` | Date | |
 | `location` | Text | |
-| `description` | Long text? | Visible to buddies — shown on tour detail and, on the tour day, as the brief on `/buddy` (§11.1) |
-| `adminMemo` | Long text? | **Admin-only** — never sent in buddy responses |
+| `description` | Long text? | Visible to buddies — shown on tour detail and, on the tour day, as the brief on `/buddy` (§11.1). Limited Markdown (bold, lists, links) via the editor toolbar |
+| `adminMemo` | Long text? | **Admin-only** — never sent in buddy responses. Limited Markdown (bold, lists, links) via the editor toolbar |
 | `bookingOpen` | Boolean | Default `false`. Admin toggles to open/close bookings for a Published tour. Buddies can only book while this is `true` (and tourDate is in the future). |
 | `cancellationDeadline` | Date | Default: 7 days before tour. Must be after (closer to tour than) the Maybe deadline. **Per-buddy override is Planned** — schema model (`BuddyCancellationDeadlineOverride`) exists but no admin API endpoint manages it yet. |
 | `maybeDeadline` | Date? | Default: 9 days before tour. Must be before the cancellation deadline. Validated server-side. |

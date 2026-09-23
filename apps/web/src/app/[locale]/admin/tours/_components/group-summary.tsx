@@ -7,6 +7,7 @@ import type { GroupResponse } from '@peace-buddy/types'
 import { Badge } from '@/components/ui/badge'
 import { routes } from '@/lib/routes'
 import { getGroupTypeLabel, groupTypeBadgeClass } from '@/lib/status-display'
+import { MarkdownText } from '@/components/markdown-text'
 
 type Props = {
   group: GroupResponse | null
@@ -55,7 +56,7 @@ export function GroupSummary({ group }: Props) {
           {details.map((detail) => (
             <div key={detail.field} className="flex gap-1">
               <dt className="text-muted-foreground">{t(detail.field)}</dt>
-              <dd>{detail.value}</dd>
+              <dd>{detail.field === 'notes' ? <MarkdownText>{detail.value ?? ''}</MarkdownText> : detail.value}</dd>
             </div>
           ))}
         </dl>

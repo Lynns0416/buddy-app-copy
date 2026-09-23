@@ -23,6 +23,7 @@ import { BelowMinimumBadge } from '../_components/below-minimum-badge'
 import { TourAdminAssignment } from '../_components/tour-admin-assignment'
 import { useAllAdmins } from '../hooks/use-all-admins'
 import { formatDate } from '@/lib/format-date'
+import { MarkdownText } from '@/components/markdown-text'
 
 export default function AdminTourDetailPage() {
   const { ready, locale } = useAdminGuard()
@@ -159,53 +160,53 @@ export default function AdminTourDetailPage() {
           <h1 className="text-xl font-semibold">{tour.group.name}</h1>
           <Badge variant={tourStatusBadgeVariant[tour.status]}>{getTourStatusLabel(tTourStatus, tour.status)}</Badge>
         </div>
-        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-muted-foreground">{t('tourDate')}</dt>
+            <dt className="mb-1 text-xs text-muted-foreground">{t('tourDate')}</dt>
             <dd className="font-medium tabular-nums">{formatDate(tour.tourDate)}</dd>
           </div>
           {firstSession?.startTime && (
             <div>
-              <dt className="text-muted-foreground">{t('startTime')}</dt>
+              <dt className="mb-1 text-xs text-muted-foreground">{t('startTime')}</dt>
               <dd className="font-medium tabular-nums">{firstSession.startTime.slice(11, 16)}</dd>
             </div>
           )}
           <div>
-            <dt className="text-muted-foreground">{t('location')}</dt>
+            <dt className="mb-1 text-xs text-muted-foreground">{t('location')}</dt>
             <dd className="font-medium">{tour.location}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">{t('capacity')}</dt>
+            <dt className="mb-1 text-xs text-muted-foreground">{t('capacity')}</dt>
             <dd className="font-medium">{tour.capacity}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">{t('participantCount')}</dt>
+            <dt className="mb-1 text-xs text-muted-foreground">{t('participantCount')}</dt>
             <dd className="font-medium">{tour.participantCount}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">{t('cancellationDeadline')}</dt>
+            <dt className="mb-1 text-xs text-muted-foreground">{t('cancellationDeadline')}</dt>
             <dd className="font-medium tabular-nums">{formatDate(tour.cancellationDeadline)}</dd>
           </div>
           {tour.maybeDeadline && (
             <div>
-              <dt className="text-muted-foreground">{t('maybeDeadline')}</dt>
+              <dt className="mb-1 text-xs text-muted-foreground">{t('maybeDeadline')}</dt>
               <dd className="font-medium tabular-nums">{formatDate(tour.maybeDeadline)}</dd>
             </div>
           )}
           {tour.description && (
             <div className="sm:col-span-2">
-              <dt className="text-muted-foreground">{t('description')}</dt>
-              <dd className="font-medium whitespace-pre-wrap">{tour.description}</dd>
+              <dt className="mb-1 text-xs text-muted-foreground">{t('description')}</dt>
+              <dd className="font-medium"><MarkdownText>{tour.description}</MarkdownText></dd>
             </div>
           )}
           <div>
-            <dt className="text-muted-foreground">{t('bookingOpen')}</dt>
+            <dt className="mb-1 text-xs text-muted-foreground">{t('bookingOpen')}</dt>
             <dd className="font-medium">{tour.bookingOpen ? t('bookingOpenYes') : t('bookingOpenNo')}</dd>
           </div>
           {tour.adminMemo && (
             <div className="sm:col-span-2">
-              <dt className="text-muted-foreground">{t('adminMemo')}</dt>
-              <dd className="font-medium whitespace-pre-wrap">{tour.adminMemo}</dd>
+              <dt className="mb-1 text-xs text-muted-foreground">{t('adminMemo')}</dt>
+              <dd className="font-medium"><MarkdownText>{tour.adminMemo}</MarkdownText></dd>
             </div>
           )}
         </dl>

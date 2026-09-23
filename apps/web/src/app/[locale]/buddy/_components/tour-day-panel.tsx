@@ -8,6 +8,7 @@ import { Clock, MapPin, UserRound, Users } from 'lucide-react'
 import type { TourDetailResponse } from '@peace-buddy/types'
 import { BookingStatusSchema } from '@peace-buddy/types'
 import { routes } from '@/lib/routes'
+import { MarkdownText } from '@/components/markdown-text'
 
 // Shown in place of the next-tour card on the day of the buddy's confirmed tour.
 // Other buddies are a count, and staff in charge a name, by decision (#211).
@@ -60,7 +61,7 @@ export function TourDayPanel({ tour }: { tour: TourDetailResponse }) {
         {tour.description && (
           <div className="mb-4">
             <h3 className="text-sm text-muted-foreground">{t('tourDay.brief')}</h3>
-            <p className="mt-1 whitespace-pre-wrap text-sm">{tour.description}</p>
+            <MarkdownText className="mt-1 text-sm">{tour.description}</MarkdownText>
           </div>
         )}
 

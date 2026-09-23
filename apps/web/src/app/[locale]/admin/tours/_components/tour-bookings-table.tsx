@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { AdminTourBookingEntry, CancellationCategory, AppError, BookingStatus } from '@peace-buddy/types'
 import { BookingStatusSchema, AppErrorCodeSchema } from '@peace-buddy/types'
@@ -131,8 +131,8 @@ export function TourBookingsTable({ bookings: initialBookings, totalSessions }: 
         </TableHeader>
         <TableBody>
           {sorted.map((b) => (
-            <>
-              <TableRow key={b.id}>
+            <Fragment key={b.id}>
+              <TableRow>
                 <TableCell className="font-medium">{b.displayName}</TableCell>
                 {totalSessions > 1 && (
                   <TableCell className="text-sm text-muted-foreground">
@@ -190,7 +190,7 @@ export function TourBookingsTable({ bookings: initialBookings, totalSessions }: 
                   </TableCell>
                 </TableRow>
               )}
-            </>
+            </Fragment>
           ))}
         </TableBody>
       </Table>

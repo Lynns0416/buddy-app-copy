@@ -10,7 +10,7 @@ import type { AdminTourDetailResponse, GroupResponse } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { MarkdownEditor } from '@/components/markdown-editor'
 import { GroupCombobox } from './group-combobox'
 import { GroupSummary } from './group-summary'
 
@@ -324,12 +324,12 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="description">{t('description')}</Label>
-          <Textarea id="description" rows={3} {...register('description')} />
+          <MarkdownEditor id="description" rows={3} {...register('description')} />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="adminMemo">{t('adminMemo')}</Label>
-          <Textarea id="adminMemo" rows={3} {...register('adminMemo')} />
+          <MarkdownEditor id="adminMemo" rows={3} {...register('adminMemo')} />
         </div>
       </div>
 

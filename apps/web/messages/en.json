@@ -785,5 +785,16 @@
       "network": "Network error. Please check your connection.",
       "unknown": "An error occurred. Please try again."
     }
+  },
+  "markdownEditor": {
+    "bold": "Bold",
+    "bulletList": "Bulleted list",
+    "numberedList": "Numbered list",
+    "link": "Link",
+    "linkPrompt": "Link URL",
+    "write": "Write",
+    "preview": "Preview",
+    "previewEmpty": "Nothing to preview",
+    "hint": "Select text, then use the buttons above for bold, lists and links."
   }
 }

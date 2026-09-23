@@ -346,7 +346,7 @@
       "title": "ティア別配分",
       "junior": "ジュニア",
       "non_junior": "非ジュニア",
-      "anyone": "全体枠",
+      "anyone": "誰でもOK",
       "total": "合計: {total}%",
       "sumError": "合計が100%になるよう設定してください",
       "saved": "保存しました"
@@ -785,5 +785,16 @@
       "network": "接続エラーです。ネットワークを確認してください。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
+  },
+  "markdownEditor": {
+    "bold": "太字",
+    "bulletList": "箇条書き",
+    "numberedList": "番号付きリスト",
+    "link": "リンク",
+    "linkPrompt": "リンク先のURL",
+    "write": "編集",
+    "preview": "プレビュー",
+    "previewEmpty": "プレビューする内容がありません",
+    "hint": "文字を選んで、上のボタンで太字・リスト・リンクを付けられます。"
   }
 }

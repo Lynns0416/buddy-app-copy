@@ -17,6 +17,7 @@ import { SortIcon } from '@/components/sort-icon'
 import { fetchGroup, sortGroupTours, nextGroupTourSort, type GroupTourSortField } from '../admin.group'
 import { getTourStatusLabel, getGroupTypeLabel, tourStatusBadgeVariant, groupTypeBadgeClass } from '@/lib/status-display'
 import { formatDate } from '@/lib/format-date'
+import { MarkdownText } from '@/components/markdown-text'
 
 export default function AdminGroupDetailPage() {
   const { ready, locale } = useAdminGuard()
@@ -111,7 +112,7 @@ export default function AdminGroupDetailPage() {
           {group.notes && (
             <div className="sm:col-span-2">
               <dt className="text-muted-foreground">{t('notes')}</dt>
-              <dd className="font-medium">{group.notes}</dd>
+              <dd className="font-medium"><MarkdownText>{group.notes}</MarkdownText></dd>
             </div>
           )}
         </dl>

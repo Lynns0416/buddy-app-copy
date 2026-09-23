@@ -15,6 +15,7 @@ import { useTourDetail } from '../../hooks/use-tour-detail'
 import { downloadTourCalendar } from '../../buddy.tour'
 import { SessionBookingCard } from './_components/session-booking-card'
 import { formatDate } from '@/lib/format-date'
+import { MarkdownText } from '@/components/markdown-text'
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -114,7 +115,7 @@ export default function TourDetailPage() {
           {tour.description && (
             <div className="sm:col-span-2">
               <dt className="text-muted-foreground">{t('description')}</dt>
-              <dd className="mt-1 whitespace-pre-wrap font-medium">{tour.description}</dd>
+              <dd className="mt-1 font-medium"><MarkdownText>{tour.description}</MarkdownText></dd>
             </div>
           )}
         </dl>

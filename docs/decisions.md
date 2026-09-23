@@ -94,6 +94,76 @@ access is unchanged — the buddy's own rows, plus admin.
 
 ---
 
+## 2026-09-23 — Local seed runs on every api container start
+
+**Decision:** the api `dev` image's CMD runs `prisma db seed` right after
+`prisma migrate deploy`. A seed failure logs a warning and the api starts
+anyway.
+
+**Why:** `prisma/seed.ts` writes only through `upsert` on fixed keys, so a
+re-run never duplicates rows. Running it after `migrate deploy` in the same
+command guarantees the schema is current first. The seed reads
+`.firebase/emulators/auth_export/accounts.json`, which is gitignored, so on a
+fresh clone it fails — that must not keep the api down.
+
+**Rejected — a separate one-shot `seed` compose service that the api waits on
+(`service_completed_successfully`):** it would need its own `pnpm install`,
+`prisma generate` and node_modules volumes, and it would still have to wait for
+the api's `migrate deploy`. That puts migrate/seed ordering across two
+containers for what is one extra command in a CMD that already migrates.
+
+**Trade-off:** the seed's non-empty `update` clauses (user email/role, buddy
+profile fields, `bookingOpen` on two tours, a `percent`) reset those fields on
+every start, so local edits to them do not survive a restart. Seed tour dates
+are set only on create and do not move forward.
+
+**Current state:** `apps/api/Dockerfile` (`dev` stage), `README.md`.
+
+---
+
+## 2026-09-23 — Long-text fields take limited Markdown, written through a toolbar
+
+**Decision:** `Group.notes`, `Tour.adminMemo` and `Tour.description` are stored
+as Markdown in the existing plain-text columns. The admin forms edit them with
+`MarkdownEditor` (`apps/web/src/components/markdown-editor.tsx`): a Textarea
+with bold / bulleted list / numbered list / link buttons and a Write/Preview
+toggle. Every page that shows them renders through `MarkdownText`
+(`react-markdown` + `remark-breaks`), which allows only `p`, `br`, `strong`,
+`em`, `ul`, `ol`, `li` and `a`; anything else renders as its text, and raw HTML
+is never rendered. Single newlines stay line breaks, so rows written before
+this render as they did (#127) — unless a line happens to be Markdown syntax.
+
+**Why:** #127 started as newlines collapsing in group notes, and the reporter
+asked for more readable notes. Members can use Google Docs but should not have
+to learn Markdown syntax — the toolbar inserts it for them, and the preview
+shows the result.
+
+**Rejected — WYSIWYG editor (Tiptap) storing HTML:** every render needs a
+sanitiser, the API has to validate HTML input, and existing plain-text rows
+need converting. Heaviest option for a few formatting marks.
+
+**Rejected — WYSIWYG editor storing Markdown:** no storage change, but several
+dependencies, a heavier admin bundle, and Markdown conversion that can drop
+formatting it does not model. The toolbar gets most of the benefit for one
+small component.
+
+**Rejected — bare Markdown with a syntax hint:** members are not expected to
+know Markdown.
+
+**Rejected — an in-house Markdown parser:** our own code to maintain for a
+problem `react-markdown` already solves safely.
+
+**Known cost:** the calendar export (`apps/api/src/lib/tourIcs.ts`) and any
+other non-web consumer get the Markdown source, so `**bold**` and `[text](url)`
+show as typed there. An existing plain-text row whose lines happen to be
+Markdown syntax changes on screen: a `---` line disappears, a leading `#` or
+`>` is dropped, `*a*` becomes italics. No rows were migrated for this; the
+admin sees it and can edit the row.
+
+**Current state:** `docs/PRD.md` §6.1 and §7.1 field tables.
+
+---
+
 ## 2026-09-20 — Every date in the UI is `yyyy/MM/dd` in Japan time, in both locales
 
 **Decision:** `apps/web/src/lib/format-date.ts` holds the only two date
