@@ -24,7 +24,7 @@ export function NotificationBell() {
     >
       <Bell size={18} />
       {count > 0 && (
-        <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+        <span className="absolute right-0.5 top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
           {count > 99 ? '99+' : count}
         </span>
       )}
