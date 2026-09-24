@@ -311,6 +311,7 @@
     "location": "場所",
     "capacity": "最大バディ数",
     "minBuddies": "最小バディ数",
+    "capacityBelowConfirmed": "最大バディ数は確定済みのバディ数（{count}人）より少なくできません",
     "minBuddiesExceedsCapacity": "最小バディ数は最大バディ数以下にしてください",
     "groupRequired": "団体を選択してください",
     "placeRequired": "場所を選択してください",
@@ -391,7 +392,8 @@
       "confirmRemove": "このセッションを削除しますか？この操作は取り消せません。",
       "error": {
         "maxSessions": "ツアーには最大2セッションまでしか追加できません。",
-        "placeInUse": "このセッションの振り返りが現在の場所のスポットを使っているため、場所を変更できません。"
+        "placeInUse": "このセッションの振り返りが現在の場所のスポットを使っているため、場所を変更できません。",
+        "capacityBelowConfirmed": "最大バディ数はこのセッションの確定済みのバディ数より少なくできません。"
       }
     },
     "bookingSession": "セッション",

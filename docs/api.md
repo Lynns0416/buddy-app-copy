@@ -841,11 +841,13 @@ Update a session.
 
 **Response `200`** — `AdminTourDetailResponse`
 
-Changing `placeId` on a published tour fires `tour_details_changed` to every booked buddy on the tour (not only this session's). Resending the current `placeId` is not a change.
+Changing `placeId` or `meetingTime` on a published tour fires `tour_details_changed` to every booked buddy on the tour (not only this session's). Resending the current value is not a change.
 
 **Errors**
+- `400` — `MinBuddiesExceedsCapacityError`: `minBuddies` would exceed `capacity`, taking the stored value of whichever one is not sent
 - `404` — `SessionNotFoundError`: no such session on this tour
 - `409` — `PlaceInUseError`: `placeId` changes while a `TourReflectionMoment` on this session references a spot of its current place
+- `409` — `CapacityBelowConfirmedError`: `capacity` is lower than the session's Confirmed bookings
 
 ---
 

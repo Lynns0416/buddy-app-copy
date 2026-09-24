@@ -12,6 +12,37 @@ duplicate that state here.
 
 ---
 
+## 2026-09-24 — Every session field is editable after creation
+
+**Decision:** the tour edit form shows every field of an existing session —
+place, label, meeting time, capacity, min buddies, participant count — and
+saves each session's changed fields in one `PUT /admin/tours/:id/sessions/:sessionId`.
+Adding and removing sessions stays on the detail page. Lowering capacity below
+the session's Confirmed bookings is rejected (`CapacityBelowConfirmedError`,
+409; the form checks it first). A `meetingTime` change on a published tour
+fires `tour_details_changed`, like a place change. Closes #247.
+
+**Why:** the edit form hid these fields (`hideSessionManagement`, #71) although
+the API accepted them and nothing recorded them as fixed, so a changed group
+size or buddy count could not be corrected.
+
+**Rejected — allow capacity below Confirmed and keep the excess confirmed:**
+the session would sit over capacity, and its `remaining` seat count assumes
+Confirmed ≤ capacity. A single tier pool may still end up over its share; the
+pool math clamps at zero and overflows into `anyone`, so that pool only reads
+as full.
+
+**Rejected — a distinct error code for each session 409:** the place lock and
+the capacity lock both answer `conflict`, and the edit form names the lock from
+which fields it sent. When one save changes both place and capacity it shows
+the generic conflict message; a new `AppErrorCode` for that rare case is not
+worth widening the shared enum.
+
+**Rejected — keep label and meeting time fixed:** a changed meeting time is
+routine; forcing delete-and-recreate is blocked once a session has bookings.
+
+---
+
 ## 2026-09-24 — Production releases are semver tags on `main`
 
 **Decision:** production is released by tagging a commit on `main` and pushing

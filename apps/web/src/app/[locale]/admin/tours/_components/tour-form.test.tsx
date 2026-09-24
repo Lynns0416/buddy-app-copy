@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TourForm } from './tour-form'
 import { ApiError } from '@/lib/api'
-import type { GroupResponse, PlaceResponse } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, BookingStatus, GroupResponse, PlaceResponse } from '@peace-buddy/types'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -74,6 +74,56 @@ async function fillAndSubmit(overrides: Partial<typeof validFields> = {}, onSubm
 
   await user.click(screen.getByRole('button', { name: 'save' }))
   return { user, onSubmit }
+}
+
+function editTour(bookings: AdminTourDetailResponse['bookings'] = []): AdminTourDetailResponse {
+  return {
+    id: 'tour-1',
+    group: { id: groups[0].id, name: groups[0].name, type: 'school' },
+    status: 'draft',
+    tourDate: '2026-06-01T00:00:00.000Z',
+    bookingOpen: false,
+    places: [{ id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' }],
+    capacity: 10,
+    participantCount: 0,
+    description: null,
+    confirmedCount: 0,
+    adminMemo: null,
+    cancellationDeadline: '2026-05-25T00:00:00.000Z',
+    maybeDeadline: null,
+    notificationOffsets: [3, 1],
+    sessions: [{
+      id: 's1',
+      order: 1,
+      label: null,
+      meetingTime: '1970-01-01T09:30:00.000Z',
+      startTime: null,
+      endTime: null,
+      capacity: 10,
+      minBuddies: null,
+      participantCount: 0,
+      belowMinimum: false,
+      place: { id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' },
+    }],
+    bookings,
+    assignedAdmins: [],
+    staffInChargeId: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  }
+}
+
+function renderEditForm(tour: AdminTourDetailResponse, onSubmit = vi.fn()) {
+  render(
+    <TourForm
+      defaultValues={tour}
+      groups={groups}
+      places={places}
+      cancelHref="/admin/tours/tour-1"
+      onSubmit={onSubmit}
+      hideSessionManagement
+    />,
+  )
 }
 
 describe('TourForm', () => {
@@ -286,6 +336,17 @@ describe('TourForm', () => {
     expect(values.sessions[0].minBuddies).toBe(2)
   })
 
+  it('submits a minBuddies of 0 as 0, not null', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    renderEditForm({ ...editTour(), sessions: [{ ...editTour().sessions[0], minBuddies: 0 }] }, onSubmit)
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    expect(onSubmit.mock.calls[0][0].sessions[0].minBuddies).toBe(0)
+  })
+
   it('shows error and blocks submit when minBuddies exceeds capacity', async () => {
     const onSubmit = vi.fn()
     renderForm(onSubmit)
@@ -461,53 +522,39 @@ describe('TourForm', () => {
     expect(onSubmit.mock.calls[0][0].sessions.map((s: { placeId: string }) => s.placeId)).toEqual(['place-1', 'place-2'])
   })
 
-  it('shows only each session\'s place when session management is hidden', () => {
-    render(
-      <TourForm
-        defaultValues={{
-          id: 'tour-1',
-          group: { id: groups[0].id, name: groups[0].name, type: 'school' },
-          status: 'draft',
-          tourDate: '2026-06-01T00:00:00.000Z',
-          bookingOpen: false,
-          places: [{ id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' }],
-          capacity: 10,
-          participantCount: 0,
-          description: null,
-          confirmedCount: 0,
-          adminMemo: null,
-          cancellationDeadline: '2026-05-25T00:00:00.000Z',
-          maybeDeadline: null,
-          notificationOffsets: [3, 1],
-          sessions: [{
-            id: 's1',
-            order: 1,
-            label: null,
-            meetingTime: '1970-01-01T09:30:00.000Z',
-            startTime: null,
-            endTime: null,
-            capacity: 10,
-            minBuddies: null,
-            participantCount: 0,
-            belowMinimum: false,
-            place: { id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' },
-          }],
-          bookings: [],
-          assignedAdmins: [],
-          staffInChargeId: null,
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        }}
-        groups={groups}
-        places={places}
-        cancelHref="/admin/tours/tour-1"
-        onSubmit={vi.fn()}
-        hideSessionManagement
-      />,
-    )
+  it('shows every field of an existing session but hides adding sessions when session management is hidden', () => {
+    renderEditForm(editTour())
 
     expect(screen.getByLabelText('location')).toHaveValue('place-1')
-    expect(screen.queryByLabelText('capacity')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('session.label')).toBeInTheDocument()
+    expect(screen.getByLabelText('meetingTime')).toHaveValue('09:30')
+    expect(screen.getByLabelText('capacity')).toHaveValue(10)
+    expect(screen.getByLabelText('minBuddies')).toBeInTheDocument()
+    expect(screen.getByLabelText('participantCount')).toHaveValue(0)
     expect(screen.queryByRole('button', { name: 'session.add' })).not.toBeInTheDocument()
+  })
+
+  it('rejects a capacity below the session\'s confirmed bookings without submitting', async () => {
+    const booking = (id: string, status: BookingStatus): AdminTourDetailResponse['bookings'][number] => ({
+      id, buddyId: `buddy-${id}`, sessionId: 's1', sessionOrder: 1, sessionLabel: null,
+      displayName: id, status, bookedAt: '2026-01-01T00:00:00.000Z', cancellationReason: null,
+    })
+    const onSubmit = vi.fn()
+    renderEditForm(editTour([booking('b1', 'confirmed'), booking('b2', 'confirmed'), booking('b3', 'waitlist')]), onSubmit)
+    const user = userEvent.setup()
+
+    await user.clear(screen.getByLabelText('capacity'))
+    await user.type(screen.getByLabelText('capacity'), '1')
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    expect(await screen.findByText('capacityBelowConfirmed')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    await user.clear(screen.getByLabelText('capacity'))
+    await user.type(screen.getByLabelText('capacity'), '2')
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    expect(onSubmit.mock.calls[0][0].sessions[0].capacity).toBe(2)
   })
 })

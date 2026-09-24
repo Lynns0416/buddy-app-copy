@@ -341,7 +341,7 @@ Replaces the old free-text `Tour.location` (#239). Each session goes to exactly 
 
 **Admin UI (`/admin/places`):** a sortable list (name in both languages, order, active) with create/edit; each place opens to its own spot list, same pattern. No delete action anywhere — only deactivate.
 
-**Tour form:** each session row has a dropdown of active places, replacing the old free-text location input. The edit form shows the same dropdown per existing session, and saves a changed one through `PUT /admin/tours/:id/sessions/:sessionId`; the add-session form on the tour detail page has it too.
+**Tour form:** each session row has a dropdown of active places, replacing the old free-text location input. The edit form shows the same dropdown per existing session, and saves it together with the session's other changed fields in one `PUT /admin/tours/:id/sessions/:sessionId`; the add-session form on the tour detail page has it too.
 
 ---
 
@@ -662,7 +662,7 @@ Zero or more structured memorable moments per reflection (`TourReflectionMoment`
 | Event | Channels | Timing | Status |
 |---|---|---|---|
 | New tour published (`tour_published`) | In-app + email | Immediate, to Active buddies | Shipped |
-| Tour details changed (`tour_details_changed`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped (fires on `tourDate` or a session's place change only — see note below) |
+| Tour details changed (`tour_details_changed`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped (fires on `tourDate`, or a session's place or meeting time change only — see note below) |
 | Tour cancelled (`tour_cancelled`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped |
 | Tour reminder (`tour_reminder`) | In-app + email | Per-tour offsets (default: 3 days, 1 day before); evaluated hourly | Planned (§10.5) |
 | Maybe deadline reminder (`maybe_reminder`) | In-app + email | Global offsets (default: 3 days, 1 day before deadline); evaluated hourly | Planned (§10.5) |
@@ -688,7 +688,7 @@ See `docs/decisions.md` 2026-09-18.
 In-app delivery is never configurable, for buddies or admins: the preference is
 about what lands in an inbox, and a muted event stays findable in the app.
 
-Tour-edit notifications fire **only** when `tourDate` changes, or when a session's **place** changes (which place — not its name or spots). A session's place change notifies every booked buddy on the tour, not only that session's. Changes to a session's `meetingTime`, to `adminMemo`, assigned admins, staff in charge, or pool percentages are silent today; wiring `meetingTime` to also trigger `tour_details_changed` is tracked in `docs/roadmap.md`.
+Tour-edit notifications fire **only** when `tourDate` changes, or when a session's **place** (which place — not its name or spots) or **`meetingTime`** changes. A session change notifies every booked buddy on the tour, not only that session's. Changes to a session's label, capacity, `minBuddies` or `participantCount`, to `adminMemo`, assigned admins, staff in charge, or pool percentages are silent.
 
 ### 10.2 Admin Notifications
 
@@ -843,13 +843,13 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 | `/admin/tours` | List or month-calendar view of tours, chosen by `?view=`. **List:** client-side search on group name and place names; filters for status, date range (upcoming / past / all), group type and below-minimum-only, combined with AND and kept in the URL query string; sortable by every column; "today" divider in list. **Calendar:** six Monday-first weeks for `?month=YYYY-MM`, one chip per tour (status dot, group name, `confirmed/capacity`, below-minimum marker), three chips per day before the rest collapse into a count. The leading and trailing days belong to the neighbouring months and carry no chips — they hold the grid at six rows, and a tour landing on one is only shown by that month's own grid. All four statuses appear; cancelled is struck through. The calendar ignores the list's filters and hides the filter bar, but leaves the filter params in the URL so switching back to the list restores them |
 | `/admin/tours/new` | Create tour form. The group picker is a type-to-filter combobox; the selected group shows a summary (type, contact fields, notes) and a new-tab link to its detail page |
 | `/admin/tours/:id` | Tour detail — metadata, sessions, tier capacities, bookings, admin assignments, evaluations |
-| `/admin/tours/:id/edit` | Edit tour form — same group picker and selected-group summary as the create form |
+| `/admin/tours/:id/edit` | Edit tour form — same group picker and selected-group summary as the create form. Every field of each existing session (place, label, meeting time, capacity, min buddies, participant count) is editable; adding or removing a session is not (done from the detail page) |
 
 **Capabilities:**
 - Create, edit tours; hard-delete restricted to `draft` tours
 - Status transitions via `PATCH /admin/tours/:id/status` with action `publish` / `cancel` / `complete` — gated by the table in §7.2
 - Toggle `bookingOpen` to open/close bookings while a tour is Draft or Published
-- Manage **1–2 sessions** per tour (`POST` / `PUT` / `DELETE /admin/tours/:id/sessions`); session deletion blocked if the session has bookings or is the last session
+- Manage **1–2 sessions** per tour (`POST` / `PUT` / `DELETE /admin/tours/:id/sessions`); session deletion blocked if the session has bookings or is the last session; a session's capacity cannot be lowered below its Confirmed bookings (`CapacityBelowConfirmedError`) — no booking is ever un-confirmed by an edit
 - Set **tier capacity per session** (junior / non_junior / anyone percentages; must sum to 100%) via `PATCH /admin/tours/:id/sessions/:sessionId/tier-capacities`
 - Add / edit admin-only memo
 - Set / change cancellation deadline and Maybe deadline on the tour (deadline order validated server-side)

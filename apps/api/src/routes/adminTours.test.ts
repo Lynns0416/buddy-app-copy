@@ -91,6 +91,12 @@ vi.mock('../services/adminSession.service', () => ({
   PlaceInUseError: class PlaceInUseError extends Error {
     constructor() { super('A moment on this session uses a spot of its place, so the place cannot be changed') }
   },
+  CapacityBelowConfirmedError: class CapacityBelowConfirmedError extends Error {
+    constructor() { super('Capacity cannot be lower than the number of confirmed bookings on this session') }
+  },
+  MinBuddiesExceedsCapacityError: class MinBuddiesExceedsCapacityError extends Error {
+    constructor() { super('minBuddies must be ≤ capacity') }
+  },
 }))
 
 vi.mock('../services/tourAdminAssignment.service', () => ({
@@ -129,6 +135,8 @@ import {
   LastSessionError,
   TooManySessionsError,
   PlaceInUseError,
+  CapacityBelowConfirmedError,
+  MinBuddiesExceedsCapacityError,
 } from '../services/adminSession.service'
 import {
   assignAdmin,
@@ -703,6 +711,30 @@ describe('PUT /admin/tours/:id/sessions/:sessionId', () => {
     })
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ code: 'conflict', detail: error.message })
+  })
+
+  it('returns 409 with detail when capacity drops below the confirmed bookings', async () => {
+    const error = new CapacityBelowConfirmedError()
+    mockUpdateSession.mockRejectedValueOnce(error)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ capacity: 1 }),
+    })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict', detail: error.message })
+  })
+
+  it('returns 400 with detail when minBuddies would exceed the stored capacity', async () => {
+    const error = new MinBuddiesExceedsCapacityError()
+    mockUpdateSession.mockRejectedValueOnce(error)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ minBuddies: 11 }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request', detail: error.message })
   })
 
   it('returns 400 for a non-uuid placeId', async () => {

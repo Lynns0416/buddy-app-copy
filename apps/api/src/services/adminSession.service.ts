@@ -5,7 +5,7 @@ import type {
   AdminTourDetailResponse,
   TierCapacities,
 } from '@peace-buddy/types'
-import { TourStatusSchema, NotifEventKindSchema } from '@peace-buddy/types'
+import { TourStatusSchema, NotifEventKindSchema, BookingStatusSchema } from '@peace-buddy/types'
 import { payloadTourDate } from '../lib/notificationPayload'
 import { TourNotFoundError, TourImmutableError, getAdminTourDetail } from './adminTour.service'
 import { enqueueEmailForBookedBuddies, enqueueInAppForBookedBuddies } from './notification.service'
@@ -37,6 +37,18 @@ export class TooManySessionsError extends Error {
 export class PlaceInUseError extends Error {
   constructor() {
     super('A moment on this session uses a spot of its place, so the place cannot be changed')
+  }
+}
+
+export class CapacityBelowConfirmedError extends Error {
+  constructor() {
+    super('Capacity cannot be lower than the number of confirmed bookings on this session')
+  }
+}
+
+export class MinBuddiesExceedsCapacityError extends Error {
+  constructor() {
+    super('minBuddies must be ≤ capacity')
   }
 }
 
@@ -79,11 +91,27 @@ export async function addSession(tourId: string, data: CreateTourSession): Promi
 export async function updateSession(tourId: string, sessionId: string, data: UpdateTourSession): Promise<AdminTourDetailResponse> {
   const session = await db.tourSession.findUnique({
     where: { id: sessionId },
-    select: { tourId: true, placeId: true, tour: { select: { status: true } } },
+    select: { tourId: true, placeId: true, meetingTime: true, capacity: true, minBuddies: true, tour: { select: { status: true } } },
   })
   if (!session || session.tourId !== tourId) throw new SessionNotFoundError()
 
+  // The schema only compares the two when both are sent; a partial update is
+  // checked against the stored value of the one left out.
+  const capacity = data.capacity ?? session.capacity
+  const minBuddies = data.minBuddies !== undefined ? data.minBuddies : session.minBuddies
+  if (minBuddies != null && minBuddies > capacity) throw new MinBuddiesExceedsCapacityError()
+
   const placeChanged = data.placeId !== undefined && data.placeId !== session.placeId
+  const meetingTimeChanged =
+    data.meetingTime !== undefined && data.meetingTime !== session.meetingTime.toISOString().slice(11, 16)
+
+  // Lowering capacity never un-confirms a booking — it is rejected instead.
+  if (data.capacity !== undefined) {
+    const confirmed = await db.booking.count({
+      where: { sessionId, status: BookingStatusSchema.enum.confirmed },
+    })
+    if (data.capacity < confirmed) throw new CapacityBelowConfirmedError()
+  }
 
   // A session's place cannot change while a moment on it uses one of the old
   // place's spots — the moment would name a spot the session no longer visits.
@@ -111,7 +139,7 @@ export async function updateSession(tourId: string, sessionId: string, data: Upd
       },
     })
 
-    if (placeChanged && session.tour.status === TourStatusSchema.enum.published) {
+    if ((placeChanged || meetingTimeChanged) && session.tour.status === TourStatusSchema.enum.published) {
       const args = {
         eventType: NotifEventKindSchema.enum.tour_details_changed,
         payload: { tourId, groupName: updated.tour.group.name, tourDate: payloadTourDate(updated.tour.tourDate) },

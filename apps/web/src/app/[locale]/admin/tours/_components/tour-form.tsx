@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { ApiError } from '@/lib/api'
 import type { AdminTourDetailResponse, GroupResponse, PlaceResponse } from '@peace-buddy/types'
+import { BookingStatusSchema } from '@peace-buddy/types'
 import { useLocale } from 'next-intl'
 import { placeName } from '@/lib/place-names'
 import { Button } from '@/components/ui/button'
@@ -88,6 +89,7 @@ type Props = {
   places: PlaceResponse[]
   cancelHref: string
   onSubmit: (values: TourFormValues) => Promise<void>
+  /** Hides adding and removing sessions; every field of an existing session stays editable. */
   hideSessionManagement?: boolean
 }
 
@@ -156,6 +158,21 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
   const selectedGroup = groups.find((g) => g.id === selectedGroupId) ?? null
 
   async function submit(fields: TourFormFields) {
+    // Lowering capacity never un-confirms a booking, so the API rejects it;
+    // catching it here puts the error on the field instead of the page.
+    let capacityTooLow = false
+    defaultValues?.sessions.forEach((session, idx) => {
+      const confirmed = defaultValues.bookings.filter(
+        (b) => b.sessionId === session.id && b.status === BookingStatusSchema.enum.confirmed,
+      ).length
+      const capacity = fields.sessions[idx]?.capacity
+      if (capacity != null && capacity < confirmed) {
+        setError(`sessions.${idx}.capacity`, { message: t('capacityBelowConfirmed', { count: confirmed }) })
+        capacityTooLow = true
+      }
+    })
+    if (capacityTooLow) return
+
     const values: TourFormValues = {
       groupId: fields.groupId,
       tourDate: fields.tourDate,
@@ -172,7 +189,7 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
         label: s.label || undefined,
         meetingTime: s.meetingTime,
         capacity: s.capacity,
-        minBuddies: s.minBuddies || null,
+        minBuddies: s.minBuddies ?? null,
         participantCount: s.participantCount,
         placeId: s.placeId,
       })),
@@ -275,7 +292,6 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
                   </p>
                 )}
               </div>
-              {!hideSessionManagement && <>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`sessions.${idx}.label`}>{t('session.label')}</Label>
                 <Input
@@ -296,7 +312,13 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`sessions.${idx}.minBuddies`}>{t('minBuddies')}</Label>
-                <Input id={`sessions.${idx}.minBuddies`} type="number" min={0} {...register(`sessions.${idx}.minBuddies`)} />
+                <Input
+                  id={`sessions.${idx}.minBuddies`}
+                  type="number"
+                  min={0}
+                  // An empty input means no minimum; coercing '' would read 0.
+                  {...register(`sessions.${idx}.minBuddies`, { setValueAs: (v) => (v === '' ? undefined : v) })}
+                />
                 {errors.sessions?.[idx]?.minBuddies && (
                   <p className="text-xs text-destructive">
                     {errors.sessions[idx]?.minBuddies?.message === 'minBuddiesExceedsCapacity'
@@ -309,7 +331,6 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
                 <Label htmlFor={`sessions.${idx}.participantCount`}>{t('participantCount')}</Label>
                 <Input id={`sessions.${idx}.participantCount`} type="number" min={0} {...register(`sessions.${idx}.participantCount`)} />
               </div>
-              </>}
             </div>
           ))}
           {!hideSessionManagement && sessionFields.length < 2 && (

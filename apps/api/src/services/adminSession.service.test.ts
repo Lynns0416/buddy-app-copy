@@ -15,6 +15,8 @@ import {
   SessionHasBookingsError,
   LastSessionError,
   PlaceInUseError,
+  CapacityBelowConfirmedError,
+  MinBuddiesExceedsCapacityError,
 } from './adminSession.service'
 import { enqueueEmailForBookedBuddies, enqueueInAppForBookedBuddies } from './notification.service'
 
@@ -40,6 +42,7 @@ interface MockDb {
   }
   tierCapacity: { findMany: MockFn; upsert: MockFn }
   tourReflectionMoment: { findFirst: MockFn }
+  booking: { count: MockFn }
   $transaction: MockFn
 }
 
@@ -57,6 +60,7 @@ vi.mock('../lib/db', () => {
     },
     tierCapacity: { findMany: vi.fn(), upsert: vi.fn() },
     tourReflectionMoment: { findFirst: vi.fn() },
+    booking: { count: vi.fn() },
     $transaction,
   }
   $transaction.mockImplementation((opOrFn: unknown) => {
@@ -225,6 +229,89 @@ describe('addSession', () => {
 describe('updateSession', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  it('notifies booked buddies when a published tour\'s session changes meeting time', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', placeId: PLACE_ID, meetingTime: new Date('1970-01-01T09:00:00.000Z'), tour: { status: 'published' } })
+    mdb.tourSession.update.mockResolvedValueOnce({ tour: { tourDate: new Date('2026-06-01'), group: { name: 'Test School' } } })
+    mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
+
+    await updateSession('tour-1', 'session-1', { meetingTime: '10:00' })
+
+    const args = {
+      eventType: 'tour_details_changed',
+      payload: { tourId: 'tour-1', groupName: 'Test School', tourDate: '2026-06-01' },
+    }
+    expect(enqueueInAppForBookedBuddies).toHaveBeenCalledWith('tour-1', args, expect.anything())
+    expect(enqueueEmailForBookedBuddies).toHaveBeenCalledWith('tour-1', args, expect.anything())
+  })
+
+  it('does not notify when the meeting time is resent unchanged', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', placeId: PLACE_ID, meetingTime: new Date('1970-01-01T09:00:00.000Z'), tour: { status: 'published' } })
+    mdb.tourSession.update.mockResolvedValueOnce({ tour: { tourDate: new Date('2026-06-01'), group: { name: 'Test School' } } })
+    mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
+
+    await updateSession('tour-1', 'session-1', { meetingTime: '09:00' })
+
+    expect(enqueueInAppForBookedBuddies).not.toHaveBeenCalled()
+    expect(enqueueEmailForBookedBuddies).not.toHaveBeenCalled()
+  })
+
+  it('throws CapacityBelowConfirmedError and leaves the session alone when capacity drops below confirmed bookings', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', placeId: PLACE_ID, tour: { status: 'published' } })
+    mdb.booking.count.mockResolvedValueOnce(5)
+
+    await expect(updateSession('tour-1', 'session-1', { capacity: 4 })).rejects.toThrow(CapacityBelowConfirmedError)
+    expect(mdb.booking.count).toHaveBeenCalledWith({ where: { sessionId: 'session-1', status: 'confirmed' } })
+    expect(mdb.tourSession.update).not.toHaveBeenCalled()
+  })
+
+  it('allows capacity equal to the confirmed bookings', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', placeId: PLACE_ID, tour: { status: 'published' } })
+    mdb.booking.count.mockResolvedValueOnce(5)
+    mdb.tourSession.update.mockResolvedValueOnce({ tour: { tourDate: new Date('2026-06-01'), group: { name: 'Test School' } } })
+    mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
+
+    await updateSession('tour-1', 'session-1', { capacity: 5 })
+
+    expect(mdb.tourSession.update).toHaveBeenCalledWith(
+      oc({ where: { id: 'session-1' }, data: oc({ capacity: 5 }) }),
+    )
+  })
+
+  it('does not notify when a draft tour\'s session changes meeting time', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', placeId: PLACE_ID, meetingTime: new Date('1970-01-01T09:00:00.000Z'), tour: { status: 'draft' } })
+    mdb.tourSession.update.mockResolvedValueOnce({ tour: { tourDate: new Date('2026-06-01'), group: { name: 'Test School' } } })
+    mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
+
+    await updateSession('tour-1', 'session-1', { meetingTime: '10:00' })
+
+    expect(enqueueInAppForBookedBuddies).not.toHaveBeenCalled()
+    expect(enqueueEmailForBookedBuddies).not.toHaveBeenCalled()
+  })
+
+  it('does not count bookings when capacity is not sent', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', placeId: PLACE_ID, tour: { status: 'published' } })
+    mdb.tourSession.update.mockResolvedValueOnce({ tour: { tourDate: new Date('2026-06-01'), group: { name: 'Test School' } } })
+    mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
+
+    await updateSession('tour-1', 'session-1', { label: 'Morning' })
+
+    expect(mdb.booking.count).not.toHaveBeenCalled()
+  })
+
+  it('throws MinBuddiesExceedsCapacityError when capacity drops below the stored minBuddies', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', placeId: PLACE_ID, capacity: 10, minBuddies: 5, tour: { status: 'draft' } })
+
+    await expect(updateSession('tour-1', 'session-1', { capacity: 3 })).rejects.toThrow(MinBuddiesExceedsCapacityError)
+    expect(mdb.tourSession.update).not.toHaveBeenCalled()
+  })
+
+  it('throws MinBuddiesExceedsCapacityError when minBuddies rises above the stored capacity', async () => {
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', placeId: PLACE_ID, capacity: 10, minBuddies: null, tour: { status: 'draft' } })
+
+    await expect(updateSession('tour-1', 'session-1', { minBuddies: 11 })).rejects.toThrow(MinBuddiesExceedsCapacityError)
+    expect(mdb.tourSession.update).not.toHaveBeenCalled()
+  })
+
   it('throws SessionNotFoundError when session does not exist', async () => {
     mdb.tourSession.findUnique.mockResolvedValueOnce(null)
     await expect(updateSession('tour-1', 'session-x', { capacity: 10 })).rejects.toThrow(SessionNotFoundError)
@@ -311,7 +398,7 @@ describe('updateSession', () => {
   })
 
   it('parses meetingTime string into Date when provided', async () => {
-    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1' })
+    mdb.tourSession.findUnique.mockResolvedValueOnce({ tourId: 'tour-1', meetingTime: new Date('1970-01-01T09:00:00.000Z'), tour: { status: 'draft' } })
     mdb.tourSession.update.mockResolvedValueOnce({})
     mdb.tour.findUnique.mockResolvedValueOnce(makeDetailRow())
 

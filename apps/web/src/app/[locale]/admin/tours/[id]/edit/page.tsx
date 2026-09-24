@@ -11,6 +11,7 @@ import { TourStatusSchema, AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { TourForm } from '../../_components/tour-form'
 import type { TourFormValues } from '../../_components/tour-form'
+import { sessionChanges, sessionConflictKey } from '../../_components/session-changes'
 import { fetchTour, fetchGroups, fetchPlaces, updateTour, updateTourSession } from '../../admin.tour'
 
 export default function AdminTourEditPage() {
@@ -62,27 +63,24 @@ export default function AdminTourEditPage() {
       })
   }, [ready, id, locale, router]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A failed save throws so the form shows the error above itself and keeps
+  // the admin's input. A retry may resend a session that already saved; the API
+  // treats an unchanged place or meeting time as no change.
   async function handleSubmit(values: TourFormValues) {
     if (!tour) return
     const { sessions, ...tourFields } = values
     const result = await updateTour(id, tourFields as Record<string, unknown>)
-    if (!result.ok) {
-      setLoadError(errorMessage(result.error))
-      return
-    }
-    // A session's place is saved through its own endpoint; only a changed one
-    // is sent, so an unchanged session never hits the place-in-use lock.
+    if (!result.ok) throw new Error(errorMessage(result.error))
+    // Sessions are saved through their own endpoint, one call each.
     for (const [idx, session] of tour.sessions.entries()) {
-      const placeId = sessions[idx]?.placeId
-      if (!placeId || placeId === session.place.id) continue
-      const sessionResult = await updateTourSession(id, session.id, { placeId })
+      const sessionValues = sessions[idx]
+      if (!sessionValues) continue
+      const changes = sessionChanges(session, sessionValues)
+      if (Object.keys(changes).length === 0) continue
+      const sessionResult = await updateTourSession(id, session.id, changes)
       if (!sessionResult.ok) {
-        setLoadError(
-          sessionResult.error.code === AppErrorCodeSchema.enum.conflict
-            ? t('session.error.placeInUse')
-            : errorMessage(sessionResult.error),
-        )
-        return
+        const conflictKey = sessionResult.error.code === AppErrorCodeSchema.enum.conflict ? sessionConflictKey(changes) : null
+        throw new Error(conflictKey ? t(`session.error.${conflictKey}`) : errorMessage(sessionResult.error))
       }
     }
     router.push(routes.adminTourDetail(locale, id))

@@ -311,6 +311,7 @@
     "location": "Location",
     "capacity": "Max Buddies",
     "minBuddies": "Min Buddies",
+    "capacityBelowConfirmed": "Max Buddies cannot be lower than the number of confirmed buddies ({count})",
     "minBuddiesExceedsCapacity": "Min Buddies must be less than or equal to Max Buddies",
     "groupRequired": "Select a group",
     "placeRequired": "Select a place",
@@ -391,7 +392,8 @@
       "confirmRemove": "Remove this session? This cannot be undone.",
       "error": {
         "maxSessions": "A tour cannot have more than 2 sessions.",
-        "placeInUse": "A reflection on this session names a spot at its current place, so the place cannot be changed."
+        "placeInUse": "A reflection on this session names a spot at its current place, so the place cannot be changed.",
+        "capacityBelowConfirmed": "Max Buddies cannot be lower than the number of confirmed buddies on this session."
       }
     },
     "bookingSession": "Session",

@@ -24,6 +24,8 @@ import {
   LastSessionError,
   TooManySessionsError,
   PlaceInUseError,
+  CapacityBelowConfirmedError,
+  MinBuddiesExceedsCapacityError,
 } from '../services/adminSession.service'
 import {
   assignAdmin,
@@ -249,6 +251,8 @@ adminTourRoutes.put('/:id/sessions/:sessionId', async (c) => {
   } catch (e) {
     if (e instanceof SessionNotFoundError) return c.json(apiError('not_found'), 404)
     if (e instanceof PlaceInUseError) return c.json(apiError('conflict', e.message), 409)
+    if (e instanceof CapacityBelowConfirmedError) return c.json(apiError('conflict', e.message), 409)
+    if (e instanceof MinBuddiesExceedsCapacityError) return c.json(apiError('invalid_request', e.message), 400)
     throw e
   }
 })
