@@ -3079,3 +3079,20 @@ accepted: flipping the flag needs a web rebuild, not a container restart.
 **Revisit when** the Apple Developer grant closes and the Service ID + key are in
 the Firebase console. Flip the flag, then delete it and the `appleComingSoon`
 key.
+
+---
+
+## 2026-09-24 — Japanese UI calls a booking 参加希望, never 予約
+
+**Decision:** Every Japanese string about a booking — web (`ja.json`) and
+notification templates (`messages.ja.json`) — uses 参加希望 as the noun and
+参加を希望する as the verb (never 参加希望する). A buddy's list that mixes
+booked and joined tours is headed ツアー一覧, and a booking's cancel button is
+just キャンセル. English keeps "booking". Closes #244.
+
+**Why:** Product owner's call on #244: 予約 is the wrong term for this product.
+
+**Rejected — 予約:** the term used until now.
+
+**Current state:** `apps/web/messages/ja.json`,
+`apps/api/src/services/notificationTemplates/messages.ja.json`.

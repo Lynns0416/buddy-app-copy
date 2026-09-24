@@ -81,6 +81,7 @@ export default function AdminTourDetailPage() {
 
   async function handleToggleBooking() {
     if (!tour) return
+    if (!window.confirm(t(tour.bookingOpen ? 'confirmCloseBooking' : 'confirmOpenBooking'))) return
     setActing(true)
     setActionError(null)
     const result = await toggleTourBooking(id, tour.bookingOpen)

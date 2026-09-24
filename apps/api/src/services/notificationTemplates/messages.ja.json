@@ -62,13 +62,13 @@
     "path": "/buddy/tours/{tourId}"
   },
   "maybe_reminder": {
-    "subject": "【Peace Buddy】「保留」の予約をご確認ください",
-    "bodyText": "「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。\n\n{url}",
-    "bodyHtml": "<p>「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。</p>",
+    "subject": "【Peace Buddy】「保留」の参加希望をご確認ください",
+    "bodyText": "「保留」のままになっているツアーの参加希望があります。期限までに参加するか辞退するかを確定してください。\n\n{url}",
+    "bodyHtml": "<p>「保留」のままになっているツアーの参加希望があります。期限までに参加するか辞退するかを確定してください。</p>",
     "detail": {
-      "subject": "【Peace Buddy】「保留」の予約をご確認ください：{groupName}（{tourDate}）",
-      "bodyText": "「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。\n\n{groupName}（{tourDate}）\n\n{url}",
-      "bodyHtml": "<p>「保留」のままになっているツアーの予約があります。期限までに参加するか辞退するかを確定してください。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
+      "subject": "【Peace Buddy】「保留」の参加希望をご確認ください：{groupName}（{tourDate}）",
+      "bodyText": "「保留」のままになっているツアーの参加希望があります。期限までに参加するか辞退するかを確定してください。\n\n{groupName}（{tourDate}）\n\n{url}",
+      "bodyHtml": "<p>「保留」のままになっているツアーの参加希望があります。期限までに参加するか辞退するかを確定してください。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
     },
     "cta": "回答する",
     "path": "/buddy/tours/{tourId}"
@@ -82,17 +82,17 @@
       "bodyText": "キャンセル待ちから繰り上がり、参加確定となりました。\n\n{groupName}（{tourDate}）\n\n{url}",
       "bodyHtml": "<p>キャンセル待ちから繰り上がり、参加確定となりました。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
     },
-    "cta": "予約を確認する",
+    "cta": "参加希望を確認する",
     "path": "/buddy/tours/{tourId}"
   },
   "booking_cancelled": {
-    "subject": "【Peace Buddy】バディが予約をキャンセルしました",
-    "bodyText": "バディが予約をキャンセルしました。\n\n{url}",
-    "bodyHtml": "<p>バディが予約をキャンセルしました。</p>",
+    "subject": "【Peace Buddy】バディが参加希望をキャンセルしました",
+    "bodyText": "バディが参加希望をキャンセルしました。\n\n{url}",
+    "bodyHtml": "<p>バディが参加希望をキャンセルしました。</p>",
     "detail": {
-      "subject": "【Peace Buddy】{buddyName} さんが予約をキャンセルしました：{groupName}（{tourDate}）",
-      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）の予約をキャンセルしました。\n\n{url}",
-      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）の予約をキャンセルしました。</p>"
+      "subject": "【Peace Buddy】{buddyName} さんが参加希望をキャンセルしました：{groupName}（{tourDate}）",
+      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）の参加希望をキャンセルしました。\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）の参加希望をキャンセルしました。</p>"
     },
     "cta": "ツアーを開く",
     "path": "/admin/tours/{tourId}"
@@ -110,13 +110,13 @@
     "path": "/admin/tours/{tourId}"
   },
   "maybe_resolved": {
-    "subject": "【Peace Buddy】「保留」の予約が確定または辞退になりました",
-    "bodyText": "「保留」の予約が確定または辞退に変わりました。\n\n{url}",
-    "bodyHtml": "<p>「保留」の予約が確定または辞退に変わりました。</p>",
+    "subject": "【Peace Buddy】「保留」の参加希望が確定または辞退になりました",
+    "bodyText": "「保留」の参加希望が確定または辞退に変わりました。\n\n{url}",
+    "bodyHtml": "<p>「保留」の参加希望が確定または辞退に変わりました。</p>",
     "detail": {
-      "subject": "【Peace Buddy】「保留」の予約が確定または辞退になりました：{buddyName} さん／{groupName}（{tourDate}）",
-      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）の「保留」の予約を確定または辞退に変えました。\n\n{url}",
-      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）の「保留」の予約を確定または辞退に変えました。</p>"
+      "subject": "【Peace Buddy】「保留」の参加希望が確定または辞退になりました：{buddyName} さん／{groupName}（{tourDate}）",
+      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）の「保留」の参加希望を確定または辞退に変えました。\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）の「保留」の参加希望を確定または辞退に変えました。</p>"
     },
     "cta": "ツアーを開く",
     "path": "/admin/tours/{tourId}"

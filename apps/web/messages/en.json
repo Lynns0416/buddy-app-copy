@@ -368,6 +368,8 @@
     "bookingOpenNo": "Closed",
     "openBooking": "Open Booking",
     "closeBooking": "Close Booking",
+    "confirmOpenBooking": "Open booking? Buddies will be able to book this tour.",
+    "confirmCloseBooking": "Close booking? Buddies will no longer be able to book this tour.",
     "addToCalendar": "Add to Calendar",
     "actionError": "Action failed. Please try again.",
     "validationError": "Please fix the errors below.",
