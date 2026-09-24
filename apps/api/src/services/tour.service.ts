@@ -3,8 +3,9 @@ import { db } from '../lib/db'
 import { getPoolCapacities, poolForTier, tiersInPool } from '../lib/pool'
 import type { TierPool } from '../lib/pool'
 import { buildTourIcs, icsTourSelect } from '../lib/tourIcs'
-import { BookingStatusSchema } from '@peace-buddy/types'
-import type { TourResponse, TourDetailResponse, TourSessionDetailResponse, TourSeatCounts, GroupType, BookingStatus, TourSessionResponse } from '@peace-buddy/types'
+import { placeSummarySelect, sessionPlaces } from '../lib/sessionPlaces'
+import { BookingStatusSchema, LocaleSchema } from '@peace-buddy/types'
+import type { TourResponse, TourDetailResponse, TourSessionDetailResponse, TourSeatCounts, GroupType, BookingStatus, TourSessionResponse, PlaceSummary } from '@peace-buddy/types'
 import type { ToursQuery } from '../types'
 
 const sessionSelect = {
@@ -17,6 +18,7 @@ const sessionSelect = {
   capacity: true,
   minBuddies: true,
   participantCount: true,
+  place: { select: placeSummarySelect },
 } as const
 
 const tourSelect = {
@@ -26,7 +28,6 @@ const tourSelect = {
   status: true,
   tourDate: true,
   bookingOpen: true,
-  location: true,
   description: true,
   cancellationDeadline: true,
   maybeDeadline: true,
@@ -46,6 +47,7 @@ function mapSession(row: {
   capacity: number
   minBuddies: number | null
   participantCount: number
+  place: PlaceSummary
 }): TourSessionResponse {
   return {
     id: row.id,
@@ -58,6 +60,7 @@ function mapSession(row: {
     minBuddies: row.minBuddies,
     participantCount: row.participantCount,
     belowMinimum: row.minBuddies != null && row.participantCount < row.minBuddies,
+    place: row.place,
   }
 }
 
@@ -68,7 +71,6 @@ function mapTour(row: {
   status: string
   tourDate: Date
   bookingOpen: boolean
-  location: string
   description: string | null
   cancellationDeadline: Date
   maybeDeadline: Date | null
@@ -85,6 +87,7 @@ function mapTour(row: {
     capacity: number
     minBuddies: number | null
     participantCount: number
+    place: PlaceSummary
   }>
 }, myBookingBySession: Map<string, BookingStatus>): TourResponse {
   const totalParticipants = row.sessions.reduce((s, sess) => s + sess.participantCount, 0)
@@ -95,7 +98,7 @@ function mapTour(row: {
     status: row.status as TourResponse['status'],
     tourDate: row.tourDate.toISOString(),
     bookingOpen: row.bookingOpen,
-    location: row.location,
+    places: sessionPlaces(row.sessions),
     participantCount: totalParticipants,
     description: row.description,
     cancellationDeadline: row.cancellationDeadline.toISOString(),
@@ -153,7 +156,28 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
   const [row, buddyProfile] = await Promise.all([
     db.tour.findUnique({
       where: { id },
-      select: { ...tourSelect, staffInCharge: { select: { name: true, deletedAt: true } } },
+      select: {
+        ...tourSelect,
+        staffInCharge: { select: { name: true, deletedAt: true } },
+        // Richer than tourSelect's session place: a buddy picking a spot for
+        // a reflection moment needs the session's place's active spots too.
+        sessions: {
+          select: {
+            ...sessionSelect,
+            place: {
+              select: {
+                ...placeSummarySelect,
+                spots: {
+                  where: { active: true },
+                  select: placeSummarySelect,
+                  orderBy: { sortOrder: 'asc' as const },
+                },
+              },
+            },
+          },
+          orderBy: { order: 'asc' as const },
+        },
+      },
     }),
     db.buddyProfile.findFirst({
       where: { userId },
@@ -246,6 +270,7 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
 
     return {
       ...mapSession(sess),
+      place: sess.place,
       seatCounts,
       remaining: sess.capacity - seatCounts.confirmed,
       myCapacity,
@@ -268,12 +293,13 @@ export async function getTour(id: string, userId: string): Promise<TourDetailRes
 // visible to the caller, same as getTour, and also when the buddy holds no
 // confirmed session — nothing to put on a personal calendar. See #199.
 export async function getTourIcs(id: string, userId: string): Promise<string | null> {
-  const [row, buddyProfile] = await Promise.all([
+  const [row, buddyProfile, user] = await Promise.all([
     db.tour.findUnique({
       where: { id },
       select: icsTourSelect,
     }),
     db.buddyProfile.findFirst({ where: { userId }, select: { status: true } }),
+    db.user.findUnique({ where: { id: userId }, select: { locale: true } }),
   ])
 
   if (!row) return null
@@ -290,5 +316,5 @@ export async function getTourIcs(id: string, userId: string): Promise<string | n
   const confirmedSessions = row.sessions.filter((s) => confirmedSessionIds.has(s.id))
   if (confirmedSessions.length === 0) return null
 
-  return buildTourIcs(row, confirmedSessions)
+  return buildTourIcs(row, confirmedSessions, user?.locale ?? LocaleSchema.enum.ja)
 }

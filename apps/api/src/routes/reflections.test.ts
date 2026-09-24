@@ -31,6 +31,9 @@ vi.mock('../services/reflection.service', () => ({
   BuddyNotFoundError: class BuddyNotFoundError extends Error {
     constructor() { super('Buddy not found') }
   },
+  InvalidSpotError: class InvalidSpotError extends Error {
+    constructor() { super('Invalid spot') }
+  },
   REFLECTION_EDIT_WINDOW_DAYS: 7,
 }))
 
@@ -43,6 +46,7 @@ import {
   ReflectionLockedError,
   NotEligibleError,
   BuddyNotFoundError,
+  InvalidSpotError,
 } from '../services/reflection.service'
 
 const mockCreate = vi.mocked(createReflection)
@@ -69,9 +73,9 @@ const mockReflection: TourReflectionResponse = {
   tourId: 'tour-1',
   didWell: 'Kept everyone together',
   couldImprove: null,
-  memorableMoment: null,
   notesForOthers: null,
   openQuestions: null,
+  moments: [],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   locked: false,
@@ -108,7 +112,7 @@ describe('POST /me/reflections', () => {
     expect(res.status).toBe(400)
   })
 
-  it('returns 400 when all five prompts are blank', async () => {
+  it('returns 400 when all four prompts are blank and there are no moments', async () => {
     const res = await buildApp().request('/me/reflections', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,12 +131,36 @@ describe('POST /me/reflections', () => {
         sessionId: validCreateBody.sessionId,
         didWell: null,
         couldImprove: null,
-        memorableMoment: null,
         notesForOthers: null,
         openQuestions: 'What is the support scheme for second-generation survivors?',
       }),
     })
     expect(res.status).toBe(201)
+  })
+
+  it('trims a moment, so a blank placeNote beside a spot counts as unset', async () => {
+    mockCreate.mockResolvedValueOnce(mockReflection)
+    const spotId = 'b2c3d4e5-f6a7-8901-bcde-f12345678901'
+    const res = await buildApp().request('/me/reflections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...validCreateBody, moments: [{ spotId, placeNote: '   ', description: ' Saw it ' }] }),
+    })
+    expect(res.status).toBe(201)
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ moments: [{ spotId, placeNote: '', description: 'Saw it' }] }),
+      'user-2',
+    )
+  })
+
+  it('returns 400 when a moment description is only whitespace', async () => {
+    const res = await buildApp().request('/me/reflections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...validCreateBody, moments: [{ placeNote: 'Gate', description: '   ' }] }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockCreate).not.toHaveBeenCalled()
   })
 
   it('returns 409 when already written', async () => {
@@ -163,6 +191,17 @@ describe('POST /me/reflections', () => {
       body: JSON.stringify(validCreateBody),
     })
     expect(res.status).toBe(404)
+  })
+
+  it('returns 400 when a moment names a spot outside the tour', async () => {
+    mockCreate.mockRejectedValueOnce(new InvalidSpotError())
+    const res = await buildApp().request('/me/reflections', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(validCreateBody),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 for non-JSON body', async () => {
@@ -244,6 +283,17 @@ describe('PUT /me/reflections/:id', () => {
     expect(res.status).toBe(409)
     const body = (await res.json()) as { code: string; detail: string }
     expect(body).toEqual({ code: 'conflict', detail: 'Edit window has closed' })
+  })
+
+  it('returns 400 when a moment names a spot outside the tour', async () => {
+    mockUpdate.mockRejectedValueOnce(new InvalidSpotError())
+    const res = await buildApp().request('/me/reflections/refl-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ didWell: 'Kept calm' }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
   it('returns 400 for non-JSON body', async () => {

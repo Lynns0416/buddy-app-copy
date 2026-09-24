@@ -3,10 +3,12 @@ import { db } from '../lib/db'
 import { addDays } from '../lib/jstDay'
 import { payloadTourDate } from '../lib/notificationPayload'
 import { buildTourIcs, icsTourSelect } from '../lib/tourIcs'
+import { placeSummarySelect, sessionPlaces } from '../lib/sessionPlaces'
 import {
   TourStatusSchema,
   BookingStatusSchema,
   NotifEventKindSchema,
+  LocaleSchema,
   jstStartOfDayUtc,
 } from '@peace-buddy/types'
 import {
@@ -28,6 +30,7 @@ import type {
   GroupType,
   BookingStatus,
   CancellationReasonResponse,
+  PlaceSummary,
 } from '@peace-buddy/types'
 
 export class TourNotFoundError extends Error {
@@ -79,6 +82,7 @@ const sessionSelect = {
   capacity: true,
   minBuddies: true,
   participantCount: true,
+  place: { select: placeSummarySelect },
 } as const
 
 function mapSession(row: {
@@ -91,6 +95,7 @@ function mapSession(row: {
   capacity: number
   minBuddies: number | null
   participantCount: number
+  place: PlaceSummary
 }): TourSessionResponse {
   return {
     id: row.id,
@@ -103,6 +108,7 @@ function mapSession(row: {
     minBuddies: row.minBuddies,
     participantCount: row.participantCount,
     belowMinimum: row.minBuddies != null && row.participantCount < row.minBuddies,
+    place: row.place,
   }
 }
 
@@ -112,7 +118,6 @@ function mapSummary(row: {
   status: string
   tourDate: Date
   bookingOpen: boolean
-  location: string
   description: string | null
   createdAt: Date
   updatedAt: Date
@@ -126,6 +131,7 @@ function mapSummary(row: {
     capacity: number
     minBuddies: number | null
     participantCount: number
+    place: PlaceSummary
   }>
   _count: { bookings: number }
 }): AdminTourSummaryResponse {
@@ -137,7 +143,7 @@ function mapSummary(row: {
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
     bookingOpen: row.bookingOpen,
-    location: row.location,
+    places: sessionPlaces(row.sessions),
     capacity: totalCapacity,
     description: row.description,
     confirmedCount: row._count.bookings,
@@ -154,7 +160,6 @@ const tourListSelect = {
   status: true,
   tourDate: true,
   bookingOpen: true,
-  location: true,
   description: true,
   createdAt: true,
   updatedAt: true,
@@ -226,7 +231,6 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
       status: TourStatusSchema.enum.draft,
       tourDate: data.tourDate,
       bookingOpen: data.bookingOpen,
-      location: data.location,
       description: data.description ?? null,
       adminMemo: data.adminMemo ?? null,
       cancellationDeadline: data.cancellationDeadline,
@@ -242,6 +246,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
           capacity: s.capacity,
           minBuddies: s.minBuddies ?? null,
           participantCount: s.participantCount ?? 0,
+          placeId: s.placeId,
         })),
       },
     },
@@ -251,7 +256,6 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
       status: true,
       tourDate: true,
       bookingOpen: true,
-      location: true,
       description: true,
       adminMemo: true,
       cancellationDeadline: true,
@@ -269,7 +273,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
     bookingOpen: row.bookingOpen,
-    location: row.location,
+    places: sessionPlaces(row.sessions),
     capacity: row.sessions.reduce((s, sess) => s + sess.capacity, 0),
     description: row.description,
     confirmedCount: 0,
@@ -296,7 +300,6 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
       status: true,
       tourDate: true,
       bookingOpen: true,
-      location: true,
       description: true,
       adminMemo: true,
       cancellationDeadline: true,
@@ -347,7 +350,7 @@ export async function getAdminTourDetail(id: string): Promise<AdminTourDetailRes
     status: row.status as TourStatus,
     tourDate: row.tourDate.toISOString(),
     bookingOpen: row.bookingOpen,
-    location: row.location,
+    places: sessionPlaces(row.sessions),
     capacity: row.sessions.reduce((s, sess) => s + sess.capacity, 0),
     description: row.description,
     confirmedCount: row._count.bookings,
@@ -400,15 +403,13 @@ function tourRef(tour: { tourDate: Date; group: { name: string } }) {
 export async function updateTour(id: string, data: UpdateTour): Promise<AdminTourDetailResponse> {
   const existing = await db.tour.findUnique({
     where: { id },
-    select: { status: true, tourDate: true, location: true },
+    select: { status: true, tourDate: true },
   })
   if (!existing) throw new TourNotFoundError()
   if (existing.status === TourStatusSchema.enum.cancelled || existing.status === TourStatusSchema.enum.completed) throw new TourImmutableError()
 
   const tourDateChanged = data.tourDate !== undefined && data.tourDate.getTime() !== existing.tourDate.getTime()
-  const locationChanged = data.location !== undefined && data.location !== existing.location
-  const notifyDetailsChanged =
-    existing.status === TourStatusSchema.enum.published && (tourDateChanged || locationChanged)
+  const notifyDetailsChanged = existing.status === TourStatusSchema.enum.published && tourDateChanged
 
   try {
     await db.$transaction(async (tx) => {
@@ -418,7 +419,6 @@ export async function updateTour(id: string, data: UpdateTour): Promise<AdminTou
         data: {
           ...(data.groupId !== undefined ? { groupId: data.groupId } : {}),
           ...(data.tourDate !== undefined ? { tourDate: data.tourDate } : {}),
-          ...(data.location !== undefined ? { location: data.location } : {}),
           ...(data.description !== undefined ? { description: data.description } : {}),
           ...(data.adminMemo !== undefined ? { adminMemo: data.adminMemo } : {}),
           ...(data.cancellationDeadline !== undefined ? { cancellationDeadline: data.cancellationDeadline } : {}),
@@ -499,13 +499,13 @@ export async function deleteTour(id: string): Promise<void> {
 
 // Every session in the tour — an admin has no personal booking to filter by.
 // See #199.
-export async function getAdminTourIcs(id: string): Promise<string | null> {
-  const row = await db.tour.findUnique({
-    where: { id },
-    select: icsTourSelect,
-  })
+export async function getAdminTourIcs(id: string, userId: string): Promise<string | null> {
+  const [row, user] = await Promise.all([
+    db.tour.findUnique({ where: { id }, select: icsTourSelect }),
+    db.user.findUnique({ where: { id: userId }, select: { locale: true } }),
+  ])
   if (!row) return null
 
-  return buildTourIcs(row, row.sessions)
+  return buildTourIcs(row, row.sessions, user?.locale ?? LocaleSchema.enum.ja)
 }
 

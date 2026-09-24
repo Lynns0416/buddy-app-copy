@@ -14,6 +14,7 @@ import type { MyTourBookingEntry } from '@peace-buddy/types'
 import { getTodayJst } from '@peace-buddy/types'
 import { filterPast, findPastAttended, findUpcoming, groupByYear, summarize } from './buddy.history'
 import { formatDate } from '@/lib/format-date'
+import { placeNames } from '@/lib/place-names'
 
 function BookingRow({ entry, viewLabel }: { entry: MyTourBookingEntry; viewLabel: string }) {
   const { locale } = useParams<{ locale: string }>()
@@ -22,7 +23,7 @@ function BookingRow({ entry, viewLabel }: { entry: MyTourBookingEntry; viewLabel
     <div className="flex items-center justify-between gap-4 rounded-md border p-3 text-sm">
       <div className="min-w-0 flex-1">
         <p className="font-medium">{entry.group.name}</p>
-        <p className="text-muted-foreground">{formatDate(entry.tourDate)} · {entry.location}</p>
+        <p className="text-muted-foreground">{formatDate(entry.tourDate)} · {placeNames(entry.places, locale)}</p>
         <div className="mt-1 flex flex-col gap-0.5">
           {entry.bookings.map((b) => (
             <p key={b.sessionId} className="text-xs text-muted-foreground">

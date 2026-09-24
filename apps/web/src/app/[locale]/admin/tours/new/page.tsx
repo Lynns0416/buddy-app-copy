@@ -6,12 +6,12 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import type { GroupResponse, AppError } from '@peace-buddy/types'
+import type { GroupResponse, PlaceResponse, AppError } from '@peace-buddy/types'
 import { AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { TourForm } from '../_components/tour-form'
 import type { TourFormValues } from '../_components/tour-form'
-import { fetchGroups, createTour, groupIdFromParams } from '../admin.tour'
+import { fetchGroups, fetchPlaces, createTour, groupIdFromParams } from '../admin.tour'
 
 export default function AdminTourNewPage() {
   const { ready, locale } = useAdminGuard()
@@ -28,6 +28,7 @@ export default function AdminTourNewPage() {
   const successHref = (groupId: string) =>
     initialGroupId ? routes.adminGroupDetail(locale, groupId) : routes.adminTours(locale)
   const [groups, setGroups] = useState<GroupResponse[]>([])
+  const [places, setPlaces] = useState<PlaceResponse[]>([])
   const [error, setError] = useState<string | null>(null)
 
   function errorMessage(err: AppError): string {
@@ -44,6 +45,10 @@ export default function AdminTourNewPage() {
     if (!ready) return
     fetchGroups().then((result) => {
       if (result.ok) setGroups(result.data)
+      else setError(errorMessage(result.error))
+    })
+    fetchPlaces().then((result) => {
+      if (result.ok) setPlaces(result.data)
       else setError(errorMessage(result.error))
     })
   }, [ready]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -78,6 +83,7 @@ export default function AdminTourNewPage() {
 
         <TourForm
           groups={groups}
+          places={places}
           initialGroupId={initialGroupId}
           cancelHref={cancelHref}
           onSubmit={handleSubmit}

@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { SortIcon } from '@/components/sort-icon'
 import { fetchGroup, sortGroupTours, nextGroupTourSort, type GroupTourSortField } from '../admin.group'
 import { getTourStatusLabel, getGroupTypeLabel, tourStatusBadgeVariant, groupTypeBadgeClass } from '@/lib/status-display'
+import { placeNames } from '@/lib/place-names'
 import { formatDate } from '@/lib/format-date'
 import { MarkdownText } from '@/components/markdown-text'
 
@@ -67,7 +68,7 @@ export default function AdminGroupDetailPage() {
 
   if (!group) return null
 
-  const sortedTours = sortGroupTours(group.tours, tourSortField, tourSortDir)
+  const sortedTours = sortGroupTours(group.tours, tourSortField, tourSortDir, locale)
 
   return (
     <AppShell variant="admin">
@@ -137,7 +138,7 @@ export default function AdminGroupDetailPage() {
                     {getTourStatusLabel(tTourStatus, tour.status)}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{tour.location}</p>
+                <p className="text-sm text-muted-foreground">{placeNames(tour.places, locale)}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{t('capacity')} {tour.sessions.reduce((s, x) => s + x.capacity, 0)}</p>
               </div>
             ))}
@@ -151,7 +152,7 @@ export default function AdminGroupDetailPage() {
                   {([
                     { field: 'tourDate' as const, label: t('tourDate') },
                     { field: 'status' as const, label: t('status') },
-                    { field: 'location' as const, label: t('location') },
+                    { field: 'places' as const, label: t('location') },
                     { field: 'capacity' as const, label: t('capacity') },
                   ]).map(({ field, label }) => (
                     <TableHead key={field} className="whitespace-nowrap">
@@ -179,7 +180,7 @@ export default function AdminGroupDetailPage() {
                         {getTourStatusLabel(tTourStatus, tour.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{tour.location}</TableCell>
+                    <TableCell>{placeNames(tour.places, locale)}</TableCell>
                     <TableCell>{tour.sessions.reduce((s, x) => s + x.capacity, 0)}</TableCell>
                   </TableRow>
                 ))}

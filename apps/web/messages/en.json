@@ -96,6 +96,32 @@
       "unknown": "Something went wrong. Please try again."
     }
   },
+  "adminPlaces": {
+    "title": "Places",
+    "newPlace": "New Place",
+    "noResults": "No places yet",
+    "nameJa": "Name (Japanese)",
+    "nameEn": "Name (English)",
+    "sortOrder": "Order",
+    "active": "Active",
+    "inactive": "Inactive",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "back": "Back to Places",
+    "spots": "Spots",
+    "spotsHeading": "Spots",
+    "newSpot": "New Spot",
+    "noSpots": "No spots yet",
+    "actionError": "Action failed. Please try again.",
+    "error": {
+      "notFound": "This place no longer exists.",
+      "forbidden": "You don't have permission to perform this action.",
+      "conflict": "This action can no longer be performed.",
+      "network": "Connection error. Please check your network and try again.",
+      "unknown": "Something went wrong. Please try again."
+    }
+  },
   "adminBuddies": {
     "nameWithReal": "{displayName} ({realName})",
     "title": "Buddies",
@@ -287,6 +313,9 @@
     "minBuddies": "Min Buddies",
     "minBuddiesExceedsCapacity": "Min Buddies must be less than or equal to Max Buddies",
     "groupRequired": "Select a group",
+    "placeRequired": "Select a place",
+    "selectPlace": "Select a place",
+    "inactivePlace": "inactive",
     "belowMinimum": "Below min",
     "participantCount": "Participants",
     "description": "Description",
@@ -361,7 +390,8 @@
       "remove": "Remove",
       "confirmRemove": "Remove this session? This cannot be undone.",
       "error": {
-        "maxSessions": "A tour cannot have more than 2 sessions."
+        "maxSessions": "A tour cannot have more than 2 sessions.",
+        "placeInUse": "A reflection on this session names a spot at its current place, so the place cannot be changed."
       }
     },
     "bookingSession": "Session",
@@ -460,6 +490,7 @@
       "buddies": "Buddies",
       "trainees": "Trainees",
       "groups": "Groups",
+      "places": "Places",
       "tours": "Tours",
       "adminProfile": "My Profile",
       "adminRoster": "Admin Roster",
@@ -649,9 +680,11 @@
     "reflectionPrompts": {
       "didWell": "What I did well",
       "couldImprove": "What I could have done better",
-      "memorableMoment": "An impressive moment",
       "notesForOthers": "To share with other buddies and admins",
       "openQuestions": "Questions I couldn't answer"
+    },
+    "reflectionMoments": {
+      "heading": "Memorable moments"
     }
   },
   "buddyTier": {
@@ -757,14 +790,25 @@
     "title": "Reflection",
     "backToTour": "Back to tour",
     "sessionHeading": "Reflection",
-    "atLeastOne": "Answer at least one. You can review this record yourself later.",
+    "atLeastOne": "Answer at least one, or add a memorable moment. You can review this record yourself later.",
     "notEligible": "Reflections open once the tour is marked completed, for the sessions you guided.",
     "prompts": {
       "didWell": "What I did well",
       "couldImprove": "What I could have done better",
-      "memorableMoment": "An impressive moment — a participant's remark, a reaction",
       "notesForOthers": "To share with other buddies and admins",
       "openQuestions": "Questions I couldn't answer"
+    },
+    "moments": {
+      "heading": "Memorable moments",
+      "addMoment": "+ Add another moment",
+      "remove": "Remove",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "spotLabel": "Where",
+      "otherOption": "Other",
+      "placeNoteLabel": "Where was this?",
+      "descriptionLabel": "What happened",
+      "singlePlaceDescription": "What was your most impressive moment at {place}?"
     },
     "summary": {
       "edit": "Edit",

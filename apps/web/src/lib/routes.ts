@@ -12,6 +12,8 @@ export const routes = {
   adminGroupNew: (locale: string) => `/${locale}/admin/groups/new`,
   adminGroupDetail: (locale: string, id: string) => `/${locale}/admin/groups/${id}`,
   adminGroupEdit: (locale: string, id: string) => `/${locale}/admin/groups/${id}/edit`,
+  adminPlaces: (locale: string) => `/${locale}/admin/places`,
+  adminPlaceDetail: (locale: string, id: string) => `/${locale}/admin/places/${id}`,
   adminTours: (locale: string) => `/${locale}/admin/tours`,
   adminToursCalendar: (locale: string) => `/${locale}/admin/tours?view=calendar`,
   adminTourNew: (locale: string, groupId?: string) =>

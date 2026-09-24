@@ -2,12 +2,13 @@ import type { GroupResponse, GroupDetailResponse, CreateGroup, UpdateGroup } fro
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
+import { placeNames } from '@/lib/place-names'
 import type { ActionResult } from '../../../../lib/action'
 import { classifyApiError } from '../../../../lib/api-error'
 import { ASC, DESC } from '../../../../lib/constants'
 
 export type GroupSortField = 'name' | 'type'
-export type GroupTourSortField = 'tourDate' | 'status' | 'location' | 'capacity'
+export type GroupTourSortField = 'tourDate' | 'status' | 'places' | 'capacity'
 
 export function sortGroups(
   groups: GroupResponse[],
@@ -34,13 +35,14 @@ export function sortGroupTours(
   tours: GroupDetailResponse['tours'],
   field: GroupTourSortField,
   dir: SortDir,
+  locale: string,
 ): GroupDetailResponse['tours'] {
   return [...tours].sort((a, b) => {
     let cmp = 0
     switch (field) {
       case 'tourDate':  cmp = a.tourDate.localeCompare(b.tourDate); break
       case 'status':    cmp = a.status.localeCompare(b.status); break
-      case 'location':  cmp = a.location.localeCompare(b.location, routing.defaultLocale); break
+      case 'places':    cmp = placeNames(a.places, locale).localeCompare(placeNames(b.places, locale), routing.defaultLocale); break
       case 'capacity':  cmp = a.sessions.reduce((s, x) => s + x.capacity, 0) - b.sessions.reduce((s, x) => s + x.capacity, 0); break
     }
     return dir === ASC ? cmp : -cmp

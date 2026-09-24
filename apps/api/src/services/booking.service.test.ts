@@ -694,7 +694,7 @@ describe('listMyBookings', () => {
         meetingTime: new Date('1970-01-01T09:00:00.000Z'),
         tour: {
           tourDate: new Date('2099-05-01'),
-          location: 'Nagasaki',
+          sessions: [{ place: { id: 'place-1', nameJa: '長崎', nameEn: 'Nagasaki' } }],
           status: 'published',
           maybeDeadline: overrides.maybeDeadline === undefined ? new Date('2099-04-25') : overrides.maybeDeadline,
           group: { name: 'Sakura School', type: 'school' },

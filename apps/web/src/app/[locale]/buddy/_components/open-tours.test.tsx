@@ -35,6 +35,7 @@ function makeSession(
     participantCount: 0,
     belowMinimum: false,
     myBookingStatus: null,
+    place: { id: 'place-1', nameJa: 'Tokyo Station', nameEn: 'Tokyo Station' },
     ...overrides,
   }
 }
@@ -47,7 +48,7 @@ function makeTour(sessions: TourListSessionResponse[], overrides: Partial<TourRe
     status: TourStatusSchema.enum.published,
     tourDate: '2099-05-01T00:00:00.000Z',
     bookingOpen: true,
-    location: 'Tokyo Station',
+    places: [{ id: 'place-1', nameJa: 'Tokyo Station', nameEn: 'Tokyo Station' }],
     participantCount: 0,
     description: null,
     cancellationDeadline: '2099-04-25T00:00:00.000Z',

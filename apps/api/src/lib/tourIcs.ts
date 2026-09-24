@@ -1,5 +1,5 @@
-import { TourStatusSchema } from '@peace-buddy/types'
-import type { TourStatus } from '@peace-buddy/types'
+import { TourStatusSchema, LocaleSchema } from '@peace-buddy/types'
+import type { TourStatus, Locale } from '@peace-buddy/types'
 import { buildVCalendar } from './ics'
 import type { IcsEvent, IcsEventStatus } from './ics'
 
@@ -15,8 +15,15 @@ export type TourForIcs = {
   tourDate: Date
   status: TourStatus
   group: { name: string }
-  location: string
   description: string | null
+}
+
+// LOCATION is the one place a locale choice must be baked in server-side: an
+// .ics file has no later web render to pick a language at. Every other
+// consumer of Place/Spot data gets both nameJa/nameEn and lets the web app
+// choose (docs/decisions.md, "Places and spots replace free-text location").
+function placeLocation(place: { nameJa: string; nameEn: string }, locale: Locale): string {
+  return locale === LocaleSchema.enum.en ? place.nameEn : place.nameJa
 }
 
 // Cancelling a tour does not touch the Booking rows, so a buddy who already
@@ -40,6 +47,7 @@ export type SessionForIcs = {
   meetingTime: Date
   startTime: Date | null
   endTime: Date | null
+  place: { nameJa: string; nameEn: string }
 }
 
 // The Prisma `select` that produces exactly TourForIcs + SessionForIcs. Shared
@@ -49,11 +57,17 @@ export type SessionForIcs = {
 export const icsTourSelect = {
   tourDate: true,
   status: true,
-  location: true,
   description: true,
   group: { select: { name: true } },
   sessions: {
-    select: { id: true, label: true, meetingTime: true, startTime: true, endTime: true },
+    select: {
+      id: true,
+      label: true,
+      meetingTime: true,
+      startTime: true,
+      endTime: true,
+      place: { select: { nameJa: true, nameEn: true } },
+    },
     orderBy: { order: 'asc' as const },
   },
 } as const
@@ -76,7 +90,7 @@ function combineJstDateTime(tourDate: Date, time: Date): Date {
   return new Date(jstWallClock - 9 * 60 * 60 * 1000)
 }
 
-export function buildTourIcsEvents(tour: TourForIcs, sessions: SessionForIcs[]): IcsEvent[] {
+export function buildTourIcsEvents(tour: TourForIcs, sessions: SessionForIcs[], locale: Locale): IcsEvent[] {
   const status = icsStatusFor(tour.status)
 
   return sessions.map((session) => {
@@ -99,12 +113,12 @@ export function buildTourIcsEvents(tour: TourForIcs, sessions: SessionForIcs[]):
       dtend: end,
       summary: session.label ? `${tour.group.name} (${session.label})` : tour.group.name,
       status,
-      location: tour.location,
+      location: placeLocation(session.place, locale),
       description: tour.description,
     }
   })
 }
 
-export function buildTourIcs(tour: TourForIcs, sessions: SessionForIcs[]): string {
-  return buildVCalendar(buildTourIcsEvents(tour, sessions))
+export function buildTourIcs(tour: TourForIcs, sessions: SessionForIcs[], locale: Locale): string {
+  return buildVCalendar(buildTourIcsEvents(tour, sessions, locale))
 }

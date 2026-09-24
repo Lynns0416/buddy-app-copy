@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { useTranslations } from 'next-intl'
-import type { AdminTourDetailResponse } from '@peace-buddy/types'
+import { useEffect, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
+import type { AdminTourDetailResponse, PlaceResponse } from '@peace-buddy/types'
+import { placeName } from '@/lib/place-names'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { addTourSession } from '../admin.tour'
+import { addTourSession, fetchPlaces } from '../admin.tour'
 
 interface Props {
   tourId: string
@@ -16,15 +17,26 @@ interface Props {
 
 export function AddSessionForm({ tourId, onAdded, onCancel }: Props) {
   const t = useTranslations('adminTours')
+  const locale = useLocale()
+  const [places, setPlaces] = useState<PlaceResponse[]>([])
+  const [placesFailed, setPlacesFailed] = useState(false)
+  const [placeId, setPlaceId] = useState('')
   const [meetingTime, setMeetingTime] = useState('')
   const [capacity, setCapacity] = useState('')
   const [minBuddies, setMinBuddies] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    fetchPlaces().then((result) => {
+      if (result.ok) setPlaces(result.data.filter((p) => p.active))
+      else setPlacesFailed(true)
+    })
+  }, [])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!meetingTime || !capacity) return
+    if (!placeId || !meetingTime || !capacity) return
     const minBuddiesNum = minBuddies === '' ? null : Number(minBuddies)
     if (minBuddiesNum != null && minBuddiesNum > Number(capacity)) {
       setError(t('minBuddiesExceedsCapacity'))
@@ -33,6 +45,7 @@ export function AddSessionForm({ tourId, onAdded, onCancel }: Props) {
     setSaving(true)
     setError(null)
     const result = await addTourSession(tourId, {
+      placeId,
       meetingTime,
       capacity: Number(capacity),
       minBuddies: minBuddiesNum,
@@ -50,6 +63,21 @@ export function AddSessionForm({ tourId, onAdded, onCancel }: Props) {
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="rounded-md border p-4 flex flex-col gap-3">
       <p className="text-sm font-semibold">{t('session.defaultLabel.2')}</p>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="add-session-placeId">{t('location')}</Label>
+        <select
+          id="add-session-placeId"
+          value={placeId}
+          onChange={(e) => setPlaceId(e.target.value)}
+          required
+          className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <option value="" disabled>{t('selectPlace')}</option>
+          {places.map((place) => (
+            <option key={place.id} value={place.id}>{placeName(place, locale)}</option>
+          ))}
+        </select>
+      </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="add-session-meetingTime">{t('meetingTime')}</Label>
         <Input
@@ -81,6 +109,7 @@ export function AddSessionForm({ tourId, onAdded, onCancel }: Props) {
           onChange={(e) => setMinBuddies(e.target.value)}
         />
       </div>
+      {placesFailed && <p className="text-xs text-destructive">{t('error.unknown')}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={saving}>{t('save')}</Button>

@@ -9,7 +9,7 @@ export const adminTourSummary = (overrides: Partial<AdminTourSummaryResponse> = 
   id: 't1',
   tourDate: '2025-06-01',
   group: { id: 'g1', name: 'Alpha', type: 'school' },
-  location: 'Tokyo',
+  places: [{ id: 'place-1', nameJa: 'Tokyo', nameEn: 'Tokyo' }],
   capacity: 10,
   confirmedCount: 5,
   participantCount: 0,

@@ -9,6 +9,7 @@ interface MockDb {
   booking: { groupBy: MockFn; findMany: MockFn }
   buddyProfile: { findFirst: MockFn }
   tierCapacity: { findMany: MockFn }
+  user: { findUnique: MockFn }
 }
 
 vi.mock('../lib/db', () => {
@@ -17,6 +18,7 @@ vi.mock('../lib/db', () => {
     booking: { groupBy: vi.fn(), findMany: vi.fn() },
     buddyProfile: { findFirst: vi.fn() },
     tierCapacity: { findMany: vi.fn() },
+    user: { findUnique: vi.fn() },
   }
   return { db: mockDb }
 })
@@ -34,6 +36,7 @@ const mockSessionRow = {
   capacity: 10,
   minBuddies: null as number | null,
   participantCount: 0,
+  place: { id: 'place-1', nameJa: '東京駅', nameEn: 'Tokyo Station', spots: [] as { id: string; nameJa: string; nameEn: string }[] },
 }
 
 const mockRow = {
@@ -43,7 +46,6 @@ const mockRow = {
   status: 'published',
   tourDate: new Date('2026-05-01'),
   bookingOpen: true,
-  location: 'Tokyo Station',
   description: null,
   cancellationDeadline: new Date('2026-04-28'),
   maybeDeadline: null as Date | null,
@@ -396,11 +398,10 @@ describe('getTourIcs', () => {
   const icsRow = {
     tourDate: new Date('2026-05-01'),
     status: 'published',
-    location: 'Tokyo Station',
     description: 'A visit.',
     group: { name: 'Test School' },
     sessions: [
-      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null },
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: { nameJa: 'Tokyo Station', nameEn: 'Tokyo Station' } },
     ],
   }
 

@@ -72,7 +72,7 @@ const mockRawWithBookings = {
       cancellationReason: null,
       tour: {
         tourDate: new Date('2026-05-01'),
-        location: 'Main Hall',
+        sessions: [{ place: { id: 'place-1', nameJa: 'メインホール', nameEn: 'Main Hall' } }],
         status: 'published',
         group: { name: 'Group A' },
       },
@@ -187,21 +187,21 @@ describe('getBuddyDetail', () => {
           session: { order: 1, label: null }, status: 'declined',
           bookedAt: new Date('2026-03-01'),
           cancellationReason: { id: 'cr-1', category: 'health', freeText: null, unavoidable: true, createdAt: new Date(), recorder: { email: 'a@a.com' } },
-          tour: { tourDate: new Date('2026-05-01'), location: 'Hall', status: 'completed', group: { name: 'G' } },
+          tour: { tourDate: new Date('2026-05-01'), sessions: [{ place: { id: 'place-1', nameJa: 'ホール', nameEn: 'Hall' } }], status: 'completed', group: { name: 'G' } },
         },
         {
           id: 'b-2', tourId: 'tour-2', sessionId: 's-2',
           session: { order: 1, label: null }, status: 'declined',
           bookedAt: new Date('2026-04-01'),
           cancellationReason: { id: 'cr-2', category: 'personal', freeText: null, unavoidable: false, createdAt: new Date(), recorder: { email: 'a@a.com' } },
-          tour: { tourDate: new Date('2026-06-01'), location: 'Hall', status: 'completed', group: { name: 'G' } },
+          tour: { tourDate: new Date('2026-06-01'), sessions: [{ place: { id: 'place-1', nameJa: 'ホール', nameEn: 'Hall' } }], status: 'completed', group: { name: 'G' } },
         },
         {
           id: 'b-3', tourId: 'tour-3', sessionId: 's-3',
           session: { order: 1, label: null }, status: 'declined',
           bookedAt: new Date('2026-04-15'),
           cancellationReason: { id: 'cr-3', category: 'work', freeText: null, unavoidable: null, createdAt: new Date(), recorder: { email: 'a@a.com' } },
-          tour: { tourDate: new Date('2026-07-01'), location: 'Hall', status: 'completed', group: { name: 'G' } },
+          tour: { tourDate: new Date('2026-07-01'), sessions: [{ place: { id: 'place-1', nameJa: 'ホール', nameEn: 'Hall' } }], status: 'completed', group: { name: 'G' } },
         },
       ],
     }

@@ -218,7 +218,7 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 - Each tour is linked to exactly one group via `Tour.groupId` (FK; non-nullable)
 - Groups cannot be deleted in v1 (no `DELETE` endpoint); tour history accumulates over time
 - Group name is not unique — duplicate names are permitted
-- Group detail (`GET /admin/groups/:id`) returns the full tour list nested under `tours: GroupTourSummary[]` (each with date, status, location, participant count, session summaries) for the linked tour history
+- Group detail (`GET /admin/groups/:id`) returns the full tour list nested under `tours: GroupTourSummary[]` (each with date, status, place names, participant count, session summaries) for the linked tour history
 
 ---
 
@@ -226,7 +226,7 @@ Groups represent visiting parties — schools, companies, community groups, etc.
 
 ### 7.1 Tour Fields
 
-A `Tour` carries metadata (date, location, deadlines, status, admin assignments). Capacity, meeting time and per-session timing live on `TourSession` rows under the tour — a tour has **1 or 2 sessions** (hard cap; the API rejects a third with `TooManySessionsError`).
+A `Tour` carries metadata (date, deadlines, status, admin assignments). Place, capacity, meeting time and per-session timing live on `TourSession` rows under the tour — a tour has **1 or 2 sessions** (hard cap; the API rejects a third with `TooManySessionsError`).
 
 **Tour-level fields**
 
@@ -235,7 +235,6 @@ A `Tour` carries metadata (date, location, deadlines, status, admin assignments)
 | `id` | UUID | Auto |
 | `groupId` | UUID FK | Linked to a managed Group |
 | `tourDate` | Date | |
-| `location` | Text | |
 | `description` | Long text? | Visible to buddies — shown on tour detail and, on the tour day, as the brief on `/buddy` (§11.1). Limited Markdown (bold, lists, links) via the editor toolbar |
 | `adminMemo` | Long text? | **Admin-only** — never sent in buddy responses. Limited Markdown (bold, lists, links) via the editor toolbar |
 | `bookingOpen` | Boolean | Default `false`. Admin toggles to open/close bookings for a Published tour. Buddies can only book while this is `true` (and tourDate is in the future). |
@@ -260,6 +259,7 @@ A `Tour` carries metadata (date, location, deadlines, status, admin assignments)
 | `capacity` | Int | Required. Total seats for the session |
 | `minBuddies` | Int? | Optional. When `participantCount < minBuddies` the session is flagged `belowMinimum` in responses and UI |
 | `participantCount` | Int | Default `0`. Cached group size (number of visitors, not buddies) used to compute `belowMinimum` |
+| `placeId` | UUID FK | Required. Exactly one place per session; a tour's two sessions may go to different places. Replaced the old tour-level free-text `location` field (#239) — see §7.5 |
 | `createdAt` / `updatedAt` | Timestamp | Auto |
 
 ### 7.2 Tour Status Lifecycle
@@ -326,6 +326,22 @@ If the admin being removed is the only assigned admin, removing them leaves the 
 - Staff in charge stored as a single foreign key on the tour record
 - Visible to all admins in tour detail view
 - Not visible to buddies
+
+### 7.5 Places and Spots Management
+
+Replaces the old free-text `Tour.location` (#239). Each session goes to exactly one **place** (e.g. a park); the two sessions of a tour may go to different places, and a tour's places are its sessions' places. A place contains **spots** (e.g. a monument inside it) — a buddy's memorable moments (§9.3) happen at spots, and there can be several per session. Most places have no spots at all.
+
+**Model:** admin-managed lookup tables, `Place` and `Spot`, both bilingual (`nameJa`/`nameEn`), ordered (`sortOrder`) and retirable (`active`). Neither is ever deleted — a place cannot be analysed if it disappears from history. `Spot.placeId` is fixed at creation; a spot is never reassigned to a different place.
+
+**Rules:**
+- A session has exactly one place, picked from the admin-managed list — there is no free-text location field
+- A session's place can be changed after creation, except while a `TourReflectionMoment` on that session references a spot of its current place (§9.3)
+- Renaming a place or spot is a correction only (typo, translation) — never a repurposing to mean something else
+- Retiring (`active: false`) hides a place/spot from new pickers without breaking historical references
+
+**Admin UI (`/admin/places`):** a sortable list (name in both languages, order, active) with create/edit; each place opens to its own spot list, same pattern. No delete action anywhere — only deactivate.
+
+**Tour form:** each session row has a dropdown of active places, replacing the old free-text location input. The edit form shows the same dropdown per existing session, and saves a changed one through `PUT /admin/tours/:id/sessions/:sessionId`; the add-session form on the tour detail page has it too.
 
 ---
 
@@ -459,7 +475,7 @@ Answers "what have I done". Tours are split by the date in Japan (`getTodayJst()
 - **Filters** (Past only, combinable):
   - *No reflection written (N)*: shows past tours with `reflectionSubmitted = false` — no reflection on any of the tour's sessions. The home screen stops prompting 30 days after a tour (§11.1), so this is where an older tour with no reflection stays reachable. Hidden when N is 0.
   - *Group name*: text search, case-insensitive substring match on the group name.
-- No filters for group type, location, tour status or cancellations.
+- No filters for group type, place, tour status or cancellations.
 
 ### 8.9 Tier-Based Booking System
 
@@ -597,22 +613,30 @@ A buddy is not asked to grade themselves. They are asked what happened.
 
 #### Prompts
 
-Five free-text prompts, no scores. **At least one must be non-empty**; the other four may be blank. Nobody finishes a session with no thoughts at all, and a fully blank row would silence the reminder while recording nothing.
+Four free-text prompts, no scores, plus structured **moments** (below). **At least one prompt must be non-empty, or at least one moment must exist**; the other three prompts may be blank. Nobody finishes a session with no thoughts at all, and a fully blank row would silence the reminder while recording nothing. `memorableMoment` was a fifth free-text prompt until #239 replaced it with moments — the whole point being that "an impressive moment" is now analysable per spot rather than buried in a paragraph.
 
 | Prompt | Column |
 |---|---|
 | What I did well | `didWell` |
 | What I could have done better | `couldImprove` |
-| An impressive moment (a participant's remark, a reaction) | `memorableMoment` |
 | To share with other buddies and admins | `notesForOthers` |
 | Questions I couldn't answer | `openQuestions` |
+
+#### Moments
+
+Zero or more structured memorable moments per reflection (`TourReflectionMoment`), each with a `description` (required) and either a `spotId` or free-text `placeNote` — never both, never neither.
+
+- **The spot picker** offers every active spot of the session's place, plus **Other** (free text via `placeNote`). A spot retired after a moment was tagged with it stays selectable on that reflection. The API rejects a `spotId` that is not a spot of the session's place
+- **When the session's place has no spots**, the picker has nothing to offer: the form falls back to a single textarea (no add/remove), and on submit the one resulting moment's `placeNote` is filled in automatically with the place's Japanese name (`nameJa`, whatever the buddy's UI language). A reflection already holding more than one moment, or a note that is not the place's name (written while the place still had spots), keeps the full picker instead, with Other as its only choice, so editing it never drops a moment
+- **Where spots do exist**, the form shows one moment row by default with a "+ add another moment" affordance; each additional row gets its own remove (trash) control, and reorder (up/down) controls appear once there are 2+ rows
+- `position` preserves entry order (usually the route order walked that day) — row order in the database is not guaranteed
 
 #### Rows per session, obligation per tour
 
 `Tour.tourDate` is a single date, so a tour is one day and its `TourSession` rows are time slots within it. A buddy working two slots may write two reflections if the groups felt different, but is only ever asked for one: any reflection on any session of the tour silences the `self_eval_prompt` reminder (§10.1) and sets `reflectionSubmitted` on `GET /me/bookings`.
 
 #### Edit window
-- Buddies edit their own reflection via `PUT /me/reflections/:id`, which **replaces** all five prompts
+- Buddies edit their own reflection via `PUT /me/reflections/:id`, which **replaces** the four prompts and every moment (deleted and recreated from the array, with fresh `position`s)
 - Edit window is **7 days from creation** (`REFLECTION_EDIT_WINDOW_DAYS = 7`); after that the row is locked
 - The response includes `locked: Boolean` so the UI can drop back to a read-only card once the window has passed
 - One reflection per buddy per session (unique constraint `(buddyId, sessionId)`)
@@ -638,7 +662,7 @@ Five free-text prompts, no scores. **At least one must be non-empty**; the other
 | Event | Channels | Timing | Status |
 |---|---|---|---|
 | New tour published (`tour_published`) | In-app + email | Immediate, to Active buddies | Shipped |
-| Tour details changed (`tour_details_changed`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped (fires on `tourDate` or `location` change only — see note below) |
+| Tour details changed (`tour_details_changed`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped (fires on `tourDate` or a session's place change only — see note below) |
 | Tour cancelled (`tour_cancelled`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped |
 | Tour reminder (`tour_reminder`) | In-app + email | Per-tour offsets (default: 3 days, 1 day before); evaluated hourly | Planned (§10.5) |
 | Maybe deadline reminder (`maybe_reminder`) | In-app + email | Global offsets (default: 3 days, 1 day before deadline); evaluated hourly | Planned (§10.5) |
@@ -664,7 +688,7 @@ See `docs/decisions.md` 2026-09-18.
 In-app delivery is never configurable, for buddies or admins: the preference is
 about what lands in an inbox, and a muted event stays findable in the app.
 
-Tour-edit notifications fire **only** when `tourDate` or `location` changes on the tour. Changes to a session's `meetingTime`, to `adminMemo`, assigned admins, staff in charge, or pool percentages are silent today; wiring `meetingTime` to also trigger `tour_details_changed` is tracked in `docs/roadmap.md`.
+Tour-edit notifications fire **only** when `tourDate` changes, or when a session's **place** changes (which place — not its name or spots). A session's place change notifies every booked buddy on the tour, not only that session's. Changes to a session's `meetingTime`, to `adminMemo`, assigned admins, staff in charge, or pool percentages are silent today; wiring `meetingTime` to also trigger `tour_details_changed` is tracked in `docs/roadmap.md`.
 
 ### 10.2 Admin Notifications
 
@@ -783,14 +807,14 @@ not a buddy channel — §10.3).
 
 Route: `/buddy`. An obligations screen: what the buddy has committed to and still owes comes first, tours they could book come last. It fetches `GET /me/bookings` and `GET /tours?from=<today>` and builds the three sections client-side (`apps/web/src/app/[locale]/buddy/buddy.home.ts`).
 
-1. **Your next tour** (`home.nextTour`) is the nearest `published` tour, dated today or later, where the buddy holds a `confirmed` booking. It shows group name, date, the meeting time of each confirmed session and location, and links to the tour. A Maybe or Waitlist booking never makes a tour "next"; those tours appear in section 2.
+1. **Your next tour** (`home.nextTour`) is the nearest `published` tour, dated today or later, where the buddy holds a `confirmed` booking. It shows group name, date, the meeting time of each confirmed session and the tour's place names, and links to the tour. A Maybe or Waitlist booking never makes a tour "next"; those tours appear in section 2.
 2. **Needs your action** (`home.actions`), in this order:
    - Every upcoming `published` tour where the buddy holds a `maybe` booking, whatever its distance from the deadline. It reads "confirm or cancel by {maybeDeadline}". Once the deadline has passed it is marked overdue instead, with the deadline day itself counting as passed, the same rule as the tour detail page (`isPastDeadline`). A tour with no `maybeDeadline` shows no date.
    - Every `completed` tour where the buddy held a `confirmed` booking, dated within the last 30 days (`REFLECTION_PROMPT_DAYS`), with no reflection on any of its sessions. It links to the tour's reflection page.
    - Every upcoming `published` tour where the buddy holds a `waitlist` booking.
-3. **Tours looking for buddies** (`tour.title`) is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after today. Nearest first. The first three are shown, and "Show all" expands the rest in place. Each card is one tour-level header plus **one section per session**. The header carries group name, tour date and location — location is `Tour.location`, so it is shown once, not per section. Each section carries the session's `label` when set, its meeting time, the booking badge, the **buddy number** and that session's `participantCount`. A single-session tour renders one section, in the same layout.
+3. **Tours looking for buddies** (`tour.title`) is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after today. Nearest first. The first three are shown, and "Show all" expands the rest in place. Each card is one tour-level header plus **one section per session**. The header carries group name, tour date and the tour's place names — `places` is a tour-level array (its sessions' places, each once — §7.5), so it is shown once, not per section. Each section carries the session's `label` when set, its meeting time, the booking badge, the **buddy number** and that session's `participantCount`. A single-session tour renders one section, in the same layout.
 
-**On the day of a tour** section 1 becomes **Your tour today** (`home.tourDay`). It applies when the next confirmed tour (section 1's rule) is dated today, so a Maybe-only booking today never triggers it. The page then also fetches `GET /tours/:id` for that tour, and the panel shows, for each session the buddy is confirmed on, the meeting time in large type, the group's participant count and how many other buddies are confirmed (`seatCounts.confirmed` less the buddy). Below that: location, group name and type, the staff in charge by name, the tour's `description` as the brief, and a link to the tour. Other buddies are a count, not names or tiers, and the staff in charge carries no contact details. Sections 2 and 3 stay below the panel. Until the detail loads, or if it fails, the usual next-tour card is shown. On every other day the page is unchanged.
+**On the day of a tour** section 1 becomes **Your tour today** (`home.tourDay`). It applies when the next confirmed tour (section 1's rule) is dated today, so a Maybe-only booking today never triggers it. The page then also fetches `GET /tours/:id` for that tour, and the panel shows, for each session the buddy is confirmed on, the meeting time in large type, the group's participant count and how many other buddies are confirmed (`seatCounts.confirmed` less the buddy). Below that: the tour's place names, group name and type, the staff in charge by name, the tour's `description` as the brief, and a link to the tour. Other buddies are a count, not names or tiers, and the staff in charge carries no contact details. Sections 2 and 3 stay below the panel. Until the detail loads, or if it fails, the usual next-tour card is shown. On every other day the page is unchanged.
 
 Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 shows no empty-state line until `GET /tours` has. Each section has its own empty-state line. A failed request shows a load error in place of its sections (`home.bookingsLoadError`, `tour.loadError`), so a failure never reads as "nothing here".
 
@@ -816,7 +840,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 
 | Route | Purpose |
 |---|---|
-| `/admin/tours` | List or month-calendar view of tours, chosen by `?view=`. **List:** client-side search on group name and location; filters for status, date range (upcoming / past / all), group type and below-minimum-only, combined with AND and kept in the URL query string; sortable by every column; "today" divider in list. **Calendar:** six Monday-first weeks for `?month=YYYY-MM`, one chip per tour (status dot, group name, `confirmed/capacity`, below-minimum marker), three chips per day before the rest collapse into a count. The leading and trailing days belong to the neighbouring months and carry no chips — they hold the grid at six rows, and a tour landing on one is only shown by that month's own grid. All four statuses appear; cancelled is struck through. The calendar ignores the list's filters and hides the filter bar, but leaves the filter params in the URL so switching back to the list restores them |
+| `/admin/tours` | List or month-calendar view of tours, chosen by `?view=`. **List:** client-side search on group name and place names; filters for status, date range (upcoming / past / all), group type and below-minimum-only, combined with AND and kept in the URL query string; sortable by every column; "today" divider in list. **Calendar:** six Monday-first weeks for `?month=YYYY-MM`, one chip per tour (status dot, group name, `confirmed/capacity`, below-minimum marker), three chips per day before the rest collapse into a count. The leading and trailing days belong to the neighbouring months and carry no chips — they hold the grid at six rows, and a tour landing on one is only shown by that month's own grid. All four statuses appear; cancelled is struck through. The calendar ignores the list's filters and hides the filter bar, but leaves the filter params in the URL so switching back to the list restores them |
 | `/admin/tours/new` | Create tour form. The group picker is a type-to-filter combobox; the selected group shows a summary (type, contact fields, notes) and a new-tab link to its detail page |
 | `/admin/tours/:id` | Tour detail — metadata, sessions, tier capacities, bookings, admin assignments, evaluations |
 | `/admin/tours/:id/edit` | Edit tour form — same group picker and selected-group summary as the create form |
@@ -846,7 +870,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 |---|---|
 | `/admin/groups` | List all groups (sortable by name and type) |
 | `/admin/groups/new` | Create new group form |
-| `/admin/groups/:id` | Detail view — metadata card + linked tour history table (sortable by tour date, status, location, capacity) |
+| `/admin/groups/:id` | Detail view — metadata card + linked tour history table (sortable by tour date, status, place names, capacity) |
 | `/admin/groups/:id/edit` | Edit group form |
 
 **Capabilities:**
@@ -916,7 +940,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 - Empty state: "No bookings"
 - API: `GET /admin/buddies/:id` returns `AdminBuddyDetailResponse` (extends `AdminBuddyResponse` with `bookings: AdminBuddyBookingEntry[]`)
 
-**`AdminBuddyBookingEntry` fields:** `id`, `tourId`, `sessionId`, `sessionOrder`, `sessionLabel`, `status` (`BookingStatus`), `bookedAt`, `cancellationReason`, `tour: { tourDate, location, group: { name }, status }`
+**`AdminBuddyBookingEntry` fields:** `id`, `tourId`, `sessionId`, `sessionOrder`, `sessionLabel`, `status` (`BookingStatus`), `bookedAt`, `cancellationReason`, `tour: { tourDate, places, group: { name }, status }`
 
 #### API Endpoints
 
@@ -1041,6 +1065,15 @@ It is not a metrics dashboard. Total buddy counts, signups over time and tier di
 The first four come from `GET /admin/dashboard`. Its service calls one query per owning service — `listBuddies`, `listOverdueMaybeTours`, `listUnderfilledTours`, `listToursMissingEvaluations` — rather than re-implementing any of them, and `listOverdueMaybeTours` shares its where-clause with the `maybe-deadlines` cron (§10.5). Notifications come from `GET /me/notifications`, the call the bell already polls.
 
 Every queue renders an empty state when nothing is waiting, so an empty section reads as done rather than not loaded.
+
+### 11.8 Places and Spots Management
+
+| Route | Description |
+|---|---|
+| `/admin/places` | List of places — nameJa, nameEn, sortOrder, active — sortable, with create/edit. No delete; deactivate only |
+| `/admin/places/:id` | That place's spots, same sortable-list-with-create/edit pattern |
+
+Picking a session's place happens on the tour create/edit form itself (a dropdown of active places per session), not here — see §7.5.
 
 ---
 

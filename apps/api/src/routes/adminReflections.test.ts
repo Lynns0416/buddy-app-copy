@@ -116,9 +116,9 @@ const mockReflection: AdminTourReflectionResponse = {
   tourDate: '2026-01-01T00:00:00.000Z',
   didWell: 'Kept everyone together',
   couldImprove: null,
-  memorableMoment: null,
   notesForOthers: null,
   openQuestions: null,
+  moments: [],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 }

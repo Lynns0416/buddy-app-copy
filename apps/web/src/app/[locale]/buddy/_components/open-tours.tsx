@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { bookingStatusBadgeVariant, getBookingStatusLabel } from '@/lib/status-display'
 import { OPEN_TOURS_PREVIEW } from '../buddy.home'
 import { formatDate } from '@/lib/format-date'
+import { placeNames } from '@/lib/place-names'
 
 // `tours` is null until loaded, then expected already filtered to what the buddy
 // can book, nearest first.
@@ -48,7 +49,7 @@ export function OpenTours({ tours, error }: { tours: TourResponse[] | null; erro
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin size={14} />
-                  {tour.location}
+                  {placeNames(tour.places, locale)}
                 </span>
               </div>
               {/* One section per session — buddy numbers and participants are per session, never summed */}

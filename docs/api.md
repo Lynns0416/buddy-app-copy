@@ -208,7 +208,7 @@ Buddy detail with bookings and aggregations.
       "cancellationReason": { "...": "CancellationReasonResponse" } | null,
       "tour": {
         "tourDate": "YYYY-MM-DD",
-        "location": "string",
+        "places": [{ "id": "uuid", "nameJa": "string", "nameEn": "string" }],
         "group": { "name": "string" },
         "status": "draft | published | cancelled | completed"
       }
@@ -425,7 +425,7 @@ Group detail including the linked tour history.
       "status": "draft | published | cancelled | completed",
       "tourDate": "YYYY-MM-DD",
       "bookingOpen": true,
-      "location": "string",
+      "places": [{ "id": "uuid", "nameJa": "string", "nameEn": "string" }],
       "participantCount": 0,
       "description": "string | null",
       "sessions": [{ "...": "TourSessionResponse" }],
@@ -489,6 +489,76 @@ Update an existing group. All fields optional; nullable fields can be cleared by
 
 ---
 
+## Places and Spots
+
+Admin-managed lookup tables replacing the old free-text `Tour.location`. A `Place` (e.g. a park) contains `Spot`s (e.g. a monument inside it) — most places have none. Rows are retired via `active: false`, never deleted; there is no `DELETE` endpoint. All routes are `admin`.
+
+### `GET /admin/places`
+List every place, active and inactive, ordered by `sortOrder`.
+
+**Response `200`** — array of `PlaceResponse`
+```json
+{ "id": "uuid", "nameJa": "string", "nameEn": "string", "sortOrder": 0, "active": true }
+```
+
+---
+
+### `POST /admin/places`
+**Request** — `CreatePlaceSchema`
+```json
+{ "nameJa": "string (min 1)", "nameEn": "string (min 1)", "sortOrder": 0, "active": true }
+```
+
+**Response `201`** — `PlaceResponse`
+
+---
+
+### `GET /admin/places/:id`
+Place detail, with its spots.
+
+**Response `200`** — `PlaceDetailResponse` (= `PlaceResponse` + `spots: SpotResponse[]`, ordered by `sortOrder`)
+
+**Errors**
+- `404` — not found
+
+---
+
+### `PUT /admin/places/:id`
+All fields optional. Renaming is for corrections only (typos, translations) — a row is never repointed to mean a different place.
+
+**Request** — `UpdatePlaceSchema`
+
+**Response `200`** — `PlaceResponse`
+
+**Errors**
+- `404` — not found
+
+---
+
+### `POST /admin/places/:id/spots`
+Create a spot under the place.
+
+**Request** — `CreateSpotSchema` (same shape as `CreatePlaceSchema`)
+
+**Response `201`** — `SpotResponse`
+
+**Errors**
+- `404` — place not found
+
+---
+
+### `PUT /admin/places/:id/spots/:spotId`
+All fields optional. `placeId` is fixed at creation and cannot be changed here — a spot is never reassigned to a different place.
+
+**Request** — `UpdateSpotSchema`
+
+**Response `200`** — `SpotResponse`
+
+**Errors**
+- `404` — place or spot not found, or the spot belongs to a different place
+
+---
+
 ## Tours
 
 Capacity, meeting time, and per-tier seat pools live on `TourSession` rows under the tour — a tour has 1 or 2 sessions. Buddy-facing routes are mounted under `/tours`; admin routes under `/admin/tours`. Field projections differ: buddies never receive `adminMemo`, `assignedAdmins`, `staffInChargeId`, or per-buddy booking details.
@@ -511,7 +581,7 @@ List tours visible to the caller. Trainee buddies are excluded server-side.
       "status": "draft | published | cancelled | completed",
       "tourDate": "YYYY-MM-DD",
       "bookingOpen": true,
-      "location": "string",
+      "places": [{ "id": "uuid", "nameJa": "string", "nameEn": "string" }],
       "participantCount": 0,
       "description": "string | null",
       "cancellationDeadline": "YYYY-MM-DD",
@@ -529,6 +599,7 @@ List tours visible to the caller. Trainee buddies are excluded server-side.
           "minBuddies": 0,
           "participantCount": 0,
           "belowMinimum": false,
+          "place": { "id": "uuid", "nameJa": "string", "nameEn": "string" },
           "myBookingStatus": "confirmed | maybe | waitlist | declined | null"
         }
       ],
@@ -538,6 +609,8 @@ List tours visible to the caller. Trainee buddies are excluded server-side.
   ]
 }
 ```
+
+`sessions[].place` is the one place that session goes to. The tour-level `places` is derived from it — each session's place once, in session order — so a two-session tour shows one or two places.
 
 `sessions[].myBookingStatus` is the caller's own booking on that session — `null` when they have none or have no buddy profile. All listed sessions are resolved in one booking query.
 
@@ -555,6 +628,12 @@ Tour detail with per-session seat counts and the caller's tier-aware capacity. R
   "sessions": [
     {
       "...": "TourSessionResponse fields",
+      "place": {
+        "id": "uuid",
+        "nameJa": "string",
+        "nameEn": "string",
+        "spots": [{ "id": "uuid", "nameJa": "string", "nameEn": "string" }]
+      },
       "seatCounts": { "confirmed": 0, "maybe": 0, "waitlist": 0, "declined": 0 },
       "remaining": 0,
       "myCapacity": 0,
@@ -565,6 +644,8 @@ Tour detail with per-session seat counts and the caller's tier-aware capacity. R
   "staffInCharge": { "name": "string" }
 }
 ```
+
+`sessions[].place` on the detail response is richer than on `GET /tours`: it carries the place's **active** spots, sorted by `sortOrder` — this is what feeds the buddy's spot picker when writing a reflection on that session (`POST /me/reflections`).
 
 `myCapacity` / `myRemaining` reflect the caller's tier pool (junior vs non-junior vs overflow into anyone).
 
@@ -577,7 +658,7 @@ Downloads an iCalendar (`.ics`) file for the tour, with one `VEVENT` per session
 
 **Auth:** any authenticated active buddy
 
-**Response `200`** — `text/calendar; charset=utf-8`, `Content-Disposition: attachment; filename="tour-:id.ics"`. Each event's `SUMMARY` is the group name (plus the session label in parentheses, if set), `LOCATION` is `Tour.location`, `DESCRIPTION` is `Tour.description` (never `adminMemo`). Times are emitted as UTC instants (no `VTIMEZONE`), computed from the tour's JST calendar date and the session's `meetingTime`/`startTime`/`endTime` via the same fixed +9h offset as `getTodayJst`. `UID` is `session-<sessionId>@peace-buddy.internal`, stable across re-download.
+**Response `200`** — `text/calendar; charset=utf-8`, `Content-Disposition: attachment; filename="tour-:id.ics"`. Each event's `SUMMARY` is the group name (plus the session label in parentheses, if set), `LOCATION` is that session's place name in the **caller's own** `User.locale` — the one place this feature renders a single language server-side, since a static file has no later web render to pick one at. `DESCRIPTION` is `Tour.description` (never `adminMemo`). Times are emitted as UTC instants (no `VTIMEZONE`), computed from the tour's JST calendar date and the session's `meetingTime`/`startTime`/`endTime` via the same fixed +9h offset as `getTodayJst`. `UID` is `session-<sessionId>@peace-buddy.internal`, stable across re-download.
 
 `STATUS` follows the tour: `cancelled` → `CANCELLED`, `draft` → `TENTATIVE`, `published`/`completed` → `CONFIRMED`. Cancelling a tour does not change booking rows, so a buddy keeps their confirmed seat and the file is still served — re-downloading it retracts the event in their calendar rather than leaving a dead one. Note that no `SEQUENCE` is emitted, so a client that requires one may not apply the retraction automatically.
 
@@ -607,7 +688,6 @@ Create a tour. Status is initialised to `draft`.
   "groupId": "uuid",
   "tourDate": "YYYY-MM-DD",
   "bookingOpen": false,
-  "location": "string",
   "description": "string",
   "adminMemo": "string",
   "cancellationDeadline": "YYYY-MM-DD",
@@ -621,13 +701,15 @@ Create a tour. Status is initialised to `draft`.
       "endTime": "HH:MM",
       "capacity": 0,
       "minBuddies": 0,
-      "participantCount": 0
+      "participantCount": 0,
+      "placeId": "uuid"
     }
   ]
 }
 ```
 
 - `sessions` is required, length 1 or 2; additional sessions are added later via the session endpoints
+- Each session's `placeId` is required — exactly one place per session, and the two sessions may differ (see `## Places and Spots`). An unknown `placeId` is not caught as a `400`
 - Server validates `maybeDeadline < cancellationDeadline` when both are set
 
 **Response `201`** — `AdminTourDetailResponse`
@@ -693,6 +775,8 @@ Update a tour. All fields optional; nullable fields can be cleared with `null`.
 
 **Response `200`** — `AdminTourDetailResponse`
 
+A tour has no place of its own — a session's place is changed through `PUT /admin/tours/:id/sessions/:sessionId`.
+
 **Errors**
 - `404` — not found
 - `409` — `TourImmutableError`: tour is `cancelled` or `completed` and cannot be edited
@@ -738,7 +822,7 @@ Add a session to an existing tour. Tour must already exist with one session; the
 
 **Auth:** `admin`
 
-**Request** — `CreateTourSessionSchema` (`label?`, `meetingTime`, `startTime?`, `endTime?`, `capacity`, `minBuddies?`, `participantCount?`)
+**Request** — `CreateTourSessionSchema` (`label?`, `meetingTime`, `startTime?`, `endTime?`, `capacity`, `minBuddies?`, `participantCount?`, `placeId`)
 
 **Response `201`** — `AdminTourDetailResponse`
 
@@ -753,9 +837,15 @@ Update a session.
 
 **Auth:** `admin`
 
-**Request** — `UpdateTourSessionSchema` (all fields optional)
+**Request** — `UpdateTourSessionSchema` (all fields optional, including `placeId`)
 
 **Response `200`** — `AdminTourDetailResponse`
+
+Changing `placeId` on a published tour fires `tour_details_changed` to every booked buddy on the tour (not only this session's). Resending the current `placeId` is not a change.
+
+**Errors**
+- `404` — `SessionNotFoundError`: no such session on this tour
+- `409` — `PlaceInUseError`: `placeId` changes while a `TourReflectionMoment` on this session references a spot of its current place
 
 ---
 
@@ -959,7 +1049,7 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
     {
       "tourId": "uuid",
       "tourDate": "ISO8601",
-      "location": "string",
+      "places": [{ "id": "uuid", "nameJa": "string", "nameEn": "string" }],
       "status": "draft | published | cancelled | completed",
       "maybeDeadline": "ISO8601 | null",
       "reflectionSubmitted": false,
@@ -1206,7 +1296,7 @@ List all admins' profile evaluations for a buddy.
 
 ### Buddy Tour Reflections
 
-Five free-text prompts about a session the buddy guided. No scores — see data-model.md `TourReflection` and PRD §9.3.
+Four free-text prompts plus structured `moments` about a session the buddy guided. No scores — see data-model.md `TourReflection` / `TourReflectionMoment` and PRD §9.3. `memorableMoment` was a fifth free-text prompt until #239 replaced it with `moments`.
 
 #### `POST /me/reflections`
 Buddy writes a reflection on one session of a completed tour.
@@ -1219,12 +1309,14 @@ Buddy writes a reflection on one session of a completed tour.
   "sessionId": "uuid",
   "didWell": "string | null",
   "couldImprove": "string | null",
-  "memorableMoment": "string | null",
   "notesForOthers": "string | null",
-  "openQuestions": "string | null"
+  "openQuestions": "string | null",
+  "moments": [
+    { "spotId": "uuid | null", "placeNote": "string | null", "description": "string (min 1)" }
+  ]
 }
 ```
-At least one of the five prompts must be non-empty; the other four may be blank or omitted.
+At least one of the four prompts must be non-empty, or `moments` must be non-empty. Each moment sets exactly one of `spotId` / `placeNote` — never both, never neither. `placeNote` and `description` are trimmed first, so a blank `placeNote` counts as unset (stored `null`) and a whitespace-only `description` is rejected. `moments` defaults to `[]` when omitted. `position` is derived server-side from array order.
 
 **Response `201`** — `TourReflectionResponse`
 ```json
@@ -1237,18 +1329,27 @@ At least one of the five prompts must be non-empty; the other four may be blank 
   "tourId": "uuid",
   "didWell": "string | null",
   "couldImprove": "string | null",
-  "memorableMoment": "string | null",
   "notesForOthers": "string | null",
   "openQuestions": "string | null",
+  "moments": [
+    {
+      "id": "uuid",
+      "position": 0,
+      "spotId": "uuid | null",
+      "placeNote": "string | null",
+      "description": "string",
+      "spot": { "id": "uuid", "nameJa": "string", "nameEn": "string", "place": { "id": "uuid", "nameJa": "string", "nameEn": "string" } } | null
+    }
+  ],
   "locked": false,
   "createdAt": "ISO8601",
   "updatedAt": "ISO8601"
 }
 ```
-`tourId`, `sessionOrder` and `sessionLabel` are read through the session relation — `TourReflection` stores none of them.
+`tourId`, `sessionOrder` and `sessionLabel` are read through the session relation — `TourReflection` stores none of them. `moments`, ordered by `position`.
 
 **Errors**
-- `400` — all five prompts blank
+- `400` — all four prompts blank and no moments, a moment sets both/neither of `spotId`/`placeNote`, or a `spotId` is not a spot of the session's place (retired spots are accepted)
 - `403` — buddy holds no `confirmed` booking on that session, or the tour is not in `completed` status
 - `409` — a reflection already exists for this session
 
@@ -1270,12 +1371,12 @@ Edit own reflection within the 7-day edit window.
 
 **Auth:** `buddy` (must equal owner)
 
-**Request** — `UpdateTourReflectionSchema` (the five prompts, no `sessionId`). This is a **replacement**, not a patch: a prompt left out is cleared, and at least one must survive non-empty.
+**Request** — `UpdateTourReflectionSchema` (the four prompts and `moments`, no `sessionId`). This is a **replacement**, not a patch: a prompt left out is cleared, every moment is deleted and recreated from the array (fresh `position`s), and at least one prompt or moment must survive.
 
 **Response `200`** — `TourReflectionResponse`
 
 **Errors**
-- `400` — all five prompts blank
+- `400` — all four prompts blank and no moments, a moment sets both/neither of `spotId`/`placeNote`, or a `spotId` is not a spot of the session's place (retired spots are accepted)
 - `404` — not found, or owned by another buddy
 - `409` — edit window (7 days from creation) has closed
 
@@ -1290,7 +1391,7 @@ Admins read all buddy reflections.
 
 **Query params:** `?buddyId=uuid` (optional)
 
-**Response `200`** — array of `AdminTourReflectionResponse` (adds `buddyDisplayName` and `tourDate`, drops `locked`), ordered by `createdAt` descending
+**Response `200`** — array of `AdminTourReflectionResponse` (adds `buddyDisplayName` and `tourDate`, drops `locked`; same `moments` shape), ordered by `createdAt` descending
 
 ---
 

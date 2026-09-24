@@ -16,6 +16,7 @@ import { downloadTourCalendar } from '../../buddy.tour'
 import { SessionBookingCard } from './_components/session-booking-card'
 import { formatDate } from '@/lib/format-date'
 import { MarkdownText } from '@/components/markdown-text'
+import { placeNames } from '@/lib/place-names'
 
 export default function TourDetailPage() {
   const { firebaseUser, dbUser, loading } = useAuth()
@@ -91,7 +92,7 @@ export default function TourDetailPage() {
             <dt className="text-muted-foreground">{t('location')}</dt>
             <dd className="flex items-center gap-1.5 font-medium">
               <MapPin size={14} className="text-muted-foreground" />
-              {tour.location}
+              {placeNames(tour.places, locale)}
             </dd>
           </div>
           <div>

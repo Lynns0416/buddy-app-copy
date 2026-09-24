@@ -6,7 +6,9 @@ import { z } from 'zod'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { ApiError } from '@/lib/api'
-import type { AdminTourDetailResponse, GroupResponse } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, GroupResponse, PlaceResponse } from '@peace-buddy/types'
+import { useLocale } from 'next-intl'
+import { placeName } from '@/lib/place-names'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +25,7 @@ const SessionFormSchema = z
     capacity: z.coerce.number().int().positive(),
     minBuddies: z.coerce.number().int().min(0).optional(),
     participantCount: z.coerce.number().int().min(0),
+    placeId: z.string().min(1, { message: 'placeRequired' }),
   })
   .refine(
     (d) => d.minBuddies == null || d.minBuddies <= d.capacity,
@@ -34,7 +37,6 @@ const TourFormSchema = z
     groupId: z.string().uuid({ message: 'groupRequired' }),
     tourDate: z.string().min(1),
     bookingOpen: z.boolean(),
-    location: z.string().min(1),
     description: z.string().optional(),
     adminMemo: z.string().optional(),
     cancellationDeadline: z.string().min(1),
@@ -49,19 +51,27 @@ const TourFormSchema = z
 
 type TourFormFields = z.infer<typeof TourFormSchema>
 
+const emptySession: TourFormFields['sessions'][number] = {
+  label: '',
+  meetingTime: '',
+  capacity: '' as unknown as number,
+  participantCount: 0,
+  placeId: '',
+}
+
 export type SessionFormValues = {
   label?: string
   meetingTime: string
   capacity: number
   minBuddies: number | null
   participantCount: number
+  placeId: string
 }
 
 export type TourFormValues = {
   groupId: string
   tourDate: string
   bookingOpen: boolean
-  location: string
   description: string | null
   adminMemo: string | null
   cancellationDeadline: string
@@ -75,13 +85,20 @@ type Props = {
   /** Preselects the group when the form is opened from a group page. Ignored when `defaultValues` is given. */
   initialGroupId?: string
   groups: GroupResponse[]
+  places: PlaceResponse[]
   cancelHref: string
   onSubmit: (values: TourFormValues) => Promise<void>
   hideSessionManagement?: boolean
 }
 
-export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, onSubmit, hideSessionManagement = false }: Props) {
+export function TourForm({ defaultValues, initialGroupId, groups, places, cancelHref, onSubmit, hideSessionManagement = false }: Props) {
   const t = useTranslations('adminTours')
+  const locale = useLocale()
+  // A place already on one of this tour's sessions stays pickable even if
+  // since deactivated — otherwise its dropdown would have no option to show
+  // the saved value, and saving would silently change it.
+  const assignedPlaceIds = new Set(defaultValues?.sessions.map((s) => s.place.id) ?? [])
+  const selectablePlaces = places.filter((p) => p.active || assignedPlaceIds.has(p.id))
 
   const firstSession = defaultValues?.sessions[0]
   const secondSession = defaultValues?.sessions[1]
@@ -98,7 +115,6 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
       groupId: defaultValues?.group.id ?? initialGroupId ?? '',
       tourDate: defaultValues?.tourDate.slice(0, 10) ?? '',
       bookingOpen: defaultValues?.bookingOpen ?? false,
-      location: defaultValues?.location ?? '',
       description: defaultValues?.description ?? '',
       adminMemo: defaultValues?.adminMemo ?? '',
       cancellationDeadline: defaultValues?.cancellationDeadline.slice(0, 10) ?? '',
@@ -114,6 +130,7 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
               capacity: firstSession.capacity,
               minBuddies: firstSession.minBuddies ?? undefined,
               participantCount: firstSession.participantCount,
+              placeId: firstSession.place.id,
             },
             ...(secondSession
               ? [{
@@ -122,10 +139,11 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
                   capacity: secondSession.capacity,
                   minBuddies: secondSession.minBuddies ?? undefined,
                   participantCount: secondSession.participantCount,
+                  placeId: secondSession.place.id,
                 }]
               : []),
           ]
-        : [{ label: '', meetingTime: '', capacity: '' as unknown as number, participantCount: 0 }],
+        : [emptySession],
     },
   })
 
@@ -142,7 +160,6 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
       groupId: fields.groupId,
       tourDate: fields.tourDate,
       bookingOpen: fields.bookingOpen,
-      location: fields.location,
       description: fields.description || null,
       adminMemo: fields.adminMemo || null,
       cancellationDeadline: fields.cancellationDeadline,
@@ -157,6 +174,7 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
         capacity: s.capacity,
         minBuddies: s.minBuddies || null,
         participantCount: s.participantCount,
+        placeId: s.placeId,
       })),
     }
     try {
@@ -216,21 +234,15 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
           {errors.tourDate && <p className="text-xs text-destructive">{errors.tourDate.message}</p>}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="location">{t('location')}</Label>
-          <Input id="location" {...register('location')} />
-          {errors.location && <p className="text-xs text-destructive">{errors.location.message}</p>}
-        </div>
-
         {/* Sessions */}
-        {!hideSessionManagement && <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
           {sessionFields.map((field, idx) => (
             <div key={field.id} className="rounded-md border p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">
                   {t(`session.defaultLabel.${idx + 1}`)}
                 </p>
-                {idx > 0 && (
+                {!hideSessionManagement && idx > 0 && (
                   <button
                     type="button"
                     className="text-xs text-destructive hover:underline"
@@ -240,6 +252,30 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
                   </button>
                 )}
               </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={`sessions.${idx}.placeId`}>{t('location')}</Label>
+                <select
+                  id={`sessions.${idx}.placeId`}
+                  {...register(`sessions.${idx}.placeId`)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="" disabled>{t('selectPlace')}</option>
+                  {selectablePlaces.map((place) => (
+                    <option key={place.id} value={place.id}>
+                      {placeName(place, locale)}
+                      {!place.active && ` (${t('inactivePlace')})`}
+                    </option>
+                  ))}
+                </select>
+                {errors.sessions?.[idx]?.placeId && (
+                  <p className="text-xs text-destructive">
+                    {errors.sessions[idx]?.placeId?.message === 'placeRequired'
+                      ? t('placeRequired')
+                      : errors.sessions[idx]?.placeId?.message}
+                  </p>
+                )}
+              </div>
+              {!hideSessionManagement && <>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`sessions.${idx}.label`}>{t('session.label')}</Label>
                 <Input
@@ -273,19 +309,20 @@ export function TourForm({ defaultValues, initialGroupId, groups, cancelHref, on
                 <Label htmlFor={`sessions.${idx}.participantCount`}>{t('participantCount')}</Label>
                 <Input id={`sessions.${idx}.participantCount`} type="number" min={0} {...register(`sessions.${idx}.participantCount`)} />
               </div>
+              </>}
             </div>
           ))}
-          {sessionFields.length < 2 && (
+          {!hideSessionManagement && sessionFields.length < 2 && (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => appendSession({ label: '', meetingTime: '', capacity: '' as unknown as number, participantCount: 0 })}
+              onClick={() => appendSession(emptySession)}
             >
               {t('session.add')}
             </Button>
           )}
-        </div>}
+        </div>
 
         <div className="flex items-center gap-2">
           <input

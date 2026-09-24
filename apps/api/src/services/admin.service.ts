@@ -1,5 +1,6 @@
 import { BookingStatus as PrismaBookingStatus } from '@prisma/client'
 import { db } from '../lib/db'
+import { placeSummarySelect, sessionPlaces } from '../lib/sessionPlaces'
 import { withPhotoLink } from '../lib/photoStorage'
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, MemberType, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse, Language } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema, NotifEventKindSchema } from '@peace-buddy/types'
@@ -91,7 +92,7 @@ const adminBuddyDetailSelect = {
       tour: {
         select: {
           tourDate: true,
-          location: true,
+          sessions: { select: { place: { select: placeSummarySelect } }, orderBy: { order: 'asc' as const } },
           status: true,
           group: { select: { name: true } },
         },
@@ -131,7 +132,7 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
       cancellationReason,
       tour: {
         tourDate: b.tour.tourDate.toISOString(),
-        location: b.tour.location,
+        places: sessionPlaces(b.tour.sessions),
         status: b.tour.status as TourStatus,
         group: { name: b.tour.group.name },
       },

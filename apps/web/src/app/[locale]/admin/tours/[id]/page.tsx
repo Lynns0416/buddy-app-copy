@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { fetchTour, transitionTour, toggleTourBooking, deleteTour, removeTourSession, downloadTourCalendar } from '../admin.tour'
 import { triggerBlobDownload } from '@/lib/api'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
+import { placeName, placeNames } from '@/lib/place-names'
 import { TourBookingsTable } from '../_components/tour-bookings-table'
 import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
 import { CompleteTourModal } from '../_components/complete-tour-modal'
@@ -173,7 +174,7 @@ export default function AdminTourDetailPage() {
           )}
           <div>
             <dt className="mb-1 text-xs text-muted-foreground">{t('location')}</dt>
-            <dd className="font-medium">{tour.location}</dd>
+            <dd className="font-medium">{placeNames(tour.places, locale)}</dd>
           </div>
           <div>
             <dt className="mb-1 text-xs text-muted-foreground">{t('capacity')}</dt>
@@ -235,6 +236,10 @@ export default function AdminTourDetailPage() {
               )}
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground">{t('location')}</div>
+                    <div className="font-medium">{placeName(session.place, locale)}</div>
+                  </div>
                   <div>
                     <div className="text-xs text-muted-foreground">{t('meetingTime')}</div>
                     <div className="font-medium tabular-nums">{session.meetingTime.slice(11, 16)}</div>

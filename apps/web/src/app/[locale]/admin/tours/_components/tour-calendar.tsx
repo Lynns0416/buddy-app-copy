@@ -9,6 +9,7 @@ import { TourStatusSchema } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { routes } from '@/lib/routes'
 import { getTourStatusLabel, tourStatusDotClass } from '@/lib/status-display'
+import { placeNames } from '@/lib/place-names'
 import { monthGrid, shiftMonth, toursByDate, type CalendarCell } from '../admin.tour'
 import { formatDate } from '@/lib/format-date'
 
@@ -180,7 +181,7 @@ function TourChip({ tour, locale }: { tour: AdminTourSummaryResponse; locale: st
       title={t('calendar.chipTitle', {
         group: tour.group.name,
         status: getTourStatusLabel(tTourStatus, tour.status),
-        location: tour.location,
+        location: placeNames(tour.places, locale),
       })}
     >
       <span

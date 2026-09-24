@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import AdminTourNewPage from './page'
 import type { AdminTourDetailResponse } from '@peace-buddy/types'
 import { AppErrorCodeSchema } from '@peace-buddy/types'
-import { createTour, fetchGroups } from '../admin.tour'
+import { createTour, fetchGroups, fetchPlaces } from '../admin.tour'
 
 const GROUP_A = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
 const GROUP_B = 'b2c3d4e5-f6a7-8901-bcde-f12345678901'
@@ -45,6 +45,7 @@ vi.mock('@/components/app-shell', () => ({
 vi.mock('../admin.tour', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../admin.tour')>()),
   fetchGroups: vi.fn(),
+  fetchPlaces: vi.fn(),
   createTour: vi.fn(),
 }))
 
@@ -79,6 +80,7 @@ describe('AdminTourNewPage', () => {
     vi.clearAllMocks()
     submittedGroupId = GROUP_A
     vi.mocked(fetchGroups).mockResolvedValue({ ok: true, data: [] })
+    vi.mocked(fetchPlaces).mockResolvedValue({ ok: true, data: [] })
     vi.mocked(createTour).mockResolvedValue({ ok: true, data: createdTour })
   })
 

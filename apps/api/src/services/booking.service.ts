@@ -1,5 +1,6 @@
 import { TourStatus, BookingStatus as PrismaBookingStatus, BuddyTier as PrismaBuddyTier, CancellationCategory as PrismaCancellationCategory, Prisma } from '@prisma/client'
 import { db } from '../lib/db'
+import { placeSummarySelect, sessionPlaces } from '../lib/sessionPlaces'
 import { BookingStatusSchema, NotifEventKindSchema, getTodayJst } from '@peace-buddy/types'
 import type { BookingResponse, BookingStatus, BuddyTier, CancellationReasonBody, MyTourBookingEntry } from '@peace-buddy/types'
 import { getPoolCapacities, poolForTier, NON_JUNIOR_TIERS } from '../lib/pool'
@@ -560,7 +561,7 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
           tour: {
             select: {
               tourDate: true,
-              location: true,
+              sessions: { select: { place: { select: placeSummarySelect } }, orderBy: { order: 'asc' as const } },
               status: true,
               maybeDeadline: true,
               group: { select: { name: true, type: true } },
@@ -606,7 +607,7 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
       tourMap.set(r.tourId, {
         tourId: r.tourId,
         tourDate: r.session.tour.tourDate.toISOString(),
-        location: r.session.tour.location,
+        places: sessionPlaces(r.session.tour.sessions),
         status: r.session.tour.status,
         maybeDeadline: r.session.tour.maybeDeadline ? r.session.tour.maybeDeadline.toISOString() : null,
         reflectionSubmitted: reflectedTourIds.has(r.tourId),

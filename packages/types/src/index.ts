@@ -337,6 +337,7 @@ export const CreateTourSessionSchema = z
     capacity: z.number().int().positive(),
     minBuddies: z.number().int().min(0).nullable().optional(),
     participantCount: z.number().int().min(0).optional(),
+    placeId: z.string().uuid(),
   })
   .refine(
     (d: { capacity: number; minBuddies?: number | null }) =>
@@ -354,6 +355,7 @@ export const UpdateTourSessionSchema = z
     capacity: z.number().int().positive().optional(),
     minBuddies: z.number().int().min(0).nullable().optional(),
     participantCount: z.number().int().min(0).optional(),
+    placeId: z.string().uuid().optional(),
   })
   .refine(
     (d: { capacity?: number; minBuddies?: number | null }) =>
@@ -367,7 +369,6 @@ export const CreateTourSchema = z
     groupId: z.string().uuid(),
     tourDate: z.coerce.date(),
     bookingOpen: z.boolean().default(false),
-    location: z.string().min(1),
     description: z.string().optional(),
     adminMemo: z.string().optional(),
     cancellationDeadline: z.coerce.date(),
@@ -386,7 +387,6 @@ export const UpdateTourSchema = z
     groupId: z.string().uuid().optional(),
     tourDate: z.coerce.date().optional(),
     bookingOpen: z.boolean().optional(),
-    location: z.string().min(1).optional(),
     description: z.string().nullable().optional(),
     adminMemo: z.string().nullable().optional(),
     cancellationDeadline: z.coerce.date().optional(),
@@ -433,6 +433,80 @@ export const UpdateGroupSchema = z.object({
   notes: z.string().nullable().optional(),
 })
 export type UpdateGroup = z.infer<typeof UpdateGroupSchema>
+
+// Place / Spot — admin-managed lookup tables replacing free-text Tour.location.
+// Retired via `active: false`, never deleted (docs/decisions.md — "Places and
+// spots replace free-text location").
+
+export const CreatePlaceSchema = z.object({
+  nameJa: z.string().min(1),
+  nameEn: z.string().min(1),
+  sortOrder: z.number().int(),
+  active: z.boolean().default(true),
+})
+export type CreatePlace = z.infer<typeof CreatePlaceSchema>
+
+export const UpdatePlaceSchema = z.object({
+  nameJa: z.string().min(1).optional(),
+  nameEn: z.string().min(1).optional(),
+  sortOrder: z.number().int().optional(),
+  active: z.boolean().optional(),
+})
+export type UpdatePlace = z.infer<typeof UpdatePlaceSchema>
+
+export const CreateSpotSchema = z.object({
+  nameJa: z.string().min(1),
+  nameEn: z.string().min(1),
+  sortOrder: z.number().int(),
+  active: z.boolean().default(true),
+})
+export type CreateSpot = z.infer<typeof CreateSpotSchema>
+
+// placeId is fixed at creation — renames are corrections only (rule 5), never
+// a reassignment to a different place.
+export const UpdateSpotSchema = z.object({
+  nameJa: z.string().min(1).optional(),
+  nameEn: z.string().min(1).optional(),
+  sortOrder: z.number().int().optional(),
+  active: z.boolean().optional(),
+})
+export type UpdateSpot = z.infer<typeof UpdateSpotSchema>
+
+export type PlaceResponse = {
+  id: string
+  nameJa: string
+  nameEn: string
+  sortOrder: number
+  active: boolean
+}
+
+export type SpotResponse = {
+  id: string
+  placeId: string
+  nameJa: string
+  nameEn: string
+  sortOrder: number
+  active: boolean
+}
+
+export type PlaceDetailResponse = PlaceResponse & {
+  spots: SpotResponse[]
+}
+
+// A place, everywhere only the name is shown — a session's place, and a tour's
+// `places` (its sessions' places, deduplicated, in session order) on the tour
+// list/detail, group tour history, buddy booking history, next-tour card, etc.
+export type PlaceSummary = {
+  id: string
+  nameJa: string
+  nameEn: string
+}
+
+// A session's place with its active spots — only where a buddy picks a spot
+// for a reflection moment (TourSessionDetailResponse).
+export type TourPlaceWithSpots = PlaceSummary & {
+  spots: PlaceSummary[]
+}
 
 // Admin
 
@@ -499,6 +573,7 @@ export type TourSessionResponse = {
   minBuddies: number | null
   participantCount: number
   belowMinimum: boolean
+  place: PlaceSummary
 }
 
 // A session as listed to a buddy. Kept apart from TourSessionResponse, which
@@ -514,7 +589,7 @@ export type TourResponse = {
   status: TourStatus
   tourDate: string
   bookingOpen: boolean
-  location: string
+  places: PlaceSummary[]
   participantCount: number
   description: string | null
   cancellationDeadline: string
@@ -542,7 +617,7 @@ export type GroupTourSummary = {
   status: TourStatus
   tourDate: string
   bookingOpen: boolean
-  location: string
+  places: PlaceSummary[]
   participantCount: number
   description: string | null
   sessions: TourSessionResponse[]
@@ -580,7 +655,7 @@ export type AdminBuddyBookingEntry = {
   cancellationReason: CancellationReasonResponse | null
   tour: {
     tourDate: string
-    location: string
+    places: PlaceSummary[]
     group: { name: string }
     status: TourStatus
   }
@@ -618,7 +693,8 @@ export type TourSeatCounts = {
   declined: number
 }
 
-export type TourSessionDetailResponse = TourListSessionResponse & {
+export type TourSessionDetailResponse = Omit<TourListSessionResponse, 'place'> & {
+  place: TourPlaceWithSpots
   seatCounts: TourSeatCounts
   remaining: number
   myCapacity: number | null
@@ -701,7 +777,7 @@ export type AdminTourSummaryResponse = {
   status: TourStatus
   tourDate: string
   bookingOpen: boolean
-  location: string
+  places: PlaceSummary[]
   capacity: number
   description: string | null
   confirmedCount: number
@@ -745,7 +821,7 @@ export type MySessionBookingEntry = {
 export type MyTourBookingEntry = {
   tourId: string
   tourDate: string
-  location: string
+  places: PlaceSummary[]
   status: TourStatus
   maybeDeadline: string | null
   // Whether the caller has written a reflection on any session of this tour.
@@ -852,49 +928,74 @@ export type AdminProfileEvaluationResponse = AdminEvalScores & {
   updatedAt: string
 }
 
-// Buddy tour reflections — five free-text prompts about a session the buddy
-// guided, in place of the scored self-evaluation that used to live here (#236).
+// Buddy tour reflections — four free-text prompts plus structured moments
+// about a session the buddy guided, in place of the scored self-evaluation
+// that used to live here (#236). `memorableMoment` was a fifth free-text
+// prompt until #239 replaced it with structured TourReflectionMoment rows.
 
-export const REFLECTION_PROMPTS = [
-  'didWell',
-  'couldImprove',
-  'memorableMoment',
-  'notesForOthers',
-  'openQuestions',
-] as const
+export const REFLECTION_PROMPTS = ['didWell', 'couldImprove', 'notesForOthers', 'openQuestions'] as const
 
 export type ReflectionPrompt = (typeof REFLECTION_PROMPTS)[number]
 
 const reflectionPromptFields = {
   didWell: z.string().nullish(),
   couldImprove: z.string().nullish(),
-  memorableMoment: z.string().nullish(),
   notesForOthers: z.string().nullish(),
   openQuestions: z.string().nullish(),
 }
 
-// Four of the five may be blank, but not all five: nobody finishes a session
-// with no thoughts at all, and an empty row would silence the reminder while
-// recording nothing.
-function hasAnyPrompt(value: Partial<Record<ReflectionPrompt, string | null>>): boolean {
-  return REFLECTION_PROMPTS.some((key) => (value[key] ?? '').trim().length > 0)
+// A moment is tagged to a spot of the session's place, or free text
+// (`placeNote`) when the buddy picked Other, or — for a session whose place
+// has no spots — the place name filled in automatically rather than chosen. Exactly one of the two is ever set (#239).
+export const TourReflectionMomentSchema = z
+  .object({
+    spotId: z.string().uuid().nullish(),
+    // Trimmed on parse, so a blank placeNote counts as unset here and is
+    // stored as null, never alongside a spotId.
+    placeNote: z.string().trim().nullish(),
+    description: z.string().trim().min(1),
+  })
+  .refine((m: { spotId?: string | null; placeNote?: string | null }) => (m.spotId != null) !== Boolean(m.placeNote), {
+    message: 'Exactly one of spotId or placeNote must be set',
+    path: ['spotId'],
+  })
+export type TourReflectionMomentInput = z.infer<typeof TourReflectionMomentSchema>
+
+// The four prompts may be blank, but not all four and no moments: nobody
+// finishes a session with no thoughts at all, and an empty row would silence
+// the reminder while recording nothing.
+function hasAnyPrompt(value: Partial<Record<ReflectionPrompt, string | null>> & { moments?: unknown[] }): boolean {
+  return REFLECTION_PROMPTS.some((key) => (value[key] ?? '').trim().length > 0) || (value.moments?.length ?? 0) > 0
 }
 
-const AT_LEAST_ONE_PROMPT = { message: 'At least one prompt must be filled in' }
+const AT_LEAST_ONE_PROMPT = { message: 'At least one prompt or moment must be filled in' }
 
 export const CreateTourReflectionSchema = z
-  .object({ sessionId: z.string().uuid(), ...reflectionPromptFields })
+  .object({
+    sessionId: z.string().uuid(),
+    ...reflectionPromptFields,
+    moments: z.array(TourReflectionMomentSchema).default([]),
+  })
   .refine(hasAnyPrompt, AT_LEAST_ONE_PROMPT)
 export type CreateTourReflection = z.infer<typeof CreateTourReflectionSchema>
 
-// A PUT replaces all five prompts, so the same rule holds on an edit without
-// having to read the stored row back.
+// A PUT replaces the four prompts and every moment, so the same rule holds on
+// an edit without having to read the stored row back.
 export const UpdateTourReflectionSchema = z
-  .object(reflectionPromptFields)
+  .object({ ...reflectionPromptFields, moments: z.array(TourReflectionMomentSchema).default([]) })
   .refine(hasAnyPrompt, AT_LEAST_ONE_PROMPT)
 export type UpdateTourReflection = z.infer<typeof UpdateTourReflectionSchema>
 
 export type TourReflectionPrompts = Record<ReflectionPrompt, string | null>
+
+export type TourReflectionMomentResponse = {
+  id: string
+  position: number
+  spotId: string | null
+  placeNote: string | null
+  description: string
+  spot: (PlaceSummary & { place: PlaceSummary }) | null
+}
 
 // `tourId`, `sessionOrder` and `sessionLabel` are read through the session
 // relation — TourReflection stores none of them.
@@ -905,6 +1006,7 @@ export type TourReflectionResponse = TourReflectionPrompts & {
   sessionOrder: number
   sessionLabel: string | null
   tourId: string
+  moments: TourReflectionMomentResponse[]
   createdAt: string
   updatedAt: string
   locked: boolean
@@ -919,6 +1021,7 @@ export type AdminTourReflectionResponse = TourReflectionPrompts & {
   sessionLabel: string | null
   tourId: string
   tourDate: string
+  moments: TourReflectionMomentResponse[]
   createdAt: string
   updatedAt: string
 }

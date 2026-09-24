@@ -9,6 +9,7 @@ import type { MyTourBookingEntry } from '@peace-buddy/types'
 import { BookingStatusSchema } from '@peace-buddy/types'
 import { routes } from '@/lib/routes'
 import { formatDate } from '@/lib/format-date'
+import { placeNames } from '@/lib/place-names'
 
 export function NextTourCard({ entry }: { entry: MyTourBookingEntry | null }) {
   const { locale } = useParams<{ locale: string }>()
@@ -38,7 +39,7 @@ export function NextTourCard({ entry }: { entry: MyTourBookingEntry | null }) {
             </span>
             <span className="flex items-center gap-1.5">
               <MapPin size={14} />
-              {entry.location}
+              {placeNames(entry.places, locale)}
             </span>
           </div>
         </Link>

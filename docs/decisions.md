@@ -12,6 +12,203 @@ duplicate that state here.
 
 ---
 
+## 2026-09-24 — A place belongs to a session, not a tour
+
+**Decision:** `TourPlace` (the tour↔place many-to-many from the 2026-09-23
+entry below) is dropped. Each `TourSession` has exactly one required
+`placeId`, and a tour's `places` in every response is derived — its sessions'
+places, each once, in session order. The tour form picks a place with a
+dropdown on each session row instead of a checkbox list for the tour.
+Supersedes the parts of the 2026-09-23 entry that assume tour-level places:
+the `placeIds` array, the removal lock, the multi-place reflection fallback,
+and the joined ICS `LOCATION`.
+
+**Why:** creating a tour with two places left no way to say which session
+went where. The two sessions of one tour can go to different places, and one
+session never goes to more than one — so the place is a property of the
+session.
+
+**Rejected — keep tour-level many-to-many:** it can't say which session goes
+where, which is the problem this entry fixes.
+
+**Rejected — a single place on the tour (`Tour.placeId`, a dropdown):**
+sessions of one tour go to different places, so a tour-level place is still
+wrong for some tours.
+
+**Rejected — many-to-many at session level:** a session goes to exactly one
+place, so a join table would allow a shape that never happens.
+
+**A session's place stays editable after creation**, locked only while a
+`TourReflectionMoment` on that session references a spot of the current place
+(`PlaceInUseError`, 409, in `updateSession`). Edits are rare, but that's no
+reason to rule out correcting a wrong pick. **Rejected — fixed at creation:**
+the only gain is dropping the lock.
+
+**A moment's `spotId` must be a spot of its session's place** (was: of any of
+the tour's places) — the lock above relies on it, the same way the old removal
+lock relied on the tour-level check.
+
+**A session's place change on a published tour fires `tour_details_changed` to
+every booked buddy on the tour**, via the existing tour-wide
+`enqueue*ForBookedBuddies` helpers. **Accepted:** buddies on the other session
+get a notice they didn't strictly need. Narrowing it would mean
+session-scoped variants of those helpers for an edit that rarely happens.
+
+**The ICS `LOCATION` is the event's own session's place**, in the recipient's
+locale, as before — no more joining several names.
+
+**The edit form shows the per-session place dropdown** even though it hides
+the rest of session management, and it saves a changed place through
+`PUT /admin/tours/:id/sessions/:sessionId`. A 409 from that call means the
+lock, so the form shows a specific message rather than the generic conflict
+text (#241 still applies to `PUT /admin/tours/:id`).
+
+**The migration backfills** each existing session with its tour's first place
+by `sortOrder` before dropping `TourPlace`. Nothing is in production; the
+backfill just lets development databases migrate without a reset.
+
+**Current state:** `prisma/schema.prisma` `TourSession.placeId`,
+`docs/data-model.md`, `docs/api.md` Tour + Sessions sections, `docs/PRD.md`
+§7.1, §7.5, §9.3, §10.1.
+
+---
+
+## 2026-09-23 — Places and spots replace free-text location
+
+*Tour-level places (`TourPlace`, `placeIds`, the removal lock, the
+multi-place reflection fallback) are superseded by the 2026-09-24 entry above.*
+
+**Decision:** `Tour.location` (free text) is dropped, replaced by a many-to-many
+`TourPlace` join to a new admin-managed `Place`/`Spot` pair — a `Place` (e.g. a
+park) contains `Spot`s (e.g. a monument inside it), both bilingual
+(`nameJa`/`nameEn`), ordered (`sortOrder`) and retired via `active: false`,
+never deleted. `TourReflection.memorableMoment` (free text, #236) is dropped
+the same way, replaced by 0..n `TourReflectionMoment` rows, each with a
+required `description` and exactly one of `spotId` or free-text `placeNote`.
+Nothing was in production, so no data migration for either column. Closes
+#239.
+
+**Why:** a buddy writing "Peace Park", "Urakami Cathedral" or "Atomic bomb
+Museum" for the same tour location made nothing countable. The org's actual
+seed data (`prisma/seed.ts`) has four places — 平和公園 (Peace Park), 浦上天主堂
+(Urakami Cathedral), 原爆資料館 (Atomic Bomb Museum), VOICE — and only Peace Park
+has named spots (nine of them, from an opening to a closing along the walking
+route). The other three places are expected to stay spot-less.
+
+**Rejected — a Prisma enum for places or spots:** changing one needs a
+migration and a deploy, so admin cannot manage it day to day. Same reasoning
+already applied to every other admin-configurable list in this codebase.
+
+**Rejected — free-text place or spot:** cannot be analysed — the exact problem
+this closes.
+
+**Rejected — a combined place row for multi-place tours** (e.g. one row for
+"Peace Park + Urakami Cathedral"): would duplicate every spot of its parts
+under a synthetic combined identity and split per-spot analytics across two
+untraceable buckets instead of joining cleanly through `TourPlace`.
+
+**Rejected — translations in `messages/*.json`:** those files hold UI copy;
+places and spots are data, alongside `nameJa`/`nameEn` columns like every other
+bilingual entity in this schema (`Group.name` is the one exception, and it
+isn't bilingual either).
+
+**`TourPlace` is an array field on `CreateTourSchema`/`UpdateTourSchema`
+(`placeIds: string[]`), not a separate sub-resource** like the existing
+`TourAdminAssignment` (`POST/DELETE /admin/tours/:id/admins`, a standalone
+assign/unassign panel on the tour detail page, after the tour exists).
+**Rejected — mirroring `TourAdminAssignment`'s pattern:** admin staffing is
+naturally a post-creation concern (you assign people once the tour is real);
+a tour's places are core, required-at-creation metadata replacing what used to
+be a single required text field — picking them belongs in the create form
+itself, as a plain checkbox list of active places, not a second trip to a
+detail-page panel.
+
+**A place cannot be removed from a tour while a `TourReflectionMoment` on that
+tour references one of its spots** (`PlaceInUseError`, 409, checked in
+`updateTour` before the sync). Adding a place is always allowed. **Rejected —
+no lock at all:** would silently orphan a moment's `spot` relation to a place
+the tour no longer claims to cover, which is worse than refusing the edit.
+**Known gap:** the tour edit page shows only the generic conflict message for
+this 409, because the web client drops the API's `detail` (#241).
+
+**A moment's `spotId` must be a spot of one of the tour's places**, checked in
+`createReflection`/`updateReflection` (`InvalidSpotError`, 400) — the removal
+lock above holds only if moments cannot name another tour's spot. A retired
+spot is accepted: a PUT resends every moment, including one tagged before its
+spot was retired, and the reflection form keeps such a spot selectable, the
+same way the tour form keeps a retired place. **Rejected — requiring an active
+spot:** an edit inside the window would then fail for a buddy who changed
+nothing about that moment.
+
+**The ICS `LOCATION` bakes in one language, chosen from the recipient's own
+`User.locale`** — `nameJa` for `ja`, `nameEn` for `en`, multiple places joined
+`、`-separated for `ja` and `, `-separated for `en`. This is the one place a
+locale choice happens server-side rather than being left to the web layer:
+every other reader of place/spot data gets both `nameJa` and `nameEn` raw and
+picks at render time (matching the 2026-09-19 entry's "the API is
+locale-agnostic" precedent for the ICS session label) — but a downloaded
+`.ics` file has no later render step to pick a language at, unlike a JSON
+response consumed by the web app. **Rejected — always `nameJa`:** the same
+2026-09-19 entry rejected a UI-string fallback on the same grounds (no
+built-in preference for either language); honouring `User.locale` costs one
+`User` lookup per download, since the auth middleware's `DbUser` does not
+carry it.
+
+**When none of a tour's places have any spots, the reflection form collapses
+to a single textarea instead of the add/remove/reorder moment picker** — the
+common case today, since three of the four seeded places have no spots.
+Submitting it produces one `TourReflectionMoment` with `placeNote`
+auto-filled from the tour's place name (not typed by the buddy) when the tour
+has exactly one place; with two or more spot-less places, a plain place radio
+(no spot level) precedes the same textarea. The Zod rule itself
+(`spotId` XOR `placeNote`, always exactly one) is unchanged — the fallback
+path fills `placeNote` itself rather than relaxing the schema. **Rejected —
+always show the full moments UI, with the spot control simply reading "Other"
+when the tour's places have no spots:** true to the literal per-moment rule,
+but forces the add/remove/reorder chrome onto a case with nothing to add
+around, for no analytical benefit over the pre-#239 single free-text prompt.
+**Rejected — save with both `spotId` and `placeNote` null:** simplest, but a
+moment from a spot-less tour would carry no place information at all, even
+when the tour has exactly one (fully identifiable) place.
+
+**The textarea is used only when it can hold what was already saved** — no
+saved moments, or exactly one whose `placeNote` is one of the tour's place
+names (`usesSingleMoment` in `reflection-form-state.ts`, decided from the saved
+reflection, not the live form state, so editing never flips the layout). A
+reflection written while the tour had spots can carry several moments, or an
+Other note in the buddy's own words; once those spots are retired, or their
+place is taken off the tour (allowed — the removal lock covers only moments
+with a `spotId`), such a reflection keeps the full picker with Other as its only
+choice. **Rejected — the textarea regardless:** it shows only the first moment
+and rewrites its `placeNote` to a place name, so the first keystroke silently
+drops every other moment and the buddy's own note.
+
+**The auto-filled `placeNote` is the place's `nameJa`, whatever the buddy's UI
+language**, so one place is stored under one name. Reading a note back, the
+form matches it against either name. **Rejected — the name in the buddy's UI
+language:** the same place would be stored as 浦上天主堂 by one buddy and
+Urakami Cathedral by another, the uncountable free text this entry closes.
+**Rejected — a `placeId` column on `TourReflectionMoment` for these moments:**
+it would survive a rename, but it reopens the `spotId` XOR `placeNote` rule
+settled above. **Accepted:** after a place is renamed (a correction, never a
+repurposing), older notes match neither name, so the edit form shows such a
+note as an Other moment in the full picker rather than the textarea.
+
+**Admin UI is a new `/admin/places` list + `/admin/places/:id` spot list**,
+following `Group`'s sortable-list-with-create/edit-dialog pattern
+(`SortIcon`, no detail-page nested history since there's nothing analogous to
+show). No delete action anywhere, matching `Group`'s "no delete in v1"
+convention. **Reordering is a plain editable `sortOrder` number per row, not
+drag-and-drop:** no such interaction exists anywhere else in this codebase,
+and introducing one here would be new UI surface for a config screen five
+admins use occasionally.
+
+**Current state:** `prisma/schema.prisma` `Place`/`Spot`/`TourPlace`/
+`TourReflectionMoment`, `docs/data-model.md`, `docs/api.md` "Places and
+Spots" + Tour/Reflection sections, `docs/PRD.md` §7.5, §9.3.
+
+---
+
 ## 2026-09-23 — The buddy writes a reflection, not a self-evaluation
 
 **Decision:** `SelfEvaluation` is gone. In its place `TourReflection` holds five

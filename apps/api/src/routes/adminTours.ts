@@ -23,6 +23,7 @@ import {
   SessionHasBookingsError,
   LastSessionError,
   TooManySessionsError,
+  PlaceInUseError,
 } from '../services/adminSession.service'
 import {
   assignAdmin,
@@ -73,7 +74,8 @@ adminTourRoutes.get('/:id', async (c) => {
 
 adminTourRoutes.get('/:id/calendar.ics', async (c) => {
   const id = c.req.param('id')
-  const ics = await getAdminTourIcs(id)
+  const { id: userId } = c.get('user')
+  const ics = await getAdminTourIcs(id, userId)
   if (!ics) return c.json(apiError('not_found'), 404)
   return c.body(ics, 200, {
     'Content-Type': 'text/calendar; charset=utf-8',
@@ -246,6 +248,7 @@ adminTourRoutes.put('/:id/sessions/:sessionId', async (c) => {
     return c.json(await updateSession(tourId, sessionId, parsed.data))
   } catch (e) {
     if (e instanceof SessionNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof PlaceInUseError) return c.json(apiError('conflict', e.message), 409)
     throw e
   }
 })

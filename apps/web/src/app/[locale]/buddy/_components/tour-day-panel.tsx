@@ -9,6 +9,7 @@ import type { TourDetailResponse } from '@peace-buddy/types'
 import { BookingStatusSchema } from '@peace-buddy/types'
 import { routes } from '@/lib/routes'
 import { MarkdownText } from '@/components/markdown-text'
+import { placeNames } from '@/lib/place-names'
 
 // Shown in place of the next-tour card on the day of the buddy's confirmed tour.
 // Other buddies are a count, and staff in charge a name, by decision (#211).
@@ -48,7 +49,7 @@ export function TourDayPanel({ tour }: { tour: TourDetailResponse }) {
 
         <p className="mb-4 flex items-center gap-2 text-lg font-semibold">
           <MapPin size={18} />
-          {tour.location}
+          {placeNames(tour.places, locale)}
         </p>
 
         {tour.staffInCharge && (

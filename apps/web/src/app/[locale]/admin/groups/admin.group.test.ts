@@ -106,6 +106,8 @@ describe('nextGroupSort', () => {
 
 // ── sortGroupTours ────────────────────────────────────────────────────────────
 
+const place = (nameEn: string) => ({ id: nameEn, nameJa: nameEn, nameEn })
+
 const session = (capacity: number) => ({
   id: 's1',
   order: 1,
@@ -117,6 +119,7 @@ const session = (capacity: number) => ({
   minBuddies: null,
   participantCount: 0,
   belowMinimum: false,
+  place: place('Tokyo'),
 })
 
 const tour = (overrides: Partial<GroupDetailResponse['tours'][0]>): GroupDetailResponse['tours'][0] => ({
@@ -124,7 +127,7 @@ const tour = (overrides: Partial<GroupDetailResponse['tours'][0]>): GroupDetailR
   status: 'draft',
   tourDate: '2025-06-01',
   bookingOpen: false,
-  location: 'Tokyo',
+  places: [place('Tokyo')],
   participantCount: 0,
   description: null,
   sessions: [session(10)],
@@ -132,67 +135,67 @@ const tour = (overrides: Partial<GroupDetailResponse['tours'][0]>): GroupDetailR
   ...overrides,
 })
 
-const t1 = tour({ id: 't1', tourDate: '2025-06-01', status: 'draft',     location: 'Osaka',  sessions: [session(5)]  })
-const t2 = tour({ id: 't2', tourDate: '2025-07-01', status: 'published', location: 'Tokyo',  sessions: [session(10)] })
-const t3 = tour({ id: 't3', tourDate: '2025-08-01', status: 'completed', location: 'Kyoto',  sessions: [session(15)] })
+const t1 = tour({ id: 't1', tourDate: '2025-06-01', status: 'draft',     places: [place('Osaka')], sessions: [session(5)]  })
+const t2 = tour({ id: 't2', tourDate: '2025-07-01', status: 'published', places: [place('Tokyo')], sessions: [session(10)] })
+const t3 = tour({ id: 't3', tourDate: '2025-08-01', status: 'completed', places: [place('Kyoto')], sessions: [session(15)] })
 
 describe('sortGroupTours', () => {
   describe('by tourDate', () => {
     it('sorts asc', () => {
-      const result = sortGroupTours([t3, t1, t2], 'tourDate', 'asc')
+      const result = sortGroupTours([t3, t1, t2], 'tourDate', 'asc', 'en')
       expect(result.map((t) => t.id)).toEqual(['t1', 't2', 't3'])
     })
 
     it('sorts desc', () => {
-      const result = sortGroupTours([t3, t1, t2], 'tourDate', 'desc')
+      const result = sortGroupTours([t3, t1, t2], 'tourDate', 'desc', 'en')
       expect(result.map((t) => t.id)).toEqual(['t3', 't2', 't1'])
     })
   })
 
   describe('by status', () => {
     it('sorts asc', () => {
-      const result = sortGroupTours([t3, t1, t2], 'status', 'asc')
+      const result = sortGroupTours([t3, t1, t2], 'status', 'asc', 'en')
       expect(result.map((t) => t.status)).toEqual(['completed', 'draft', 'published'])
     })
 
     it('sorts desc', () => {
-      const result = sortGroupTours([t3, t1, t2], 'status', 'desc')
+      const result = sortGroupTours([t3, t1, t2], 'status', 'desc', 'en')
       expect(result.map((t) => t.status)).toEqual(['published', 'draft', 'completed'])
     })
   })
 
-  describe('by location', () => {
+  describe('by places', () => {
     it('sorts asc', () => {
-      const result = sortGroupTours([t3, t1, t2], 'location', 'asc')
-      expect(result.map((t) => t.location)).toEqual(['Kyoto', 'Osaka', 'Tokyo'])
+      const result = sortGroupTours([t3, t1, t2], 'places', 'asc', 'en')
+      expect(result.map((t) => t.places[0].nameEn)).toEqual(['Kyoto', 'Osaka', 'Tokyo'])
     })
 
     it('sorts desc', () => {
-      const result = sortGroupTours([t3, t1, t2], 'location', 'desc')
-      expect(result.map((t) => t.location)).toEqual(['Tokyo', 'Osaka', 'Kyoto'])
+      const result = sortGroupTours([t3, t1, t2], 'places', 'desc', 'en')
+      expect(result.map((t) => t.places[0].nameEn)).toEqual(['Tokyo', 'Osaka', 'Kyoto'])
     })
   })
 
   describe('by capacity', () => {
     it('sorts asc', () => {
-      const result = sortGroupTours([t3, t1, t2], 'capacity', 'asc')
+      const result = sortGroupTours([t3, t1, t2], 'capacity', 'asc', 'en')
       expect(result.map((t) => t.id)).toEqual(['t1', 't2', 't3'])
     })
 
     it('sorts desc', () => {
-      const result = sortGroupTours([t3, t1, t2], 'capacity', 'desc')
+      const result = sortGroupTours([t3, t1, t2], 'capacity', 'desc', 'en')
       expect(result.map((t) => t.id)).toEqual(['t3', 't2', 't1'])
     })
   })
 
   it('does not mutate the original array', () => {
     const original = [t3, t1, t2]
-    sortGroupTours(original, 'tourDate', 'asc')
+    sortGroupTours(original, 'tourDate', 'asc', 'en')
     expect(original.map((t) => t.id)).toEqual(['t3', 't1', 't2'])
   })
 
   it('returns empty array unchanged', () => {
-    expect(sortGroupTours([], 'tourDate', 'asc')).toEqual([])
+    expect(sortGroupTours([], 'tourDate', 'asc', 'en')).toEqual([])
   })
 })
 

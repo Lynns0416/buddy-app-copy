@@ -187,7 +187,6 @@ model Tour {
   status               TourStatus
   tourDate             DateTime                            @db.Date
   bookingOpen          Boolean                             @default(false)
-  location             String
   description          String?
   adminMemo            String?
   cancellationDeadline DateTime                            @db.Date
@@ -205,6 +204,36 @@ model Tour {
   adminAssignments     TourAdminAssignment[]
 
   @@index([status, tourDate])
+}
+
+// Admin-managed lookup table for tour locations. Retired via `active = false`,
+// never deleted — TourSessions and TourReflectionMoments reference rows by id
+// (docs/decisions.md 2026-09-23, "Places and spots replace free-text
+// location").
+model Place {
+  id        String      @id @default(uuid())
+  nameJa    String
+  nameEn    String
+  sortOrder Int
+  active    Boolean     @default(true)
+  spots     Spot[]
+  sessions  TourSession[]
+}
+
+// A point of interest inside a Place (e.g. a monument inside a park). Not
+// every Place has spots — a buddy reflecting on a tour whose places have none
+// gets a single free-text moment instead of a spot picker (see TourReflectionMoment).
+model Spot {
+  id        String                 @id @default(uuid())
+  placeId   String
+  nameJa    String
+  nameEn    String
+  sortOrder Int
+  active    Boolean                @default(true)
+  place     Place                  @relation(fields: [placeId], references: [id])
+  moments   TourReflectionMoment[]
+
+  @@index([placeId])
 }
 
 model TourAdminAssignment {
@@ -229,15 +258,21 @@ model TourSession {
   capacity         Int
   minBuddies       Int?
   participantCount Int           @default(0)
+  // Exactly one place per session; sessions of one tour may go to different
+  // places. Changing it is locked while a moment on this session references
+  // a spot of the old place (rule enforced in adminSession.service.ts).
+  placeId          String
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   tour             Tour          @relation(fields: [tourId], references: [id])
+  place            Place         @relation(fields: [placeId], references: [id])
   bookings         Booking[]
   tierCapacities   TierCapacity[]
   reflections      TourReflection[]
 
   @@unique([tourId, order])
   @@index([tourId])
+  @@index([placeId])
 }
 
 model TierCapacity {
@@ -357,21 +392,41 @@ model AdminProfileEvaluation {
 // scores. Keyed on the session, but the obligation is per tour — one reflection
 // anywhere in a tour silences the prompt (docs/decisions.md 2026-09-23).
 model TourReflection {
-  id              String       @id @default(uuid())
+  id              String                 @id @default(uuid())
   buddyId         String
   sessionId       String
   didWell         String?
   couldImprove    String?
-  memorableMoment String?
   notesForOthers  String?
   openQuestions   String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  buddy           BuddyProfile @relation(fields: [buddyId], references: [id])
-  session         TourSession  @relation(fields: [sessionId], references: [id])
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  buddy           BuddyProfile           @relation(fields: [buddyId], references: [id])
+  session         TourSession            @relation(fields: [sessionId], references: [id])
+  moments         TourReflectionMoment[]
 
   @@unique([buddyId, sessionId])
   @@index([sessionId])
+}
+
+// A structured memorable moment (docs/decisions.md — "Places and spots
+// replace free-text location"), replacing the old `memorableMoment` free-text
+// column. `position` keeps the buddy's entry order — row order is not
+// guaranteed, so this is read back sorted by it, never by createdAt (identical
+// within one createMany) or id (random UUIDs).
+// Exactly one of spotId/placeNote is set — enforced in Zod, not the DB.
+model TourReflectionMoment {
+  id           String         @id @default(uuid())
+  reflectionId String
+  position     Int
+  spotId       String?
+  placeNote    String?
+  description  String
+  reflection   TourReflection @relation(fields: [reflectionId], references: [id], onDelete: Cascade)
+  spot         Spot?          @relation(fields: [spotId], references: [id])
+
+  @@index([reflectionId])
+  @@index([spotId])
 }
 
 model BuddyCancellationDeadlineOverride {

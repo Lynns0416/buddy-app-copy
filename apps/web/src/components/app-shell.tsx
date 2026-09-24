@@ -39,6 +39,7 @@ export function AppShell({ variant, children }: Props) {
     { href: routes.adminBuddies(locale), label: t('nav.buddies') },
     { href: routes.adminTrainees(locale), label: t('nav.trainees') },
     { href: routes.adminGroups(locale), label: t('nav.groups') },
+    { href: routes.adminPlaces(locale), label: t('nav.places') },
     { href: routes.adminTours(locale), label: t('nav.tours') },
     { href: routes.adminProfile(locale), label: t('nav.adminProfile') },
     { href: routes.adminNotificationPreferences(locale), label: t('nav.adminNotificationPreferences') },

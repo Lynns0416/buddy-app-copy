@@ -13,7 +13,7 @@ function makeEntry(
   return {
     tourId,
     tourDate: '2026-10-01T00:00:00.000Z',
-    location: 'Nagasaki',
+    places: [{ id: 'place-1', nameJa: 'Nagasaki', nameEn: 'Nagasaki' }],
     status: TourStatusSchema.enum.published,
     maybeDeadline: null,
     reflectionSubmitted: false,

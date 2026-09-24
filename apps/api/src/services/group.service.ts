@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { db } from '../lib/db'
-import type { CreateGroup, UpdateGroup, GroupResponse, GroupDetailResponse, GroupTourSummary, GroupType, TourStatus } from '@peace-buddy/types'
+import { placeSummarySelect, sessionPlaces } from '../lib/sessionPlaces'
+import type { CreateGroup, UpdateGroup, GroupResponse, GroupDetailResponse, GroupTourSummary, GroupType, TourStatus, PlaceSummary } from '@peace-buddy/types'
 
 const groupSelect = {
   id: true,
@@ -19,7 +20,6 @@ const groupTourSelect = {
   status: true,
   tourDate: true,
   bookingOpen: true,
-  location: true,
   description: true,
   createdAt: true,
   sessions: {
@@ -33,6 +33,7 @@ const groupTourSelect = {
       capacity: true,
       minBuddies: true,
       participantCount: true,
+      place: { select: placeSummarySelect },
     },
     orderBy: { order: 'asc' as const },
   },
@@ -67,7 +68,6 @@ function mapGroupTour(raw: {
   status: string
   tourDate: Date
   bookingOpen: boolean
-  location: string
   description: string | null
   createdAt: Date
   sessions: {
@@ -80,6 +80,7 @@ function mapGroupTour(raw: {
     capacity: number
     minBuddies: number | null
     participantCount: number
+    place: PlaceSummary
   }[]
 }): GroupTourSummary {
   const totalParticipants = raw.sessions.reduce((s, sess) => s + sess.participantCount, 0)
@@ -88,7 +89,7 @@ function mapGroupTour(raw: {
     status: raw.status as TourStatus,
     tourDate: raw.tourDate.toISOString(),
     bookingOpen: raw.bookingOpen,
-    location: raw.location,
+    places: sessionPlaces(raw.sessions),
     participantCount: totalParticipants,
     description: raw.description,
     sessions: raw.sessions.map((s) => ({
@@ -102,6 +103,7 @@ function mapGroupTour(raw: {
       minBuddies: s.minBuddies,
       participantCount: s.participantCount,
       belowMinimum: s.minBuddies != null && s.participantCount < s.minBuddies,
+      place: s.place,
     })),
     createdAt: raw.createdAt.toISOString(),
   }

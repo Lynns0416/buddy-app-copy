@@ -1,13 +1,14 @@
 'use client'
 
 import { Fragment, useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { REFLECTION_PROMPTS } from '@peace-buddy/types'
 import type { AdminTourReflectionResponse } from '@peace-buddy/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
 import { listAdminReflections } from '../../evaluations/admin.evaluation'
 import { formatDate } from '@/lib/format-date'
+import { momentLocation } from '@/lib/place-names'
 
 type SortField = 'tourDate' | 'session' | 'submittedAt'
 type SortDir = 'asc' | 'desc'
@@ -33,6 +34,7 @@ interface BuddyReflectionsProps {
 export function BuddyReflections({ buddyId }: BuddyReflectionsProps) {
   const t = useTranslations('adminEvaluations')
   const tTours = useTranslations('adminTours')
+  const locale = useLocale()
   const [reflections, setReflections] = useState<AdminTourReflectionResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -121,6 +123,18 @@ export function BuddyReflections({ buddyId }: BuddyReflectionsProps) {
                           <dd className="whitespace-pre-wrap">{reflection[key]}</dd>
                         </div>
                       ))}
+                      {reflection.moments.length > 0 && (
+                        <div>
+                          <dt className="text-muted-foreground">{t('reflectionMoments.heading')}</dt>
+                          {reflection.moments.map((moment) => (
+                            <dd key={moment.id} className="whitespace-pre-wrap">
+                              <span className="text-xs text-muted-foreground">{momentLocation(moment, locale)}</span>
+                              <br />
+                              {moment.description}
+                            </dd>
+                          ))}
+                        </div>
+                      )}
                     </dl>
                   </TableCell>
                 </TableRow>

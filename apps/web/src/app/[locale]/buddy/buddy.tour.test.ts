@@ -33,7 +33,7 @@ const stubTours: TourResponse[] = [
     status: TourStatusSchema.enum.published,
     tourDate: '2025-05-01T00:00:00Z',
     bookingOpen: true,
-    location: 'Location A',
+    places: [{ id: 'place-1', nameJa: 'Location A', nameEn: 'Location A' }],
     participantCount: 0,
     description: null,
     cancellationDeadline: '2025-04-20T00:00:00Z',

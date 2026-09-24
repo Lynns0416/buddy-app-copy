@@ -9,6 +9,7 @@ import {
   ReflectionLockedError,
   NotEligibleError,
   BuddyNotFoundError,
+  InvalidSpotError,
 } from '../services/reflection.service'
 import { apiError } from '../lib/api-error'
 import type { AuthEnv } from '../types'
@@ -33,6 +34,7 @@ reflectionRoutes.post('/', async (c) => {
     if (e instanceof ReflectionAlreadyExistsError) return c.json(apiError('conflict'), 409)
     if (e instanceof NotEligibleError) return c.json(apiError('forbidden'), 403)
     if (e instanceof BuddyNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof InvalidSpotError) return c.json(apiError('invalid_request'), 400)
     throw e
   }
 })
@@ -68,6 +70,7 @@ reflectionRoutes.put('/:id', async (c) => {
     if (e instanceof ReflectionNotFoundError) return c.json(apiError('not_found'), 404)
     if (e instanceof ReflectionLockedError) return c.json(apiError('conflict', 'Edit window has closed'), 409)
     if (e instanceof BuddyNotFoundError) return c.json(apiError('not_found'), 404)
+    if (e instanceof InvalidSpotError) return c.json(apiError('invalid_request'), 400)
     throw e
   }
 })

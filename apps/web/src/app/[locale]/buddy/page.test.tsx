@@ -80,7 +80,7 @@ function makeTour(
     status: TourStatusSchema.enum.published,
     tourDate: '2099-05-01T00:00:00.000Z',
     bookingOpen: true,
-    location: 'Tokyo Station',
+    places: [{ id: 'place-1', nameJa: 'Tokyo Station', nameEn: 'Tokyo Station' }],
     participantCount: 0,
     description: null,
     cancellationDeadline: '2099-04-25T00:00:00.000Z',
@@ -98,6 +98,7 @@ function makeTour(
       participantCount: 0,
       belowMinimum: false,
       myBookingStatus,
+      place: { id: 'place-1', nameJa: 'Tokyo Station', nameEn: 'Tokyo Station' },
     })),
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -111,6 +112,7 @@ function makeTourDetail(id: string, overrides: Partial<TourDetailResponse> = {})
     ...tour,
     sessions: tour.sessions.map((s) => ({
       ...s,
+      place: { ...s.place, spots: [] },
       seatCounts: { confirmed: 4, maybe: 0, waitlist: 0, declined: 0 },
       remaining: 6,
       myCapacity: null,
@@ -129,7 +131,7 @@ function makeEntry(
   return {
     tourId,
     tourDate: '2099-06-01T00:00:00.000Z',
-    location: 'Nagasaki',
+    places: [{ id: 'place-1', nameJa: 'Nagasaki', nameEn: 'Nagasaki' }],
     status: TourStatusSchema.enum.published,
     maybeDeadline: null,
     reflectionSubmitted: false,

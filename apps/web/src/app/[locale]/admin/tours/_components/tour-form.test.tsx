@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TourForm } from './tour-form'
 import { ApiError } from '@/lib/api'
-import type { GroupResponse } from '@peace-buddy/types'
+import type { GroupResponse, PlaceResponse } from '@peace-buddy/types'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -20,11 +20,14 @@ const groups: GroupResponse[] = [
   { id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', name: 'Test School', type: 'school', contactName: 'Hana Sato', contactEmail: 'hana@example.com', contactPhone: null, notes: 'Arrives by bus', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
 ]
 
+const places: PlaceResponse[] = [
+  { id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park', sortOrder: 1, active: true },
+]
+
 const validFields = {
   groupId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   tourDate: '2026-06-01',
   sessionMeetingTime: '09:00',
-  location: '平和公園',
   sessionCapacity: '5',
   cancellationDeadline: '2026-05-25',
   notificationOffsets: '3, 1',
@@ -40,6 +43,7 @@ function renderForm(onSubmit = vi.fn(), initialGroupId?: string) {
   render(
     <TourForm
       groups={groups}
+      places={places}
       initialGroupId={initialGroupId}
       cancelHref="/admin/tours"
       onSubmit={onSubmit}
@@ -52,14 +56,18 @@ async function selectGroup(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('option', { name: groups[0].name }))
 }
 
+async function selectPlace(user: ReturnType<typeof userEvent.setup>) {
+  await user.selectOptions(screen.getByLabelText('location'), places[0].id)
+}
+
 async function fillAndSubmit(overrides: Partial<typeof validFields> = {}, onSubmit = vi.fn()) {
   renderForm(onSubmit)
   const { user, fields } = fillForm(overrides)
 
   await selectGroup(user)
+  await selectPlace(user)
   await user.type(screen.getByLabelText('tourDate'), fields.tourDate)
   await user.type(screen.getByLabelText('meetingTime'), fields.sessionMeetingTime)
-  await user.type(screen.getByLabelText('location'), fields.location)
   await user.clear(screen.getByLabelText('capacity'))
   await user.type(screen.getByLabelText('capacity'), fields.sessionCapacity)
   await user.type(screen.getByLabelText('cancellationDeadline'), fields.cancellationDeadline)
@@ -80,7 +88,7 @@ describe('TourForm', () => {
     expect(values.groupId).toBe(validFields.groupId)
     expect(values.tourDate).toBe('2026-06-01')
     expect(values.sessions[0].meetingTime).toBe('09:00')
-    expect(values.location).toBe('平和公園')
+    expect(values.sessions[0].placeId).toBe('place-1')
     expect(values.sessions[0].capacity).toBe(5)
     expect(values.cancellationDeadline).toBe('2026-05-25')
     expect(values.notificationOffsets).toEqual([3, 1])
@@ -114,9 +122,9 @@ describe('TourForm', () => {
     renderForm(onSubmit, groups[0].id)
     const user = userEvent.setup()
 
+    await selectPlace(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
-    await user.type(screen.getByLabelText('location'), validFields.location)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
     await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
@@ -139,9 +147,9 @@ describe('TourForm', () => {
     renderForm(onSubmit)
     const user = userEvent.setup()
 
+    await selectPlace(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
-    await user.type(screen.getByLabelText('location'), validFields.location)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
     await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
@@ -152,7 +160,7 @@ describe('TourForm', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('does not call onSubmit when maybeDeadline is after cancellationDeadline', async () => {
+  it('shows a translated error and does not submit when a session has no place', async () => {
     const onSubmit = vi.fn()
     renderForm(onSubmit)
     const user = userEvent.setup()
@@ -160,7 +168,25 @@ describe('TourForm', () => {
     await selectGroup(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
-    await user.type(screen.getByLabelText('location'), validFields.location)
+    await user.clear(screen.getByLabelText('capacity'))
+    await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
+    await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
+
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    expect(await screen.findByText('placeRequired')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('does not call onSubmit when maybeDeadline is after cancellationDeadline', async () => {
+    const onSubmit = vi.fn()
+    renderForm(onSubmit)
+    const user = userEvent.setup()
+
+    await selectGroup(user)
+    await selectPlace(user)
+    await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
+    await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
     await user.type(screen.getByLabelText('cancellationDeadline'), '2026-05-25')
@@ -186,13 +212,13 @@ describe('TourForm', () => {
   it('maps ApiError field errors to the correct fields', async () => {
     const apiError = new ApiError('Invalid request body', 400, {
       formErrors: [],
-      fieldErrors: { location: ['Location is required'] },
+      fieldErrors: { tourDate: ['Invalid date'] },
     })
     const onSubmit = vi.fn().mockRejectedValue(apiError)
     await fillAndSubmit({}, onSubmit)
 
     await waitFor(() =>
-      expect(screen.getByText('Location is required')).toBeInTheDocument(),
+      expect(screen.getByText('Invalid date')).toBeInTheDocument(),
     )
   })
 
@@ -216,9 +242,9 @@ describe('TourForm', () => {
     const user = userEvent.setup()
 
     await selectGroup(user)
+    await selectPlace(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
-    await user.type(screen.getByLabelText('location'), validFields.location)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
     await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
@@ -246,9 +272,9 @@ describe('TourForm', () => {
     const user = userEvent.setup()
 
     await selectGroup(user)
+    await selectPlace(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
-    await user.type(screen.getByLabelText('location'), validFields.location)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
     await user.type(screen.getByLabelText('minBuddies'), '2')
@@ -266,9 +292,9 @@ describe('TourForm', () => {
     const user = userEvent.setup()
 
     await selectGroup(user)
+    await selectPlace(user)
     await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
-    await user.type(screen.getByLabelText('location'), validFields.location)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), '5')
     await user.type(screen.getByLabelText('minBuddies'), '10')
@@ -290,7 +316,7 @@ describe('TourForm', () => {
           status: 'draft',
           tourDate: '2026-06-01T00:00:00.000Z',
           bookingOpen: false,
-          location: 'Nagasaki',
+          places: [{ id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' }],
           capacity: 10,
           participantCount: 0,
           description: 'A tour',
@@ -310,6 +336,7 @@ describe('TourForm', () => {
             minBuddies: null,
             participantCount: 0,
             belowMinimum: false,
+            place: { id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' },
           }],
           bookings: [],
           assignedAdmins: [],
@@ -318,17 +345,169 @@ describe('TourForm', () => {
           updatedAt: '2026-01-01T00:00:00.000Z',
         }}
         groups={groups}
+        places={places}
         cancelHref="/admin/tours/tour-1"
         onSubmit={vi.fn()}
       />,
     )
 
-    expect((screen.getByLabelText('location') as HTMLInputElement).value).toBe('Nagasaki')
+    expect(screen.getByLabelText('location')).toHaveValue('place-1')
     expect((screen.getByLabelText('capacity') as HTMLInputElement).value).toBe('10')
     expect((screen.getByLabelText('meetingTime') as HTMLInputElement).value).toBe('09:30')
     expect(screen.getByRole('link', { name: /groupSummary\.viewGroup/ })).toHaveAttribute(
       'href',
       `/en/admin/groups/${groups[0].id}`,
     )
+  })
+
+  it('keeps a place already on a session selectable even after it is deactivated', () => {
+    render(
+      <TourForm
+        defaultValues={{
+          id: 'tour-1',
+          group: { id: groups[0].id, name: groups[0].name, type: 'school' },
+          status: 'draft',
+          tourDate: '2026-06-01T00:00:00.000Z',
+          bookingOpen: false,
+          places: [{ id: 'place-2', nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral' }],
+          capacity: 10,
+          participantCount: 0,
+          description: null,
+          confirmedCount: 0,
+          adminMemo: null,
+          cancellationDeadline: '2026-05-25T00:00:00.000Z',
+          maybeDeadline: null,
+          notificationOffsets: [3, 1],
+          sessions: [{
+            id: 's1',
+            order: 1,
+            label: null,
+            meetingTime: '1970-01-01T09:30:00.000Z',
+            startTime: null,
+            endTime: null,
+            capacity: 10,
+            minBuddies: null,
+            participantCount: 0,
+            belowMinimum: false,
+            place: { id: 'place-2', nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral' },
+          }],
+          bookings: [],
+          assignedAdmins: [],
+          staffInChargeId: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        }}
+        groups={groups}
+        places={[
+          ...places,
+          { id: 'place-2', nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral', sortOrder: 2, active: false },
+        ]}
+        cancelHref="/admin/tours/tour-1"
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText('location')).toHaveValue('place-2')
+    expect(screen.getByRole('option', { name: /Urakami Cathedral/ })).toBeInTheDocument()
+  })
+
+  it('does not offer a deactivated place no session is on', () => {
+    render(
+      <TourForm
+        groups={groups}
+        places={[
+          ...places,
+          { id: 'place-2', nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral', sortOrder: 2, active: false },
+        ]}
+        cancelHref="/admin/tours"
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('option', { name: /Urakami Cathedral/ })).not.toBeInTheDocument()
+  })
+
+  it('submits each session with its own place', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(
+      <TourForm
+        groups={groups}
+        places={[
+          ...places,
+          { id: 'place-2', nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral', sortOrder: 2, active: true },
+        ]}
+        initialGroupId={groups[0].id}
+        cancelHref="/admin/tours"
+        onSubmit={onSubmit}
+      />,
+    )
+    const user = userEvent.setup()
+
+    await user.type(screen.getByLabelText('tourDate'), validFields.tourDate)
+    await user.click(screen.getByRole('button', { name: 'session.add' }))
+    const [first, second] = screen.getAllByLabelText('location')
+    await user.selectOptions(first, 'place-1')
+    await user.selectOptions(second, 'place-2')
+    const [firstTime, secondTime] = screen.getAllByLabelText('meetingTime')
+    await user.type(firstTime, '09:00')
+    await user.type(secondTime, '13:00')
+    for (const input of screen.getAllByLabelText('capacity')) {
+      await user.type(input, '5')
+    }
+    await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    expect(onSubmit.mock.calls[0][0].sessions.map((s: { placeId: string }) => s.placeId)).toEqual(['place-1', 'place-2'])
+  })
+
+  it('shows only each session\'s place when session management is hidden', () => {
+    render(
+      <TourForm
+        defaultValues={{
+          id: 'tour-1',
+          group: { id: groups[0].id, name: groups[0].name, type: 'school' },
+          status: 'draft',
+          tourDate: '2026-06-01T00:00:00.000Z',
+          bookingOpen: false,
+          places: [{ id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' }],
+          capacity: 10,
+          participantCount: 0,
+          description: null,
+          confirmedCount: 0,
+          adminMemo: null,
+          cancellationDeadline: '2026-05-25T00:00:00.000Z',
+          maybeDeadline: null,
+          notificationOffsets: [3, 1],
+          sessions: [{
+            id: 's1',
+            order: 1,
+            label: null,
+            meetingTime: '1970-01-01T09:30:00.000Z',
+            startTime: null,
+            endTime: null,
+            capacity: 10,
+            minBuddies: null,
+            participantCount: 0,
+            belowMinimum: false,
+            place: { id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' },
+          }],
+          bookings: [],
+          assignedAdmins: [],
+          staffInChargeId: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        }}
+        groups={groups}
+        places={places}
+        cancelHref="/admin/tours/tour-1"
+        onSubmit={vi.fn()}
+        hideSessionManagement
+      />,
+    )
+
+    expect(screen.getByLabelText('location')).toHaveValue('place-1')
+    expect(screen.queryByLabelText('capacity')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'session.add' })).not.toBeInTheDocument()
   })
 })

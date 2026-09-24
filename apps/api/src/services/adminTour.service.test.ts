@@ -9,6 +9,7 @@ type MockFn = Mock<(...args: unknown[]) => unknown>
 
 interface MockDb {
   tour: { create: MockFn; findMany: MockFn; findUnique: MockFn; update: MockFn; delete: MockFn }
+  user: { findUnique: MockFn }
 }
 
 vi.mock('../lib/db', () => {
@@ -19,6 +20,9 @@ vi.mock('../lib/db', () => {
       findUnique: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
     },
   }
   return { db: mockDb }
@@ -38,6 +42,7 @@ function makeSessionRow(overrides: Record<string, unknown> = {}) {
     capacity: 10,
     minBuddies: null as number | null,
     participantCount: 0,
+    place: { id: 'place-1', nameJa: '東京', nameEn: 'Tokyo' },
     ...overrides,
   }
 }
@@ -49,7 +54,6 @@ function makeListRow(sessions: ReturnType<typeof makeSessionRow>[]) {
     status: 'draft',
     tourDate: new Date('2026-06-01'),
     bookingOpen: false,
-    location: 'Tokyo',
     description: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
@@ -87,10 +91,9 @@ describe('createTour', () => {
       groupId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
       tourDate: new Date('2026-06-01'),
       bookingOpen: false,
-      location: 'Tokyo',
       cancellationDeadline: new Date('2026-05-25'),
       notificationOffsets: [3, 1],
-      sessions: [{ meetingTime: '09:00', capacity: 10, minBuddies: 3 }],
+      sessions: [{ meetingTime: '09:00', capacity: 10, minBuddies: 3, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
     })
 
     const call = mdb.tour.create.mock.calls[0][0] as {
@@ -108,16 +111,40 @@ describe('createTour', () => {
       groupId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
       tourDate: new Date('2026-06-01'),
       bookingOpen: false,
-      location: 'Tokyo',
       cancellationDeadline: new Date('2026-05-25'),
       notificationOffsets: [3, 1],
-      sessions: [{ meetingTime: '09:00', capacity: 10 }],
+      sessions: [{ meetingTime: '09:00', capacity: 10, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
     })
 
     const call = mdb.tour.create.mock.calls[0][0] as {
       data: { sessions: { create: Array<{ minBuddies: number | null }> } }
     }
     expect(call.data.sessions.create[0].minBuddies).toBeNull()
+  })
+
+  it('persists each session\'s own place', async () => {
+    mdb.tour.create.mockResolvedValueOnce({
+      ...makeDetailRow([makeSessionRow()]),
+    })
+    const peacePark = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+    const cathedral = 'b2c3d4e5-f6a7-8901-bcde-f12345678901'
+
+    await createTour({
+      groupId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+      tourDate: new Date('2026-06-01'),
+      bookingOpen: false,
+      cancellationDeadline: new Date('2026-05-25'),
+      notificationOffsets: [3, 1],
+      sessions: [
+        { meetingTime: '09:00', capacity: 10, placeId: peacePark },
+        { meetingTime: '13:00', capacity: 10, placeId: cathedral },
+      ],
+    })
+
+    const call = mdb.tour.create.mock.calls[0][0] as {
+      data: { sessions: { create: Array<{ placeId: string }> } }
+    }
+    expect(call.data.sessions.create.map((c) => c.placeId)).toEqual([peacePark, cathedral])
   })
 })
 
@@ -156,13 +183,28 @@ describe('getAdminTourDetail', () => {
     expect(result!.sessions[0].minBuddies).toBeNull()
     expect(result!.sessions[0].belowMinimum).toBe(false)
   })
+
+  it('gives each session its place and the tour its sessions\' places, each once', async () => {
+    const peacePark = { id: 'p1', nameJa: '平和公園', nameEn: 'Peace Park' }
+    const cathedral = { id: 'p2', nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral' }
+    mdb.tour.findUnique.mockResolvedValueOnce(
+      makeDetailRow([
+        makeSessionRow({ id: 's1', place: cathedral }),
+        makeSessionRow({ id: 's2', order: 2, place: peacePark }),
+      ]),
+    )
+
+    const result = await getAdminTourDetail('tour-1')
+
+    expect(result!.sessions.map((s) => s.place)).toEqual([cathedral, peacePark])
+    expect(result!.places).toEqual([cathedral, peacePark])
+  })
 })
 
 describe('getAdminTourIcs', () => {
   const icsRow = {
     tourDate: new Date('2026-06-01'),
     status: 'published',
-    location: 'Tokyo',
     description: null,
     group: { name: 'Test School' },
     sessions: [
@@ -175,19 +217,19 @@ describe('getAdminTourIcs', () => {
 
   it('returns null when the tour is not found', async () => {
     mdb.tour.findUnique.mockResolvedValueOnce(null)
-    expect(await getAdminTourIcs('missing')).toBeNull()
+    expect(await getAdminTourIcs('missing', 'user-1')).toBeNull()
   })
 
   it('includes every session in the tour, not just some', async () => {
     mdb.tour.findUnique.mockResolvedValueOnce(icsRow)
-    const ics = await getAdminTourIcs('tour-1')
+    const ics = await getAdminTourIcs('tour-1', 'user-1')
     expect(ics).toContain('session-s1@peace-buddy.internal')
     expect(ics).toContain('session-s2@peace-buddy.internal')
   })
 
   it('carries the tour status into each VEVENT', async () => {
     mdb.tour.findUnique.mockResolvedValueOnce({ ...icsRow, status: 'cancelled' })
-    const ics = await getAdminTourIcs('tour-1')
+    const ics = await getAdminTourIcs('tour-1', 'user-1')
     expect(ics!.match(/STATUS:CANCELLED/g)).toHaveLength(2)
   })
 })

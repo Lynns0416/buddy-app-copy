@@ -21,6 +21,9 @@ erDiagram
     TourSession ||--o{ TourReflection : "reflected on"
     Tour ||--o{ AdminEvaluation : "evaluated for"
 
+    TourReflection ||--o{ TourReflectionMoment : "made up of"
+    Spot ||--o{ TourReflectionMoment : "moment at"
+
     User ||--o{ NotificationPreference : "configures"
     User ||--o{ Notification : receives
     User ||--o{ NotificationJob : "recipient of"
@@ -35,6 +38,9 @@ erDiagram
 erDiagram
     Group ||--o{ Tour : organizes
     Tour ||--o{ TourSession : "split into"
+
+    Place ||--o{ Spot : contains
+    Place ||--o{ TourSession : "visited by"
     TourSession ||--o{ TierCapacity : "capped per tier"
     TourSession ||--o{ TourReflection : "reflected on"
 
@@ -120,6 +126,33 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
 
+### Place
+
+Admin-managed lookup table replacing the old free-text `Tour.location`. Retired via `active = false`, never deleted — `TourSession` and `Spot` reference rows by id.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| nameJa | String | |
+| nameEn | String | |
+| sortOrder | Int | Display order in admin lists and pickers |
+| active | Boolean | Default true |
+
+### Spot
+
+A point of interest inside a Place (e.g. a monument inside a park). Not every Place has spots — one with none drives the tour reflection form's single-textarea fallback, in place of the moment-by-moment spot picker.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| placeId | UUID | FK → Place |
+| nameJa | String | |
+| nameEn | String | |
+| sortOrder | Int | Display order within the place |
+| active | Boolean | Default true |
+
+**Index:** `placeId`
+
 ### Tour
 
 | Field | Type | Constraints |
@@ -129,7 +162,6 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 | status | Enum | `draft` / `published` / `cancelled` / `completed` |
 | tourDate | Date | |
 | bookingOpen | Boolean | Default false |
-| location | String | |
 | description | Text? | |
 | adminMemo | Text? | Admin-only |
 | cancellationDeadline | Date | |
@@ -141,7 +173,7 @@ Internal profile for admin users. Stores admin name for evaluation attribution a
 
 **Index:** `(status, tourDate)`
 
-Capacity and meeting times live on `TourSession`, not on Tour directly. A tour has 1 or 2 sessions (the API rejects a third). Many-to-many admin assignment is via `TourAdminAssignment` (below).
+Capacity and meeting times live on `TourSession`, not on Tour directly. A tour has 1 or 2 sessions (the API rejects a third). Many-to-many admin assignment is via `TourAdminAssignment` (below). A tour has no place of its own: each session has exactly one (`TourSession.placeId`), and a tour's places are its sessions' places.
 
 ### TourSession
 
@@ -159,11 +191,12 @@ Per-session capacity and timing record. A tour must have at least one session.
 | capacity | Int | Total seats for this session |
 | minBuddies | Int? | Optional minimum-buddies threshold. When `participantCount < minBuddies` the session is flagged `belowMinimum` in API responses. |
 | participantCount | Int | Default 0; cached count of participants (group size — visitors, not buddies) |
+| placeId | UUID | FK → Place. Exactly one per session; the two sessions of a tour may go to different places. Changing it is refused while a `TourReflectionMoment` on this session references a spot of the current place (enforced in `adminSession.service.ts`, not the DB). |
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
 
 **Unique:** `(tourId, order)`  
-**Index:** `tourId`
+**Index:** `tourId`, `placeId`
 
 ### TourAdminAssignment
 
@@ -303,11 +336,11 @@ Overall profile-level evaluation of a buddy, not tied to a specific tour. Same s
 
 ### TourReflection
 
-The buddy's own account of a session they guided: five free-text prompts, no scores. Replaces the scored `SelfEvaluation` (#236).
+The buddy's own account of a session they guided: four free-text prompts plus structured `TourReflectionMoment` rows, no scores. Replaces the scored `SelfEvaluation` (#236). `memorableMoment` was a fifth free-text prompt until #239 replaced it with `TourReflectionMoment`.
 
 Keyed on the **session**, not the tour — a buddy who works two slots of one tour may write one up per slot. The obligation is still per tour: one row anywhere in a tour silences the `self_eval_prompt` reminder and sets `reflectionSubmitted` on `GET /me/bookings`. There is no `tourId` column; the tour is read through `session`.
 
-All five prompt fields are nullable, but **at least one must be non-empty** — enforced by `CreateTourReflectionSchema` / `UpdateTourReflectionSchema` in `packages/types`, not by a DB constraint. A `PUT` replaces all five, so the rule holds on an edit without reading the stored row back.
+The four prompt fields are nullable, but **at least one prompt, or at least one moment, must be present** — enforced by `CreateTourReflectionSchema` / `UpdateTourReflectionSchema` in `packages/types`, not by a DB constraint. A `PUT` replaces all four prompts and every moment, so the rule holds on an edit without reading the stored row back.
 
 | Field | Type | Constraints |
 |---|---|---|
@@ -316,7 +349,6 @@ All five prompt fields are nullable, but **at least one must be non-empty** — 
 | sessionId | UUID | FK → TourSession |
 | didWell | Text? | What I did well |
 | couldImprove | Text? | What I could have done better |
-| memorableMoment | Text? | An impressive moment — a participant's remark, a reaction |
 | notesForOthers | Text? | To share with other buddies and admins |
 | openQuestions | Text? | Questions I couldn't answer |
 | createdAt | Timestamp | |
@@ -324,6 +356,23 @@ All five prompt fields are nullable, but **at least one must be non-empty** — 
 
 **Unique:** `(buddyId, sessionId)`
 **Index:** `(sessionId)`
+
+### TourReflectionMoment
+
+A structured memorable moment, 0..n per reflection. `position` keeps the buddy's entry order — row order is not guaranteed (random UUIDs, identical `createdAt` within one `createMany`), so this is read back sorted by `position`, never by `createdAt` or `id`.
+
+Exactly one of `spotId` / `placeNote` is set — enforced in Zod, not the DB. `spotId` picks a spot of the session's place; `placeNote` is free text, used when the buddy picks "Other" or when the session's place has no spots (the reflection form falls back to a single textarea and fills this in automatically with the place's `nameJa`, whatever the buddy's UI language).
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| reflectionId | UUID | FK → TourReflection (`onDelete: Cascade`) |
+| position | Int | Entry order |
+| spotId | UUID? | FK → Spot. Exactly one of `spotId`/`placeNote` is set. |
+| placeNote | Text? | Free-text place name, when there's no spot to reference |
+| description | Text | Required |
+
+**Index:** `reflectionId`, `spotId`
 
 ### BuddyCancellationDeadlineOverride
 Not in PRD. Stores per-buddy overrides of a tour's cancellation deadline.

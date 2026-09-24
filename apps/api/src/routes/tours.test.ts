@@ -44,6 +44,8 @@ const mockBooking: BookingResponse = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 }
 
+const station = { id: 'place-1', nameJa: '東京駅', nameEn: 'Tokyo Station' }
+
 const mockSessionSummary = {
   id: SESSION_ID,
   order: 1,
@@ -56,6 +58,7 @@ const mockSessionSummary = {
   participantCount: 0,
   belowMinimum: false,
   myBookingStatus: null,
+  place: station,
 }
 
 const mockTour: TourResponse = {
@@ -65,7 +68,7 @@ const mockTour: TourResponse = {
   status: 'published',
   tourDate: '2026-05-01T00:00:00.000Z',
   bookingOpen: true,
-  location: 'Tokyo Station',
+  places: [station],
   participantCount: 0,
   description: null,
   cancellationDeadline: '2026-04-28T00:00:00.000Z',
@@ -78,6 +81,7 @@ const mockTour: TourResponse = {
 
 const mockSessionDetail: TourSessionDetailResponse = {
   ...mockSessionSummary,
+  place: { ...station, spots: [] },
   seatCounts: { confirmed: 2, maybe: 1, waitlist: 0, declined: 0 },
   remaining: 8,
   myCapacity: 7,

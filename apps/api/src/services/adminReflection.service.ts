@@ -1,6 +1,7 @@
 import { db } from '../lib/db'
 import { Prisma } from '@prisma/client'
 import type { AdminTourReflectionResponse } from '@peace-buddy/types'
+import { momentSelect, mapMoment } from './reflection.service'
 
 const adminReflectionSelect = {
   id: true,
@@ -8,13 +9,13 @@ const adminReflectionSelect = {
   sessionId: true,
   didWell: true,
   couldImprove: true,
-  memorableMoment: true,
   notesForOthers: true,
   openQuestions: true,
   createdAt: true,
   updatedAt: true,
   buddy: { select: { displayName: true } },
   session: { select: { tourId: true, order: true, label: true, tour: { select: { tourDate: true } } } },
+  moments: { select: momentSelect, orderBy: { position: 'asc' as const } },
 } as const
 
 type AdminReflectionRow = Prisma.TourReflectionGetPayload<{ select: typeof adminReflectionSelect }>
@@ -31,9 +32,9 @@ function mapAdminResponse(row: AdminReflectionRow): AdminTourReflectionResponse 
     tourDate: row.session.tour.tourDate.toISOString(),
     didWell: row.didWell,
     couldImprove: row.couldImprove,
-    memorableMoment: row.memorableMoment,
     notesForOthers: row.notesForOthers,
     openQuestions: row.openQuestions,
+    moments: row.moments.map(mapMoment),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }

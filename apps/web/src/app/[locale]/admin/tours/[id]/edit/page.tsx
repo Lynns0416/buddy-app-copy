@@ -6,12 +6,12 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useAdminGuard } from '@/hooks/use-admin-guard'
 import { routes } from '@/lib/routes'
-import type { AdminTourDetailResponse, GroupResponse, AppError } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, GroupResponse, PlaceResponse, AppError } from '@peace-buddy/types'
 import { TourStatusSchema, AppErrorCodeSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { TourForm } from '../../_components/tour-form'
 import type { TourFormValues } from '../../_components/tour-form'
-import { fetchTour, fetchGroups, updateTour } from '../../admin.tour'
+import { fetchTour, fetchGroups, fetchPlaces, updateTour, updateTourSession } from '../../admin.tour'
 
 export default function AdminTourEditPage() {
   const { ready, locale } = useAdminGuard()
@@ -20,6 +20,7 @@ export default function AdminTourEditPage() {
   const t = useTranslations('adminTours')
   const [tour, setTour] = useState<AdminTourDetailResponse | null>(null)
   const [groups, setGroups] = useState<GroupResponse[]>([])
+  const [places, setPlaces] = useState<PlaceResponse[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
 
   function errorMessage(err: AppError): string {
@@ -34,14 +35,18 @@ export default function AdminTourEditPage() {
 
   useEffect(() => {
     if (!ready) return
-    Promise.all([fetchTour(id), fetchGroups()])
-      .then(([tourResult, groupsResult]) => {
+    Promise.all([fetchTour(id), fetchGroups(), fetchPlaces()])
+      .then(([tourResult, groupsResult, placesResult]) => {
         if (!tourResult.ok) {
           setLoadError(errorMessage(tourResult.error))
           return
         }
         if (!groupsResult.ok) {
           setLoadError(errorMessage(groupsResult.error))
+          return
+        }
+        if (!placesResult.ok) {
+          setLoadError(errorMessage(placesResult.error))
           return
         }
         if (
@@ -52,15 +57,35 @@ export default function AdminTourEditPage() {
         } else {
           setTour(tourResult.data)
           setGroups(groupsResult.data)
+          setPlaces(placesResult.data)
         }
       })
   }, [ready, id, locale, router]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(values: TourFormValues) {
-    const { sessions: _sessions, ...tourFields } = values
+    if (!tour) return
+    const { sessions, ...tourFields } = values
     const result = await updateTour(id, tourFields as Record<string, unknown>)
-    if (result.ok) router.push(routes.adminTourDetail(locale, id))
-    else setLoadError(errorMessage(result.error))
+    if (!result.ok) {
+      setLoadError(errorMessage(result.error))
+      return
+    }
+    // A session's place is saved through its own endpoint; only a changed one
+    // is sent, so an unchanged session never hits the place-in-use lock.
+    for (const [idx, session] of tour.sessions.entries()) {
+      const placeId = sessions[idx]?.placeId
+      if (!placeId || placeId === session.place.id) continue
+      const sessionResult = await updateTourSession(id, session.id, { placeId })
+      if (!sessionResult.ok) {
+        setLoadError(
+          sessionResult.error.code === AppErrorCodeSchema.enum.conflict
+            ? t('session.error.placeInUse')
+            : errorMessage(sessionResult.error),
+        )
+        return
+      }
+    }
+    router.push(routes.adminTourDetail(locale, id))
   }
 
   if (!ready) return null
@@ -83,6 +108,7 @@ export default function AdminTourEditPage() {
         <TourForm
           defaultValues={tour}
           groups={groups}
+          places={places}
           cancelHref={routes.adminTourDetail(locale, id)}
           onSubmit={handleSubmit}
           hideSessionManagement

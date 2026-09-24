@@ -81,6 +81,8 @@ export default function TourReflectionPage() {
             <SessionReflection
               key={session.id}
               sessionId={session.id}
+              place={session.place}
+              locale={locale}
               heading={
                 session.label ??
                 (tour.sessions.length > 1 ? tt(`session.defaultLabel.${session.order}`) : null)

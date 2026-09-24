@@ -96,6 +96,32 @@
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
   },
+  "adminPlaces": {
+    "title": "場所",
+    "newPlace": "新規場所",
+    "noResults": "場所がまだありません",
+    "nameJa": "名称(日本語)",
+    "nameEn": "名称(英語)",
+    "sortOrder": "並び順",
+    "active": "有効",
+    "inactive": "無効",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "edit": "編集",
+    "back": "場所一覧に戻る",
+    "spots": "スポット",
+    "spotsHeading": "スポット",
+    "newSpot": "新規スポット",
+    "noSpots": "スポットがまだありません",
+    "actionError": "操作に失敗しました。もう一度お試しください。",
+    "error": {
+      "notFound": "この場所は存在しません。",
+      "forbidden": "この操作を行う権限がありません。",
+      "conflict": "この操作はすでに実行できない状態です。",
+      "network": "接続エラーです。ネットワークを確認してください。",
+      "unknown": "エラーが発生しました。もう一度お試しください。"
+    }
+  },
   "adminBuddies": {
     "nameWithReal": "{displayName}（{realName}）",
     "title": "バディ一覧",
@@ -287,6 +313,9 @@
     "minBuddies": "最小バディ数",
     "minBuddiesExceedsCapacity": "最小バディ数は最大バディ数以下にしてください",
     "groupRequired": "団体を選択してください",
+    "placeRequired": "場所を選択してください",
+    "selectPlace": "場所を選択",
+    "inactivePlace": "無効",
     "belowMinimum": "最小未満",
     "participantCount": "参加者数",
     "description": "説明",
@@ -361,7 +390,8 @@
       "remove": "削除",
       "confirmRemove": "このセッションを削除しますか？この操作は取り消せません。",
       "error": {
-        "maxSessions": "ツアーには最大2セッションまでしか追加できません。"
+        "maxSessions": "ツアーには最大2セッションまでしか追加できません。",
+        "placeInUse": "このセッションの振り返りが現在の場所のスポットを使っているため、場所を変更できません。"
       }
     },
     "bookingSession": "セッション",
@@ -460,6 +490,7 @@
       "buddies": "バディ",
       "trainees": "研修中",
       "groups": "団体",
+      "places": "場所",
       "tours": "ツアー",
       "adminProfile": "マイプロフィール",
       "adminRoster": "管理者一覧",
@@ -649,9 +680,11 @@
     "reflectionPrompts": {
       "didWell": "うまくできたこと",
       "couldImprove": "次に活かしたいこと",
-      "memorableMoment": "印象に残った場面",
       "notesForOthers": "他のバディや運営に共有したいこと",
       "openQuestions": "答えられなかった質問"
+    },
+    "reflectionMoments": {
+      "heading": "印象に残った場面"
     }
   },
   "buddyTier": {
@@ -757,14 +790,25 @@
     "title": "ふり返り",
     "backToTour": "ツアーに戻る",
     "sessionHeading": "ふり返り",
-    "atLeastOne": "少なくとも1つ、お答えください。この記録は今後、自分で確認することができます。",
+    "atLeastOne": "少なくとも1つお答えいただくか、印象に残った場面を追加してください。この記録は今後、自分で確認することができます。",
     "notEligible": "ふり返りは、ツアーが完了になったあと、担当したセッションについて書けるようになります。",
     "prompts": {
       "didWell": "うまくできたこと",
       "couldImprove": "次に活かしたいこと",
-      "memorableMoment": "印象に残った場面（参加者の言葉や反応など）",
       "notesForOthers": "他のバディや運営に共有したいこと",
       "openQuestions": "答えられなかった質問"
+    },
+    "moments": {
+      "heading": "印象に残った場面",
+      "addMoment": "＋ 場面を追加",
+      "remove": "削除",
+      "moveUp": "上に移動",
+      "moveDown": "下に移動",
+      "spotLabel": "場所",
+      "otherOption": "その他",
+      "placeNoteLabel": "どこでの出来事ですか?",
+      "descriptionLabel": "何が起きましたか?",
+      "singlePlaceDescription": "{place}で印象に残った場面は何ですか?"
     },
     "summary": {
       "edit": "編集",

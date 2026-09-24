@@ -38,7 +38,7 @@ const mockUseMyBookings = vi.mocked(useMyBookings)
 const makeEntry = (overrides: Partial<MyTourBookingEntry> = {}): MyTourBookingEntry => ({
   tourId: 't1',
   tourDate: '2099-06-01T00:00:00.000Z',
-  location: 'Tokyo Station',
+  places: [{ id: 'place-1', nameJa: 'Tokyo Station', nameEn: 'Tokyo Station' }],
   status: 'published',
   maybeDeadline: null,
   reflectionSubmitted: false,

@@ -3,31 +3,41 @@
 import { useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { REFLECTION_PROMPTS } from '@peace-buddy/types'
-import type { ReflectionPrompt, TourReflectionResponse } from '@peace-buddy/types'
+import type { ReflectionPrompt, TourReflectionResponse, TourPlaceWithSpots } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { createReflection, updateReflection } from '../reflection'
 import {
   type ReflectionPromptState,
+  type MomentState,
   emptyPrompts,
   fromReflectionResponse,
+  initialMoments,
+  defaultSpotId,
+  withTaggedSpots,
+  usesSingleMoment,
   buildReflectionPayload,
   hasAnyAnswer,
   mapReflectionError,
 } from '../reflection-form-state'
+import { MomentsEditor } from './moments-editor'
 
 interface ReflectionFormProps {
   sessionId: string
+  place: TourPlaceWithSpots
+  locale: string
   existing: TourReflectionResponse | null
   onSaved: (reflection: TourReflectionResponse) => void
   onCancel?: () => void
 }
 
-export function ReflectionForm({ sessionId, existing, onSaved, onCancel }: ReflectionFormProps) {
+export function ReflectionForm({ sessionId, place, locale, existing, onSaved, onCancel }: ReflectionFormProps) {
   const t = useTranslations('reflections')
 
   const [prompts, setPrompts] = useState<ReflectionPromptState>(
     existing ? fromReflectionResponse(existing) : emptyPrompts(),
   )
+  const [moments, setMoments] = useState<MomentState[]>(() => initialMoments(existing, place))
+  const pickerPlace = withTaggedSpots(place, existing?.moments ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,7 +50,7 @@ export function ReflectionForm({ sessionId, existing, onSaved, onCancel }: Refle
     setSaving(true)
     setError(null)
 
-    const payload = buildReflectionPayload(prompts)
+    const payload = buildReflectionPayload(prompts, moments)
     const result = existing
       ? await updateReflection(existing.id, payload)
       : await createReflection({ sessionId, ...payload })
@@ -77,8 +87,19 @@ export function ReflectionForm({ sessionId, existing, onSaved, onCancel }: Refle
         </div>
       ))}
 
+      <MomentsEditor
+        place={pickerPlace}
+        newMomentSpotId={defaultSpotId(place)}
+        singleMoment={usesSingleMoment(pickerPlace, existing?.moments ?? [])}
+        moments={moments}
+        onChange={setMoments}
+        disabled={saving}
+        locale={locale}
+        idPrefix={sessionId}
+      />
+
       <div className="flex gap-2">
-        <Button type="submit" disabled={saving || !hasAnyAnswer(prompts)}>
+        <Button type="submit" disabled={saving || !hasAnyAnswer(prompts, moments)}>
           {t('actions.save')}
         </Button>
         {onCancel && existing && (

@@ -1,14 +1,15 @@
 import { z } from 'zod'
-import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession, CancellationReasonResponse, BookingStatus, AdminBookingStatusResponse, AdminProfileResponse, TourStatus, GroupType } from '@peace-buddy/types'
+import type { AdminTourDetailResponse, AdminTourSummaryResponse, TourAction, GroupResponse, TierCapacities, CreateTourSession, UpdateTourSession, CancellationReasonResponse, BookingStatus, AdminBookingStatusResponse, AdminProfileResponse, TourStatus, GroupType, PlaceResponse } from '@peace-buddy/types'
 import { TourStatusSchema, GroupTypeSchema } from '@peace-buddy/types'
 import type { SortDir } from '@/components/sort-icon'
 import { routing } from '@/i18n/routing'
 import { apiClient } from '@/lib/api-client'
+import { placeNames } from '@/lib/place-names'
 import type { ActionResult } from '../../../../lib/action'
 import { classifyApiError } from '../../../../lib/api-error'
 import { ASC, DESC } from '../../../../lib/constants'
 
-export type TourListSortField = 'tourDate' | 'group' | 'location' | 'capacity' | 'participantCount' | 'confirmedCount' | 'status'
+export type TourListSortField = 'tourDate' | 'group' | 'places' | 'capacity' | 'participantCount' | 'confirmedCount' | 'status'
 export type BookingSortField = 'displayName' | 'status' | 'bookedAt'
 
 // ── Tour list sorting ──────────────────────────────────────────────────────
@@ -17,13 +18,14 @@ export function sortTours(
   tours: AdminTourSummaryResponse[],
   field: TourListSortField,
   dir: SortDir,
+  locale: string,
 ): AdminTourSummaryResponse[] {
   return [...tours].sort((a, b) => {
     let cmp = 0
     switch (field) {
       case 'tourDate':      cmp = a.tourDate.localeCompare(b.tourDate); break
       case 'group':         cmp = a.group.name.localeCompare(b.group.name, routing.defaultLocale); break
-      case 'location':      cmp = a.location.localeCompare(b.location, routing.defaultLocale); break
+      case 'places':        cmp = placeNames(a.places, locale).localeCompare(placeNames(b.places, locale), routing.defaultLocale); break
       case 'capacity':      cmp = a.capacity - b.capacity; break
       case 'participantCount': cmp = a.participantCount - b.participantCount; break
       case 'confirmedCount': cmp = a.confirmedCount - b.confirmedCount; break
@@ -74,7 +76,7 @@ export function isTourFilterActive(filters: TourFilters): boolean {
   )
 }
 
-/** Case-insensitive substring match on group name and location, then AND of every active filter. */
+/** Case-insensitive substring match on group name and place names, then AND of every active filter. */
 export function filterTours(
   tours: AdminTourSummaryResponse[],
   filters: TourFilters,
@@ -82,7 +84,8 @@ export function filterTours(
 ): AdminTourSummaryResponse[] {
   const term = filters.search.trim().toLowerCase()
   return tours.filter((tour) => {
-    if (term && ![tour.group.name, tour.location].some((f) => f.toLowerCase().includes(term))) return false
+    const searchable = [tour.group.name, ...tour.places.map((p) => p.nameJa), ...tour.places.map((p) => p.nameEn)]
+    if (term && !searchable.some((f) => f.toLowerCase().includes(term))) return false
     if (filters.statuses.length > 0 && !filters.statuses.includes(tour.status)) return false
     if (filters.groupTypes.length > 0 && !filters.groupTypes.includes(tour.group.type)) return false
     if (filters.belowMinimumOnly && !tour.sessions.some((s) => s.belowMinimum)) return false
@@ -293,6 +296,14 @@ export async function fetchTours(): Promise<ActionResult<AdminTourSummaryRespons
 export async function fetchGroups(): Promise<ActionResult<GroupResponse[]>> {
   try {
     return { ok: true, data: await apiClient.listGroups() }
+  } catch (err) {
+    return { ok: false, error: classifyApiError(err) }
+  }
+}
+
+export async function fetchPlaces(): Promise<ActionResult<PlaceResponse[]>> {
+  try {
+    return { ok: true, data: await apiClient.listPlaces() }
   } catch (err) {
     return { ok: false, error: classifyApiError(err) }
   }

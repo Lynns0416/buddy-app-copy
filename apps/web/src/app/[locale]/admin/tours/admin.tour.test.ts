@@ -51,91 +51,93 @@ const stubGroup = { id: 'g1' } as GroupResponse
 
 const tour = adminTourSummary
 
-const t1 = tour({ id: 't1', tourDate: '2025-06-01', group: { id: 'g1', name: 'Alpha', type: 'school' }, location: 'Osaka',  capacity: 5, confirmedCount: 2, status: 'draft' })
-const t2 = tour({ id: 't2', tourDate: '2025-07-01', group: { id: 'g2', name: 'Beta', type: 'company' },  location: 'Tokyo',  capacity: 10, confirmedCount: 8, status: 'published' })
-const t3 = tour({ id: 't3', tourDate: '2025-08-01', group: { id: 'g3', name: 'Gamma', type: 'community' }, location: 'Kyoto',  capacity: 15, confirmedCount: 12, status: 'completed' })
+const place = (name: string) => [{ id: name, nameJa: name, nameEn: name }]
+
+const t1 = tour({ id: 't1', tourDate: '2025-06-01', group: { id: 'g1', name: 'Alpha', type: 'school' }, places: place('Osaka'),  capacity: 5, confirmedCount: 2, status: 'draft' })
+const t2 = tour({ id: 't2', tourDate: '2025-07-01', group: { id: 'g2', name: 'Beta', type: 'company' },  places: place('Tokyo'),  capacity: 10, confirmedCount: 8, status: 'published' })
+const t3 = tour({ id: 't3', tourDate: '2025-08-01', group: { id: 'g3', name: 'Gamma', type: 'community' }, places: place('Kyoto'),  capacity: 15, confirmedCount: 12, status: 'completed' })
 
 describe('sortTours', () => {
   describe('by tourDate', () => {
     it('sorts asc', () => {
-      const result = sortTours([t3, t1, t2], 'tourDate', 'asc')
+      const result = sortTours([t3, t1, t2], 'tourDate', 'asc', 'en')
       expect(result.map((t) => t.id)).toEqual(['t1', 't2', 't3'])
     })
 
     it('sorts desc', () => {
-      const result = sortTours([t3, t1, t2], 'tourDate', 'desc')
+      const result = sortTours([t3, t1, t2], 'tourDate', 'desc', 'en')
       expect(result.map((t) => t.id)).toEqual(['t3', 't2', 't1'])
     })
   })
 
   describe('by group', () => {
     it('sorts asc', () => {
-      const result = sortTours([t3, t1, t2], 'group', 'asc')
+      const result = sortTours([t3, t1, t2], 'group', 'asc', 'en')
       expect(result.map((t) => t.group.name)).toEqual(['Alpha', 'Beta', 'Gamma'])
     })
 
     it('sorts desc', () => {
-      const result = sortTours([t3, t1, t2], 'group', 'desc')
+      const result = sortTours([t3, t1, t2], 'group', 'desc', 'en')
       expect(result.map((t) => t.group.name)).toEqual(['Gamma', 'Beta', 'Alpha'])
     })
   })
 
-  describe('by location', () => {
+  describe('by places', () => {
     it('sorts asc', () => {
-      const result = sortTours([t3, t1, t2], 'location', 'asc')
-      expect(result.map((t) => t.location)).toEqual(['Kyoto', 'Osaka', 'Tokyo'])
+      const result = sortTours([t3, t1, t2], 'places', 'asc', 'en')
+      expect(result.map((t) => t.places[0].nameEn)).toEqual(['Kyoto', 'Osaka', 'Tokyo'])
     })
 
     it('sorts desc', () => {
-      const result = sortTours([t3, t1, t2], 'location', 'desc')
-      expect(result.map((t) => t.location)).toEqual(['Tokyo', 'Osaka', 'Kyoto'])
+      const result = sortTours([t3, t1, t2], 'places', 'desc', 'en')
+      expect(result.map((t) => t.places[0].nameEn)).toEqual(['Tokyo', 'Osaka', 'Kyoto'])
     })
   })
 
   describe('by capacity', () => {
     it('sorts asc', () => {
-      const result = sortTours([t3, t1, t2], 'capacity', 'asc')
+      const result = sortTours([t3, t1, t2], 'capacity', 'asc', 'en')
       expect(result.map((t) => t.capacity)).toEqual([5, 10, 15])
     })
 
     it('sorts desc', () => {
-      const result = sortTours([t3, t1, t2], 'capacity', 'desc')
+      const result = sortTours([t3, t1, t2], 'capacity', 'desc', 'en')
       expect(result.map((t) => t.capacity)).toEqual([15, 10, 5])
     })
   })
 
   describe('by confirmedCount', () => {
     it('sorts asc', () => {
-      const result = sortTours([t3, t1, t2], 'confirmedCount', 'asc')
+      const result = sortTours([t3, t1, t2], 'confirmedCount', 'asc', 'en')
       expect(result.map((t) => t.confirmedCount)).toEqual([2, 8, 12])
     })
 
     it('sorts desc', () => {
-      const result = sortTours([t3, t1, t2], 'confirmedCount', 'desc')
+      const result = sortTours([t3, t1, t2], 'confirmedCount', 'desc', 'en')
       expect(result.map((t) => t.confirmedCount)).toEqual([12, 8, 2])
     })
   })
 
   describe('by status', () => {
     it('sorts asc', () => {
-      const result = sortTours([t3, t1, t2], 'status', 'asc')
+      const result = sortTours([t3, t1, t2], 'status', 'asc', 'en')
       expect(result.map((t) => t.status)).toEqual(['completed', 'draft', 'published'])
     })
 
     it('sorts desc', () => {
-      const result = sortTours([t3, t1, t2], 'status', 'desc')
+      const result = sortTours([t3, t1, t2], 'status', 'desc', 'en')
       expect(result.map((t) => t.status)).toEqual(['published', 'draft', 'completed'])
     })
   })
 
   it('does not mutate the original array', () => {
     const original = [t3, t1, t2]
-    sortTours(original, 'tourDate', 'asc')
+    sortTours(original, 'tourDate', 'asc', 'en')
     expect(original.map((t) => t.id)).toEqual(['t3', 't1', 't2'])
   })
 
   it('returns empty array unchanged', () => {
-    expect(sortTours([], 'tourDate', 'asc')).toEqual([])
+    expect(sortTours([], 'tourDate', 'asc', 'en')).toEqual([])
   })
 })
 
@@ -339,19 +341,19 @@ describe('createTour', () => {
 
   it('returns ok with data on success', async () => {
     mockCreateAdminTour.mockResolvedValue(stubTour)
-    const result = await createTour({ groupId: 'g1', tourDate: '2025-06-01', meetingTime: '09:00', location: 'Tokyo', capacity: 10, bookingOpen: false, cancellationDeadline: '2025-05-31', notificationOffsets: '3, 1' })
+    const result = await createTour({ groupId: 'g1', tourDate: '2025-06-01', meetingTime: '09:00', placeIds: ['place-1'], capacity: 10, bookingOpen: false, cancellationDeadline: '2025-05-31', notificationOffsets: '3, 1' })
     expect(result).toEqual({ ok: true, data: stubTour })
   })
 
   it('returns network for non-ApiError throw', async () => {
     mockCreateAdminTour.mockRejectedValue(new TypeError('Failed to fetch'))
-    const result = await createTour({ groupId: 'g1', tourDate: '2025-06-01', meetingTime: '09:00', location: 'Tokyo', capacity: 10, bookingOpen: false, cancellationDeadline: '2025-05-31', notificationOffsets: '3, 1' })
+    const result = await createTour({ groupId: 'g1', tourDate: '2025-06-01', meetingTime: '09:00', placeIds: ['place-1'], capacity: 10, bookingOpen: false, cancellationDeadline: '2025-05-31', notificationOffsets: '3, 1' })
     expect(result).toEqual({ ok: false, error: { code: 'network' } })
   })
 
   it('returns unknown for unmapped status', async () => {
     mockCreateAdminTour.mockRejectedValue(new ApiError('server error', 500))
-    const result = await createTour({ groupId: 'g1', tourDate: '2025-06-01', meetingTime: '09:00', location: 'Tokyo', capacity: 10, bookingOpen: false, cancellationDeadline: '2025-05-31', notificationOffsets: '3, 1' })
+    const result = await createTour({ groupId: 'g1', tourDate: '2025-06-01', meetingTime: '09:00', placeIds: ['place-1'], capacity: 10, bookingOpen: false, cancellationDeadline: '2025-05-31', notificationOffsets: '3, 1' })
     expect(result).toEqual({ ok: false, error: { code: 'unknown' } })
   })
 })
@@ -549,7 +551,7 @@ describe('filterTours', () => {
     expect(result.map((t) => t.id)).toEqual(['t2'])
   })
 
-  it('matches the search term against the location', () => {
+  it('matches the search term against the place names', () => {
     const result = filterTours([t1, t2, t3], f({ search: 'kyo' }), TODAY)
     expect(result.map((t) => t.id)).toEqual(['t2', 't3'])
   })
@@ -562,7 +564,7 @@ describe('filterTours', () => {
     expect(filterTours([t1, t2, t3], f({ search: 'nagoya' }), TODAY)).toEqual([])
   })
 
-  it('does not match across the group name and location boundary', () => {
+  it('does not match across the group name and place name boundary', () => {
     expect(filterTours([t1], f({ search: 'alphaosaka' }), TODAY)).toEqual([])
   })
 

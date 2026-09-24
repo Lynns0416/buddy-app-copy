@@ -12,7 +12,7 @@ function entry(
   return {
     tourId,
     tourDate: `${tourDate}T00:00:00.000Z`,
-    location: 'Hiroshima',
+    places: [{ id: 'place-1', nameJa: 'Hiroshima', nameEn: 'Hiroshima' }],
     status: 'completed',
     maybeDeadline: null,
     reflectionSubmitted: true,

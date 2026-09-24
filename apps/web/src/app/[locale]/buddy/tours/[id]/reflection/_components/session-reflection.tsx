@@ -2,19 +2,21 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import type { TourReflectionResponse } from '@peace-buddy/types'
+import type { TourReflectionResponse, TourPlaceWithSpots } from '@peace-buddy/types'
 import { ReflectionForm } from './reflection-form'
 import { ReflectionCard } from './reflection-card'
 
 interface SessionReflectionProps {
   sessionId: string
+  place: TourPlaceWithSpots
+  locale: string
   heading: string | null
   existing: TourReflectionResponse | null
 }
 
 // One session's reflection: the card once something is written, the form until
 // then and again while editing.
-export function SessionReflection({ sessionId, heading, existing }: SessionReflectionProps) {
+export function SessionReflection({ sessionId, place, locale, heading, existing }: SessionReflectionProps) {
   const t = useTranslations('reflections')
   const [reflection, setReflection] = useState<TourReflectionResponse | null>(existing)
   const [editing, setEditing] = useState(false)
@@ -33,12 +35,15 @@ export function SessionReflection({ sessionId, heading, existing }: SessionRefle
       {reflection && !editing ? (
         <ReflectionCard
           reflection={reflection}
+          locale={locale}
           onEdit={() => setEditing(true)}
           savedFlash={savedFlash}
         />
       ) : (
         <ReflectionForm
           sessionId={sessionId}
+          place={place}
+          locale={locale}
           existing={reflection}
           onSaved={handleSaved}
           onCancel={reflection ? () => setEditing(false) : undefined}

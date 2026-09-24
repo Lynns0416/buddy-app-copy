@@ -88,6 +88,9 @@ vi.mock('../services/adminSession.service', () => ({
   TooManySessionsError: class TooManySessionsError extends Error {
     constructor() { super('Tour already has maximum number of sessions') }
   },
+  PlaceInUseError: class PlaceInUseError extends Error {
+    constructor() { super('A moment on this session uses a spot of its place, so the place cannot be changed') }
+  },
 }))
 
 vi.mock('../services/tourAdminAssignment.service', () => ({
@@ -125,6 +128,7 @@ import {
   SessionHasBookingsError,
   LastSessionError,
   TooManySessionsError,
+  PlaceInUseError,
 } from '../services/adminSession.service'
 import {
   assignAdmin,
@@ -177,6 +181,7 @@ const mockSession: TourSessionResponse = {
   minBuddies: null,
   participantCount: 0,
   belowMinimum: false,
+  place: { id: 'place-1', nameJa: '東京駅', nameEn: 'Tokyo Station' },
 }
 
 const mockSummary: AdminTourSummaryResponse = {
@@ -185,7 +190,7 @@ const mockSummary: AdminTourSummaryResponse = {
   status: 'draft',
   tourDate: '2026-06-01T00:00:00.000Z',
   bookingOpen: false,
-  location: 'Tokyo Station',
+  places: [{ id: 'place-1', nameJa: '東京駅', nameEn: 'Tokyo Station' }],
   capacity: 5,
   description: null,
   confirmedCount: 0,
@@ -209,13 +214,12 @@ const mockDetail: AdminTourDetailResponse = {
 const validCreateBody = {
   groupId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   tourDate: '2026-06-01',
-  location: 'Tokyo Station',
   cancellationDeadline: '2026-05-25',
   notificationOffsets: [3, 1],
-  sessions: [{ meetingTime: '09:00', capacity: 5 }],
+  sessions: [{ meetingTime: '09:00', capacity: 5, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
 }
 
-const validSessionBody = { meetingTime: '10:00', capacity: 8 }
+const validSessionBody = { meetingTime: '10:00', capacity: 8, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }
 
 describe('GET /admin/tours', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -278,6 +282,17 @@ describe('POST /admin/tours', () => {
     expect(await res.json()).toEqual({ code: 'invalid_request' })
   })
 
+  it('returns 400 when a session has no place', async () => {
+    const res = await buildApp().request('/admin/tours', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...validCreateBody, sessions: [{ meetingTime: '09:00', capacity: 5 }] }),
+    })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ code: 'invalid_request' })
+    expect(mockCreateTour).not.toHaveBeenCalled()
+  })
+
   it('returns 400 for invalid meetingTime format in session', async () => {
     const res = await buildApp().request('/admin/tours', {
       method: 'POST',
@@ -332,7 +347,7 @@ describe('POST /admin/tours', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...validCreateBody,
-        sessions: [{ meetingTime: '09:00', capacity: 5, minBuddies: 5 }],
+        sessions: [{ meetingTime: '09:00', capacity: 5, minBuddies: 5, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
       }),
     })
     expect(res.status).toBe(201)
@@ -401,14 +416,17 @@ describe('PUT /admin/tours/:id', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('updates a tour', async () => {
-    mockUpdateTour.mockResolvedValueOnce({ ...mockDetail, location: 'Shibuya' })
+    mockUpdateTour.mockResolvedValueOnce({ ...mockDetail, bookingOpen: true })
     const res = await buildApp().request('/admin/tours/tour-1', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ location: 'Shibuya' }),
+      body: JSON.stringify({ bookingOpen: true }),
     })
     expect(res.status).toBe(200)
-    expect(mockUpdateTour).toHaveBeenCalledWith('tour-1', expect.objectContaining({ location: 'Shibuya' }))
+    expect(mockUpdateTour).toHaveBeenCalledWith(
+      'tour-1',
+      expect.objectContaining({ bookingOpen: true })
+    )
   })
 
   it('returns 404 with code when tour not found', async () => {
@@ -416,7 +434,7 @@ describe('PUT /admin/tours/:id', () => {
     const res = await buildApp().request('/admin/tours/missing', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ location: 'X' }),
+      body: JSON.stringify({ bookingOpen: true }),
     })
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ code: 'not_found' })
@@ -427,7 +445,7 @@ describe('PUT /admin/tours/:id', () => {
     const res = await buildApp().request('/admin/tours/tour-1', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ location: 'X' }),
+      body: JSON.stringify({ bookingOpen: true }),
     })
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ code: 'conflict' })
@@ -608,7 +626,17 @@ describe('POST /admin/tours/:id/sessions', () => {
     const res = await buildApp().request('/admin/tours/tour-1/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meetingTime: '10:00', capacity: 5, minBuddies: 6 }),
+      body: JSON.stringify({ ...validSessionBody, capacity: 5, minBuddies: 6 }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockAddSession).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when placeId is missing', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meetingTime: '10:00', capacity: 8 }),
     })
     expect(res.status).toBe(400)
     expect(mockAddSession).not.toHaveBeenCalled()
@@ -619,7 +647,7 @@ describe('POST /admin/tours/:id/sessions', () => {
     const res = await buildApp().request('/admin/tours/tour-1/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meetingTime: '10:00', capacity: 8, minBuddies: 3 }),
+      body: JSON.stringify({ ...validSessionBody, minBuddies: 3 }),
     })
     expect(res.status).toBe(201)
     expect(mockAddSession).toHaveBeenCalledWith(
@@ -652,6 +680,39 @@ describe('PUT /admin/tours/:id/sessions/:sessionId', () => {
     })
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ code: 'not_found' })
+  })
+
+  it('forwards a place change to the service', async () => {
+    mockUpdateSession.mockResolvedValueOnce(mockDetail)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(200)
+    expect(mockUpdateSession).toHaveBeenCalledWith('tour-1', 'session-1', expect.objectContaining({ placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }))
+  })
+
+  it('returns 409 with detail when a moment still uses a spot of the old place', async () => {
+    const error = new PlaceInUseError()
+    mockUpdateSession.mockRejectedValueOnce(error)
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }),
+    })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ code: 'conflict', detail: error.message })
+  })
+
+  it('returns 400 for a non-uuid placeId', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ placeId: 'not-a-uuid' }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockUpdateSession).not.toHaveBeenCalled()
   })
 
   it('returns 400 for invalid meetingTime format', async () => {

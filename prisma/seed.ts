@@ -123,6 +123,19 @@ const ID = {
   sessionPeace3:    '00000000-0000-0000-0002-000000000009',
   sessionPeace4:    '00000000-0000-0000-0002-000000000010',
   sessionOpen2:     '00000000-0000-0000-0002-000000000013',
+  placePeacePark:        '00000000-0000-0000-0003-000000000001',
+  placeUrakami:          '00000000-0000-0000-0003-000000000002',
+  placeAtomicBombMuseum: '00000000-0000-0000-0003-000000000003',
+  placeVoice:            '00000000-0000-0000-0003-000000000004',
+  spotOpening:          '00000000-0000-0000-0004-000000000001',
+  spotIntroduction:     '00000000-0000-0000-0004-000000000002',
+  spotHypocenter:       '00000000-0000-0000-0004-000000000003',
+  spotGroundLevel:      '00000000-0000-0000-0004-000000000004',
+  spotMatsuyamaShelter: '00000000-0000-0000-0004-000000000005',
+  spotFountainOfPeace:  '00000000-0000-0000-0004-000000000006',
+  spotMonumentAisle:    '00000000-0000-0000-0004-000000000007',
+  spotPeaceStatue:      '00000000-0000-0000-0004-000000000008',
+  spotClosing:          '00000000-0000-0000-0004-000000000009',
 }
 
 function daysFromNow(days: number): Date {
@@ -281,6 +294,50 @@ async function main() {
   // Helper: roster profile ID by index into ROSTER
   const r = (i: number) => rosterIds[i]
 
+  // ── Places and Spots ────────────────────────────────────────
+  // Only 平和公園 (Peace Park) has named spots today; the other three places
+  // are seeded with none, which is the tour-reflection form's single-textarea
+  // fallback path (#239).
+  await prisma.place.upsert({
+    where: { id: ID.placePeacePark },
+    update: {},
+    create: { id: ID.placePeacePark, nameJa: '平和公園', nameEn: 'Peace Park', sortOrder: 1 },
+  })
+  await prisma.place.upsert({
+    where: { id: ID.placeUrakami },
+    update: {},
+    create: { id: ID.placeUrakami, nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral', sortOrder: 2 },
+  })
+  await prisma.place.upsert({
+    where: { id: ID.placeAtomicBombMuseum },
+    update: {},
+    create: { id: ID.placeAtomicBombMuseum, nameJa: '原爆資料館', nameEn: 'Atomic Bomb Museum', sortOrder: 3 },
+  })
+  await prisma.place.upsert({
+    where: { id: ID.placeVoice },
+    update: {},
+    create: { id: ID.placeVoice, nameJa: 'VOICE', nameEn: 'VOICE', sortOrder: 4 },
+  })
+
+  const peaceParkSpots = [
+    { id: ID.spotOpening, nameJa: 'オープニング', nameEn: 'Opening', sortOrder: 1 },
+    { id: ID.spotIntroduction, nameJa: 'イントロダクション', nameEn: 'Introduction', sortOrder: 2 },
+    { id: ID.spotHypocenter, nameJa: '原爆落下中心地碑', nameEn: 'Hypocenter', sortOrder: 3 },
+    { id: ID.spotGroundLevel, nameJa: '被爆当時の地層', nameEn: 'Ground level', sortOrder: 4 },
+    { id: ID.spotMatsuyamaShelter, nameJa: '松山防空壕', nameEn: 'Matsuyama Air Raid Shelter', sortOrder: 5 },
+    { id: ID.spotFountainOfPeace, nameJa: '平和の泉', nameEn: 'Fountain of Peace', sortOrder: 6 },
+    { id: ID.spotMonumentAisle, nameJa: 'モニュメントの通路', nameEn: 'Aisle of Monuments & Statues', sortOrder: 7 },
+    { id: ID.spotPeaceStatue, nameJa: '平和祈念像', nameEn: 'Peace Statue', sortOrder: 8 },
+    { id: ID.spotClosing, nameJa: 'クロージング', nameEn: 'Closing', sortOrder: 9 },
+  ]
+  for (const spot of peaceParkSpots) {
+    await prisma.spot.upsert({
+      where: { id: spot.id },
+      update: {},
+      create: { ...spot, placeId: ID.placePeacePark },
+    })
+  }
+
   // ── Groups ──────────────────────────────────────────────────
   await prisma.group.upsert({
     where: { id: ID.school },
@@ -363,7 +420,6 @@ async function main() {
       groupId: ID.school,
       status: TourStatus.published,
       tourDate: daysFromNow(3),
-      location: '平和公園',
       description: '高校生90名を対象としたツアーです。',
       cancellationDeadline: daysFromNow(1),
       notificationOffsets: [7, 1],
@@ -372,7 +428,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionUrgent },
     update: {},
-    create: { id: ID.sessionUrgent, tourId: ID.tourUrgent, order: 1, meetingTime: timeOnly(9), capacity: 10, participantCount: 90 },
+    create: { id: ID.sessionUrgent, tourId: ID.tourUrgent, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 10, participantCount: 90 },
   })
 
   await prisma.tour.upsert({
@@ -383,7 +439,6 @@ async function main() {
       groupId: ID.company,
       status: TourStatus.published,
       tourDate: daysFromNow(14),
-      location: '平和公園',
       bookingOpen: true,
       description: '企業チーム向けのツアーです。',
       cancellationDeadline: daysFromNow(10),
@@ -394,7 +449,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionMidterm },
     update: {},
-    create: { id: ID.sessionMidterm, tourId: ID.tourMidterm, order: 1, meetingTime: timeOnly(13, 30), capacity: 3, participantCount: 12 },
+    create: { id: ID.sessionMidterm, tourId: ID.tourMidterm, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(13, 30), capacity: 3, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -405,7 +460,6 @@ async function main() {
       groupId: ID.school,
       status: TourStatus.published,
       tourDate: daysFromNow(30),
-      location: '平和公園',
       bookingOpen: true,
       description: '中学生向けのツアーです。',
       cancellationDeadline: daysFromNow(24),
@@ -415,12 +469,12 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionOpen },
     update: {},
-    create: { id: ID.sessionOpen, tourId: ID.tourOpen, order: 1, meetingTime: timeOnly(10), capacity: 8, participantCount: 60 },
+    create: { id: ID.sessionOpen, tourId: ID.tourOpen, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(10), capacity: 8, participantCount: 60 },
   })
   await prisma.tourSession.upsert({
     where: { id: ID.sessionOpen2 },
     update: {},
-    create: { id: ID.sessionOpen2, tourId: ID.tourOpen, order: 2, meetingTime: timeOnly(13), capacity: 5, participantCount: 60 },
+    create: { id: ID.sessionOpen2, tourId: ID.tourOpen, placeId: ID.placePeacePark, order: 2, meetingTime: timeOnly(13), capacity: 5, participantCount: 60 },
   })
 
   await prisma.tour.upsert({
@@ -431,7 +485,6 @@ async function main() {
       groupId: ID.company,
       status: TourStatus.completed,
       tourDate: daysFromNow(-30),
-      location: '平和公園',
       description: '企業向けツアーです',
       cancellationDeadline: daysFromNow(-35),
       notificationOffsets: [],
@@ -440,7 +493,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPast },
     update: {},
-    create: { id: ID.sessionPast, tourId: ID.tourPast, order: 1, meetingTime: timeOnly(14), capacity: 3, participantCount: 12 },
+    create: { id: ID.sessionPast, tourId: ID.tourPast, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(14), capacity: 3, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -451,7 +504,6 @@ async function main() {
       groupId: ID.school,
       status: TourStatus.draft,
       tourDate: daysFromNow(45),
-      location: '未定',
       cancellationDeadline: daysFromNow(40),
       notificationOffsets: [],
     },
@@ -459,7 +511,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionDraft },
     update: {},
-    create: { id: ID.sessionDraft, tourId: ID.tourDraft, order: 1, meetingTime: timeOnly(9), capacity: 4, participantCount: 12 },
+    create: { id: ID.sessionDraft, tourId: ID.tourDraft, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 4, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -470,7 +522,6 @@ async function main() {
       groupId: ID.company,
       status: TourStatus.cancelled,
       tourDate: daysFromNow(7),
-      location: '平和公園',
       cancellationDeadline: daysFromNow(3),
       notificationOffsets: [],
     },
@@ -478,7 +529,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionCancelled },
     update: {},
-    create: { id: ID.sessionCancelled, tourId: ID.tourCancelled, order: 1, meetingTime: timeOnly(11), capacity: 3, participantCount: 20 },
+    create: { id: ID.sessionCancelled, tourId: ID.tourCancelled, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(11), capacity: 3, participantCount: 20 },
   })
 
   // ── Tours (new — all at 平和公園) ───────────────────────────
@@ -491,7 +542,6 @@ async function main() {
       groupId: ID.hs1,
       status: TourStatus.published,
       tourDate: daysFromNow(5),
-      location: '平和公園',
       bookingOpen: false,
       description: '修学旅行生向け平和学習ツアーです。。',
       cancellationDeadline: daysFromNow(-2),
@@ -501,7 +551,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPeace1 },
     update: {},
-    create: { id: ID.sessionPeace1, tourId: ID.tourPeace1, order: 1, meetingTime: timeOnly(9, 30), capacity: 15, participantCount: 120 },
+    create: { id: ID.sessionPeace1, tourId: ID.tourPeace1, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9, 30), capacity: 15, participantCount: 120 },
   })
 
   await prisma.tour.upsert({
@@ -512,7 +562,6 @@ async function main() {
       groupId: ID.jhs1,
       status: TourStatus.published,
       tourDate: daysFromNow(14),
-      location: '平和公園',
       bookingOpen: true,
       description: '広島市立平和中学校の生徒を対象とした小規模ツアーです。',
       cancellationDeadline: daysFromNow(9),
@@ -523,7 +572,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPeace2 },
     update: {},
-    create: { id: ID.sessionPeace2, tourId: ID.tourPeace2, order: 1, meetingTime: timeOnly(10), capacity: 4, participantCount: 20 },
+    create: { id: ID.sessionPeace2, tourId: ID.tourPeace2, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(10), capacity: 4, participantCount: 20 },
   })
 
   await prisma.tour.upsert({
@@ -534,7 +583,6 @@ async function main() {
       groupId: ID.hs2,
       status: TourStatus.published,
       tourDate: daysFromNow(28),
-      location: '平和公園',
       bookingOpen: true,
       description: '福岡第一高等学校の修学旅行。',
       cancellationDeadline: daysFromNow(21),
@@ -545,7 +593,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPeace3 },
     update: {},
-    create: { id: ID.sessionPeace3, tourId: ID.tourPeace3, order: 1, meetingTime: timeOnly(13), capacity: 12, participantCount: 100 },
+    create: { id: ID.sessionPeace3, tourId: ID.tourPeace3, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(13), capacity: 12, participantCount: 100 },
   })
 
   await prisma.tour.upsert({
@@ -556,7 +604,6 @@ async function main() {
       groupId: ID.jhs2,
       status: TourStatus.draft,
       tourDate: daysFromNow(50),
-      location: '平和公園',
       description: '松山市立南中学校の平和学習ツアー（日程調整中）。',
       cancellationDeadline: daysFromNow(44),
       notificationOffsets: [],
@@ -565,7 +612,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPeace4 },
     update: {},
-    create: { id: ID.sessionPeace4, tourId: ID.tourPeace4, order: 1, meetingTime: timeOnly(9), capacity: 8, participantCount: 60 },
+    create: { id: ID.sessionPeace4, tourId: ID.tourPeace4, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 8, participantCount: 60 },
   })
 
   // ── Bookings (skip if no buddies) ───────────────────────────
@@ -757,8 +804,16 @@ async function main() {
         sessionId: ID.sessionPast,
         didWell: '参加者一人ひとりに声をかけ、緊張をほぐせたと思います。',
         couldImprove: '資料の復習が足りず、年号を一度言い間違えました。',
-        memorableMoment: '「自分の街でも同じことが起きたのかも」と言った生徒がいました。',
         openQuestions: '被爆二世の支援制度について聞かれ、答えられませんでした。',
+        moments: {
+          create: [
+            {
+              position: 0,
+              spotId: ID.spotPeaceStatue,
+              description: '「自分の街でも同じことが起きたのかも」と言った生徒がいました。',
+            },
+          ],
+        },
       },
     })
   }

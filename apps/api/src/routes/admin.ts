@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { BuddyStatusSchema, BuddyTierSchema, MemberTypeSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema, AdminUpdateCancellationSchema, AdminUpdateBookingStatusSchema } from '@peace-buddy/types'
 import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason, updateAdminBookingStatus } from '../services/admin.service'
 import { adminGroupRoutes } from './adminGroups'
+import { adminPlaceRoutes } from './adminPlaces'
 import { adminTourRoutes } from './adminTours'
 import { adminEvaluationRoutes } from './adminEvaluations'
 import { adminProfileEvaluationRoutes } from './adminProfileEvaluations'
@@ -13,6 +14,7 @@ import type { AuthEnv } from '../types'
 const adminRoutes = new Hono<AuthEnv>()
 
 adminRoutes.route('/groups', adminGroupRoutes)
+adminRoutes.route('/places', adminPlaceRoutes)
 adminRoutes.route('/tours', adminTourRoutes)
 adminRoutes.route('/evaluations', adminEvaluationRoutes)
 adminRoutes.route('/profile-evaluations', adminProfileEvaluationRoutes)

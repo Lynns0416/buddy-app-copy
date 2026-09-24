@@ -189,7 +189,7 @@ const booking = (overrides: {
   cancellationReason: null,
   tour: {
     tourDate: overrides.tourDate ?? '2026-05-01T00:00:00.000Z',
-    location: 'Hall',
+    places: [{ id: 'place-1', nameJa: 'ホール', nameEn: 'Hall' }],
     group: { name: overrides.groupName ?? 'Group A' },
     status: 'published',
   },

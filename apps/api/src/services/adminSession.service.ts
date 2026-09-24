@@ -5,8 +5,10 @@ import type {
   AdminTourDetailResponse,
   TierCapacities,
 } from '@peace-buddy/types'
-import { TourStatusSchema } from '@peace-buddy/types'
+import { TourStatusSchema, NotifEventKindSchema } from '@peace-buddy/types'
+import { payloadTourDate } from '../lib/notificationPayload'
 import { TourNotFoundError, TourImmutableError, getAdminTourDetail } from './adminTour.service'
+import { enqueueEmailForBookedBuddies, enqueueInAppForBookedBuddies } from './notification.service'
 
 export class SessionNotFoundError extends Error {
   constructor() {
@@ -29,6 +31,12 @@ export class LastSessionError extends Error {
 export class TooManySessionsError extends Error {
   constructor() {
     super('Tour already has maximum number of sessions')
+  }
+}
+
+export class PlaceInUseError extends Error {
+  constructor() {
+    super('A moment on this session uses a spot of its place, so the place cannot be changed')
   }
 }
 
@@ -60,6 +68,7 @@ export async function addSession(tourId: string, data: CreateTourSession): Promi
       capacity: data.capacity,
       minBuddies: data.minBuddies ?? null,
       participantCount: data.participantCount ?? 0,
+      placeId: data.placeId,
     },
   })
 
@@ -68,20 +77,48 @@ export async function addSession(tourId: string, data: CreateTourSession): Promi
 }
 
 export async function updateSession(tourId: string, sessionId: string, data: UpdateTourSession): Promise<AdminTourDetailResponse> {
-  const session = await db.tourSession.findUnique({ where: { id: sessionId }, select: { tourId: true } })
+  const session = await db.tourSession.findUnique({
+    where: { id: sessionId },
+    select: { tourId: true, placeId: true, tour: { select: { status: true } } },
+  })
   if (!session || session.tourId !== tourId) throw new SessionNotFoundError()
 
-  await db.tourSession.update({
-    where: { id: sessionId },
-    data: {
-      ...(data.label !== undefined ? { label: data.label } : {}),
-      ...(data.meetingTime !== undefined ? { meetingTime: parseTime(data.meetingTime) } : {}),
-      ...(data.startTime !== undefined ? { startTime: data.startTime ? parseTime(data.startTime) : null } : {}),
-      ...(data.endTime !== undefined ? { endTime: data.endTime ? parseTime(data.endTime) : null } : {}),
-      ...(data.capacity !== undefined ? { capacity: data.capacity } : {}),
-      ...(data.minBuddies !== undefined ? { minBuddies: data.minBuddies } : {}),
-      ...(data.participantCount !== undefined ? { participantCount: data.participantCount } : {}),
-    },
+  const placeChanged = data.placeId !== undefined && data.placeId !== session.placeId
+
+  // A session's place cannot change while a moment on it uses one of the old
+  // place's spots — the moment would name a spot the session no longer visits.
+  if (placeChanged) {
+    const inUse = await db.tourReflectionMoment.findFirst({
+      where: { spot: { placeId: session.placeId }, reflection: { sessionId } },
+      select: { id: true },
+    })
+    if (inUse) throw new PlaceInUseError()
+  }
+
+  await db.$transaction(async (tx) => {
+    const updated = await tx.tourSession.update({
+      where: { id: sessionId },
+      select: { tour: { select: { tourDate: true, group: { select: { name: true } } } } },
+      data: {
+        ...(data.label !== undefined ? { label: data.label } : {}),
+        ...(data.meetingTime !== undefined ? { meetingTime: parseTime(data.meetingTime) } : {}),
+        ...(data.startTime !== undefined ? { startTime: data.startTime ? parseTime(data.startTime) : null } : {}),
+        ...(data.endTime !== undefined ? { endTime: data.endTime ? parseTime(data.endTime) : null } : {}),
+        ...(data.capacity !== undefined ? { capacity: data.capacity } : {}),
+        ...(data.minBuddies !== undefined ? { minBuddies: data.minBuddies } : {}),
+        ...(data.participantCount !== undefined ? { participantCount: data.participantCount } : {}),
+        ...(data.placeId !== undefined ? { placeId: data.placeId } : {}),
+      },
+    })
+
+    if (placeChanged && session.tour.status === TourStatusSchema.enum.published) {
+      const args = {
+        eventType: NotifEventKindSchema.enum.tour_details_changed,
+        payload: { tourId, groupName: updated.tour.group.name, tourDate: payloadTourDate(updated.tour.tourDate) },
+      }
+      await enqueueInAppForBookedBuddies(tourId, args, tx)
+      await enqueueEmailForBookedBuddies(tourId, args, tx)
+    }
   })
 
   const detail = await getAdminTourDetail(tourId)

@@ -28,6 +28,10 @@ export const apiPaths = {
 
   adminGroups: '/admin/groups',
   adminGroup: (id: string) => `/admin/groups/${id}`,
+  adminPlaces: '/admin/places',
+  adminPlace: (id: string) => `/admin/places/${id}`,
+  adminPlaceSpots: (placeId: string) => `/admin/places/${placeId}/spots`,
+  adminPlaceSpot: (placeId: string, spotId: string) => `/admin/places/${placeId}/spots/${spotId}`,
 
   adminTours: '/admin/tours',
   adminTour: (id: string) => `/admin/tours/${id}`,

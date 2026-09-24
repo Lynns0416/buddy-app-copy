@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
+import { placeNames } from '@/lib/place-names'
 import {
   fetchTours,
   sortTours,
@@ -98,7 +99,7 @@ function AdminToursList() {
 
   const isCalendar = view === TourViewSchema.enum.calendar
   const filtered = filterTours(tours, filters, todayStr)
-  const sorted = sortTours(filtered, sortField, sortDir)
+  const sorted = sortTours(filtered, sortField, sortDir, locale)
   const filtersActive = isTourFilterActive(filters)
   const isUpcoming = (tour: AdminTourSummaryResponse) => tour.tourDate.slice(0, 10) >= todayStr
   const dividerEnabled = sortField === 'tourDate'
@@ -113,7 +114,7 @@ function AdminToursList() {
   const desktopColumns: { field: TourListSortField; label: string; headClass: string }[] = [
     { field: 'tourDate', label: t('tourDate'), headClass: 'whitespace-nowrap' },
     { field: 'group', label: t('group'), headClass: 'whitespace-nowrap' },
-    { field: 'location', label: t('location'), headClass: 'whitespace-nowrap' },
+    { field: 'places', label: t('location'), headClass: 'whitespace-nowrap' },
     { field: 'capacity', label: t('capacity'), headClass: countHead },
     { field: 'participantCount', label: t('participantCount'), headClass: countHead },
     { field: 'confirmedCount', label: t('confirmedCount'), headClass: countHead },
@@ -215,7 +216,7 @@ function AdminToursList() {
                           {getTourStatusLabel(tTourStatus, tour.status)}
                         </Badge>
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">{tour.location}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{placeNames(tour.places, locale)}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span>{t('capacity')}: {tour.capacity}</span>
                         <span>{t('participantCount')}: {tour.participantCount}</span>
@@ -265,7 +266,7 @@ function AdminToursList() {
                         >
                           <TableCell className="whitespace-nowrap tabular-nums text-sm">{formatDate(tour.tourDate)}</TableCell>
                           <TableCell className="font-medium">{tour.group.name}</TableCell>
-                          <TableCell>{tour.location}</TableCell>
+                          <TableCell>{placeNames(tour.places, locale)}</TableCell>
                           <TableCell className="text-center">{tour.capacity}</TableCell>
                           <TableCell className="text-center">
                             <div className="inline-flex items-center gap-2">

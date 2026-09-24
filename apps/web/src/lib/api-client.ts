@@ -6,6 +6,13 @@ import type {
   GroupDetailResponse,
   CreateGroup,
   UpdateGroup,
+  PlaceResponse,
+  PlaceDetailResponse,
+  CreatePlace,
+  UpdatePlace,
+  SpotResponse,
+  CreateSpot,
+  UpdateSpot,
   AdminBuddyResponse,
   AdminBuddyDetailResponse,
   TourResponse,
@@ -85,6 +92,37 @@ export const apiClient = {
 
   updateGroup: (id: string, data: UpdateGroup) =>
     apiRequest<GroupResponse>(apiPaths.adminGroup(id), {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Admin — Places and Spots
+  listPlaces: () =>
+    apiRequest<PlaceResponse[]>(apiPaths.adminPlaces),
+
+  getPlace: (id: string) =>
+    apiRequest<PlaceDetailResponse>(apiPaths.adminPlace(id)),
+
+  createPlace: (data: CreatePlace) =>
+    apiRequest<PlaceResponse>(apiPaths.adminPlaces, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updatePlace: (id: string, data: UpdatePlace) =>
+    apiRequest<PlaceResponse>(apiPaths.adminPlace(id), {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  createSpot: (placeId: string, data: CreateSpot) =>
+    apiRequest<SpotResponse>(apiPaths.adminPlaceSpots(placeId), {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateSpot: (placeId: string, spotId: string, data: UpdateSpot) =>
+    apiRequest<SpotResponse>(apiPaths.adminPlaceSpot(placeId, spotId), {
       method: 'PUT',
       body: JSON.stringify(data),
     }),

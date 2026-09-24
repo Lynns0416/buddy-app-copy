@@ -42,15 +42,15 @@ const mockReflection: TourReflectionResponse = {
   tourId: 'tour-1',
   didWell: 'Kept everyone together',
   couldImprove: null,
-  memorableMoment: null,
   notesForOthers: null,
   openQuestions: null,
+  moments: [],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   locked: false,
 }
 
-const oneFilled = { didWell: 'Kept everyone together' }
+const oneFilled = { didWell: 'Kept everyone together', moments: [] as never[] }
 
 describe('listMyReflections', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -121,10 +121,10 @@ describe('updateReflection', () => {
 
   it('returns ok with the updated reflection', async () => {
     mockUpdateReflection.mockResolvedValueOnce({ ...mockReflection, didWell: 'Kept calm' })
-    const result = await updateReflection('refl-1', { didWell: 'Kept calm' })
+    const result = await updateReflection('refl-1', { didWell: 'Kept calm', moments: [] })
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.data.didWell).toBe('Kept calm')
-    expect(mockUpdateReflection).toHaveBeenCalledWith('refl-1', { didWell: 'Kept calm' })
+    expect(mockUpdateReflection).toHaveBeenCalledWith('refl-1', { didWell: 'Kept calm', moments: [] })
   })
 
   it('returns not_found on 404', async () => {

@@ -5,14 +5,16 @@ import { REFLECTION_PROMPTS } from '@peace-buddy/types'
 import type { TourReflectionResponse } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/format-date'
+import { momentLocation } from '@/lib/place-names'
 
 interface ReflectionCardProps {
   reflection: TourReflectionResponse
+  locale: string
   onEdit?: () => void
   savedFlash?: boolean
 }
 
-export function ReflectionCard({ reflection, onEdit, savedFlash }: ReflectionCardProps) {
+export function ReflectionCard({ reflection, locale, onEdit, savedFlash }: ReflectionCardProps) {
   const t = useTranslations('reflections')
 
   return (
@@ -41,6 +43,18 @@ export function ReflectionCard({ reflection, onEdit, savedFlash }: ReflectionCar
             <dd className="whitespace-pre-wrap border-l pl-2 text-sm">{reflection[key]}</dd>
           </div>
         ))}
+        {reflection.moments.length > 0 && (
+          <div className="space-y-2">
+            <dt className="text-sm text-muted-foreground">{t('moments.heading')}</dt>
+            {reflection.moments.map((moment) => (
+              <dd key={moment.id} className="whitespace-pre-wrap border-l pl-2 text-sm">
+                <span className="text-xs text-muted-foreground">{momentLocation(moment, locale)}</span>
+                <br />
+                {moment.description}
+              </dd>
+            ))}
+          </div>
+        )}
       </dl>
     </div>
   )

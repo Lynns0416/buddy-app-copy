@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { TourStatusSchema } from '@peace-buddy/types'
+import { TourStatusSchema, LocaleSchema } from '@peace-buddy/types'
 import { buildTourIcsEvents } from './tourIcs'
+
+const station = { nameJa: '東京駅', nameEn: 'Tokyo Station' }
 
 const tour = {
   tourDate: new Date('2026-05-01T00:00:00.000Z'),
   status: TourStatusSchema.enum.published,
   group: { name: 'Test School' },
-  location: 'Tokyo Station',
   description: 'A visit.',
 }
 
@@ -21,8 +22,9 @@ describe('buildTourIcsEvents', () => {
         meetingTime: new Date('1970-01-01T09:00:00.000Z'),
         startTime: null,
         endTime: null,
+        place: station,
       },
-    ])
+    ], LocaleSchema.enum.ja)
     expect(event.dtstart.toISOString()).toBe('2026-05-01T00:00:00.000Z')
   })
 
@@ -34,8 +36,9 @@ describe('buildTourIcsEvents', () => {
         meetingTime: new Date('1970-01-01T09:00:00.000Z'),
         startTime: null,
         endTime: null,
+        place: station,
       },
-    ])
+    ], LocaleSchema.enum.ja)
     expect(event.dtend.getTime() - event.dtstart.getTime()).toBe(60 * 60 * 1000)
   })
 
@@ -49,8 +52,9 @@ describe('buildTourIcsEvents', () => {
         meetingTime: new Date('1970-01-01T09:00:00.000Z'),
         startTime: new Date('1970-01-01T13:00:00.000Z'),
         endTime: new Date('1970-01-01T10:00:00.000Z'),
+        place: station,
       },
-    ])
+    ], LocaleSchema.enum.ja)
     expect(event.dtend.getTime()).toBeGreaterThan(event.dtstart.getTime())
     expect(event.dtend.getTime() - event.dtstart.getTime()).toBe(60 * 60 * 1000)
   })
@@ -63,8 +67,9 @@ describe('buildTourIcsEvents', () => {
         meetingTime: new Date('1970-01-01T09:00:00.000Z'),
         startTime: null,
         endTime: new Date('1970-01-01T09:00:00.000Z'),
+        place: station,
       },
-    ])
+    ], LocaleSchema.enum.ja)
     expect(event.dtend.getTime() - event.dtstart.getTime()).toBe(60 * 60 * 1000)
   })
 
@@ -76,8 +81,9 @@ describe('buildTourIcsEvents', () => {
         meetingTime: new Date('1970-01-01T09:00:00.000Z'),
         startTime: null,
         endTime: new Date('1970-01-01T11:00:00.000Z'),
+        place: station,
       },
-    ])
+    ], LocaleSchema.enum.ja)
     expect(event.dtend.toISOString()).toBe('2026-05-01T02:00:00.000Z')
   })
 
@@ -88,8 +94,8 @@ describe('buildTourIcsEvents', () => {
     [TourStatusSchema.enum.cancelled, 'CANCELLED'],
   ] as const)('maps tour status %s to STATUS:%s', (tourStatus, expected) => {
     const [event] = buildTourIcsEvents({ ...tour, status: tourStatus }, [
-      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null },
-    ])
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: station },
+    ], LocaleSchema.enum.ja)
     expect(event.status).toBe(expected)
   })
 
@@ -101,46 +107,68 @@ describe('buildTourIcsEvents', () => {
         meetingTime: new Date('1970-01-01T08:45:00.000Z'),
         startTime: new Date('1970-01-01T09:00:00.000Z'),
         endTime: new Date('1970-01-01T10:30:00.000Z'),
+        place: station,
       },
-    ])
+    ], LocaleSchema.enum.ja)
     expect(event.dtstart.toISOString()).toBe('2026-05-01T00:00:00.000Z')
     expect(event.dtend.toISOString()).toBe('2026-05-01T01:30:00.000Z')
   })
 
   it('uses a stable per-session UID', () => {
     const [event] = buildTourIcsEvents(tour, [
-      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null },
-    ])
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: station },
+    ], LocaleSchema.enum.ja)
     expect(event.uid).toBe('session-session-1@peace-buddy.internal')
   })
 
   it('appends the session label to the summary when set', () => {
     const [event] = buildTourIcsEvents(tour, [
-      { id: 'session-1', label: '1st Half', meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null },
-    ])
+      { id: 'session-1', label: '1st Half', meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: station },
+    ], LocaleSchema.enum.ja)
     expect(event.summary).toBe('Test School (1st Half)')
   })
 
   it('uses the group name alone when there is no label', () => {
     const [event] = buildTourIcsEvents(tour, [
-      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null },
-    ])
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: station },
+    ], LocaleSchema.enum.ja)
     expect(event.summary).toBe('Test School')
   })
 
-  it('carries location and description through unescaped — escaping happens at VEVENT assembly', () => {
+  it('carries description through unescaped — escaping happens at VEVENT assembly', () => {
     const [event] = buildTourIcsEvents(tour, [
-      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null },
-    ])
-    expect(event.location).toBe('Tokyo Station')
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: station },
+    ], LocaleSchema.enum.ja)
     expect(event.description).toBe('A visit.')
+  })
+
+  it('renders LOCATION in nameJa for a ja recipient', () => {
+    const [event] = buildTourIcsEvents(tour, [
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: station },
+    ], LocaleSchema.enum.ja)
+    expect(event.location).toBe('東京駅')
+  })
+
+  it('renders LOCATION in nameEn for an en recipient', () => {
+    const [event] = buildTourIcsEvents(tour, [
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: station },
+    ], LocaleSchema.enum.en)
+    expect(event.location).toBe('Tokyo Station')
+  })
+
+  it('takes each event\'s LOCATION from its own session\'s place', () => {
+    const events = buildTourIcsEvents(tour, [
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: { nameJa: '平和公園', nameEn: 'Peace Park' } },
+      { id: 'session-2', label: null, meetingTime: new Date('1970-01-01T13:00:00.000Z'), startTime: null, endTime: null, place: { nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral' } },
+    ], LocaleSchema.enum.ja)
+    expect(events.map((e) => e.location)).toEqual(['平和公園', '浦上天主堂'])
   })
 
   it('produces one event per session, in order', () => {
     const events = buildTourIcsEvents(tour, [
-      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null },
-      { id: 'session-2', label: null, meetingTime: new Date('1970-01-01T13:00:00.000Z'), startTime: null, endTime: null },
-    ])
+      { id: 'session-1', label: null, meetingTime: new Date('1970-01-01T09:00:00.000Z'), startTime: null, endTime: null, place: station },
+      { id: 'session-2', label: null, meetingTime: new Date('1970-01-01T13:00:00.000Z'), startTime: null, endTime: null, place: station },
+    ], LocaleSchema.enum.ja)
     expect(events.map((e) => e.uid)).toEqual([
       'session-session-1@peace-buddy.internal',
       'session-session-2@peace-buddy.internal',
