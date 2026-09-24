@@ -494,7 +494,13 @@
       "tours": "Tours",
       "adminProfile": "My Profile",
       "adminRoster": "Admin Roster",
-      "adminNotificationPreferences": "Notifications"
+      "adminNotificationPreferences": "Notifications",
+      "mainLabel": "Main menu",
+      "accountLabel": "Account",
+      "sections": {
+        "tours": "Tours",
+        "buddies": "Buddies"
+      }
     }
   },
   "pending": {

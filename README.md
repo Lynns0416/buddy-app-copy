@@ -114,29 +114,14 @@ procedure, including the diff that must pass first.
 
 ## 2. Firebase Auth Emulator
 
-Run this on your host machine (outside Docker):
+`docker-compose up` starts it as the `firebase` service (`firebase.json`,
+`docker/firebase/Dockerfile`), importing accounts from the gitignored
+`.firebase/emulators` and exporting back there on shutdown. Stop it with
+`docker-compose stop` or `down`, which send SIGINT and let the export finish —
+`docker kill` loses any accounts created since the last start.
 
-```bash
-firebase login
-firebase emulators:start --only auth
-```
-
-The emulator runs at `http://localhost:9099`. Docker containers reach it via `host.docker.internal:9099`.
-
-First time: create `firebase.json` at the repo root:
-
-```json
-{
-  "emulators": {
-    "auth": {
-      "port": 9099
-    },
-    "ui": {
-      "enabled": true
-    }
-  }
-}
-```
+- Auth emulator: http://localhost:9099 (the api reaches it as `firebase:9099`)
+- Emulator UI: http://localhost:4000
 
 ## 3. Start Everything
 
@@ -148,6 +133,7 @@ docker-compose up --build
 - API: http://localhost:8080
 - DB: localhost:5432 (peacebuddy / peacebuddy)
 - Azurite (buddy photos): localhost:10000
+- Firebase Auth emulator: localhost:9099 (UI: localhost:4000)
 
 Migrations and the seed run automatically on API container start. The seed is
 all upserts, so re-running it never duplicates rows — but it does reset the

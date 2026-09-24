@@ -494,7 +494,13 @@
       "tours": "ツアー",
       "adminProfile": "マイプロフィール",
       "adminRoster": "管理者一覧",
-      "adminNotificationPreferences": "通知設定"
+      "adminNotificationPreferences": "通知設定",
+      "mainLabel": "メインメニュー",
+      "accountLabel": "アカウント",
+      "sections": {
+        "tours": "ツアー運営",
+        "buddies": "バディ管理"
+      }
     }
   },
   "pending": {

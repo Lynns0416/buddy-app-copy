@@ -27,6 +27,21 @@ services:
     volumes:
       - azurite_data:/data
 
+  # Auth emulator. Accounts persist in the gitignored .firebase/emulators, which
+  # the seed also reads. Export runs on shutdown, so stop it with
+  # `docker compose stop`/`down` (SIGINT), not `kill`.
+  firebase:
+    build:
+      context: docker/firebase
+    command: firebase emulators:start --only auth --import .firebase/emulators --export-on-exit .firebase/emulators
+    stop_signal: SIGINT
+    stop_grace_period: 30s
+    ports:
+      - "9099:9099"
+      - "4000:4000"
+    volumes:
+      - .:/app
+
   api:
     build:
       context: .
@@ -43,6 +58,7 @@ services:
       STORAGE_PHOTOS_CONTAINER: photos
       # The api reaches Azurite as `azurite`, the browser as `localhost`.
       STORAGE_LINK_BASE_URL: http://localhost:10000/devstoreaccount1
+      FIREBASE_AUTH_EMULATOR_HOST: firebase:9099
       # Keep pnpm's store off the host bind mount — it defaults to
       # /app/.pnpm-store there and grows without bound inside the repo.
       npm_config_store_dir: /app/node_modules/.pnpm-store
@@ -54,6 +70,8 @@ services:
       db:
         condition: service_healthy
       azurite:
+        condition: service_started
+      firebase:
         condition: service_started
     volumes:
       - .:/app

@@ -12,6 +12,36 @@ duplicate that state here.
 
 ---
 
+## 2026-09-24 — Admin sidebar grouped by task
+
+**Decision:** the admin nav in `AppShell` is `{ labelKey, items[] }` sections
+instead of a flat list: Home, then ツアー運営 (Tours, Groups, Places), then
+バディ管理 (Pending Approval, Buddies, Trainees). Personal items (My Profile,
+Notifications, Admin Roster — still super_admin only) move to the footer with
+language and sign-out. Headings are plain text, never collapsed, and label a
+`role="group"`. Each section sits under a divider, its heading in bold
+foreground text (not muted — a heading fainter than its links read as
+nothing), its links indented behind a left rule; the active link carries `aria-current="page"`. The desktop
+sidebar and mobile drawer render the same sections. Closes #243.
+
+**Why:** ten same-looking links in no task order meant reading every label,
+with personal settings mixed into daily work and Tours seventh.
+
+**Rejected — collapsible accordion sections:** under ~15 items, collapsing only
+hides destinations and adds a click. Revisit if the nav grows past that.
+
+**Rejected — folding Pending Approval and Trainees into tabs/filters on the
+Buddies page:** pending approval is an inbox-style task that deserves its own
+entry (and a future count badge).
+
+**Rejected — a top bar with settings under an avatar menu:** desktop has no top
+bar, so it is a larger layout change for the same separation the footer gives.
+
+**Deferred:** a pending count on Pending Approval (needs a count endpoint) and
+per-item icons. Both were optional in #243.
+
+---
+
 ## 2026-09-24 — A place belongs to a session, not a tour
 
 **Decision:** `TourPlace` (the tour↔place many-to-many from the 2026-09-23
