@@ -358,6 +358,8 @@ to rotate them. See `docs/deploy-plan.md` §4.1.
 
 `.github/workflows/ci.yml` is the main workflow. It runs on PRs and pushes to
 `main`. **There is no deploy pipeline** — deployment is manual and not yet set up.
+The planned release process is a semver tag on `main` (`v1.0.0` onward) whose
+push deploys prod — no release branches; see `docs/decisions.md` 2026-09-24.
 
 `ci` is the check ruleset `main` names as required, so its `on:` trigger is
 deliberately unfiltered — a workflow skipped by `on: paths:` reports no status

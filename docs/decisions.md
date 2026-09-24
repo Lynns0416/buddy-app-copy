@@ -12,6 +12,55 @@ duplicate that state here.
 
 ---
 
+## 2026-09-24 — Production releases are semver tags on `main`
+
+**Decision:** production is released by tagging a commit on `main` and pushing
+the tag; the tag push triggers the prod deploy. Versions are semver starting at
+`v1.0.0` for the first production release, bumped by a fixed rule:
+
+- **patch** (`v1.4.1`) — a hotfix only
+- **minor** (`v1.5.0`) — every normal release
+- **major** (`v2.0.0`) — a milestone (production launch, a large redesign); rare
+
+Release notes are GitHub Releases generated from the squash-merge PR titles.
+Rollback is redeploying the previous tag — images are already tagged by commit
+and the registry prune keeps the newest five. Migrations are forward-only, so
+rolling back past a schema change needs the migration to be safe for the older
+code. A hotfix is normally a fix on `main` plus a patch tag; a short-lived
+`hotfix/*` branch cut from the last tag is used only when `main` holds work
+that cannot ship yet, and is merged back after.
+
+Not built yet: deployment is still manual (`scripts/deploy.sh`). This records
+the process the pipeline will implement once production is live.
+
+**Why:** one developer, one production deployment, branches squash-merged to
+`main`. Tags mark what is in prod and give a rollback target; nothing else is
+needed.
+
+**Rejected — release branches (git-flow style):** they pay off when several
+versions are supported at once or a release stabilises while `main` moves on.
+Neither applies; they would add a branch to keep in sync and back-ports for
+every fix.
+
+**Rejected — date versions (`v2026.09.24`):** two releases on one day collide
+and need a suffix, and the date duplicates what git already records on the tag.
+
+**Rejected — plain incremental (`v1`, `v2`):** simpler and fully adequate, but
+semver is the familiar format, and its patch number separates hotfixes from
+feature releases at almost no cost.
+
+**Rejected — a GitHub Environment approval gate on prod:** with one developer,
+pushing the tag is the approval.
+
+**Rejected — `CHANGELOG.md`:** generated GitHub Release notes are enough.
+
+**Open — auto-deploy staging on push to `main`:** staging compute is started by
+hand and off most of the time, so a push-triggered deploy would fail against
+it. Decide between deploying staging on demand (`workflow_dispatch`) or keeping
+staging running before building the pipeline.
+
+---
+
 ## 2026-09-24 — Admin sidebar grouped by task
 
 **Decision:** the admin nav in `AppShell` is `{ labelKey, items[] }` sections
