@@ -2,9 +2,8 @@
 ## Buddy Booking App
 
 **Version:** 0.4 (MVP)
-**Last Updated:** 2026-04-26
-**Author:** [Your Name]
-**Status:** Draft
+**Last Updated:** 2026-09-24
+**Status:** Living document — when it and the code disagree, the code wins
 
 ---
 
@@ -20,7 +19,7 @@
 8. [Booking System](#8-booking-system)
 9. [Evaluation System](#9-evaluation-system)
 10. [Notifications](#10-notifications)
-11. [Admin Dashboard](#11-admin-dashboard)
+11. [Screens](#11-screens)
 12. [Internationalisation](#12-internationalisation)
 13. [Tech Stack](#13-tech-stack)
 14. [Data Migration](#14-data-migration)
@@ -51,7 +50,6 @@ A web-first internal booking application for managing group tour assignments. Th
 - Participant-facing features (tour participants do not use this app)
 - Travel agency integration
 - Native mobile apps (web-first PWA; native post-v1.5)
-- Advanced analytics or reporting dashboards
 - Peer evaluation between buddies
 - Payment handling
 - Live calendar subscription / Google & Apple OAuth sync (planned for v1.5; see §16)
@@ -184,7 +182,7 @@ Ordered for UI display — priority tier shown first:
 | Field | Type | Notes |
 |---|---|---|
 | Account status | Enum | See §5.1 |
-| Tier | Enum | See §5.2 — visible to the buddy it belongs to, not yet exposed by the API (#137) |
+| Tier | Enum | See §5.2 — visible to the buddy it belongs to (`GET /me/profile`), never to other buddies |
 | Member type | Enum | See §5.2.1 — `buddy` / `plab_member`; admin-only, default `buddy` |
 | Internal notes | Free text | Admins only |
 | Admin evaluation records | See §9 | Admins only |
@@ -372,7 +370,7 @@ Only **Confirmed** bookings count against capacity. Maybe and Waitlist do not co
 - Only **Active** buddies **with a tier assigned** can book (trainees cannot — see §8.9 Eligibility)
 - Booking is open while:
   1. Tour is `published` AND `bookingOpen = true`
-  2. `tourDate` is not in the past
+  2. `tourDate` is after today in Japan — booking closes on the tour day itself (§7.2)
   3. Cancellation deadline has not passed (per buddy, after applying any `BuddyCancellationDeadlineOverride`)
 - Admin override of per-buddy cancellation deadline is **Planned** (schema model exists; no API endpoint manages it yet — see §7.1 and §11.2)
 - **Cancellation deadline takes precedence (server-side):** Once the cancellation deadline has passed for a buddy, **all status changes via the regular update endpoint are blocked** (`PUT /tours/:tourId/sessions/:sessionId/bookings/me` returns `DEADLINE_PASSED`). The only post-deadline buddy action is the "I can't go" endpoint below.
@@ -400,9 +398,9 @@ All transitions above are gated by `cancellationDeadline` — once it passes (fr
 
 1. Buddy selects "Maybe" (only available before the Maybe and cancellation deadlines), either on a session they have not booked (`POST /tours/:id/bookings` with `status: "maybe"`) or by changing an existing booking (§8.4)
 2. Admin sets a **Maybe confirmation deadline** per tour (default offset: 9 days before tour if not set; configurable globally)
-3. Buddy receives reminders at **3 days** and **1 day** before the deadline. Default offsets are baked in code; the hourly cron job that fires these reminders is **Planned** (see §10.5). `/admin/config` to make offsets globally configurable is Planned — see §11.5; no per-tour override in v1.
+3. Buddy receives reminders at **3 days** and **1 day** before the deadline. Default offsets are baked in code; the `maybe-reminders` job (§10.5) enqueues them. `/admin/config` to make offsets globally configurable is Planned — see §11.5; no per-tour override in v1.
 4. Buddy must update to **Confirmed** or **Declined** before deadline
-5. If no action taken by deadline, booking status remains **Maybe** and assigned admins are notified to follow up manually (`maybe_deadline_missed`). The hourly cron job that detects expired Maybe deadlines is **Planned** (see §10.5).
+5. If no action taken by deadline, booking status remains **Maybe** and assigned admins are notified to follow up manually (`maybe_deadline_missed`), enqueued by the `maybe-deadlines` job (§10.5).
 6. **After cancellation deadline:** The maybe deadline becomes irrelevant. The "Maybe" status is no longer available, and buddies in confirmed status cannot transition to maybe (they are committed to attending). Buddies in maybe status who have not resolved must attend.
 
 ### 8.6 Waitlist Flow
@@ -486,7 +484,7 @@ There is no separate Application entity — a `Booking` row is created immediate
 #### Eligibility
 
 - Only **Active** buddies with a tier assigned can book
-- **Trainee** tier cannot book (they cannot participate in tours yet)
+- **Trainees** (a status, with `tier = null`) cannot book — they cannot participate in tours yet
 - Only when tour is **Published** and `bookingOpen = true`
 
 #### Seat Pools
@@ -525,7 +523,7 @@ A `Booking` row is created with the result. `Booking.buddyTier` is frozen at boo
 
 #### Cancellation
 
-- Buddy can cancel at any time while `waitlist` or `confirmed`
+- Buddy can cancel while `waitlist` or `confirmed` up to the cancellation deadline; after it, only via "I can't go" (§8.3)
 - Cancelling a `confirmed` booking frees a pool slot and triggers promotion
 - After cancel, re-book is allowed if any vacancy exists in the buddy's pool or the anyone pool
 - Status is set to `declined` on cancel; the booking row is reused on re-book (upsert)
@@ -540,11 +538,11 @@ When a `confirmed` booking is cancelled:
 
 #### UI Entry Point
 
-- `/dashboard/tours/[id]` — the tour detail page
+- `/buddy/tours/[id]` — the tour detail page
 - When no booking exists and the tour is bookable: show Join (`参加を希望`) and, before the Maybe and cancellation deadlines, Maybe (`未定`)
 - When `waitlist`: show waitlist status badge and cancel option
 - When `confirmed`: show confirmed status, cancel and set-maybe options
-- No separate booking history page — buddy reaches history via tour list
+- Booking history lives on `/buddy/history` (§8.8)
 
 ---
 
@@ -664,8 +662,8 @@ Zero or more structured memorable moments per reflection (`TourReflectionMoment`
 | New tour published (`tour_published`) | In-app + email | Immediate, to Active buddies | Shipped |
 | Tour details changed (`tour_details_changed`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped (fires on `tourDate`, or a session's place or meeting time change only — see note below) |
 | Tour cancelled (`tour_cancelled`) | In-app + email | Immediate, to Confirmed / Maybe / Waitlist | Shipped |
-| Tour reminder (`tour_reminder`) | In-app + email | Per-tour offsets (default: 3 days, 1 day before); evaluated hourly | Planned (§10.5) |
-| Maybe deadline reminder (`maybe_reminder`) | In-app + email | Global offsets (default: 3 days, 1 day before deadline); evaluated hourly | Planned (§10.5) |
+| Tour reminder (`tour_reminder`) | In-app + email | Per-tour offsets (default: 3 days, 1 day before); evaluated hourly | Shipped (job route; not scheduled — §10.5) |
+| Maybe deadline reminder (`maybe_reminder`) | In-app + email | Global offsets (default: 3 days, 1 day before deadline); evaluated hourly | Shipped (job route; not scheduled — §10.5) |
 | Waitlist seat opened (`waitlist_opened`) | In-app + email | Immediate, to all buddies on the waitlist for the freed pool | Planned (no enqueue site yet) |
 | Waitlist auto-promotion (`waitlist_promoted`) | In-app + email | Immediate, to the promoted buddy | Shipped |
 | Reflection prompt (`self_eval_prompt`) | In-app only | On tour Completed, to Confirmed buddies with no reflection on any session of that tour | Planned (no enqueue site yet) |
@@ -765,22 +763,22 @@ in `NotificationJob.lastError` and retry on the standard backoff.
 - **In-app:** a `Notification` row is written for every event that lists "In-app" in the table above, for every recipient. Read via `GET /me/notifications`. Both buddies and admins receive in-app notifications.
 - **Email:** sent via the Gmail API (see §13). Recipient locale determines language; locale is read from `User.locale: 'ja' | 'en'` (default `'ja'`), surfaced to the user as a language toggle in profile settings.
 - **Payload:** `Notification.payload`, `NotificationJob.payload` and `DigestQueue.payload` are `Json` columns. What each event kind writes is typed in `packages/types` (`NotifPayloadSchemas`); nothing parses a payload on the way out, because rows predating a field must still render (§10.3).
-- **Slack:** Planned — see §10.3.
+- **Slack:** admin events only, one shared channel — see §10.3.
 
 ### 10.5 Scheduled Jobs
 
-**Shipped:** `POST /jobs/notifications/dispatch` — drains pending `NotificationJob` rows (the outbox queue). Protected by the `X-Scheduler-Secret` middleware. Hooked into Cloud Scheduler at whatever cadence the queue requires.
+**Shipped:** `POST /jobs/notifications/dispatch` — drains pending `NotificationJob` rows (the outbox queue). Protected by the `X-Scheduler-Secret` middleware.
 
-**Planned:** the four time-based jobs below. All endpoints are protected by the same middleware.
+**No scheduler is deployed** since GCP Cloud Scheduler was retired on 2026-09-13 (§13.1): the shipped job routes below exist, but nothing calls them yet. All endpoints are protected by the same middleware.
 
 | Job | Endpoint | Cadence | Purpose | Status |
 |---|---|---|---|---|
-| Tour reminders | `POST /jobs/notifications/reminders` | Hourly | Match `Tour.notificationOffsets` against now; enqueue `tour_reminder` to confirmed / maybe / waitlist buddies | Planned |
-| Maybe pre-reminders | `POST /jobs/notifications/maybe-reminders` | Hourly | Enqueue `maybe_reminder` to buddies still in Maybe before their deadline | Planned |
+| Tour reminders | `POST /jobs/notifications/reminders` | Hourly | Match `Tour.notificationOffsets` against now; enqueue `tour_reminder` to confirmed / maybe / waitlist buddies | Shipped |
+| Maybe pre-reminders | `POST /jobs/notifications/maybe-reminders` | Hourly | Enqueue `maybe_reminder` to buddies still in Maybe before their deadline | Shipped |
 | Maybe deadline expiry | `POST /jobs/notifications/maybe-deadlines` | Hourly | Enqueue `maybe_deadline_missed` to assigned admins for any unresolved Maybe; fires only on the JST day after deadline | Shipped |
 | Daily admin digest | `POST /jobs/notifications/digest` | 09:00 JST | Flush `DigestQueue` per admin; send one email per admin with activity | Planned |
 
-Hourly cadence is sufficient because all offsets are day-granular. Idempotency for the planned jobs will be enforced via a `NotificationDispatchLog(eventKey UNIQUE)` table — each scheduled job inserts a row keyed by `(eventType, scope, recipientUserId)` before sending; unique-constraint collisions mean the reminder was already dispatched. **Not yet added to schema** — to be added alongside the first scheduled job that needs it.
+Hourly cadence is sufficient because all offsets are day-granular. Idempotency is enforced via the `NotificationDispatchLog(eventKey UNIQUE)` table — each scheduled job inserts a row keyed by `(eventType, scope, recipientUserId)` before sending; unique-constraint collisions mean the reminder was already dispatched.
 
 ### 10.6 Channel Config UI
 
@@ -801,7 +799,7 @@ not a buddy channel — §10.3).
 
 ---
 
-## 11. Admin Dashboard
+## 11. Screens
 
 ### 11.1 Buddy Home Screen
 
@@ -820,7 +818,7 @@ Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 
 
 **Today** is the date in Japan (`getTodayJst`) for every date rule on this page, including the `from` sent to `GET /tours`, as it is everywhere else in the app. Tours run in Japan and their dates are Japanese calendar dates.
 
-**Excluded:** tours-attended counts, hours volunteered and tier progress. At ~50 buddies they are decoration, and tier is a policy surface, not a UI one.
+**Excluded from this screen:** tours-attended counts, hours volunteered and tier progress. Buddy numbers are planned as their own surface (#251); tier progress stays out — tier is a policy surface, not a UI one.
 
 **Onboarding redirect:** an approved buddy (`trainee` or `active`) with no `onboardingSeenAt` is sent to `/buddy/profile?onboarding=1`, and the visit is stamped. Neither request above is made for that buddy.
 
@@ -832,7 +830,9 @@ Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 
 
 **No tour status badge:** the page requests `GET /tours` without `status`, which defaults to `published`, so every card would read "Published". It told the buddy nothing and shared the primary fill with the Confirmed badge. The page title says what the list is instead: "Tours looking for buddies" / 「バディ募集中のツアー」 (`tour.title`). Only bookable tours are listed, so the title holds for every card.
 
-The full booking list, including past tours, lives on `/buddy/history` (Upcoming / Past sections). Navigation to that page is via the "My bookings" link in the header. Profile is reached via the sidebar (`/dashboard/profile`).
+The full booking list, including past tours, lives on `/buddy/history` (Upcoming / Past sections). History and Profile (`/buddy/profile`) are reached via the buddy nav; the home screen also links to history.
+
+**Analytics** (tours-attended counts and similar numbers, reflection summary) are tracked in #251 and belong on their own surface, not on this obligations screen.
 
 ### 11.2 Tour Management
 
@@ -884,7 +884,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 
 #### Pages & Routes
 
-**Flat navigation:** Both "Pending Approval" and "Buddies" shown as separate top-level menu items.
+**Navigation:** "Pending Approval", "Buddies" and "Trainees" are separate items under the バディ管理 heading of the task-grouped admin sidebar.
 
 | Route | Purpose | Access |
 |---|---|---|
@@ -933,7 +933,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 - Suspend / un-suspend — **Planned**: enum value exists but no API path yet
 
 **Booking history table:**
-- Columns: Group name (linked to `/admin/tours/:id`), Tour date, Location, Booking status
+- Columns: Group name (linked to `/admin/tours/:id`), Tour date, Places, Booking status
 - Sortable by: group name, tour date, booking status
 - Default sort: tour date descending (most recent first)
 - Shows all bookings regardless of booking or buddy status — no filter
@@ -977,7 +977,7 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 | Capability | Surface |
 |---|---|
 | Manage admin profiles (create, list, rename, soft-delete) | `/admin/profiles*` endpoints + `/admin/profile`, `/admin/profiles` pages |
-| Per-admin notification preferences | `/admin/notification-preferences` page + `GET / PUT /notification-preferences` API |
+| Per-admin notification preferences | `/admin/notification-preferences` page + `GET / PUT /admin/notification-preferences` API |
 
 **Planned (not shipped):**
 
@@ -990,15 +990,15 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 
 #### Route
 
-`/dashboard/profile` — accessible to all authenticated buddies (any status)
+`/buddy/profile` — accessible to all authenticated buddies (any status)
 
-Nav item: "Profile" in buddy shell sidebar (alongside "Dashboard").
+Nav item: "Profile" in the buddy nav (the only item for trainees — §5.1).
 
 #### Page Layout
 
 **Read-only display section** (not editable inline):
 - Account status badge
-- Tier (hidden — not shown to buddy)
+- Tier — the buddy's own, when one is assigned (§5.2)
 - Member since date
 
 **Edit form** (`PUT /me/profile`):
@@ -1016,7 +1016,7 @@ Nav item: "Profile" in buddy shell sidebar (alongside "Dashboard").
 
 `[Save]` `[Cancel]`
 
-After save: stay on page, refetch profile, show inline success message. Cancel navigates to `/dashboard`.
+After save: stay on page, refetch profile, show inline success message. Cancel navigates to `/buddy`.
 
 #### API
 
@@ -1030,18 +1030,19 @@ Uses existing endpoints — no new API work required:
 #### Module Boundaries
 
 ```
-apps/web/src/app/[locale]/dashboard/profile/
-  dashboard.profile.ts          ← fetchMyProfile, updateMyProfile (thin functions)
-  dashboard.profile.test.ts     ← unit tests
-  page.tsx                      ← fetch on mount, render <ProfileForm />
+apps/web/src/app/[locale]/buddy/profile/
+  buddy.profile.ts              ← fetchMyProfile, updateMyProfile (thin functions)
+  buddy.profile.test.ts         ← unit tests
+  page.tsx                      ← fetch on mount, render the sections below
   _components/
+    profile-header.tsx           ← status, tier, member since
     profile-form.tsx             ← form state + submit handler
+    profile-photo.tsx            ← photo upload / delete
+    linked-accounts.tsx          ← second auth provider
+    notification-preferences.tsx ← buddy email preferences (§10.6)
 ```
 
-New additions:
-- `apiClient.getMyProfile` + `apiClient.updateMyProfile` in `api-client.ts`
-- `routes.dashboardProfile` in `routes.ts`
-- `shell.nav.profile` + `profile.*` + `languages.*` keys in `en.json` and `ja.json`
+Route: `routes.buddyProfile` in `routes.ts`.
 
 #### i18n Namespaces
 
@@ -1052,14 +1053,14 @@ New additions:
 
 `/admin` is a worklist. It answers "what needs me today" with actionable queues, each linking into the page where the work is done. Login sends admins here, and it is the first item in the admin sidebar ("Home").
 
-It is not a metrics dashboard. Total buddy counts, signups over time and tier distribution are deliberately absent — at ~50 buddies and 5–6 admins they tell nobody anything new.
+It is not a metrics dashboard. Admin analytics (reflection analytics, per-buddy numbers) are tracked in #250 and belong on their own page, not in this worklist.
 
 | Queue | Listed | Links to |
 |---|---|---|
 | Pending applications | Buddies with status `pending`, oldest first | Each buddy to `/admin/buddies/:id`; the section to `/admin/buddies/pending` |
 | Unresolved Maybes past deadline | Published tours with at least one `maybe` booking whose `maybeDeadline` JST day has ended and whose tour date has not passed. Not limited to tours with assigned admins | `/admin/tours/:id` |
 | Short of buddies | Published tours in the next 14 JST days with a session whose `confirmed` bookings are below its `minBuddies`. Sessions without `minBuddies` are never listed. This is **not** `belowMinimum`, which compares the visitor count (`participantCount`) to the threshold | `/admin/tours/:id` |
-| Completed tours missing evaluations | `completed` tours with a confirmed buddy who has no `AdminEvaluation` for that tour from any admin, newest first. Self-evaluations are not counted | `/admin/tours/:id` |
+| Completed tours missing evaluations | `completed` tours with a confirmed buddy who has no `AdminEvaluation` for that tour from any admin, newest first. Buddy reflections are not counted | `/admin/tours/:id` |
 | Unread notifications | The viewing admin's five most recent unread in-app notifications, each markable as read | `/notifications` |
 
 The first four come from `GET /admin/dashboard`. Its service calls one query per owning service — `listBuddies`, `listOverdueMaybeTours`, `listUnderfilledTours`, `listToursMissingEvaluations` — rather than re-implementing any of them, and `listOverdueMaybeTours` shares its where-clause with the `maybe-deadlines` cron (§10.5). Notifications come from `GET /me/notifications`, the call the bell already polls.
@@ -1087,7 +1088,7 @@ Picking a session's place happens on the tour create/edit form itself (a dropdow
 | Default language | Japanese (`ja`) |
 | Supported locales | `ja`, `en` |
 | UI strings | All in `apps/web/messages/{en,ja}.json` |
-| Date / time / number formatting | Respects locale via `next-intl` formatters |
+| Date / time formatting | `yyyy/MM/dd` in Japan time in both locales, via `formatDate` / `formatDateTime` (`apps/web/src/lib/format-date.ts`) |
 | Language switching in user settings | `User.locale` (`ja` / `en`, default `ja`) is on the schema; toggle UI is `apps/web/src/components/language-switcher.tsx`. |
 | Email templates localised | Templates live under `apps/api/src/services/notificationTemplates/messages.{en,ja}.json`; dispatcher reads `User.locale` to pick the language. |
 
@@ -1107,7 +1108,7 @@ Picking a session's place happens on the tour create/edit form itself (a dropdow
 | ORM | Prisma | Lives in `apps/api`; schema in `prisma/` |
 | Auth | Firebase Auth | Google + Apple OAuth; token validated in Hono middleware |
 | File storage | Azure Blob Storage, Japan East | Profile photos in a private container; single-step multipart upload via `POST /me/profile/photo`; read through signed links pinned to the UTC day |
-| Scheduled jobs | None deployed | Hono API routes for reminders, deadline checks, digest flush exist; nothing calls them since GCP Cloud Scheduler was retired on 2026-09-13 |
+| Scheduled jobs | None deployed | Hono API routes for dispatch, tour reminders, Maybe reminders and Maybe deadline checks exist (no digest flush yet); nothing calls them since GCP Cloud Scheduler was retired on 2026-09-13 |
 | Email | Gmail API (Google Workspace for Nonprofits) | Single `sendEmail()` utility in `apps/api`; env: `GMAIL_*` credentials (provider-specific) |
 | Slack notifications | Slack Incoming Webhooks | Admin notifications; env: `SLACK_WEBHOOK_URL`; fired from `apps/api` |
 | Scheduler auth | Shared secret header | `X-Scheduler-Secret` matched against `SCHEDULER_SECRET` env; middleware exists in `apps/api/src/middleware/schedulerAuth.ts` |
@@ -1163,8 +1164,6 @@ so the database stays portable to any managed Postgres.
 | v1.5 | Live calendar subscription (`webcal://` feed) and OAuth Google/Apple Calendar sync — an `.ics` download shipped separately as the cheap substitute (§16); revisit whether this is still wanted |
 | v1.5 | PWA improvements |
 | v2+ | Native mobile app (Flutter) |
-| v2+ | Reporting / export for admins |
-| v2+ | Advanced evaluation analytics |
 | v2+ | Structured availability input for buddy profiles |
 | v2+ | Admin profile avatar upload (display name already shipped) |
 
@@ -1176,7 +1175,6 @@ so the database stays portable to any managed Postgres.
 - Travel agency integration
 - Live calendar subscription and Google/Apple OAuth sync (v1.5)
 - Native mobile apps (post-v1.5)
-- Advanced analytics or reporting
 - Peer evaluations
 - Payment or compensation tracking
 - Structured availability input (free text in v1)
@@ -1194,7 +1192,7 @@ as the cheap substitute for the live-subscription/OAuth item above; see
 |---|---|---|---|
 | 1 | Final enum values for admin evaluation fields | Team | **Resolved** — see §9 |
 | 2 | Exact fields to migrate from Google Sheets | Team | Open |
-| 3 | Slack workspace / webhook setup | Admin | **Resolved** — single shared channel (e.g. `#peace-buddy-ops`) with one webhook URL in `SLACK_WEBHOOK_URL`; per-admin opt-in via account settings. See §10.3. |
+| 3 | Slack workspace / webhook setup | Admin | **Resolved** — single shared channel (e.g. `#peace-buddy-ops`) with one webhook URL in `SLACK_WEBHOOK_URL`; every admin event posts there (`slackEnabled` is informational only). See §10.3. |
 | 4 | Apple Developer account for Apple login | Dev | Open |
 | 5 | Default Maybe confirmation deadline offset (days before tour) | Team | **Resolved** — 9 days before tour; reminders at 3 days + 1 day before deadline. Cancellation deadline defaults to 7 days before (always after Maybe deadline). |
 | 6 | Cancellation reason category enum values | Team | **Resolved** — `health` / `emergency` / `personal` / `work` / `other` |
