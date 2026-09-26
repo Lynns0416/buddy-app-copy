@@ -15,6 +15,8 @@ import type {
   UpdateSpot,
   AdminBuddyResponse,
   AdminBuddyDetailResponse,
+  AdminBuddyStatsResponse,
+  GroupType,
   TourResponse,
   TourDetailResponse,
   AdminTourSummaryResponse,
@@ -135,6 +137,13 @@ export const apiClient = {
     if (memberType) params.push(`memberType=${memberType}`)
     const url = params.length ? `${apiPaths.adminBuddies}?${params.join('&')}` : apiPaths.adminBuddies
     return apiRequest<AdminBuddyResponse[]>(url)
+  },
+
+  listBuddyStats: (scope: { from?: string; to?: string; groupType?: GroupType; placeId?: string }) => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(scope)) if (value) params.set(key, value)
+    const query = params.toString()
+    return apiRequest<AdminBuddyStatsResponse>(query ? `${apiPaths.adminBuddyStats}?${query}` : apiPaths.adminBuddyStats)
   },
 
   getBuddy: (id: string) =>

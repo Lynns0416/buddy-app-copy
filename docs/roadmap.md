@@ -56,6 +56,9 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 ## Admin
 
 - [x] **Admin home worklist** — `/admin` lists pending applications, unresolved Maybes past deadline, tours short of buddies in the next 14 days, completed tours missing evaluations, and unread notifications. No metrics. PRD §11.7, #198.
+- [x] **Buddy stats** — `/admin/buddies/stats`: one row per buddy, ~40 numbers (attendance, cancellations, reflections, evaluation averages, places and group types), scoped by period / group type / place, columns chosen per admin, with an overview of figures and charts above the table that narrows it on click. Same numbers on the buddy detail page. PRD §11.4, #253.
+- [ ] **Booking history for stats** — Maybe→Confirmed conversion, waitlist promotions, tier promotion dates and booking lead time need an event or history table; a `Booking` keeps only its current status. Out of #253.
+- [ ] **Organisation-wide numbers over time** — sessions, tours and active buddies per month, session fill rates, share of tours below minimum. Needs a per-month query. Out of #253; tracked in #250.
 
 ---
 

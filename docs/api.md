@@ -182,6 +182,58 @@ List buddies. Returns `AdminBuddyResponse[]` (includes `tier`, `memberType`, `in
 
 ---
 
+### Admin: `GET /admin/buddies/stats`
+Every buddy's numbers for the stats page (PRD §11.4 "Buddy Stats Page", which defines each count). Every status and member type is returned; the page filters rows.
+
+**Auth:** `admin`
+
+**Query params** (all optional; every number counts only `published` and `completed` tours inside them):
+- `from`, `to` — tour date range, `YYYY-MM-DD`, inclusive. Absent = open-ended.
+- `groupType` — `school | company | community | other`
+- `placeId` — uuid. Scopes bookings and reflections to that session place, and evaluations to tours where the buddy held a session there.
+
+**Response `200`** — `AdminBuddyStatsResponse`:
+```json
+{
+  "places": [{ "id": "uuid", "nameJa": "string", "nameEn": "string" }],
+  "buddies": [
+    {
+      "id": "uuid",
+      "displayName": "string",
+      "realName": "string",
+      "status": "pending | trainee | active | rejected | suspended",
+      "tier": "junior | buddy | star | blackstar | null",
+      "memberType": "buddy | plab_member",
+      "createdAt": "ISO8601",
+      "stats": {
+        "sessionsAttended": 0, "toursAttended": 0, "noShows": 0, "toursMissed": 0, "attendanceRate": "number | null",
+        "upcomingConfirmed": 0, "openMaybe": 0, "openWaitlist": 0,
+        "firstTourDate": "YYYY-MM-DD | null", "lastTourDate": "YYYY-MM-DD | null", "daysSinceLastTour": "number | null",
+        "minutesVolunteered": 0, "sessionsWithoutTimes": 0,
+        "bookings": 0, "cancellations": 0, "lateCancellations": 0,
+        "cancellationsUnavoidable": 0, "cancellationsAvoidable": 0, "cancellationsUnreviewed": 0,
+        "cancellationsByCategory": { "health": 0, "emergency": 0, "personal": 0, "work": 0, "other": 0 },
+        "cancellationRate": "number | null",
+        "reflections": 0, "reflectionRate": "number | null", "moments": 0,
+        "evaluationsReceived": 0, "evaluationsMissing": 0,
+        "averageScores": { "overallRating": "number | null", "reliability": "number | null", "...": "one per EVALUATION_SCORE_FIELDS" },
+        "scoreCounts": { "overallRating": 0, "reliability": 0, "...": "evaluations that set each criterion" },
+        "profileOverallRating": "number | null",
+        "placesGuided": 0, "sessionsByPlace": { "<placeId>": 0 },
+        "groupTypesServed": 0, "sessionsByGroupType": { "school": 0, "company": 0, "community": 0, "other": 0 },
+        "monthsSinceRegistration": 0
+      }
+    }
+  ]
+}
+```
+Rates are `0`–`1`. A rate or average with nothing to divide by is `null`. `toursMissed` and `scoreCounts` let the page pool the attendance rate and criterion averages across buddies. `internalNotes` is never included.
+
+**Errors**
+- `400` — a param fails validation (`from`/`to` not `YYYY-MM-DD`, `from` after `to`, unknown `groupType`, `placeId` not a uuid)
+
+---
+
 ### Admin: `GET /admin/buddies/:id`
 Buddy detail with bookings and aggregations.
 
@@ -220,7 +272,8 @@ Buddy detail with bookings and aggregations.
     "avoidable": 0,
     "unreviewed": 0
   },
-  "absenceSummary": { "absentWithoutReport": 0 }
+  "absenceSummary": { "absentWithoutReport": 0 },
+  "stats": { "...": "BuddyStats, all time — see GET /admin/buddies/stats" }
 }
 ```
 

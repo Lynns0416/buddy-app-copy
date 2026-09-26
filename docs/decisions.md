@@ -12,6 +12,132 @@ duplicate that state here.
 
 ---
 
+## 2026-09-26 — Buddy stats: an ⓘ explains the numbers whose name does not
+
+**Decision:** on `/admin/buddies/stats`, a number whose name does not say what
+is counted or divided by carries an ⓘ after its label — in the table header, on
+the overview figure and on the scores chart. Its explanation opens on hover and
+on keyboard focus (Radix Tooltip). Self-explanatory numbers get none. The
+"sessions by the busiest 20%" figure is removed. Current state: PRD §11.4
+"Buddy Stats Page".
+
+**Why:** labels such as 出席率, 不可 or 活動時間 hide their denominator or
+their rule, and the page is read by admins on a PC, where hover is available.
+
+**Rejected — an explanation on every number:** most names (無断欠席, 申込数,
+初回ツアー) already say it; an ⓘ everywhere would stop marking the ones that
+need reading.
+
+**Rejected — the native `title` attribute:** it opens after about a second,
+cannot be styled, and never opens from the keyboard.
+
+**Rejected — the tooltip on the label itself:** headers sort and figures filter
+on click; a separate ⓘ keeps "explain" and "act" apart.
+
+**Rejected — "sessions by the busiest 20%":** its label explained nothing, and
+it counted buddies who never attended, so a large inactive roster pushed it up.
+"Buddies by sessions attended" already shows how sessions spread.
+
+---
+
+## 2026-09-26 — Buddy stats overview: figures and charts above the table
+
+**Decision:** `/admin/buddies/stats` opens with an overview of figures and
+charts across every buddy the table shows, computed in the browser from the
+same rows. Clicking a figure or bar narrows and sorts the table to the buddies
+behind it. Rates are pooled across buddies; criterion averages are weighted by
+a new `scoreCounts`, and a new `toursMissed` pools the attendance rate. Charts
+are plain HTML bars. Current state: PRD §11.4 "Overview".
+
+**Why:** the page went straight into ~40 per-buddy columns; an admin had no
+view of the whole before choosing which buddies to look at.
+
+**Rejected — a separate analytics home page:** it would need its own scope
+controls, and its figures could drift from the table they lead into. On the
+same page, one scope and one set of filters drive both.
+
+**Rejected — a chart library (e.g. Recharts):** every chart is bars, a stacked
+bar or columns. HTML bars are buttons a screen reader can read, follow the
+theme's colours in dark mode, and filter the table on click without a library's
+event model. Revisit for line charts or a scatter.
+
+**Rejected — monthly trends (sessions or active buddies per month) in #253:**
+the stats rows are per buddy and carry only first and last tour dates; a trend
+needs a per-month query, the same one tours per month and fill rates need.
+Tracked with organisation-wide numbers in #250.
+
+**Rejected — average each buddy's criterion average:** a buddy with one
+evaluation would weigh as much as one with ten. `evaluationsReceived` is not
+the weight either, since a criterion can be left blank.
+
+---
+
+## 2026-09-26 — Buddy detail stats: key numbers in sections, the rest collapsed
+
+**Decision:** the buddy detail page's stats section leads with its own list of
+key numbers, stacked in three sections: activity, reliability, and recent &
+upcoming. Every other number stays on the page, in one collapsed section per
+column-picker group, as a divided label/value list. "Days since last tour" is
+renamed "days inactive" on both pages. Current state: PRD §11.4 "Buddy Detail
+Page".
+
+**Why:** about 35 numbers in flat grids with no separation were too much to
+read at a glance, and a flat grid of key numbers still read as one undivided
+block (PR #257 review).
+
+**Rejected — a flat list of every number:** the layout the review turned down.
+
+**Rejected — reuse the stats page's default columns as the key numbers:** the
+first version of this decision. The two pages answer different questions:
+the stats page compares buddies, the detail page reads one. The total
+cancellation count is a default column worth comparing, but on the detail page
+it adds nothing at a glance, and the booking history already carries the
+cancellation summary. Late cancellations stay, under reliability.
+
+**Rejected — one toggle for every number below the key numbers:** the five
+collapsed groups were judged fine as they are in the same review.
+
+---
+
+## 2026-09-25 — Buddy stats: every number, the admin picks the columns
+
+**Decision:** `/admin/buddies/stats` shows one row per buddy with every number
+the data can already support (~40: attendance, cancellations, reflections,
+per-tour evaluation averages, places and group types), and each admin chooses
+which columns to show. The choice is kept in their browser. `GET /admin/buddies/stats`
+computes all of them for every buddy in one pass over a scope (tour date range,
+group type, place); status, tier, name and PLAB-member filters run in the
+browser. PLAB members are left out by default, and the period defaults to all
+time. The same numbers, all time, sit on the buddy detail page. Rating averages
+read the per-tour `AdminEvaluation`s; the `AdminProfileEvaluation` overall score
+is its own column. Definitions: PRD §11.4 "Buddy Stats Page". Closes #253.
+
+**Why:** "basic numbers" meant different numbers to different admins, and no
+one could say in advance which they would use. A fixed short list would have
+been guessed, so the page offers everything and lets each admin trim it.
+
+**Rejected — compute only the columns an admin has picked:** the roster is small
+and the counts come from six scoped queries, so computing all of them costs
+nothing noticeable. Per-column requests would put the column list in the API
+contract and make every picker click a round trip.
+
+**Rejected — add booking history in this issue:** Maybe→Confirmed conversion,
+waitlist promotions, tier promotion dates and booking lead time all need a
+record of past statuses. A `Booking` keeps only its current one and is reused
+on re-book, so these need a new event table. Left to the roadmap.
+
+**Rejected — replace the detail page's cancellation summary with the stats
+section:** the summary in the booking history recounts as soon as an admin
+marks a reason unavoidable or not. The stats come with the page load and would
+go stale until a reload. Both stay; the stats section has the same counts.
+
+**Rejected — count no-shows per session:** `absentWithoutReport` is recorded per
+tour, and the detail page already shows it as a tour count. Counting sessions
+would give two different no-show numbers on the same page. Attendance rate is
+per tour for the same reason.
+
+---
+
 ## 2026-09-24 — Every session field is editable after creation
 
 **Decision:** the tour edit form shows every field of an existing session —

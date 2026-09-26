@@ -19,3 +19,9 @@ export function formatDateTime(iso: string): string {
   const jst = jstIso(iso)
   return `${jst.slice(0, 10).replaceAll('-', '/')} ${jst.slice(11, 16)}`
 }
+
+// `yyyy/MM`, for a calendar month already given as `YYYY-MM` in JST (a chart
+// axis, a per-month count).
+export function formatMonth(month: string): string {
+  return month.replace('-', '/')
+}

@@ -199,6 +199,136 @@
       "unknown": "An error occurred. Please try again."
     }
   },
+  "adminBuddyStats": {
+    "title": "Buddy Stats",
+    "noResults": "No buddies match these filters",
+    "scope": {
+      "title": "Counted tours",
+      "hint": "Every number counts only tours in this period, group type and place. Leave the dates empty for all time.",
+      "from": "From",
+      "to": "To",
+      "groupType": "Group type",
+      "place": "Place",
+      "all": "All",
+      "allTime": "All time"
+    },
+    "filters": {
+      "searchLabel": "Search buddies",
+      "searchPlaceholder": "Search by name",
+      "status": "Status",
+      "tier": "Tier",
+      "includePlabMembers": "Include PLAB members",
+      "resultCount": "{count} of {total} buddies",
+      "reset": "Reset filters"
+    },
+    "columnPicker": {
+      "title": "Columns ({count} of {total} shown)",
+      "showAll": "Show all",
+      "reset": "Reset to default"
+    },
+    "groups": {
+      "profile": "Profile",
+      "participation": "Participation",
+      "cancellations": "Cancellations",
+      "engagement": "Reflections",
+      "evaluations": "Evaluations",
+      "coverage": "Places and groups"
+    },
+    "columns": {
+      "name": "Name",
+      "status": "Status",
+      "tier": "Tier",
+      "memberType": "Member type",
+      "createdAt": "Registered",
+      "monthsSinceRegistration": "Months since registration",
+      "sessionsAttended": "Sessions attended",
+      "toursAttended": "Tours attended",
+      "noShows": "No-shows",
+      "attendanceRate": "Attendance rate",
+      "upcomingConfirmed": "Upcoming confirmed",
+      "openMaybe": "Open Maybe",
+      "openWaitlist": "On waitlist",
+      "firstTourDate": "First tour",
+      "lastTourDate": "Last tour",
+      "daysSinceLastTour": "Days inactive",
+      "hoursVolunteered": "Hours volunteered",
+      "sessionsWithoutTimes": "Sessions without times",
+      "bookings": "Bookings",
+      "cancellations": "Cancellations",
+      "lateCancellations": "Late cancellations",
+      "cancellationRate": "Cancellation rate",
+      "cancellationsUnavoidable": "Unavoidable",
+      "cancellationsAvoidable": "Avoidable",
+      "cancellationsUnreviewed": "Unreviewed",
+      "cancellationsByCategory": "Cancelled: {category}",
+      "reflections": "Reflections",
+      "reflectionRate": "Reflection rate",
+      "moments": "Moments recorded",
+      "evaluationsReceived": "Evaluations received",
+      "evaluationsMissing": "Tours not evaluated",
+      "averageScore": "Avg. {criterion}",
+      "profileOverallRating": "Profile overall rating",
+      "placesGuided": "Places guided",
+      "sessionsAtPlace": "Sessions: {place}",
+      "groupTypesServed": "Group types served",
+      "sessionsForGroupType": "Sessions: {groupType}"
+    },
+    "descriptions": {
+      "sessionsAttended": "Confirmed sessions on completed tours, less tours the buddy was recorded absent from. One tour can have several sessions.",
+      "toursAttended": "Tours with at least one session attended. Several sessions on the same tour count once.",
+      "attendanceRate": "Tours attended ÷ (tours attended + tours missed). A no-show or a late cancellation counts as missed, once per tour.",
+      "openMaybe": "Bookings on upcoming tours still at Maybe: not yet confirmed or cancelled.",
+      "hoursVolunteered": "Start-to-end time of the sessions attended. Sessions without times are left out, so this can undercount.",
+      "sessionsWithoutTimes": "Sessions attended with no start or end time, so they are not counted in hours volunteered.",
+      "lateCancellations": "Cancellations made on or after the cancellation deadline: the buddy's own deadline if set, otherwise the tour's.",
+      "cancellationRate": "Cancellations ÷ bookings. Bookings counts every booking, whatever its status.",
+      "cancellationsUnavoidable": "Cancellations an admin reviewed and marked unavoidable.",
+      "cancellationsAvoidable": "Cancellations an admin reviewed and marked avoidable.",
+      "cancellationsUnreviewed": "Cancellations whose reason no admin has reviewed yet.",
+      "evaluationsMissing": "Tours attended that have no admin evaluation yet.",
+      "moments": "Moments recorded in the buddy's reflections.",
+      "averageScore": "Mean over each evaluation that scored this criterion, on a 1–5 scale. Evaluations that left it blank are not counted."
+    },
+    "about": "About {label}",
+    "detail": {
+      "title": "Stats",
+      "hint": "All time. Hours count only sessions with a start and end time.",
+      "allNumbers": "All numbers",
+      "sections": {
+        "activity": "Activity",
+        "reliability": "Reliability",
+        "recent": "Recent & upcoming"
+      }
+    },
+    "overview": {
+      "title": "Overview",
+      "hint": "Figures cover every buddy in the table below. Click a figure or a bar to narrow and sort the table to those buddies.",
+      "buddies": "Buddies",
+      "everAttended": "Attended at least once",
+      "noTier": "No tier",
+      "bucketFocus": "{chart}: {bucket}",
+      "monthCount": "{month}: {count}",
+      "focused": "Showing {label} ({count} buddies)",
+      "clearFocus": "Show all",
+      "charts": {
+        "tiers": "Buddies by tier",
+        "registrations": "New registrations per month",
+        "activity": "Buddies by sessions attended",
+        "recency": "Buddies by time since last tour",
+        "categories": "Cancellations by reason",
+        "groupTypes": "Sessions by group type",
+        "places": "Sessions by place",
+        "scores": "Average evaluation scores (1–5)"
+      },
+      "recency": {
+        "within30": "Within 30 days",
+        "within90": "31–90 days",
+        "within180": "91–180 days",
+        "older": "Over 180 days",
+        "never": "Never attended"
+      }
+    }
+  },
   "home": {
     "title": "Home",
     "nextTour": {
@@ -493,6 +623,7 @@
       "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
       "trainees": "Trainees",
+      "buddyStats": "Stats",
       "groups": "Groups",
       "places": "Places",
       "tours": "Tours",

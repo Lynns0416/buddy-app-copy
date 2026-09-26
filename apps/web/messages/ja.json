@@ -11,7 +11,7 @@
     "slackEnabledHeader": "Slack",
     "modeImmediate": "即時",
     "modeDigest": "1日まとめ",
-    "slackDisabledTooltip": "Slack は共有の管理者チャンネルに投稿されます。管理者ごとの設定はありません",
+    "slackDisabledTooltip": "Slack は共有のPLABメンバーチャンネルに投稿されます。PLABメンバーごとの設定はありません",
     "events": {
       "new_signup": "新規バディ登録",
       "new_booking": "参加希望あり",
@@ -199,6 +199,136 @@
       "unknown": "エラーが発生しました。もう一度お試しください。"
     }
   },
+  "adminBuddyStats": {
+    "title": "バディ統計",
+    "noResults": "条件に合うバディがいません",
+    "scope": {
+      "title": "集計対象のツアー",
+      "hint": "すべての数値は、この期間・団体種別・場所のツアーのみを集計します。日付を空欄にすると全期間になります。",
+      "from": "開始日",
+      "to": "終了日",
+      "groupType": "団体種別",
+      "place": "場所",
+      "all": "すべて",
+      "allTime": "全期間"
+    },
+    "filters": {
+      "searchLabel": "バディを検索",
+      "searchPlaceholder": "名前で検索",
+      "status": "ステータス",
+      "tier": "ロール",
+      "includePlabMembers": "PLABメンバーを含める",
+      "resultCount": "{total}人中{count}人",
+      "reset": "フィルターをリセット"
+    },
+    "columnPicker": {
+      "title": "表示する列（{total}列中{count}列）",
+      "showAll": "すべて表示",
+      "reset": "初期設定に戻す"
+    },
+    "groups": {
+      "profile": "プロフィール",
+      "participation": "参加",
+      "cancellations": "キャンセル",
+      "engagement": "ふり返り",
+      "evaluations": "評価",
+      "coverage": "場所と団体"
+    },
+    "columns": {
+      "name": "名前",
+      "status": "ステータス",
+      "tier": "ロール",
+      "memberType": "メンバータイプ",
+      "createdAt": "登録日",
+      "monthsSinceRegistration": "登録からの月数",
+      "sessionsAttended": "参加セッション数",
+      "toursAttended": "参加ツアー数",
+      "noShows": "無断欠席",
+      "attendanceRate": "出席率",
+      "upcomingConfirmed": "今後の参加希望",
+      "openMaybe": "未確定",
+      "openWaitlist": "キャンセル待ち",
+      "firstTourDate": "初回ツアー",
+      "lastTourDate": "直近のツアー",
+      "daysSinceLastTour": "未稼働日数",
+      "hoursVolunteered": "活動時間",
+      "sessionsWithoutTimes": "時刻未設定のセッション",
+      "bookings": "申込数",
+      "cancellations": "キャンセル数",
+      "lateCancellations": "期限後キャンセル",
+      "cancellationRate": "キャンセル率",
+      "cancellationsUnavoidable": "やむを得ない",
+      "cancellationsAvoidable": "不可",
+      "cancellationsUnreviewed": "未確認",
+      "cancellationsByCategory": "キャンセル：{category}",
+      "reflections": "ふり返り数",
+      "reflectionRate": "ふり返り率",
+      "moments": "記録した場面",
+      "evaluationsReceived": "評価数",
+      "evaluationsMissing": "未評価のツアー",
+      "averageScore": "平均：{criterion}",
+      "profileOverallRating": "プロフィール総合評価",
+      "placesGuided": "案内した場所数",
+      "sessionsAtPlace": "セッション：{place}",
+      "groupTypesServed": "担当した団体種別数",
+      "sessionsForGroupType": "セッション：{groupType}"
+    },
+    "descriptions": {
+      "sessionsAttended": "完了したツアーで参加が確定していたセッションの数です。欠席を記録されたツアーの分は除きます。1つのツアーに複数のセッションがあることがあります。",
+      "toursAttended": "参加したセッションがあるツアーの数です。同じツアーで複数のセッションを担当しても1と数えます。",
+      "attendanceRate": "参加ツアー数 ÷（参加ツアー数＋欠席ツアー数）。無断欠席と期限後キャンセルを欠席と数えます（ツアーごとに1回）。",
+      "openMaybe": "今後のツアーで「未確定」のまま、参加かキャンセルが決まっていない申込です。",
+      "hoursVolunteered": "参加したセッションの開始〜終了時刻の合計です。時刻が未設定のセッションは含まないため、実際より少なく出ることがあります。",
+      "sessionsWithoutTimes": "開始または終了時刻が未設定のため、活動時間に含めていない参加セッションです。",
+      "lateCancellations": "キャンセル期限の当日以降に届いたキャンセルです。バディ個別の期限があればそれを、なければツアーの期限を使います。",
+      "cancellationRate": "キャンセル数 ÷ 申込数。申込数は状態にかかわらず、すべての申込です。",
+      "cancellationsUnavoidable": "PLABメンバーがキャンセル理由を確認し、やむを得ないと判断したキャンセルです。",
+      "cancellationsAvoidable": "PLABメンバーがキャンセル理由を確認し、やむを得ないとは言えないと判断したキャンセルです。",
+      "cancellationsUnreviewed": "PLABメンバーがまだ理由を確認していないキャンセルです。",
+      "evaluationsMissing": "参加したツアーのうち、PLABメンバーの評価がまだないツアーです。",
+      "moments": "ふり返りに記録された「印象に残った場面」の数です。",
+      "averageScore": "その項目が採点された評価1件ずつの平均です（1〜5）。項目が空欄の評価は含みません。"
+    },
+    "about": "{label}について",
+    "detail": {
+      "title": "統計",
+      "hint": "全期間。活動時間は開始・終了時刻のあるセッションのみ集計します。",
+      "allNumbers": "すべての数値",
+      "sections": {
+        "activity": "実績",
+        "reliability": "信頼性",
+        "recent": "直近・今後"
+      }
+    },
+    "overview": {
+      "title": "概要",
+      "hint": "下の表に表示されているバディ全員の数値です。数値やグラフをクリックすると、該当するバディに表を絞り込んで並べ替えます。",
+      "buddies": "バディ数",
+      "everAttended": "参加経験あり",
+      "noTier": "ロールなし",
+      "bucketFocus": "{chart}：{bucket}",
+      "monthCount": "{month}：{count}",
+      "focused": "{label}を表示中（{count}人）",
+      "clearFocus": "すべて表示",
+      "charts": {
+        "tiers": "ロール別バディ数",
+        "registrations": "月別の新規登録",
+        "activity": "参加セッション数別バディ数",
+        "recency": "最終参加からの期間別バディ数",
+        "categories": "理由別キャンセル数",
+        "groupTypes": "団体種別ごとのセッション数",
+        "places": "場所別セッション数",
+        "scores": "評価スコアの平均（1〜5）"
+      },
+      "recency": {
+        "within30": "30日以内",
+        "within90": "31〜90日",
+        "within180": "91〜180日",
+        "older": "180日超",
+        "never": "参加なし"
+      }
+    }
+  },
   "home": {
     "title": "ホーム",
     "nextTour": {
@@ -320,7 +450,7 @@
     "belowMinimum": "最小未満",
     "participantCount": "参加者数",
     "description": "説明",
-    "adminMemo": "管理者メモ",
+    "adminMemo": "PLABメンバーメモ",
     "cancellationDeadline": "バディキャンセル期限",
     "maybeDeadline": "仮参加確定期限",
     "notificationOffsets": "通知タイミング（日前、カンマ区切り）",
@@ -400,13 +530,13 @@
     },
     "bookingSession": "セッション",
     "assignedAdmins": {
-      "title": "担当管理者",
-      "noAdmins": "担当管理者なし",
+      "title": "担当PLABメンバー",
+      "noAdmins": "担当PLABメンバーなし",
       "staffInCharge": "担当者",
       "setStaffInCharge": "担当者に設定",
       "unassign": "外す",
       "assign": "追加",
-      "selectAdmin": "管理者を選択..."
+      "selectAdmin": "PLABメンバーを選択..."
     },
     "error": {
       "notFound": "このツアーは存在しません。",
@@ -493,11 +623,12 @@
       "buddiesPending": "承認待ち",
       "buddies": "バディ",
       "trainees": "研修中",
+      "buddyStats": "統計",
       "groups": "団体",
       "places": "場所",
       "tours": "ツアー",
       "adminProfile": "マイプロフィール",
-      "adminRoster": "管理者一覧",
+      "adminRoster": "PLABメンバー一覧",
       "adminNotificationPreferences": "通知設定",
       "mainLabel": "メインメニュー",
       "accountLabel": "アカウント",
@@ -509,7 +640,7 @@
   },
   "pending": {
     "title": "承認待ち",
-    "message": "アカウントは管理者の承認待ちです。承認され次第、通知いたします。",
+    "message": "アカウントはPLABメンバーの承認待ちです。承認され次第、通知いたします。",
     "signOut": "ログアウト"
   },
   "profile": {
@@ -559,7 +690,7 @@
       "connectApple": "Appleと連携する",
       "comingSoon": "Appleでのログインは近日対応予定です",
       "error": {
-        "alreadyInUse": "この{provider}アカウントはすでに別のPeace Buddyアカウントと連携されています。管理者にお問い合わせください。",
+        "alreadyInUse": "この{provider}アカウントはすでに別のPeace Buddyアカウントと連携されています。PLABメンバーにお問い合わせください。",
         "unknown": "ログイン方法を連携できませんでした。もう一度お試しください。"
       }
     },
@@ -745,13 +876,13 @@
     }
   },
   "adminProfiles": {
-    "title": "管理者一覧",
+    "title": "PLABメンバー一覧",
     "name": "名前",
     "createdAt": "作成日",
-    "noResults": "管理者がいません",
+    "noResults": "PLABメンバーがいません",
     "you": "（あなた）",
     "delete": "削除",
-    "confirmDelete": "この管理者を削除しますか？この操作は取り消せません。",
+    "confirmDelete": "このPLABメンバーを削除しますか？この操作は取り消せません。",
     "cancelDelete": "キャンセル",
     "actionError": "操作に失敗しました。もう一度お試しください。",
     "conflictError": "進行中のツアーに担当者として割り当てられているため削除できません。",

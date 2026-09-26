@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
-import { BuddyStatusSchema, BuddyTierSchema, MemberTypeSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema, AdminUpdateCancellationSchema, AdminUpdateBookingStatusSchema } from '@peace-buddy/types'
+import { z } from 'zod'
+import { GroupTypeSchema, BuddyStatusSchema, BuddyTierSchema, MemberTypeSchema, UpdateBuddyStatusSchema, UpdateAdminBuddyProfileSchema, AdminUpdateCancellationSchema, AdminUpdateBookingStatusSchema } from '@peace-buddy/types'
 import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason, updateAdminBookingStatus } from '../services/admin.service'
 import { adminGroupRoutes } from './adminGroups'
 import { adminPlaceRoutes } from './adminPlaces'
@@ -9,7 +10,25 @@ import { adminProfileEvaluationRoutes } from './adminProfileEvaluations'
 import { adminReflectionRoutes } from './adminReflections'
 import { adminProfileRoutes } from './adminProfiles'
 import { adminDashboardRoutes } from './adminDashboard'
+import { listBuddyStats } from '../services/adminBuddyStats.service'
 import type { AuthEnv } from '../types'
+
+// Tour dates are calendar dates, so the range is `YYYY-MM-DD`, read as UTC
+// midnight like the `@db.Date` column it is compared with.
+const IsoDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .transform((d) => new Date(`${d}T00:00:00.000Z`))
+  .refine((d) => !Number.isNaN(d.getTime()))
+
+const BuddyStatsQuerySchema = z
+  .object({
+    from: IsoDateSchema.optional(),
+    to: IsoDateSchema.optional(),
+    groupType: GroupTypeSchema.optional(),
+    placeId: z.string().uuid().optional(),
+  })
+  .refine((q) => !q.from || !q.to || q.from <= q.to)
 
 const adminRoutes = new Hono<AuthEnv>()
 
@@ -49,6 +68,13 @@ adminRoutes.get('/buddies', async (c) => {
   }
 
   return c.json(await listBuddies(status, tier, memberType))
+})
+
+// Registered before `/buddies/:id`, which would otherwise read `stats` as an id.
+adminRoutes.get('/buddies/stats', async (c) => {
+  const parsed = BuddyStatsQuerySchema.safeParse(c.req.query())
+  if (!parsed.success) return c.json({ error: 'Invalid query params' }, 400)
+  return c.json(await listBuddyStats(parsed.data))
 })
 
 adminRoutes.get('/buddies/:id', async (c) => {

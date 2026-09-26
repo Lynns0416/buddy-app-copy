@@ -102,6 +102,8 @@ const ID = {
   hs2:              '00000000-0000-0000-0000-000000000004',
   jhs1:             '00000000-0000-0000-0000-000000000005',
   jhs2:             '00000000-0000-0000-0000-000000000006',
+  groupCommunity:   '00000000-0000-0000-0000-000000000007',
+  groupOther:       '00000000-0000-0000-0000-000000000008',
   tourUrgent:       '00000000-0000-0000-0001-000000000001',
   tourMidterm:      '00000000-0000-0000-0001-000000000002',
   tourOpen:         '00000000-0000-0000-0001-000000000003',
@@ -112,6 +114,9 @@ const ID = {
   tourPeace2:       '00000000-0000-0000-0001-000000000008',
   tourPeace3:       '00000000-0000-0000-0001-000000000009',
   tourPeace4:       '00000000-0000-0000-0001-000000000010',
+  tourCommunityPast: '00000000-0000-0000-0001-000000000011',
+  tourOtherPast:     '00000000-0000-0000-0001-000000000012',
+  tourVoicePast:     '00000000-0000-0000-0001-000000000013',
   sessionUrgent:    '00000000-0000-0000-0002-000000000001',
   sessionMidterm:   '00000000-0000-0000-0002-000000000002',
   sessionOpen:      '00000000-0000-0000-0002-000000000003',
@@ -123,6 +128,9 @@ const ID = {
   sessionPeace3:    '00000000-0000-0000-0002-000000000009',
   sessionPeace4:    '00000000-0000-0000-0002-000000000010',
   sessionOpen2:     '00000000-0000-0000-0002-000000000013',
+  sessionCommunityPast: '00000000-0000-0000-0002-000000000011',
+  sessionOtherPast:     '00000000-0000-0000-0002-000000000012',
+  sessionVoicePast:     '00000000-0000-0000-0002-000000000014',
   placePeacePark:        '00000000-0000-0000-0003-000000000001',
   placeUrakami:          '00000000-0000-0000-0003-000000000002',
   placeAtomicBombMuseum: '00000000-0000-0000-0003-000000000003',
@@ -411,6 +419,33 @@ async function main() {
     },
   })
 
+  // community and other group types, so far missing from the seed — the
+  // buddy stats group-type column and filter had nothing but school/company
+  // to show (#253).
+  await prisma.group.upsert({
+    where: { id: ID.groupCommunity },
+    update: {},
+    create: {
+      id: ID.groupCommunity,
+      name: '長崎県被爆者友の会',
+      type: GroupType.community,
+      contactName: '大石 様',
+      contactEmail: 'oishi@nagasaki-community.example',
+    },
+  })
+
+  await prisma.group.upsert({
+    where: { id: ID.groupOther },
+    update: {},
+    create: {
+      id: ID.groupOther,
+      name: '海外メディア取材団',
+      type: GroupType.other,
+      contactName: 'Smith 様',
+      contactEmail: 'smith@overseas-media.example',
+    },
+  })
+
   // ── Tours (existing) ────────────────────────────────────────
   await prisma.tour.upsert({
     where: { id: ID.tourUrgent },
@@ -613,6 +648,97 @@ async function main() {
     where: { id: ID.sessionPeace4 },
     update: {},
     create: { id: ID.sessionPeace4, tourId: ID.tourPeace4, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 8, participantCount: 60 },
+  })
+
+  // ── Tours (buddy stats seed — #253) ─────────────────────────
+  // Completed, off 平和公園, and across a group type each — every other
+  // seeded session is at Peace Park with a school or company group, so the
+  // stats page's place and group-type columns had only one real value.
+  // Two sessions carry startTime/endTime for "hours volunteered"; the third
+  // is left without them to keep exercising "sessions without times".
+  await prisma.tour.upsert({
+    where: { id: ID.tourCommunityPast },
+    update: {},
+    create: {
+      id: ID.tourCommunityPast,
+      groupId: ID.groupCommunity,
+      status: TourStatus.completed,
+      tourDate: daysFromNow(-75),
+      description: '被爆者友の会向けツアーです。',
+      cancellationDeadline: daysFromNow(-79),
+      notificationOffsets: [],
+    },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionCommunityPast },
+    update: {},
+    create: {
+      id: ID.sessionCommunityPast,
+      tourId: ID.tourCommunityPast,
+      placeId: ID.placeUrakami,
+      order: 1,
+      meetingTime: timeOnly(10),
+      startTime: timeOnly(10, 5),
+      endTime: timeOnly(11, 50),
+      capacity: 10,
+      participantCount: 40,
+    },
+  })
+
+  await prisma.tour.upsert({
+    where: { id: ID.tourOtherPast },
+    update: {},
+    create: {
+      id: ID.tourOtherPast,
+      groupId: ID.groupOther,
+      status: TourStatus.completed,
+      tourDate: daysFromNow(-110),
+      description: '海外メディアの取材ツアーです。',
+      cancellationDeadline: daysFromNow(-114),
+      notificationOffsets: [],
+    },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionOtherPast },
+    update: {},
+    create: {
+      id: ID.sessionOtherPast,
+      tourId: ID.tourOtherPast,
+      placeId: ID.placeAtomicBombMuseum,
+      order: 1,
+      meetingTime: timeOnly(14),
+      capacity: 6,
+      participantCount: 8,
+    },
+  })
+
+  await prisma.tour.upsert({
+    where: { id: ID.tourVoicePast },
+    update: {},
+    create: {
+      id: ID.tourVoicePast,
+      groupId: ID.school,
+      status: TourStatus.completed,
+      tourDate: daysFromNow(-10),
+      description: 'VOICEでの平和学習ツアーです。',
+      cancellationDeadline: daysFromNow(-14),
+      notificationOffsets: [],
+    },
+  })
+  await prisma.tourSession.upsert({
+    where: { id: ID.sessionVoicePast },
+    update: {},
+    create: {
+      id: ID.sessionVoicePast,
+      tourId: ID.tourVoicePast,
+      placeId: ID.placeVoice,
+      order: 1,
+      meetingTime: timeOnly(9, 30),
+      startTime: timeOnly(9, 35),
+      endTime: timeOnly(11, 5),
+      capacity: 8,
+      participantCount: 30,
+    },
   })
 
   // ── Bookings (skip if no buddies) ───────────────────────────
@@ -899,6 +1025,425 @@ async function main() {
     })
   }
 
+  // ── Roster history on the buddy-stats tours (#253) ───────────
+  // Attendance, a no-show, cancellations covering every review state and
+  // every category, a deadline override, evaluations from more than one
+  // admin and evaluations left missing, and reflections at a place with no
+  // named spots (#239's free-text fallback) — so the buddy stats page and
+  // the buddy detail page have more than a couple of buddies' worth of
+  // history to show. Every buddy below is chosen so their `daysAgo`
+  // registration is well before the tour they're booked on.
+  const statsHistoryBookings: {
+    index: number
+    tourId: string
+    sessionId: string
+    status: BookingStatus
+  }[] = [
+    // tourCommunityPast (75 days ago; buddies registered 120+ days ago)
+    { index: 8,  tourId: ID.tourCommunityPast, sessionId: ID.sessionCommunityPast, status: BookingStatus.confirmed },
+    { index: 10, tourId: ID.tourCommunityPast, sessionId: ID.sessionCommunityPast, status: BookingStatus.confirmed },
+    { index: 12, tourId: ID.tourCommunityPast, sessionId: ID.sessionCommunityPast, status: BookingStatus.confirmed },
+    { index: 14, tourId: ID.tourCommunityPast, sessionId: ID.sessionCommunityPast, status: BookingStatus.confirmed }, // no-show, below
+    { index: 16, tourId: ID.tourCommunityPast, sessionId: ID.sessionCommunityPast, status: BookingStatus.declined },
+    { index: 18, tourId: ID.tourCommunityPast, sessionId: ID.sessionCommunityPast, status: BookingStatus.declined },
+    // tourOtherPast (110 days ago; buddies registered 128+ days ago)
+    { index: 9,  tourId: ID.tourOtherPast, sessionId: ID.sessionOtherPast, status: BookingStatus.confirmed },
+    { index: 11, tourId: ID.tourOtherPast, sessionId: ID.sessionOtherPast, status: BookingStatus.confirmed },
+    { index: 13, tourId: ID.tourOtherPast, sessionId: ID.sessionOtherPast, status: BookingStatus.confirmed },
+    { index: 15, tourId: ID.tourOtherPast, sessionId: ID.sessionOtherPast, status: BookingStatus.declined },
+    { index: 17, tourId: ID.tourOtherPast, sessionId: ID.sessionOtherPast, status: BookingStatus.declined }, // deadline override, below
+    // tourVoicePast (10 days ago — any active buddy qualifies)
+    { index: 0,  tourId: ID.tourVoicePast, sessionId: ID.sessionVoicePast, status: BookingStatus.confirmed },
+    { index: 2,  tourId: ID.tourVoicePast, sessionId: ID.sessionVoicePast, status: BookingStatus.confirmed },
+    { index: 4,  tourId: ID.tourVoicePast, sessionId: ID.sessionVoicePast, status: BookingStatus.confirmed },
+    { index: 6,  tourId: ID.tourVoicePast, sessionId: ID.sessionVoicePast, status: BookingStatus.declined },
+  ]
+  for (const booking of statsHistoryBookings) {
+    const buddyId = r(booking.index)
+    const buddyTier = ROSTER[booking.index].tier
+    if (!buddyId || !buddyTier) continue
+    await prisma.booking.upsert({
+      where: { buddyId_sessionId: { buddyId, sessionId: booking.sessionId } },
+      update: {},
+      create: {
+        buddyId,
+        tourId: booking.tourId,
+        sessionId: booking.sessionId,
+        status: booking.status,
+        buddyTier,
+      },
+    })
+  }
+
+  // Cancellation reasons — every review state, every lateness case, one of
+  // each CancellationCategory.
+  const statsCancellationReasons: {
+    index: number
+    sessionId: string
+    category: CancellationCategory
+    unavoidable: boolean | null
+    createdAt: Date
+  }[] = [
+    // deadline -79: before it is on time
+    { index: 16, sessionId: ID.sessionCommunityPast, category: CancellationCategory.health,    unavoidable: true,  createdAt: daysFromNow(-82) },
+    { index: 18, sessionId: ID.sessionCommunityPast, category: CancellationCategory.work,      unavoidable: false, createdAt: daysFromNow(-70) },
+    // deadline -114: before it is on time
+    { index: 15, sessionId: ID.sessionOtherPast,     category: CancellationCategory.emergency, unavoidable: null,  createdAt: daysFromNow(-116) },
+    // after the tour's own deadline (-114) but before r(17)'s override (-108, below) — on time only because of the override
+    { index: 17, sessionId: ID.sessionOtherPast,     category: CancellationCategory.other,     unavoidable: false, createdAt: daysFromNow(-112) },
+    // deadline -14: after it is late
+    { index: 6,  sessionId: ID.sessionVoicePast,     category: CancellationCategory.personal,  unavoidable: false, createdAt: daysFromNow(-9) },
+  ]
+  for (const reason of statsCancellationReasons) {
+    const buddyId = r(reason.index)
+    if (!buddyId) continue
+    const declined = await prisma.booking.findUnique({ where: { buddyId_sessionId: { buddyId, sessionId: reason.sessionId } } })
+    if (!declined) continue
+    await prisma.cancellationReason.upsert({
+      where: { bookingId: declined.id },
+      update: {},
+      create: {
+        bookingId: declined.id,
+        category: reason.category,
+        unavoidable: reason.unavoidable,
+        recordedBy: adminUser.id,
+        createdAt: reason.createdAt,
+      },
+    })
+  }
+
+  // Deadline override for r(17) on tourOtherPast: extends the tour's own
+  // deadline (-114) to (-108), so the reason recorded at (-112) above counts
+  // as on time only under this override.
+  const overrideBuddyId = r(17)
+  if (overrideBuddyId) {
+    await prisma.buddyCancellationDeadlineOverride.upsert({
+      where: { buddyId_tourId: { buddyId: overrideBuddyId, tourId: ID.tourOtherPast } },
+      update: {},
+      create: {
+        buddyId: overrideBuddyId,
+        tourId: ID.tourOtherPast,
+        deadline: daysFromNow(-108),
+        setBy: adminUser.id,
+      },
+    })
+  }
+
+  // No-show: r(14) held a confirmed booking on tourCommunityPast but the
+  // evaluation records they never turned up, which voids the session.
+  const noShowBuddyId = r(14)
+  if (noShowBuddyId) {
+    await prisma.adminEvaluation.upsert({
+      where: { buddyId_tourId_createdBy: { buddyId: noShowBuddyId, tourId: ID.tourCommunityPast, createdBy: adminUser.id } },
+      update: {},
+      create: {
+        buddyId: noShowBuddyId,
+        tourId: ID.tourCommunityPast,
+        createdBy: adminUser.id,
+        absentWithoutReport: true,
+      },
+    })
+  }
+
+  // Evaluations for buddies who attended, with a spread of scores. r(12),
+  // r(13) and r(4) are deliberately left unevaluated, so "tours not
+  // evaluated" has something to show. r(2) gets a second evaluation from
+  // admin 2, to test averaging across admins outside b(0).
+  const statsEvaluations: {
+    index: number
+    tourId: string
+    createdBy: string
+    scores: Partial<Record<
+      'overallRating' | 'reliability' | 'communication' | 'groupEngagement' | 'memory' | 'knowledge' | 'dedication' | 'dialogue' | 'adaptability' | 'confidence',
+      number
+    >>
+  }[] = [
+    { index: 8,  tourId: ID.tourCommunityPast, createdBy: adminUser.id, scores: { overallRating: 4, reliability: 4, communication: 5, groupEngagement: 4 } },
+    { index: 10, tourId: ID.tourCommunityPast, createdBy: adminUser.id, scores: { overallRating: 5, reliability: 5, dedication: 5 } },
+    { index: 9,  tourId: ID.tourOtherPast,     createdBy: adminUser.id, scores: { overallRating: 4, knowledge: 5, confidence: 4 } },
+    { index: 11, tourId: ID.tourOtherPast,     createdBy: adminUser.id, scores: { overallRating: 3, dialogue: 3, memory: 2 } },
+    { index: 0,  tourId: ID.tourVoicePast,     createdBy: adminUser.id, scores: { overallRating: 5, reliability: 5, communication: 5, groupEngagement: 5 } },
+    { index: 2,  tourId: ID.tourVoicePast,     createdBy: adminUser.id, scores: { overallRating: 4, reliability: 4, communication: 4 } },
+    { index: 2,  tourId: ID.tourVoicePast,     createdBy: admin2User.id, scores: { overallRating: 3, reliability: 3, adaptability: 3 } },
+  ]
+  for (const e of statsEvaluations) {
+    const buddyId = r(e.index)
+    if (!buddyId) continue
+    await prisma.adminEvaluation.upsert({
+      where: { buddyId_tourId_createdBy: { buddyId, tourId: e.tourId, createdBy: e.createdBy } },
+      update: {},
+      create: { buddyId, tourId: e.tourId, createdBy: e.createdBy, ...e.scores },
+    })
+  }
+
+  // Reflections at places with no named spots (#239's free-text fallback).
+  const communityReflectionBuddyId = r(8)
+  if (communityReflectionBuddyId) {
+    await prisma.tourReflection.upsert({
+      where: { buddyId_sessionId: { buddyId: communityReflectionBuddyId, sessionId: ID.sessionCommunityPast } },
+      update: {},
+      create: {
+        buddyId: communityReflectionBuddyId,
+        sessionId: ID.sessionCommunityPast,
+        didWell: '被爆体験のお話に、参加者が熱心に耳を傾けていました。',
+        couldImprove: '浦上天主堂の歴史についての説明がやや駆け足になりました。',
+        moments: {
+          create: [
+            { position: 0, placeNote: '鐘のレプリカの前', description: '「鐘の音を聞いて涙ぐむ方がいました」' },
+          ],
+        },
+      },
+    })
+  }
+
+  const otherReflectionBuddyId = r(9)
+  if (otherReflectionBuddyId) {
+    await prisma.tourReflection.upsert({
+      where: { buddyId_sessionId: { buddyId: otherReflectionBuddyId, sessionId: ID.sessionOtherPast } },
+      update: {},
+      create: {
+        buddyId: otherReflectionBuddyId,
+        sessionId: ID.sessionOtherPast,
+        didWell: '海外メディアからの質問に落ち着いて対応できました。',
+        openQuestions: '被爆者の平均年齢についての質問に正確な数字を答えられませんでした。',
+        moments: {
+          create: [
+            { position: 0, placeNote: '被爆再現人形の展示前', description: '記者の一人が長時間メモを取っていました。' },
+            { position: 1, placeNote: '入口ロビー', description: '通訳を介してでも伝わる反応があったと感じました。' },
+          ],
+        },
+      },
+    })
+  }
+
+  // ── Realistic multi-tour history and buddy personalities (#253) ─
+  // The blocks above cover one example of every code path; this gives the
+  // stats page a real-looking population on top of them: most active roster
+  // buddies attend regularly and mostly don't cancel, a minority barely
+  // join at all, and two independent traits vary per buddy rather than
+  // moving together — how they score in their own reflections (`selfView`)
+  // and how admins score them (`adminView`); the two are assigned
+  // independently on purpose; a buddy can be self-critical yet admin-rated
+  // highly, or the reverse. Every buddy below is checked against their own
+  // `daysAgo` registration, so no one attends a tour that predates them.
+  type BuddyArchetype = {
+    index: number
+    participation: 'core' | 'occasional'
+    selfView: 'critical' | 'confident' | 'balanced'
+    adminView: 'high' | 'low' | 'mixed'
+  }
+
+  // 15 core (attend most tours) / 5 occasional (a tour or two, ever) — the
+  // occasional five are the longest-registered (daysAgo 172-610): tenure
+  // does not imply frequency.
+  const BUDDY_ARCHETYPES: BuddyArchetype[] = [
+    { index: 0,  participation: 'core', selfView: 'critical',  adminView: 'high' },
+    { index: 1,  participation: 'core', selfView: 'confident', adminView: 'low' },
+    { index: 2,  participation: 'core', selfView: 'balanced',  adminView: 'mixed' },
+    { index: 3,  participation: 'core', selfView: 'critical',  adminView: 'low' },
+    { index: 4,  participation: 'core', selfView: 'confident', adminView: 'high' },
+    { index: 5,  participation: 'core', selfView: 'balanced',  adminView: 'high' },
+    { index: 6,  participation: 'core', selfView: 'critical',  adminView: 'mixed' },
+    { index: 7,  participation: 'core', selfView: 'confident', adminView: 'mixed' },
+    { index: 8,  participation: 'core', selfView: 'balanced',  adminView: 'low' },
+    { index: 9,  participation: 'core', selfView: 'critical',  adminView: 'high' },
+    { index: 10, participation: 'core', selfView: 'confident', adminView: 'low' },
+    { index: 11, participation: 'core', selfView: 'balanced',  adminView: 'mixed' },
+    { index: 12, participation: 'core', selfView: 'critical',  adminView: 'low' },
+    { index: 13, participation: 'core', selfView: 'confident', adminView: 'high' },
+    { index: 14, participation: 'core', selfView: 'balanced',  adminView: 'high' },
+    { index: 15, participation: 'occasional', selfView: 'balanced',  adminView: 'mixed' },
+    { index: 16, participation: 'occasional', selfView: 'confident', adminView: 'high' },
+    { index: 17, participation: 'occasional', selfView: 'critical',  adminView: 'low' },
+    { index: 18, participation: 'occasional', selfView: 'balanced',  adminView: 'mixed' },
+    { index: 19, participation: 'occasional', selfView: 'critical',  adminView: 'high' },
+  ]
+
+  // Five recent completed tours, all within the last 36 days — safely after
+  // even the newest core buddy's registration (daysAgo 40) — so every core
+  // buddy is eligible for every one of them.
+  type Tier1Tour = {
+    i: number
+    id: string
+    sessionId: string
+    groupId: string
+    placeId: string
+    daysAgo: number
+    deadlineDaysAgo: number
+    description: string
+  }
+  const TIER1_TOURS: Tier1Tour[] = [
+    { i: 0, id: '00000000-0000-0000-0001-000000000021', sessionId: '00000000-0000-0000-0002-000000000021', groupId: ID.school,  placeId: ID.placePeacePark,        daysAgo: 9,  deadlineDaysAgo: 13, description: '高校生向け平和学習ツアーです。' },
+    { i: 1, id: '00000000-0000-0000-0001-000000000022', sessionId: '00000000-0000-0000-0002-000000000022', groupId: ID.company, placeId: ID.placeUrakami,          daysAgo: 16, deadlineDaysAgo: 20, description: '企業研修の一環としての訪問です。' },
+    { i: 2, id: '00000000-0000-0000-0001-000000000023', sessionId: '00000000-0000-0000-0002-000000000023', groupId: ID.hs2,     placeId: ID.placePeacePark,        daysAgo: 23, deadlineDaysAgo: 27, description: '修学旅行の平和学習ツアーです。' },
+    { i: 3, id: '00000000-0000-0000-0001-000000000024', sessionId: '00000000-0000-0000-0002-000000000024', groupId: ID.jhs2,    placeId: ID.placeVoice,            daysAgo: 30, deadlineDaysAgo: 34, description: '中学生向けのVOICE見学ツアーです。' },
+    { i: 4, id: '00000000-0000-0000-0001-000000000025', sessionId: '00000000-0000-0000-0002-000000000025', groupId: ID.hs1,     placeId: ID.placeAtomicBombMuseum, daysAgo: 36, deadlineDaysAgo: 40, description: '高校生向けの資料館見学ツアーです。' },
+  ]
+  for (const tour of TIER1_TOURS) {
+    await prisma.tour.upsert({
+      where: { id: tour.id },
+      update: {},
+      create: {
+        id: tour.id,
+        groupId: tour.groupId,
+        status: TourStatus.completed,
+        tourDate: daysFromNow(-tour.daysAgo),
+        description: tour.description,
+        cancellationDeadline: daysFromNow(-tour.deadlineDaysAgo),
+        notificationOffsets: [],
+      },
+    })
+    await prisma.tourSession.upsert({
+      where: { id: tour.sessionId },
+      update: {},
+      create: {
+        id: tour.sessionId,
+        tourId: tour.id,
+        placeId: tour.placeId,
+        order: 1,
+        meetingTime: timeOnly(10),
+        startTime: timeOnly(10, 5),
+        endTime: timeOnly(11, 45),
+        capacity: 6,
+        participantCount: 35,
+      },
+    })
+  }
+
+  const SCORE_FIELDS = [
+    'overallRating', 'reliability', 'communication', 'groupEngagement', 'memory',
+    'knowledge', 'dedication', 'dialogue', 'adaptability', 'confidence',
+  ] as const
+  type ScoreField = (typeof SCORE_FIELDS)[number]
+
+  // 'high' sits at 5 with the odd 4; 'low' sits at 2 with the odd 1; 'mixed'
+  // swings between the two bands by `variant` (the tour index, for a
+  // per-tour evaluation, or the buddy index, for the one-off profile
+  // rating) — an inconsistent performer, not a uniformly middling one.
+  function bandScores(adminView: 'high' | 'low' | 'mixed', variant: number): Partial<Record<ScoreField, number>> {
+    const base = adminView === 'high' ? 5 : adminView === 'low' ? 2 : variant % 2 === 0 ? 5 : 2
+    const scores: Partial<Record<ScoreField, number>> = {}
+    SCORE_FIELDS.forEach((field, i) => {
+      const dip = (i + variant) % 3 === 0
+      scores[field] = Math.min(5, Math.max(1, base + (dip ? -1 : 0)))
+    })
+    return scores
+  }
+
+  // Reflection tone by self-view, two phrasings each so a buddy's own
+  // history doesn't read as one sentence copy-pasted. `selfView` says
+  // nothing about `adminView` — see the archetype table above.
+  const REFLECTION_TEMPLATES: Record<'critical' | 'confident' | 'balanced', { didWell: string; couldImprove: string }[]> = {
+    critical: [
+      { didWell: '一通り案内はできましたが、及第点だと思います。', couldImprove: '説明の間に沈黙が多く、参加者を退屈させてしまったかもしれません。次はもっと質問を投げかけたいです。' },
+      { didWell: '大きな失敗はありませんでした。', couldImprove: '時間配分がうまくいかず、後半を早口で説明することになってしまいました。反省しています。' },
+    ],
+    confident: [
+      { didWell: '参加者の反応もよく、スムーズに案内できました。', couldImprove: '特にありません。' },
+      { didWell: '質問にもテンポよく答えられ、良いツアーになったと思います。', couldImprove: '強いて言えば時間が少し余りましたが、問題はなかったです。' },
+    ],
+    balanced: [
+      { didWell: '導入部分は落ち着いて話せました。', couldImprove: '後半、資料の説明に詰まる場面がありました。次は見直しておきます。' },
+      { didWell: '参加者からの質問にはきちんと答えられました。', couldImprove: 'グループ全体への声かけがもう少し必要だったかもしれません。' },
+    ],
+  }
+  function reflectionTemplate(selfView: 'critical' | 'confident' | 'balanced', variant: number) {
+    const options = REFLECTION_TEMPLATES[selfView]
+    return options[variant % options.length]
+  }
+
+  const CATEGORY_CYCLE = [
+    CancellationCategory.personal, CancellationCategory.work, CancellationCategory.health,
+    CancellationCategory.other, CancellationCategory.emergency,
+  ]
+  const UNAVOIDABLE_CYCLE: (boolean | null)[] = [true, false, null]
+
+  for (const arch of BUDDY_ARCHETYPES.filter((a) => a.participation === 'core')) {
+    const buddyId = r(arch.index)
+    const buddyTier = ROSTER[arch.index].tier
+    if (!buddyId || !buddyTier) continue
+
+    for (const tour of TIER1_TOURS) {
+      const slot = (arch.index + tour.i) % 6
+      if (slot === 5) continue // sits this one out — not every tour needs every buddy
+
+      const status = slot === 4 ? BookingStatus.declined : BookingStatus.confirmed
+      const row = await prisma.booking.upsert({
+        where: { buddyId_sessionId: { buddyId, sessionId: tour.sessionId } },
+        update: {},
+        create: { buddyId, tourId: tour.id, sessionId: tour.sessionId, status, buddyTier },
+      })
+
+      if (status === BookingStatus.declined) {
+        // Well before the deadline: the formulaic cancellations are never
+        // sudden. The rare late/no-show cases are the hand-picked
+        // exceptions in the section above, not these.
+        await prisma.cancellationReason.upsert({
+          where: { bookingId: row.id },
+          update: {},
+          create: {
+            bookingId: row.id,
+            category: CATEGORY_CYCLE[(arch.index + tour.i) % CATEGORY_CYCLE.length],
+            unavoidable: UNAVOIDABLE_CYCLE[(arch.index + tour.i) % UNAVOIDABLE_CYCLE.length],
+            recordedBy: adminUser.id,
+            createdAt: daysFromNow(-(tour.deadlineDaysAgo + 3)),
+          },
+        })
+        continue
+      }
+
+      // Attended — most get evaluated; a rotating share also write a
+      // reflection, so reflection rate stays under 100% like it would in
+      // practice.
+      if ((arch.index + tour.i) % 4 !== 0) {
+        await prisma.adminEvaluation.upsert({
+          where: { buddyId_tourId_createdBy: { buddyId, tourId: tour.id, createdBy: adminUser.id } },
+          update: {},
+          create: { buddyId, tourId: tour.id, createdBy: adminUser.id, ...bandScores(arch.adminView, tour.i) },
+        })
+      }
+      if ((arch.index + tour.i) % 3 === 0) {
+        const template = reflectionTemplate(arch.selfView, tour.i)
+        await prisma.tourReflection.upsert({
+          where: { buddyId_sessionId: { buddyId, sessionId: tour.sessionId } },
+          update: {},
+          create: { buddyId, sessionId: tour.sessionId, didWell: template.didWell, couldImprove: template.couldImprove },
+        })
+      }
+    }
+
+    // A holistic, not-tour-specific rating — same band as their per-tour
+    // scores, since one admin's overall view of a buddy they see often
+    // tends to track their per-tour scores, unlike the self-view axis above.
+    await prisma.adminProfileEvaluation.upsert({
+      where: { buddyId_createdBy: { buddyId, createdBy: adminUser.id } },
+      update: {},
+      create: { buddyId, createdBy: adminUser.id, ...bandScores(arch.adminView, arch.index) },
+    })
+  }
+
+  // Occasional buddies: exactly one attended tour each, their "a few per
+  // year" — half also get evaluated, so it's not all-or-nothing.
+  for (const arch of BUDDY_ARCHETYPES.filter((a) => a.participation === 'occasional')) {
+    const buddyId = r(arch.index)
+    const buddyTier = ROSTER[arch.index].tier
+    if (!buddyId || !buddyTier) continue
+
+    const tour = TIER1_TOURS[arch.index % TIER1_TOURS.length]
+    await prisma.booking.upsert({
+      where: { buddyId_sessionId: { buddyId, sessionId: tour.sessionId } },
+      update: {},
+      create: { buddyId, tourId: tour.id, sessionId: tour.sessionId, status: BookingStatus.confirmed, buddyTier },
+    })
+    if (arch.index % 2 === 0) {
+      await prisma.adminEvaluation.upsert({
+        where: { buddyId_tourId_createdBy: { buddyId, tourId: tour.id, createdBy: adminUser.id } },
+        update: {},
+        create: { buddyId, tourId: tour.id, createdBy: adminUser.id, ...bandScores(arch.adminView, tour.i) },
+      })
+    }
+  }
+
   // ── Dynamic "me" ────────────────────────────────────────────
   // Finds any non-seed user who logged in. Login once, then re-run seed.
   const dynamicUser = await prisma.user.findFirst({
@@ -933,12 +1478,15 @@ async function main() {
 
   console.log('シード完了')
   console.log(`  ログイン: ${adminAccount.email}${buddyAccounts.length > 0 ? ' / ' + buddyAccounts.map((u: any) => u.email).join(' / ') : ''}${traineeAccounts.length > 0 ? ' / ' + traineeAccounts.map((u: any) => u.email).join(' / ') + ' (trainee)' : ''}`)
-  console.log('  合成admin2: admin2@seed.local (ログイン不可 — マルチ管理者評価デモ用)')
+  console.log('  合成admin2: admin2@seed.local (ログイン不可 — マルチPLABメンバー評価デモ用)')
   console.log('  ツアー: 平和公園 4件（締切済み・中期・遠日程・下書き）')
   console.log('  peace-001: 参加中(buddy0) + キャンセル済み+理由あり(buddy1)')
   console.log('  peace-003: 参加済み(buddy0=junior) + キャンセル待ち(buddy1=star)')
   console.log('  tourOpen / tourPeace3: 動的バディ(me)が応募ボタンを確認できるツアー')
   console.log(`  合成ロスター: ${ROSTER.length}名 (@seed.local — ログイン不可、一覧・絞り込み・並び替え確認用)`)
+  console.log('  追加ツアー: 完了ツアー3件（コミュニティ/その他グループ種別、浦上・原爆資料館・VOICE — バディ統計ページ確認用 #253）')
+  console.log('  ロスター実績: アクティブ20名中15名が常連（直近5件のツアーの大半に参加）、5名は稀（生涯1件）。')
+  console.log('  自己評価とPLABメンバー評価は独立: 自己評価が厳しくてもPLABメンバー評価が高い者、その逆もいる。')
 }
 
 main()

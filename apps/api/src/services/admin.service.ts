@@ -5,6 +5,7 @@ import { withPhotoLink } from '../lib/photoStorage'
 import type { AdminBuddyResponse, AdminBuddyDetailResponse, BuddyStatus, BuddyTier, MemberType, BookingStatus, TourStatus, CancellationReasonResponse, CancellationSummary, AdminBookingStatusResponse, Language } from '@peace-buddy/types'
 import { BuddyStatusSchema, BuddyTierSchema, NotifEventKindSchema } from '@peace-buddy/types'
 import { enqueueEmail, enqueueInApp } from './notification.service'
+import { getBuddyStats } from './adminBuddyStats.service'
 
 const adminBuddySelect = {
   id: true,
@@ -103,11 +104,12 @@ const adminBuddyDetailSelect = {
 } as const
 
 export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailResponse | null> {
-  const [raw, absentWithoutReportCount] = await Promise.all([
+  const [raw, absentWithoutReportCount, stats] = await Promise.all([
     db.buddyProfile.findUnique({ where: { id }, select: adminBuddyDetailSelect }),
     db.adminEvaluation.count({ where: { buddyId: id, absentWithoutReport: true } }),
+    getBuddyStats(id),
   ])
-  if (!raw) return null
+  if (!raw || !stats) return null
   const { bookings, bio, contactInfo, languages, skills, ...rest } = raw
   const mappedBookings = bookings.map((b) => {
     const cr = b.cancellationReason
@@ -154,6 +156,7 @@ export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailRespon
     bookings: mappedBookings,
     cancellationSummary,
     absenceSummary: { absentWithoutReport: absentWithoutReportCount },
+    stats,
   }
 }
 

@@ -6,6 +6,7 @@ export const routes = {
   admin: (locale: string) => `/${locale}/admin`,
   adminBuddiesPending: (locale: string) => `/${locale}/admin/buddies/pending`,
   adminBuddies: (locale: string) => `/${locale}/admin/buddies`,
+  adminBuddyStats: (locale: string) => `/${locale}/admin/buddies/stats`,
   adminBuddyDetail: (locale: string, id: string) => `/${locale}/admin/buddies/${id}`,
   adminTrainees: (locale: string) => `/${locale}/admin/trainees`,
   adminGroups: (locale: string) => `/${locale}/admin/groups`,

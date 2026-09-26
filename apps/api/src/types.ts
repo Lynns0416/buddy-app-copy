@@ -1,3 +1,5 @@
+import type { GroupType } from '@peace-buddy/types'
+
 export type FirebaseUser = {
   uid: string
   email: string
@@ -20,4 +22,13 @@ export type ToursQuery = {
   status?: string
   from?: Date
   to?: Date
+}
+
+// Scope of `GET /admin/buddies/stats`: every number counts only tours inside it.
+// Dates are UTC midnight, the shape of a `@db.Date` column.
+export type BuddyStatsScope = {
+  from?: Date
+  to?: Date
+  groupType?: GroupType
+  placeId?: string
 }

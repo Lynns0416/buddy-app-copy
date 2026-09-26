@@ -21,6 +21,7 @@ export const apiPaths = {
   adminDashboard: '/admin/dashboard',
 
   adminBuddies: '/admin/buddies',
+  adminBuddyStats: '/admin/buddies/stats',
   adminBuddy: (id: string) => `/admin/buddies/${id}`,
   adminBuddyStatus: (id: string) => `/admin/buddies/${id}/status`,
   adminBookingCancellationReason: (bookingId: string) => `/admin/bookings/${bookingId}/cancellation-reason`,

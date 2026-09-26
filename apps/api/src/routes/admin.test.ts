@@ -5,7 +5,8 @@ import { adminRoutes } from './admin'
 import { adminAuthMiddleware } from '../middleware/adminAuth'
 import type { AuthEnv } from '../types'
 import { listBuddies, updateBuddyStatus, getBuddyDetail, updateBuddyProfile, updateCancellationReason, updateAdminBookingStatus } from '../services/admin.service'
-import type { AdminBuddyResponse, AdminBuddyDetailResponse, CancellationReasonResponse, AdminBookingStatusResponse } from '@peace-buddy/types'
+import { listBuddyStats } from '../services/adminBuddyStats.service'
+import type { AdminBuddyStatsResponse, AdminBuddyResponse, AdminBuddyDetailResponse, CancellationReasonResponse, AdminBookingStatusResponse } from '@peace-buddy/types'
 
 vi.mock('../lib/firebase', () => ({
   auth: { verifyIdToken: vi.fn() },
@@ -22,6 +23,10 @@ vi.mock('../services/admin.service', () => ({
   updateBuddyProfile: vi.fn(),
   updateCancellationReason: vi.fn(),
   updateAdminBookingStatus: vi.fn(),
+}))
+
+vi.mock('../services/adminBuddyStats.service', () => ({
+  listBuddyStats: vi.fn(),
 }))
 
 vi.mock('../services/group.service', () => ({
@@ -198,6 +203,55 @@ describe('GET /admin/buddies', () => {
     mockListBuddies.mockResolvedValueOnce([])
     await buildApp('admin').request('/admin/buddies')
     expect(mockListBuddies).toHaveBeenCalledWith(undefined, undefined, undefined)
+  })
+})
+
+describe('GET /admin/buddies/stats', () => {
+  const statsResponse: AdminBuddyStatsResponse = { places: [], buddies: [] }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(listBuddyStats).mockResolvedValue(statsResponse)
+  })
+
+  it('returns 403 for buddy role', async () => {
+    const res = await buildApp('buddy').request('/admin/buddies/stats')
+    expect(res.status).toBe(403)
+    expect(listBuddyStats).not.toHaveBeenCalled()
+  })
+
+  it('returns all-time stats with no scope, not the buddy detail', async () => {
+    const res = await buildApp('admin').request('/admin/buddies/stats')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual(statsResponse)
+    expect(listBuddyStats).toHaveBeenCalledWith({})
+    expect(mockGetBuddyDetail).not.toHaveBeenCalled()
+  })
+
+  it('reads the date range as UTC-midnight calendar dates', async () => {
+    const placeId = '6f1c2a4e-8b3d-4c5e-9f70-1a2b3c4d5e6f'
+    const res = await buildApp('admin').request(
+      `/admin/buddies/stats?from=2026-04-01&to=2027-03-31&groupType=school&placeId=${placeId}`,
+    )
+    expect(res.status).toBe(200)
+    expect(listBuddyStats).toHaveBeenCalledWith({
+      from: new Date('2026-04-01T00:00:00.000Z'),
+      to: new Date('2027-03-31T00:00:00.000Z'),
+      groupType: 'school',
+      placeId,
+    })
+  })
+
+  it.each([
+    ['a date that is not YYYY-MM-DD', 'from=2026/04/01'],
+    ['an impossible date', 'to=2026-13-45'],
+    ['an unknown group type', 'groupType=club'],
+    ['a place id that is not a uuid', 'placeId=hall'],
+    ['a range that ends before it starts', 'from=2026-05-01&to=2026-04-30'],
+  ])('returns 400 for %s', async (_label, query) => {
+    const res = await buildApp('admin').request(`/admin/buddies/stats?${query}`)
+    expect(res.status).toBe(400)
+    expect(listBuddyStats).not.toHaveBeenCalled()
   })
 })
 

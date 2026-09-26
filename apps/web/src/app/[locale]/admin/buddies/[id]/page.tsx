@@ -18,6 +18,7 @@ import { BuddyBookingHistory } from '../_components/buddy-booking-history'
 import { BuddyPerTourEvaluations } from '../_components/buddy-per-tour-evaluations'
 import { BuddyReflections } from '../_components/buddy-reflections'
 import { AdminProfileEvaluationSummary } from '../_components/admin-profile-evaluation-summary'
+import { BuddyStatsSummary } from '../_components/buddy-stats-summary'
 import { formatDate } from '@/lib/format-date'
 
 export default function AdminBuddyDetailPage() {
@@ -30,6 +31,7 @@ export default function AdminBuddyDetailPage() {
   const tEval = useTranslations('adminEvaluations')
   const tProfile = useTranslations('profile')
   const tLang = useTranslations('languages')
+  const tStats = useTranslations('adminBuddyStats')
   const [buddy, setBuddy] = useState<AdminBuddyDetailResponse | null>(null)
   const [fetched, setFetched] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -143,6 +145,9 @@ export default function AdminBuddyDetailPage() {
         <h2 className="mb-4 text-lg font-semibold">{t('editForm')}</h2>
         <BuddyForm buddy={buddy} />
 
+        <h2 className="mt-10 mb-4 text-lg font-semibold">{tStats('detail.title')}</h2>
+        <BuddyStatsSummary buddy={buddy} />
+
         <h2 className="mt-10 mb-4 text-lg font-semibold">{t('bookingHistoryTitle')}</h2>
         {buddy.absenceSummary.absentWithoutReport > 0 && (
           <p className="mb-3 text-sm font-medium text-destructive">
@@ -151,14 +156,14 @@ export default function AdminBuddyDetailPage() {
         )}
         <BuddyBookingHistory bookings={buddy.bookings} />
 
+        <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.reflections')}</h2>
+        <BuddyReflections buddyId={buddy.id} />
+
         <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.profileEvaluation')}</h2>
         <AdminProfileEvaluationSummary buddyId={buddy.id} />
 
         <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.perTourEvaluations')}</h2>
         <BuddyPerTourEvaluations buddyId={buddy.id} bookings={buddy.bookings} />
-
-        <h2 className="mt-10 mb-4 text-lg font-semibold">{tEval('sections.reflections')}</h2>
-        <BuddyReflections buddyId={buddy.id} />
       </div>
     </AppShell>
   )

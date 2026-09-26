@@ -671,6 +671,8 @@ export type AdminBuddyDetailResponse = AdminBuddyResponse & {
   bookings: AdminBuddyBookingEntry[]
   cancellationSummary: CancellationSummary
   absenceSummary: { absentWithoutReport: number }
+  // All-time numbers, the same ones `GET /admin/buddies/stats` returns.
+  stats: BuddyStats
 }
 
 // Sanitized response — no admin-only fields
@@ -1067,6 +1069,86 @@ export type AdminDashboardResponse = {
   underfilledTours: AdminDashboardUnderfilledTour[]
   underfilledLookaheadDays: number
   toursMissingEvaluations: AdminDashboardMissingEvaluationTour[]
+}
+
+// Admin buddy stats (#253, PRD §11.4)
+
+// The scored criteria of an admin evaluation, in form order. Stats average each
+// one; notes are not scored.
+export const EVALUATION_SCORE_FIELDS = [
+  'overallRating',
+  'reliability',
+  'communication',
+  'groupEngagement',
+  'memory',
+  'knowledge',
+  'dedication',
+  'dialogue',
+  'adaptability',
+  'confidence',
+] as const
+export type EvaluationScoreField = (typeof EVALUATION_SCORE_FIELDS)[number]
+
+// Every number is counted over the scope the request names (tour date range,
+// group type, place). Session counts are per booking; tour counts are per tour.
+// A rate or average is null when there is nothing to divide by.
+export type BuddyStats = {
+  sessionsAttended: number
+  toursAttended: number
+  noShows: number
+  // Tours missed to a no-show or a late cancellation; the attendance rate's
+  // other half, so the overview can pool it across buddies.
+  toursMissed: number
+  attendanceRate: number | null
+  upcomingConfirmed: number
+  openMaybe: number
+  openWaitlist: number
+  firstTourDate: string | null
+  lastTourDate: string | null
+  daysSinceLastTour: number | null
+  minutesVolunteered: number
+  sessionsWithoutTimes: number
+  bookings: number
+  cancellations: number
+  lateCancellations: number
+  cancellationsUnavoidable: number
+  cancellationsAvoidable: number
+  cancellationsUnreviewed: number
+  cancellationsByCategory: Record<CancellationCategory, number>
+  cancellationRate: number | null
+  reflections: number
+  reflectionRate: number | null
+  moments: number
+  evaluationsReceived: number
+  evaluationsMissing: number
+  averageScores: Record<EvaluationScoreField, number | null>
+  // How many evaluations set each criterion: the weight for averaging it
+  // across buddies. A criterion can be left blank, so this is not
+  // `evaluationsReceived`.
+  scoreCounts: Record<EvaluationScoreField, number>
+  profileOverallRating: number | null
+  placesGuided: number
+  sessionsByPlace: Record<string, number>
+  groupTypesServed: number
+  sessionsByGroupType: Record<GroupType, number>
+  monthsSinceRegistration: number
+}
+
+export type AdminBuddyStatsRow = {
+  id: string
+  displayName: string
+  realName: string
+  status: BuddyStatus
+  tier: BuddyTier | null
+  memberType: MemberType
+  createdAt: string
+  stats: BuddyStats
+}
+
+export type AdminBuddyStatsResponse = {
+  // Every place, for the per-place columns; `sessionsByPlace` is keyed by id.
+  places: PlaceSummary[]
+  buddies: AdminBuddyStatsRow[]
 }
 
 // Dates

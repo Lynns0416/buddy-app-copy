@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDate, formatDateTime } from './format-date'
+import { formatDate, formatDateTime, formatMonth } from './format-date'
 
 describe('formatDate', () => {
   it('formats a date as yyyy/MM/dd', () => {
@@ -39,5 +39,11 @@ describe('formatDateTime', () => {
 
   it('carries the date across the JST midnight boundary with the time', () => {
     expect(formatDateTime('2026-09-10T15:00:00.000Z')).toBe('2026/09/11 00:00')
+  })
+})
+
+describe('formatMonth', () => {
+  it('formats a JST month as yyyy/MM', () => {
+    expect(formatMonth('2026-09')).toBe('2026/09')
   })
 })

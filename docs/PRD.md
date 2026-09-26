@@ -884,13 +884,14 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 
 #### Pages & Routes
 
-**Navigation:** "Pending Approval", "Buddies" and "Trainees" are separate items under the バディ管理 heading of the task-grouped admin sidebar.
+**Navigation:** "Pending Approval", "Buddies", "Trainees" and "Stats" are separate items under the バディ管理 heading of the task-grouped admin sidebar.
 
 | Route | Purpose | Access |
 |---|---|---|
 | `/admin/buddies/pending` | Approval queue — pending signups awaiting admin decision | Admin only |
 | `/admin/buddies` | Buddy roster — all approved (active) buddies with tier management | Admin only |
-| `/admin/buddies/:id` | Buddy detail — full profile, tier/notes editor, booking history | Admin only |
+| `/admin/buddies/stats` | Buddy stats — one row of numbers per buddy, columns chosen by the admin | Admin only |
+| `/admin/buddies/:id` | Buddy detail — full profile, tier/notes editor, stats, booking history | Admin only |
 
 #### Pending Approval Page (`/admin/buddies/pending`)
 
@@ -906,6 +907,65 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 - **Sortable by:** name, email, tier, member type, status
 - **Actions:** Click row → navigate to detail page
 
+#### Buddy Stats Page (`/admin/buddies/stats`)
+
+An overview, then one table, one row per buddy, from `GET /admin/buddies/stats` (#253). Every column is sortable; the name links to the detail page. A number column sorts largest first on its first click, and a buddy with nothing to compute from (a `—`) sorts last in both directions.
+
+**Scope (sent to the API):** a tour date range (empty = all time, the default), a group type and a place. Every number counts only tours inside the scope, and only `published` and `completed` tours — a draft takes no bookings, and a cancelled tour's bookings say nothing about the buddy. A place scope counts the buddy's sessions at that place, and per-tour evaluations only for tours where they held one of them. Changing the scope refetches.
+
+**Row filters (in the browser):** name search, status (default `active` only), tier, and "Include PLAB members" (off by default — the page is about volunteers).
+
+**Column picker:** admins tick the numbers they want. The choice is saved in that admin's browser (`localStorage`), so each keeps their own layout; "Reset to default" and "Show all" are one click. The API returns every number whatever is shown.
+
+| Group | Column | Counted as | Default |
+|---|---|---|---|
+| Profile | Status, tier, member type, registered, months since registration | Profile fields; months are whole months in JST | tier only |
+| Participation | Sessions attended | `confirmed` bookings on `completed` tours, less tours the buddy was recorded absent from | ✅ |
+| | Tours attended | Distinct tours among those sessions | ✅ |
+| | No-shows | Tours with an `AdminEvaluation` marked `absentWithoutReport`; voids every session the buddy held on that tour | ✅ |
+| | Attendance rate | Tours attended ÷ (tours attended + tours missed). Missed = a no-show or a late cancellation, counted once per tour and not at all if the buddy attended another session of it | ✅ |
+| | Upcoming confirmed / open Maybe / on waitlist | Bookings in that status on `published` tours dated today (JST) or later | confirmed only |
+| | First tour / last tour / days inactive | Over attended sessions; days inactive counts from the last tour to today (JST) | last two |
+| | Hours volunteered / sessions without times | `endTime − startTime` of attended sessions; a session missing either time is counted in the second column instead, so hours undercount rather than guess | — |
+| Cancellations | Bookings | Every booking in scope, any status | — |
+| | Cancellations | `declined` bookings with a `CancellationReason` — a re-book reuses the booking and keeps its old reason, so a booking confirmed again is not counted | ✅ |
+| | Late cancellations | Reason recorded on or after the effective deadline (the buddy's `BuddyCancellationDeadlineOverride`, else the tour's), as a JST date — the boundary the booking service enforces | ✅ |
+| | Cancellation rate | Cancellations ÷ bookings | — |
+| | Unavoidable / avoidable / unreviewed | `unavoidable` true / false / null | — |
+| | Cancelled: *category* | One column per `CancellationCategory` | — |
+| Reflections | Reflections / reflection rate / moments recorded | `TourReflection` rows; rate is ÷ sessions attended | reflections |
+| Evaluations | Evaluations received | `AdminEvaluation` rows, from every admin | — |
+| | Tours not evaluated | Attended tours with no `AdminEvaluation` for the buddy | — |
+| | Avg. *criterion* | Mean of each scored criterion (overall + 9) over the per-tour evaluations that set it | — |
+| | Profile overall rating | Mean `overallRating` of the buddy's `AdminProfileEvaluation` rows, one per admin; not scoped | — |
+| Places and groups | Places guided / sessions per place | Attended sessions by the session's place; one column per place | — |
+| | Group types served / sessions per group type | Attended sessions by the tour's group type | — |
+
+A rate or average with nothing to divide by is `null` (shown `—`), never `0`.
+
+**Explanations:** a column whose name alone does not say what is counted carries an ⓘ after its header, opening a one-sentence explanation on hover and keyboard focus — sessions and tours attended, attendance rate, open Maybe, hours volunteered, sessions without times, late cancellations, cancellation rate, unavoidable / avoidable / unreviewed, tours not evaluated, moments recorded and Avg. *criterion*. The matching overview figures and the average-scores chart carry the same ⓘ and text (`adminBuddyStats.descriptions`).
+
+**Overview (above the table):** figures across every buddy the table shows, so scope and row filters change both alike. Computed in the browser from the same rows; no extra request.
+
+| Figure | Counted as |
+|---|---|
+| Buddies / attended at least once | Rows in view / rows with a session attended |
+| Sessions attended, hours volunteered, no-shows, late cancellations, unreviewed cancellations, tours not evaluated | Sum over the rows |
+| Attendance rate, cancellation rate, reflection rate | Pooled: Σ tours attended ÷ Σ (attended + missed), Σ cancellations ÷ Σ bookings, Σ reflections ÷ Σ sessions — not an average of each buddy's rate |
+
+| Chart | Bars |
+|---|---|
+| Buddies by tier | One stacked bar; trainees under "no tier" |
+| New registrations per month | One column per JST month, from the first registration in view to this month |
+| Buddies by sessions attended | 0 / 1–2 / 3–5 / 6–10 / 11+ |
+| Buddies by time since last tour | ≤30 / 31–90 / 91–180 / over 180 days / never attended |
+| Cancellations by reason, sessions by group type, sessions by place | Sums, largest first |
+| Average evaluation scores | Each criterion weighted by how many evaluations set it (`scoreCounts`), on a 1–5 scale |
+
+Clicking a figure or a bar narrows the table to the buddies behind it (e.g. only buddies with a no-show) and sorts it by the matching column, largest first; that column shows even if the admin hid it. A line above the table names the focus and "Show all" clears it. The overview itself always covers every filtered row. Charts are plain HTML bars, no chart library.
+
+**Not counted — no history exists:** tier promotion dates, time spent as a trainee, Maybe→Confirmed conversion, waitlist promotions and booking lead time. A `Booking` keeps only its current status and is reused on re-book. Organisation-wide numbers (tours per month, fill rates) are also out of scope.
+
 #### Buddy Detail Page (`/admin/buddies/:id`)
 
 **Display section:**
@@ -917,6 +977,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 - Created date
 - **Cancellation summary** — total / unavoidable / avoidable / unreviewed counts derived from the buddy's `CancellationReason` rows
 - **Absence summary** — `absentWithoutReport` count from `AdminEvaluation` rows; admins use it to inform the `reliability` score in `AdminProfileEvaluation`
+- **Stats** — the stats page's numbers for this buddy, all time. Key numbers lead in three stacked sections — activity (sessions attended, tours attended, reflections), reliability (attendance rate, no-shows, late cancellations) and recent & upcoming (last tour, days inactive, upcoming confirmed); below them every group of the column picker is a collapsed section listing all its numbers, with zeros and `—` greyed. Profile columns (already on the page) and per-place counts (the stats page has them) are left out. The cancellation summary stays in the booking history, where it updates as an admin reviews a reason.
 - Full booking history (table of tours + booking status) — see below
 
 **Edit form** (`PUT /admin/buddies/:id` — body `{tier?, memberType?, internalNotes?}`):
@@ -950,7 +1011,8 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 |---|---|---|
 | `GET` | `/admin/buddies?status=pending` | List pending buddies (called by the `/admin/buddies/pending` page) |
 | `GET` | `/admin/buddies?status=active&tier=...&memberType=...` | List active buddies (called by the `/admin/buddies` page); filterable by tier and member type |
-| `GET` | `/admin/buddies/:id` | Fetch `AdminBuddyDetailResponse` (profile + bookings + cancellation/absence summaries) |
+| `GET` | `/admin/buddies/stats?from&to&groupType&placeId` | Fetch `AdminBuddyStatsResponse` (every buddy's numbers + the place list), for the `/admin/buddies/stats` page |
+| `GET` | `/admin/buddies/:id` | Fetch `AdminBuddyDetailResponse` (profile + bookings + cancellation/absence summaries + all-time `stats`) |
 | `PUT` | `/admin/buddies/:id/status` | Set status. Allowed values: `trainee` / `active` / `rejected`. `→ active` auto-sets `tier = junior`. |
 | `PUT` | `/admin/buddies/:id` | Update `tier`, `memberType` and/or `internalNotes`. `tier` and `internalNotes` are nullable; `memberType` is not |
 

@@ -41,8 +41,13 @@ vi.mock('../lib/db', () => {
   return { db: mockDb }
 })
 
+vi.mock('./adminBuddyStats.service', () => ({ getBuddyStats: vi.fn() }))
+
 import { db } from '../lib/db'
+import { getBuddyStats } from './adminBuddyStats.service'
+import type { BuddyStats } from '@peace-buddy/types'
 const mdb = db as unknown as MockDb
+const buddyStats = { sessionsAttended: 3 } as BuddyStats
 
 const mockRaw = {
   id: 'profile-1',
@@ -145,7 +150,18 @@ describe('listBuddies', () => {
 })
 
 describe('getBuddyDetail', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getBuddyStats).mockResolvedValue(buddyStats)
+  })
+
+  it('carries the all-time stats of the buddy', async () => {
+    mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockRawWithBookings as unknown)
+    mdb.adminEvaluation.count.mockResolvedValueOnce(0)
+    const result = await getBuddyDetail('profile-1')
+    expect(getBuddyStats).toHaveBeenCalledWith('profile-1')
+    expect(result!.stats).toBe(buddyStats)
+  })
 
   it('returns mapped buddy with bookings when found', async () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockRawWithBookings as unknown)
@@ -167,6 +183,7 @@ describe('getBuddyDetail', () => {
   it('returns null when not found', async () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(null)
     mdb.adminEvaluation.count.mockResolvedValueOnce(0)
+    vi.mocked(getBuddyStats).mockResolvedValueOnce(null)
     const result = await getBuddyDetail('missing')
     expect(result).toBeNull()
   })

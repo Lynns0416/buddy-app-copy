@@ -19,7 +19,7 @@ Source of truth for completed work is `git log`.
 - **Date display (web)**: every date rendered in `apps/web` goes through `formatDate` / `formatDateTime` from `apps/web/src/lib/format-date.ts` (`yyyy/MM/dd`, JST, same in `ja` and `en`) — including a `YYYY-MM-DD` string that is already the right day, such as `getTodayJst()` or a calendar cell. Never `toLocaleDateString`, `toLocaleString` or an inline `Intl.DateTimeFormat`. `slice(0, 10)` stays only for comparisons, `input[type=date]` values and map keys. Dates the API puts in notification payloads stay `YYYY-MM-DD` (`payloadTourDate`); the api cannot import from the web app.
 - **Enum values**: always use `SchemaName.enum.value` (e.g. `BuddyStatusSchema.enum.active`), never magic strings.
 - **Zod**: validate at all system boundaries (routes). Parse, never cast.
-- **i18n**: every UI string via `useTranslations`. Update `en.json` + `ja.json` together, always.
+- **i18n**: every UI string via `useTranslations`. Update `en.json` + `ja.json` together, always. In Japanese, the admin team is 「PLABメンバー」, never 「管理者」 — they don't see themselves as 管理者.
 - **Tests**: Vitest, colocated `*.test.ts`. Route tests use `buildApp()` with stub auth middleware. Mock Prisma + Firebase via `vi.mock`.
 - **Tests never hardcode user-facing text**: a copy edit must not break a logic test. Assert against the string resource, not a copy of it — import `messages.*.json` in `apps/api`, and in `apps/web` mock `useTranslations` to echo the key (`() => (key: string) => key`) so assertions read keys. Prefer `getByRole('button' | 'link', { name })` over `getByText` for anything interactive. Literals stay only for machine-readable values another system depends on: URLs and paths, encoding output, API error codes, and test data fixtures.
 - **Commits**: few, grouped by layer. Branches are squash-merged, so granularity
@@ -65,4 +65,6 @@ Source of truth is the code — when a diagram and the schema disagree, fix the 
 - Run commands outside Docker
 - Hold decisions in memory only — update relevant docs (PRD.md, architecture.md, data-model.md, etc.) immediately when a decision is made
 - Forget `docs/decisions.md` when a decision closes off an alternative — log the rejected option and why, not just the outcome
+- Use the word "KPI" — say "figures" or "numbers"
+- Create memory `.md` files — put a short line in this file instead
 - Make excuse or correct silently without apologies. When you make a mistake and the message from user is valid, apologise. You can argue if it's not your fault, though.

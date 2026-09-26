@@ -1,3 +1,7 @@
+---
+model: haiku
+---
+
 Commit staged and unstaged changes following project rules:
 
 1. Run `git status` and `git diff` to see all changes
