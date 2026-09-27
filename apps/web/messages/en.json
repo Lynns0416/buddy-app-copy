@@ -203,14 +203,7 @@
     "title": "Buddy Stats",
     "noResults": "No buddies match these filters",
     "scope": {
-      "title": "Counted tours",
-      "hint": "Every number counts only tours in this period, group type and place. Leave the dates empty for all time.",
-      "from": "From",
-      "to": "To",
-      "groupType": "Group type",
-      "place": "Place",
-      "all": "All",
-      "allTime": "All time"
+      "hint": "Every number counts only tours in this period, group type and place. Leave the dates empty for all time."
     },
     "filters": {
       "searchLabel": "Search buddies",
@@ -327,6 +320,73 @@
         "older": "Over 180 days",
         "never": "Never attended"
       }
+    }
+  },
+  "adminStats": {
+    "scope": {
+      "title": "Counted tours",
+      "from": "From",
+      "to": "To",
+      "groupType": "Group type",
+      "place": "Place",
+      "all": "All",
+      "allTime": "All time"
+    }
+  },
+  "adminReflectionStats": {
+    "title": "Reflections",
+    "noResults": "No reflections match these filters",
+    "noSpot": "Other / no spot",
+    "about": "About {label}",
+    "error": {
+      "load": "Couldn't load reflections. Try again."
+    },
+    "scope": {
+      "hint": "Only reflections on tours in this period, group type and place are counted. Leave the dates empty for all time.",
+      "tour": "Tour: {tour}",
+      "tourUnknown": "the selected tour",
+      "clearTour": "All tours"
+    },
+    "filters": {
+      "buddyLabel": "Search buddies",
+      "buddyPlaceholder": "Search by buddy name",
+      "textLabel": "Search reflections",
+      "textPlaceholder": "Search the text of reflections",
+      "spot": "Spot",
+      "allSpots": "All spots",
+      "openQuestionsOnly": "Only with a question they couldn't answer",
+      "includePlabMembers": "Include PLAB members",
+      "resultCount": "{count} of {total} reflections",
+      "reset": "Reset filters"
+    },
+    "columns": {
+      "tourDate": "Tour date",
+      "group": "Group",
+      "session": "Session",
+      "buddy": "Buddy",
+      "place": "Place and spots",
+      "submittedAt": "Submitted"
+    },
+    "descriptions": {
+      "reflectionRate": "Reflections ÷ sessions attended by the buddies in view, as on the buddy stats page. Only the period, group type, place, tour and buddy filters change it; the spot, text and question filters and a click on a chart do not.",
+      "places": "Moments are counted under the place of the session they were written about. A moment with no spot stays with that place."
+    },
+    "overview": {
+      "title": "Overview",
+      "hint": "Figures cover every reflection in the list below. Click a bar to narrow the list to those reflections.",
+      "reflections": "Reflections",
+      "buddiesWrote": "Buddies who wrote",
+      "moments": "Moments recorded",
+      "reflectionRate": "Reflection rate",
+      "charts": {
+        "spots": "Moments by spot",
+        "places": "Moments by place",
+        "months": "Reflections per month"
+      },
+      "monthCount": "{month}: {count}",
+      "bucketFocus": "{chart}: {bucket}",
+      "focused": "Showing {label} ({count} reflections)",
+      "clearFocus": "Show all"
     }
   },
   "home": {
@@ -544,6 +604,10 @@
       "conflict": "This action can no longer be performed.",
       "network": "Connection error. Please check your network and try again.",
       "unknown": "Something went wrong. Please try again."
+    },
+    "reflections": {
+      "title": "Reflections",
+      "view": "View this tour's reflections"
     }
   },
   "tourDetail": {
@@ -623,7 +687,8 @@
       "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
       "trainees": "Trainees",
-      "buddyStats": "Stats",
+      "buddyStats": "Buddy stats",
+      "reflectionStats": "Reflections",
       "groups": "Groups",
       "places": "Places",
       "tours": "Tours",
@@ -634,7 +699,8 @@
       "accountLabel": "Account",
       "sections": {
         "tours": "Tours",
-        "buddies": "Buddies"
+        "buddies": "Buddies",
+        "stats": "Analytics"
       }
     }
   },

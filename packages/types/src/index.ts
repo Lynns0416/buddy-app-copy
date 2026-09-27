@@ -1151,6 +1151,38 @@ export type AdminBuddyStatsResponse = {
   buddies: AdminBuddyStatsRow[]
 }
 
+// Reflection stats — `GET /admin/reflections/stats`, PRD §11.4. A reflection
+// is counted under its session's place, which a moment's spot always belongs to.
+export type AdminReflectionStatsRow = AdminTourReflectionResponse & {
+  buddyRealName: string
+  buddyMemberType: MemberType
+  group: { name: string; type: GroupType }
+  place: PlaceSummary
+}
+
+// A buddy with a session attended in scope — the reflection rate's denominator,
+// counted as on the buddy stats page.
+export type AdminReflectionStatsBuddy = {
+  id: string
+  displayName: string
+  realName: string
+  memberType: MemberType
+  sessionsAttended: number
+}
+
+export type AdminReflectionStatsPlace = PlaceSummary & {
+  active: boolean
+  spots: (PlaceSummary & { active: boolean })[]
+}
+
+export type AdminReflectionStatsResponse = {
+  reflections: AdminReflectionStatsRow[]
+  buddies: AdminReflectionStatsBuddy[]
+  // Every place with every spot, in sort order, so a spot nobody wrote about
+  // still shows as zero.
+  places: AdminReflectionStatsPlace[]
+}
+
 // Dates
 
 export const JST_OFFSET_MS = 9 * 60 * 60 * 1000

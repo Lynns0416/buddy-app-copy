@@ -21,20 +21,16 @@ import { apiClient } from '@/lib/api-client'
 import { formatDate } from '@/lib/format-date'
 import { placeName } from '@/lib/place-names'
 import { getBuddyStatusLabel, getBuddyTierLabel, getGroupTypeLabel } from '@/lib/status-display'
-import { memberTypeLabelKey } from '../admin.buddy'
+import { memberTypeLabelKey } from '../../buddies/admin.buddy'
+import { emptyStatsScope, type StatsScope } from '../_components/scope-fields'
 import type { ActionResult } from '../../../../../lib/action'
 import { classifyApiError } from '../../../../../lib/api-error'
 import { ASC, DESC } from '../../../../../lib/constants'
 
 // Server-side scope: every number counts only tours inside it (PRD §11.4).
-export type BuddyStatsScope = {
-  from: string
-  to: string
-  groupType: GroupType | ''
-  placeId: string
-}
+export type BuddyStatsScope = StatsScope
 
-export const emptyBuddyStatsScope: BuddyStatsScope = { from: '', to: '', groupType: '', placeId: '' }
+export const emptyBuddyStatsScope: BuddyStatsScope = emptyStatsScope
 
 // Client-side row filters. Active buddies only and PLAB members left out by
 // default: the page is about volunteers, and staff would skew every ranking.

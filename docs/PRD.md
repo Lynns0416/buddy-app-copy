@@ -644,7 +644,7 @@ Zero or more structured memorable moments per reflection (`TourReflectionMoment`
 
 #### Access
 - Buddies write and read their own reflections
-- Admins read all reflections via `GET /admin/reflections`
+- Admins read all reflections via `GET /admin/reflections`, and across every buddy on the reflection stats page (`/admin/stats/reflections`, §11.4)
 - Buddies cannot see other buddies' reflections — including `notesForOthers` and `openQuestions`, which are named for sharing but not yet surfaced to anyone but admins
 
 ---
@@ -857,7 +857,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 - View all bookings per tour (buddy name, status, sessions booked, bookedAt, cancellation reason)
 - Assign / unassign admins via `POST` / `DELETE /admin/tours/:id/admins`
 - Designate staff in charge via `PUT /admin/tours/:id/staff-in-charge`. Server enforces: staff-in-charge must be one of the assigned admins; cannot null it out while admins are still assigned; unassigning the current staff-in-charge admin while others remain requires designating a replacement first
-- After a tour is `completed`, the per-tour evaluation section appears on the detail page; admins use it to record evaluations (see §9)
+- After a tour is `completed`, the per-tour evaluation section appears on the detail page; admins use it to record evaluations (see §9). Below it, a link opens the reflection stats page narrowed to that tour (`/admin/stats/reflections?tourId=`, §11.4)
 
 **Planned (not shipped):**
 - Per-buddy cancellation deadline override — `BuddyCancellationDeadlineOverride` schema exists but no admin API or UI manages it yet
@@ -884,13 +884,14 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 
 #### Pages & Routes
 
-**Navigation:** "Pending Approval", "Buddies", "Trainees" and "Stats" are separate items under the バディ管理 heading of the task-grouped admin sidebar.
+**Navigation:** "Pending Approval", "Buddies" and "Trainees" are separate items under the バディ管理 heading of the task-grouped admin sidebar. "Buddy stats" and "Reflections" sit under their own 分析 (Analytics) heading, below it. The stats pages live under `/admin/stats/`; there is no page at `/admin/stats` itself.
 
 | Route | Purpose | Access |
 |---|---|---|
 | `/admin/buddies/pending` | Approval queue — pending signups awaiting admin decision | Admin only |
 | `/admin/buddies` | Buddy roster — all approved (active) buddies with tier management | Admin only |
-| `/admin/buddies/stats` | Buddy stats — one row of numbers per buddy, columns chosen by the admin | Admin only |
+| `/admin/stats/buddies` | Buddy stats — one row of numbers per buddy, columns chosen by the admin | Admin only |
+| `/admin/stats/reflections` | Reflection stats — every buddy's reflections, with figures and charts over them; `?tourId=` narrows it to one tour | Admin only |
 | `/admin/buddies/:id` | Buddy detail — full profile, tier/notes editor, stats, booking history | Admin only |
 
 #### Pending Approval Page (`/admin/buddies/pending`)
@@ -907,7 +908,7 @@ The full booking list, including past tours, lives on `/buddy/history` (Upcoming
 - **Sortable by:** name, email, tier, member type, status
 - **Actions:** Click row → navigate to detail page
 
-#### Buddy Stats Page (`/admin/buddies/stats`)
+#### Buddy Stats Page (`/admin/stats/buddies`)
 
 An overview, then one table, one row per buddy, from `GET /admin/buddies/stats` (#253). Every column is sortable; the name links to the detail page. A number column sorts largest first on its first click, and a buddy with nothing to compute from (a `—`) sorts last in both directions.
 
@@ -966,6 +967,35 @@ Clicking a figure or a bar narrows the table to the buddies behind it (e.g. only
 
 **Not counted — no history exists:** tier promotion dates, time spent as a trainee, Maybe→Confirmed conversion, waitlist promotions and booking lead time. A `Booking` keeps only its current status and is reused on re-book. Organisation-wide numbers (tours per month, fill rates) are also out of scope.
 
+#### Reflection Stats Page (`/admin/stats/reflections`)
+
+Every buddy's reflections in one place, from `GET /admin/reflections/stats` (#252): an overview, then one list, one row per reflection. Before it, a PLAB member could read reflections only one buddy at a time, on the buddy detail page.
+
+**Scope (sent to the API):** a tour date range (empty = all time, the default), a group type, a place, and a tour. The tour comes only from the URL (`?tourId=`, the tour detail page's link); the page names it with the tour date and group, and "All tours" drops it. Only `published` and `completed` tours count, as on the buddy stats. A place scope keeps reflections on sessions at that place. Changing the scope refetches.
+
+**Row filters (in the browser):** buddy name, text search (the four prompts, every moment's description and its free-text note; case-insensitive), spot (any spot of a place with spots, or that place's "Other / no spot"), "only with a question they couldn't answer" (`openQuestions` not blank), and "Include PLAB members" (off by default, as on the buddy stats).
+
+**Overview:** figures across every reflection the list shows, computed in the browser from the same response.
+
+| Figure | Counted as |
+|---|---|
+| Reflections / buddies who wrote / moments recorded | Rows in view / distinct buddies among them / their moments |
+| Reflection rate | Σ reflections ÷ Σ sessions attended, over the buddies the buddy filters keep. Sessions attended are counted as on the buddy stats page, so the two rates agree for the same scope. The spot, text and question filters and a chart click do not change it — dividing reflections about one spot by every session attended would mean nothing |
+
+| Chart | Bars |
+|---|---|
+| Moments by spot | One group per place with spots, largest first. An active spot nobody wrote about shows as 0; a retired one only while a moment names it. Moments at that place with no spot close the group as "Other / no spot" |
+| Moments by place | Moments under the place of the session they were written on, largest first — not the place named in a free-text note. Every active place shows, 0 or not |
+| Reflections per month | One column per tour month, from the first to the last in view |
+
+Clicking a bar narrows the list to the reflections behind it; a line above the list names the focus and "Show all" clears it. Figures don't narrow anything. Charts are plain HTML bars, as on the buddy stats.
+
+**List:** tour date, group (links to the tour), session, buddy (links to the buddy detail page), place and spots, submitted. Every column is sortable; the default is tour date, newest first. The tour date opens the row to the full reflection — the answered prompts and each moment with its spot or note, the same view as on the buddy detail page.
+
+**Explanations:** the reflection rate and "moments by place" carry an ⓘ, as on the buddy stats.
+
+**Not here:** a summary of recurring themes in the free text by an LLM (#260: privacy of buddies' text and a new dependency), and any state on a reflection such as marking an open question answered — the page only reads.
+
 #### Buddy Detail Page (`/admin/buddies/:id`)
 
 **Display section:**
@@ -1011,7 +1041,8 @@ Frontend page routes and API endpoints are separate layers. `/admin/buddies/pend
 |---|---|---|
 | `GET` | `/admin/buddies?status=pending` | List pending buddies (called by the `/admin/buddies/pending` page) |
 | `GET` | `/admin/buddies?status=active&tier=...&memberType=...` | List active buddies (called by the `/admin/buddies` page); filterable by tier and member type |
-| `GET` | `/admin/buddies/stats?from&to&groupType&placeId` | Fetch `AdminBuddyStatsResponse` (every buddy's numbers + the place list), for the `/admin/buddies/stats` page |
+| `GET` | `/admin/buddies/stats?from&to&groupType&placeId` | Fetch `AdminBuddyStatsResponse` (every buddy's numbers + the place list), for the `/admin/stats/buddies` page |
+| `GET` | `/admin/reflections/stats?from&to&groupType&placeId&tourId` | Fetch `AdminReflectionStatsResponse` (every reflection in scope + sessions attended per buddy + places with spots), for the `/admin/stats/reflections` page |
 | `GET` | `/admin/buddies/:id` | Fetch `AdminBuddyDetailResponse` (profile + bookings + cancellation/absence summaries + all-time `stats`) |
 | `PUT` | `/admin/buddies/:id/status` | Set status. Allowed values: `trainee` / `active` / `rejected`. `→ active` auto-sets `tier = junior`. |
 | `PUT` | `/admin/buddies/:id` | Update `tier`, `memberType` and/or `internalNotes`. `tier` and `internalNotes` are nullable; `memberType` is not |
@@ -1115,7 +1146,7 @@ Route: `routes.buddyProfile` in `routes.ts`.
 
 `/admin` is a worklist. It answers "what needs me today" with actionable queues, each linking into the page where the work is done. Login sends admins here, and it is the first item in the admin sidebar ("Home").
 
-It is not a metrics dashboard. Admin analytics (reflection analytics, per-buddy numbers) are tracked in #250 and belong on their own page, not in this worklist.
+It is not a metrics dashboard. Admin analytics live on their own pages under `/admin/stats/` (buddy stats, reflection stats — §11.4), not in this worklist.
 
 | Queue | Listed | Links to |
 |---|---|---|

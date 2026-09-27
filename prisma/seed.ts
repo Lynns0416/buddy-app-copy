@@ -1363,6 +1363,77 @@ async function main() {
     return options[variant % options.length]
   }
 
+  // What each reflection on a TIER1 tour remembers, in the order the
+  // reflections are written. Peace Park walks a fixed route, so its moments
+  // follow the spots in route order, some reflections naming two or three;
+  // no one wrote about the opening or the aisle of monuments, so those show as
+  // zero on the reflection stats page. The other places have no spots and get
+  // the reflection form's fallback: one moment whose `placeNote` is the
+  // place's `nameJa`.
+  type SeedMoment = { spotId: string; description: string } | { placeNote: string; description: string }
+  const TIER1_MOMENTS: Record<number, SeedMoment[][]> = {
+    0: [
+      [
+        { spotId: ID.spotHypocenter, description: '黒い碑の前で「ここの真上で爆発した」と伝えると、全員が空を見上げました。' },
+        { spotId: ID.spotPeaceStatue, description: '像の右手と左手の意味を聞いてきた生徒がいて、説明すると深くうなずいていました。' },
+      ],
+      [{ spotId: ID.spotGroundLevel, description: '地層の中の瓦やガラスを見て「本当に街があったんだ」とつぶやいた生徒がいました。' }],
+      [
+        { spotId: ID.spotMatsuyamaShelter, description: '防空壕の狭さに驚いて、何人くらい入れたのかと質問が続きました。' },
+        { spotId: ID.spotFountainOfPeace, description: '水を求めた少女の手記を読むと、にぎやかだった班が静かになりました。' },
+        { spotId: ID.spotClosing, description: '最後に一人ずつ感想を言ってもらい、「家族に話したい」という声が多かったです。' },
+      ],
+      [{ spotId: ID.spotHypocenter, description: '修学旅行の事前学習で調べてきたことを、生徒の方から話してくれました。' }],
+      [
+        { spotId: ID.spotIntroduction, description: '自己紹介で被爆三世だと話すと、生徒たちの表情が変わりました。' },
+        { placeNote: '平和公園の階段（エスカレーター横）', description: '階段を上りながら、原爆で家族を亡くした祖母の話を聞かせてほしいと頼まれました。' },
+      ],
+    ],
+    1: [
+      [{ placeNote: '浦上天主堂', description: '被爆したマリア像の話で、研修担当の方が涙ぐんでいました。' }],
+      [{ placeNote: '浦上天主堂', description: '崩れた鐘楼の前で、なぜ残さなかったのかと質問され、議論になりました。' }],
+      [{ placeNote: '浦上天主堂', description: '社員の方々が熱心にメモを取っていて、説明にも熱が入りました。' }],
+      [{ placeNote: '浦上天主堂', description: '頭部の焼けた石像を見て、しばらく誰も話しませんでした。' }],
+      [{ placeNote: '浦上天主堂', description: 'キリシタンの歴史から話すと、原爆の話がより重く伝わったようでした。' }],
+    ],
+    2: [
+      [
+        { spotId: ID.spotGroundLevel, description: '地層の展示で、ガラス越しにのぞき込む生徒の列ができました。' },
+        { spotId: ID.spotPeaceStatue, description: '式典の話をすると、テレビで見たことがあると盛り上がりました。' },
+      ],
+      [{ spotId: ID.spotFountainOfPeace, description: '「水をください」という言葉の重さを、生徒が自分の言葉で言い直してくれました。' }],
+      [{ spotId: ID.spotMatsuyamaShelter, description: '中に入れないことを残念がる生徒に、当時の様子を写真で見せました。' }],
+      [
+        { spotId: ID.spotHypocenter, description: '碑の周りで黙とうをしようと生徒から提案がありました。' },
+        { spotId: ID.spotClosing, description: '引率の先生から、帰ってから壁新聞にまとめると聞きました。' },
+      ],
+      [{ spotId: ID.spotPeaceStatue, description: '像の前で集合写真を撮る前に、一度みんなで手を合わせました。' }],
+    ],
+    3: [
+      [{ placeNote: 'VOICE', description: '証言映像のあと、中学生が「もっと早く知りたかった」と話していました。' }],
+      [{ placeNote: 'VOICE', description: '自分と同じ年の子の体験談に、みんな真剣な顔で聞き入っていました。' }],
+      [{ placeNote: 'VOICE', description: '感想を書く時間に、鉛筆がなかなか止まらない生徒が多かったです。' }],
+      [{ placeNote: 'VOICE', description: '休憩中に一人の生徒が、祖父も長崎の出身だと話しに来てくれました。' }],
+      [{ placeNote: 'VOICE', description: '質問の時間が足りないほど手が挙がりました。' }],
+    ],
+    4: [
+      [{ placeNote: '原爆資料館', description: '11時2分で止まった時計の前で、足を止める生徒が多かったです。' }],
+      [{ placeNote: '原爆資料館', description: '溶けたガラス瓶を見て、熱線の温度を質問されました。' }],
+      [{ placeNote: '原爆資料館', description: '写真の展示の前で気分が悪くなった生徒がいて、少し休んでもらいました。' }],
+      [{ placeNote: '原爆資料館', description: '核兵器の現状のコーナーで、「今もこんなにあるの」と驚いていました。' }],
+      [{ placeNote: '原爆資料館', description: '被爆者の方の写真と名前を一人ずつ読み上げる生徒がいました。' }],
+    ],
+  }
+  // Only some buddies write down a question they could not answer.
+  const TIER1_OPEN_QUESTIONS: Record<number, (string | null)[]> = {
+    0: [null, '地層の展示はいつ発掘されたのかと聞かれ、答えられませんでした。', null, null, '祖父母が被爆者でない人がガイドをする理由を聞かれました。'],
+    1: [null, '鐘楼を保存しなかった経緯を、正確に説明できませんでした。', null, null, null],
+    2: [null, null, '防空壕に当時何人避難していたか、数字が出てきませんでした。', null, null],
+    3: [null, null, null, null, null],
+    4: [null, '熱線の温度が何度だったか、正確な数字を答えられませんでした。', null, null, null],
+  }
+  const tier1ReflectionCount = new Map<number, number>()
+
   const CATEGORY_CYCLE = [
     CancellationCategory.personal, CancellationCategory.work, CancellationCategory.health,
     CancellationCategory.other, CancellationCategory.emergency,
@@ -1415,10 +1486,20 @@ async function main() {
       }
       if ((arch.index + tour.i) % 3 === 0) {
         const template = reflectionTemplate(arch.selfView, tour.i)
+        const nth = tier1ReflectionCount.get(tour.i) ?? 0
+        tier1ReflectionCount.set(tour.i, nth + 1)
+        const moments = TIER1_MOMENTS[tour.i][nth] ?? []
         await prisma.tourReflection.upsert({
           where: { buddyId_sessionId: { buddyId, sessionId: tour.sessionId } },
           update: {},
-          create: { buddyId, sessionId: tour.sessionId, didWell: template.didWell, couldImprove: template.couldImprove },
+          create: {
+            buddyId,
+            sessionId: tour.sessionId,
+            didWell: template.didWell,
+            couldImprove: template.couldImprove,
+            openQuestions: TIER1_OPEN_QUESTIONS[tour.i][nth] ?? null,
+            moments: { create: moments.map((moment, position) => ({ position, ...moment })) },
+          },
         })
       }
     }

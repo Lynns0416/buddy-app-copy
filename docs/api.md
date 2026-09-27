@@ -1450,6 +1450,47 @@ Admins read all buddy reflections.
 
 ---
 
+#### `GET /admin/reflections/stats`
+Every reflection in scope for the reflection stats page (PRD §11.4 "Reflection Stats Page"), with the sessions each buddy attended in the same scope, the rate's denominator. The page computes its figures and charts from this response and filters rows itself.
+
+**Auth:** `admin`
+
+**Query params:** the same as `GET /admin/buddies/stats` (`from`, `to`, `groupType`, `placeId`), plus:
+- `tourId` — uuid. Only that tour.
+
+Only `published` and `completed` tours count, as on the buddy stats. `placeId` keeps reflections on sessions at that place.
+
+**Response `200`** — `AdminReflectionStatsResponse`:
+```json
+{
+  "reflections": [
+    {
+      "...": "AdminTourReflectionResponse",
+      "buddyRealName": "string",
+      "buddyMemberType": "buddy | plab_member",
+      "group": { "name": "string", "type": "school" },
+      "place": { "id": "uuid", "nameJa": "string", "nameEn": "string" }
+    }
+  ],
+  "buddies": [
+    { "id": "uuid", "displayName": "string", "realName": "string", "memberType": "buddy", "sessionsAttended": 3 }
+  ],
+  "places": [
+    {
+      "id": "uuid", "nameJa": "string", "nameEn": "string", "active": true,
+      "spots": [{ "id": "uuid", "nameJa": "string", "nameEn": "string", "active": true }]
+    }
+  ]
+}
+```
+- `reflections[].place` is the session's place, the place every moment on it belongs to. Ordered by `createdAt` descending.
+- `buddies` lists every buddy with at least one session attended in scope, counted as `sessionsAttended` on `GET /admin/buddies/stats`, whatever their status or member type.
+- `places` is every place and every spot, retired ones included, in `sortOrder`.
+
+**Response `400`** — a malformed date, group type or uuid, or `from` after `to`.
+
+---
+
 #### `GET /admin/reflections/:id`
 Fetch a single reflection.
 

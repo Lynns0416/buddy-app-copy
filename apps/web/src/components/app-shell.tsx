@@ -50,7 +50,13 @@ export function AppShell({ variant, children }: Props) {
         { href: routes.adminBuddiesPending(locale), label: t('nav.buddiesPending') },
         { href: routes.adminBuddies(locale), label: t('nav.buddies') },
         { href: routes.adminTrainees(locale), label: t('nav.trainees') },
+      ],
+    },
+    {
+      labelKey: 'nav.sections.stats',
+      items: [
         { href: routes.adminBuddyStats(locale), label: t('nav.buddyStats') },
+        { href: routes.adminReflectionStats(locale), label: t('nav.reflectionStats') },
       ],
     },
   ]

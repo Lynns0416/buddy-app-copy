@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import type { AdminTourReflectionResponse } from '@peace-buddy/types'
 import { momentSelect, mapMoment } from './reflection.service'
 
-const adminReflectionSelect = {
+export const adminReflectionSelect = {
   id: true,
   buddyId: true,
   sessionId: true,
@@ -20,7 +20,7 @@ const adminReflectionSelect = {
 
 type AdminReflectionRow = Prisma.TourReflectionGetPayload<{ select: typeof adminReflectionSelect }>
 
-function mapAdminResponse(row: AdminReflectionRow): AdminTourReflectionResponse {
+export function mapAdminResponse(row: AdminReflectionRow): AdminTourReflectionResponse {
   return {
     id: row.id,
     buddyId: row.buddyId,

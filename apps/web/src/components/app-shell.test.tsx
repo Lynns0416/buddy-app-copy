@@ -98,6 +98,9 @@ describe('AppShell', () => {
       expect(within(buddies).getByRole('link', { name: 'nav.buddiesPending' })).toBeInTheDocument()
       expect(within(buddies).getByRole('link', { name: 'nav.buddies' })).toBeInTheDocument()
       expect(within(buddies).getByRole('link', { name: 'nav.trainees' })).toBeInTheDocument()
+      const stats = screen.getAllByRole('group', { name: 'nav.sections.stats' })[0]
+      expect(within(stats).getByRole('link', { name: 'nav.buddyStats' })).toHaveAttribute('href', '/en/admin/stats/buddies')
+      expect(within(stats).getByRole('link', { name: 'nav.reflectionStats' })).toHaveAttribute('href', '/en/admin/stats/reflections')
     })
 
     it('puts personal items in the account nav, without the roster for admin', () => {

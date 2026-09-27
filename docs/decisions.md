@@ -12,6 +12,47 @@ duplicate that state here.
 
 ---
 
+## 2026-09-27 — Reflection stats: one page for every buddy's reflections, under `/admin/stats/`
+
+**Decision:** `/admin/stats/reflections` lists every reflection in a scope
+(period, group type, place, and a tour from `?tourId=`), filtered in the
+browser by buddy, text, spot and "has an open question". An overview above it
+shows reflections, buddies who wrote, moments and the reflection rate, and bars
+for moments by spot, moments by place and reflections per month; a bar narrows
+the list. The tour detail page links to it for a completed tour. The buddy
+stats page moves to `/admin/stats/buddies`, and both sit under a new 分析
+(Analytics) sidebar heading. Data from `GET /admin/reflections/stats`. Current
+state: PRD §11.4 "Reflection Stats Page". Closes #252.
+
+**Why:** a PLAB member could read reflections only one buddy at a time. The
+only structured part of a reflection is where each moment happened, so
+counting moments by spot and place is the analysis the data supports; the rest
+is reading.
+
+**Rejected — a hub page at `/admin/stats`:** the 2026-09-26 overview entry
+already turned down a separate analytics home. The two pages are siblings, each
+with its own scope; nothing sits above them.
+
+**Rejected — count moments by the place named in `placeNote`:** a free-text
+note is whatever the buddy wrote, and only a spot-less place's note is the
+place name. A moment always belongs to its session's place (the spot rule of
+the 2026-09-24 entry), so moments are counted there.
+
+**Rejected — narrow the reflection rate with the spot, text and question
+filters:** reflections about one spot divided by every session attended means
+nothing. The rate follows the scope and the buddy filters only; the ⓘ says so.
+Sessions attended come from the buddy stats service, not a second copy of the
+rule, so both pages give the same rate for the same scope.
+
+**Rejected — an LLM summary of recurring themes in #252:** cost was estimated
+to be negligible (cents a month), but sending buddies' text to an external model
+needs its own decision, and it adds a dependency. Tracked in #260.
+
+**Rejected — marking an open question as answered:** it would add state and a
+schema change to a page that only reads, and the team did not ask for it.
+
+---
+
 ## 2026-09-27 — Seed emulator accounts are a tracked fixture
 
 **Decision:** the Firebase emulator's seed accounts live in the tracked

@@ -351,6 +351,13 @@ export default function AdminTourDetailPage() {
         <>
           <h2 className="mt-8 mb-3 text-base font-semibold">{tEval('sections.perTourEvaluations')}</h2>
           <TourBuddyEvalSection tourId={tour.id} bookings={tour.bookings} />
+          <h2 className="mt-8 mb-3 text-base font-semibold">{t('reflections.title')}</h2>
+          <Link
+            href={routes.adminReflectionStats(locale, tour.id)}
+            className="text-sm font-medium text-blue-600 hover:underline"
+          >
+            {t('reflections.view')}
+          </Link>
         </>
       )}
 

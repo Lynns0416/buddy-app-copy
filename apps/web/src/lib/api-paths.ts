@@ -50,6 +50,7 @@ export const apiPaths = {
   adminProfileEvaluation: (buddyId: string) => `/admin/profile-evaluations/${buddyId}`,
   adminProfileEvaluationMine: (buddyId: string) => `/admin/profile-evaluations/${buddyId}/mine`,
   adminReflections: '/admin/reflections',
+  adminReflectionStats: '/admin/reflections/stats',
   adminReflection: (id: string) => `/admin/reflections/${id}`,
 
   adminProfile: '/admin/profile',

@@ -93,7 +93,7 @@ describe('AdminBuddyStatsPage', () => {
     render(<AdminBuddyStatsPage />)
     await screen.findByRole('link', { name: 'Aya' })
 
-    await user.selectOptions(screen.getByLabelText('adminBuddyStats.scope.groupType'), 'school')
+    await user.selectOptions(screen.getByLabelText('adminStats.scope.groupType'), 'school')
 
     expect(mockList).toHaveBeenLastCalledWith(expect.objectContaining({ groupType: 'school' }))
   })

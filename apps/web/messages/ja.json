@@ -203,14 +203,7 @@
     "title": "バディ統計",
     "noResults": "条件に合うバディがいません",
     "scope": {
-      "title": "集計対象のツアー",
-      "hint": "すべての数値は、この期間・団体種別・場所のツアーのみを集計します。日付を空欄にすると全期間になります。",
-      "from": "開始日",
-      "to": "終了日",
-      "groupType": "団体種別",
-      "place": "場所",
-      "all": "すべて",
-      "allTime": "全期間"
+      "hint": "すべての数値は、この期間・団体種別・場所のツアーのみを集計します。日付を空欄にすると全期間になります。"
     },
     "filters": {
       "searchLabel": "バディを検索",
@@ -327,6 +320,73 @@
         "older": "180日超",
         "never": "参加なし"
       }
+    }
+  },
+  "adminStats": {
+    "scope": {
+      "title": "集計対象のツアー",
+      "from": "開始日",
+      "to": "終了日",
+      "groupType": "団体種別",
+      "place": "場所",
+      "all": "すべて",
+      "allTime": "全期間"
+    }
+  },
+  "adminReflectionStats": {
+    "title": "ふり返り",
+    "noResults": "条件に合うふり返りがありません",
+    "noSpot": "その他・スポットなし",
+    "about": "{label}について",
+    "error": {
+      "load": "ふり返りを読み込めませんでした。もう一度お試しください。"
+    },
+    "scope": {
+      "hint": "この期間・団体種別・場所のツアーのふり返りのみを集計します。日付を空欄にすると全期間になります。",
+      "tour": "ツアー予約：{tour}",
+      "tourUnknown": "選択したツアー予約",
+      "clearTour": "すべてのツアー予約"
+    },
+    "filters": {
+      "buddyLabel": "バディを検索",
+      "buddyPlaceholder": "バディの名前で検索",
+      "textLabel": "ふり返りを検索",
+      "textPlaceholder": "ふり返りの本文で検索",
+      "spot": "スポット",
+      "allSpots": "すべてのスポット",
+      "openQuestionsOnly": "答えられなかった質問があるものだけ",
+      "includePlabMembers": "PLABメンバーを含める",
+      "resultCount": "{total}件中{count}件",
+      "reset": "フィルターをリセット"
+    },
+    "columns": {
+      "tourDate": "ツアー日",
+      "group": "団体",
+      "session": "ツアー",
+      "buddy": "バディ",
+      "place": "場所・スポット",
+      "submittedAt": "提出日"
+    },
+    "descriptions": {
+      "reflectionRate": "表示中のバディのふり返り数 ÷ 参加したツアーの数です（バディ統計と同じ数え方）。期間・団体種別・場所・ツアー予約・バディの絞り込みでだけ変わり、スポット・本文・質問の絞り込みやグラフのクリックでは変わりません。",
+      "places": "場面は、ふり返りを書いたツアーの場所で数えます。スポットのない場面もその場所に数えます。"
+    },
+    "overview": {
+      "title": "概要",
+      "hint": "下の一覧に表示されているふり返り全体の数値です。グラフをクリックすると、該当するふり返りに一覧を絞り込みます。",
+      "reflections": "ふり返り数",
+      "buddiesWrote": "書いたバディ",
+      "moments": "記録した場面",
+      "reflectionRate": "ふり返り率",
+      "charts": {
+        "spots": "スポット別の場面",
+        "places": "場所別の場面",
+        "months": "月別のふり返り"
+      },
+      "monthCount": "{month}：{count}",
+      "bucketFocus": "{chart}：{bucket}",
+      "focused": "{label}を表示中（{count}件）",
+      "clearFocus": "すべて表示"
     }
   },
   "home": {
@@ -544,6 +604,10 @@
       "conflict": "この操作はすでに実行できない状態です。",
       "network": "接続エラーです。ネットワークを確認してください。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
+    },
+    "reflections": {
+      "title": "ふり返り",
+      "view": "このツアー予約のふり返りを見る"
     }
   },
   "tourDetail": {
@@ -623,7 +687,8 @@
       "buddiesPending": "承認待ち",
       "buddies": "バディ",
       "trainees": "研修中",
-      "buddyStats": "統計",
+      "buddyStats": "バディ統計",
+      "reflectionStats": "ふり返り",
       "groups": "団体",
       "places": "場所",
       "tours": "ツアー予約",
@@ -634,7 +699,8 @@
       "accountLabel": "アカウント",
       "sections": {
         "tours": "ツアー運営",
-        "buddies": "バディ管理"
+        "buddies": "バディ管理",
+        "stats": "分析"
       }
     }
   },

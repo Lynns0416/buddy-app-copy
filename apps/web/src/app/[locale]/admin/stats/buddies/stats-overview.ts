@@ -13,6 +13,7 @@ import {
   GroupTypeSchema,
   getTodayJst,
 } from '@peace-buddy/types'
+import { nextMonth, ratio } from '../stats-helpers'
 
 // The overview reads the rows the table shows (scope and row filters applied),
 // so every figure adds up to the table below it (PRD §11.4 "Overview").
@@ -77,10 +78,6 @@ export type RecencyId = (typeof RECENCY_BOUNDS)[number]['id'] | 'older' | 'never
 
 function sum(rows: AdminBuddyStatsRow[], pick: (row: AdminBuddyStatsRow) => number): number {
   return rows.reduce((total, row) => total + pick(row), 0)
-}
-
-function ratio(part: number, whole: number): number | null {
-  return whole === 0 ? null : part / whole
 }
 
 export function activityLabel(index: number): string {
@@ -163,11 +160,6 @@ function pooledScores(rows: AdminBuddyStatsRow[]): OverviewScore[] {
 
 function monthOf(iso: string): string {
   return getTodayJst(new Date(iso)).slice(0, 7)
-}
-
-function nextMonth(month: string): string {
-  const [y, m] = month.split('-').map(Number)
-  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`
 }
 
 // Every month from the first registration in view to this month in JST,

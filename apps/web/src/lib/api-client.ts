@@ -16,6 +16,7 @@ import type {
   AdminBuddyResponse,
   AdminBuddyDetailResponse,
   AdminBuddyStatsResponse,
+  AdminReflectionStatsResponse,
   GroupType,
   TourResponse,
   TourDetailResponse,
@@ -268,6 +269,15 @@ export const apiClient = {
     apiRequest<AdminTourReflectionResponse[]>(
       params.buddyId ? `${apiPaths.adminReflections}?buddyId=${params.buddyId}` : apiPaths.adminReflections,
     ),
+
+  listReflectionStats: (scope: { from?: string; to?: string; groupType?: GroupType; placeId?: string; tourId?: string }) => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(scope)) if (value) params.set(key, value)
+    const query = params.toString()
+    return apiRequest<AdminReflectionStatsResponse>(
+      query ? `${apiPaths.adminReflectionStats}?${query}` : apiPaths.adminReflectionStats,
+    )
+  },
 
   getAdminReflection: (id: string) =>
     apiRequest<AdminTourReflectionResponse>(apiPaths.adminReflection(id)),

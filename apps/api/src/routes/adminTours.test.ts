@@ -45,6 +45,10 @@ vi.mock('../services/adminProfileEvaluation.service', () => ({
 
 vi.mock('../services/reflection.service', () => ({}))
 
+vi.mock('../services/adminReflectionStats.service', () => ({
+  listReflectionStats: vi.fn(),
+}))
+
 vi.mock('../services/adminReflection.service', () => ({
   listReflections: vi.fn(),
   getReflection: vi.fn(),

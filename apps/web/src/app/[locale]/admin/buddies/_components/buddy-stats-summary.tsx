@@ -4,8 +4,8 @@ import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import type { AdminBuddyStatsRow } from '@peace-buddy/types'
 import { cn } from '@/lib/utils'
-import { STAT_GROUPS, buildStatColumns, formatStat, statLabel, type StatColumn } from '../stats/admin.buddy-stats'
-import { useStatTranslators } from '../stats/use-stat-translators'
+import { STAT_GROUPS, buildStatColumns, formatStat, statLabel, type StatColumn } from '../../stats/buddies/admin.buddy-stats'
+import { useStatTranslators } from '../../stats/buddies/use-stat-translators'
 
 // Nothing to report reads quieter, so the numbers that say something stand out.
 function isEmpty(column: StatColumn, buddy: AdminBuddyStatsRow): boolean {

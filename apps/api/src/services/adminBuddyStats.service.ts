@@ -26,8 +26,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // a cancelled tour's bookings say nothing about the buddy.
 const COUNTED_TOUR_STATUSES = [TourStatusSchema.enum.published, TourStatusSchema.enum.completed]
 
-function tourWhere(scope: BuddyStatsScope): Prisma.TourWhereInput {
+export function tourWhere(scope: BuddyStatsScope): Prisma.TourWhereInput {
   return {
+    ...(scope.tourId ? { id: scope.tourId } : {}),
     status: { in: COUNTED_TOUR_STATUSES },
     ...(scope.from || scope.to
       ? { tourDate: { ...(scope.from ? { gte: scope.from } : {}), ...(scope.to ? { lte: scope.to } : {}) } }

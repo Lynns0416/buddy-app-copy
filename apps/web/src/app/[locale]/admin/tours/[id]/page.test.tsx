@@ -9,9 +9,9 @@ import { adminTourSummary } from '@/test/tour-fixtures'
 
 const TOUR_ID = 'c3d4e5f6-a7b8-9012-cdef-123456789012'
 
-function tourFixture(bookingOpen: boolean): AdminTourDetailResponse {
+function tourFixture(bookingOpen: boolean, status: AdminTourDetailResponse['status'] = TourStatusSchema.enum.published): AdminTourDetailResponse {
   return {
-    ...adminTourSummary({ id: TOUR_ID, status: TourStatusSchema.enum.published, bookingOpen }),
+    ...adminTourSummary({ id: TOUR_ID, status, bookingOpen }),
     adminMemo: null,
     cancellationDeadline: '2025-05-29',
     maybeDeadline: null,
@@ -86,5 +86,27 @@ describe('AdminTourDetailPage booking toggle', () => {
     await userEvent.setup().click(await screen.findByRole('button', { name: 'openBooking' }))
 
     expect(toggleTourBooking).not.toHaveBeenCalled()
+  })
+})
+
+describe('AdminTourDetailPage reflections link', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('links a completed tour to its reflections', async () => {
+    vi.mocked(fetchTour).mockResolvedValue({ ok: true, data: tourFixture(false, TourStatusSchema.enum.completed) })
+    render(<AdminTourDetailPage />)
+
+    expect(await screen.findByRole('link', { name: 'reflections.view' }))
+      .toHaveAttribute('href', `/en/admin/stats/reflections?tourId=${TOUR_ID}`)
+  })
+
+  it('has no reflections link before the tour is completed', async () => {
+    vi.mocked(fetchTour).mockResolvedValue({ ok: true, data: tourFixture(false) })
+    render(<AdminTourDetailPage />)
+
+    await screen.findByRole('button', { name: 'openBooking' })
+    expect(screen.queryByRole('link', { name: 'reflections.view' })).not.toBeInTheDocument()
   })
 })

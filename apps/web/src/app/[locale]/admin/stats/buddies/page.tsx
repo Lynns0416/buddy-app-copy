@@ -12,7 +12,7 @@ import { SortIcon, type SortDir } from '@/components/sort-icon'
 import { InfoHint } from '@/components/info-hint'
 import { routes } from '@/lib/routes'
 import { ASC, DESC } from '@/lib/constants'
-import { buddyName, mapBuddyError } from '../admin.buddy'
+import { buddyName, mapBuddyError } from '../../buddies/admin.buddy'
 import {
   buildStatColumns,
   defaultBuddyStatsFilters,
