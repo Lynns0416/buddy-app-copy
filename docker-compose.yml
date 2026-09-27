@@ -29,11 +29,20 @@ services:
 
   # Auth emulator. Accounts persist in the gitignored .firebase/emulators, which
   # the seed also reads. Export runs on shutdown, so stop it with
-  # `docker compose stop`/`down` (SIGINT), not `kill`.
+  # `docker compose stop`/`down` (SIGINT), not `kill`. When that directory holds
+  # no accounts — a fresh worktree or clone, or an emulator that started empty
+  # and exported the empty store — it is refilled from the tracked
+  # docker/firebase/seed first.
   firebase:
     build:
       context: docker/firebase
-    command: firebase emulators:start --only auth --import .firebase/emulators --export-on-exit .firebase/emulators
+    command:
+      - sh
+      - -c
+      - >-
+        grep -qs localId .firebase/emulators/auth_export/accounts.json ||
+        { rm -rf .firebase/emulators && mkdir -p .firebase && cp -R docker/firebase/seed .firebase/emulators; };
+        exec firebase emulators:start --only auth --import .firebase/emulators --export-on-exit .firebase/emulators
     stop_signal: SIGINT
     stop_grace_period: 30s
     ports:

@@ -36,8 +36,8 @@ RUN pnpm --filter @peace-buddy/types build
 RUN pnpm exec prisma generate --schema /app/prisma/schema.prisma
 # A named node_modules volume is not re-seeded from the image the way an
 # anonymous one is, so reconcile it against the lockfile on every start.
-# The seed is all upserts, so it is safe on every start; it reads the gitignored
-# emulator export, so a failure warns instead of keeping the api down.
+# The seed is all upserts, so it is safe on every start; a failure warns instead
+# of keeping the api down.
 CMD ["sh", "-c", "pnpm install --frozen-lockfile && pnpm --filter @peace-buddy/types build && pnpm exec prisma generate --schema /app/prisma/schema.prisma && pnpm exec prisma migrate deploy --schema /app/prisma/schema.prisma && (pnpm exec prisma db seed || echo 'WARN: prisma db seed failed; api starting without seed data') && pnpm --filter @peace-buddy/api dev"]
 
 # --- migrate (one-shot job image; never serves traffic) ---------------------

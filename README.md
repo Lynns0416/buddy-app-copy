@@ -118,7 +118,11 @@ procedure, including the diff that must pass first.
 `docker/firebase/Dockerfile`), importing accounts from the gitignored
 `.firebase/emulators` and exporting back there on shutdown. Stop it with
 `docker-compose stop` or `down`, which send SIGINT and let the export finish —
-`docker kill` loses any accounts created since the last start.
+`docker kill` loses any accounts created since the last start. When
+`.firebase/emulators` holds no accounts (a fresh clone or worktree), it is
+filled from the tracked `docker/firebase/seed` before the emulator starts. To
+change the seed accounts for everyone, edit them in the emulator, stop it, and
+copy `.firebase/emulators` over `docker/firebase/seed`.
 
 - Auth emulator: http://localhost:9099 (the api reaches it as `firebase:9099`)
 - Emulator UI: http://localhost:4000
@@ -137,9 +141,10 @@ docker-compose up --build
 
 Migrations and the seed run automatically on API container start. The seed is
 all upserts, so re-running it never duplicates rows — but it does reset the
-fields its `update` clauses set (e.g. `bookingOpen` on two seed tours). It needs
-the Firebase emulator export; if that is missing, the api logs a warning and
-starts without seed data.
+fields its `update` clauses set (e.g. `bookingOpen` on two seed tours). It reads
+the Firebase emulator export, or `docker/firebase/seed` when the export has no
+accounts yet. If the seed fails, the api logs a warning and starts without seed
+data.
 
 To re-run the seed by hand:
 

@@ -13,8 +13,19 @@ import {
 
 const prisma = new PrismaClient()
 
-// Load all Firebase accounts from emulator export
-const authExport = require('../.firebase/emulators/auth_export/accounts.json')
+// Load all Firebase accounts from emulator export. Falls back to the tracked
+// fixture the emulator is refilled from, so the seed never waits on the
+// emulator's first start (both containers start together).
+function loadAuthExport() {
+  try {
+    const live = require('../.firebase/emulators/auth_export/accounts.json')
+    if (live.users?.length) return live
+  } catch {
+    // no export yet
+  }
+  return require('../docker/firebase/seed/auth_export/accounts.json')
+}
+const authExport = loadAuthExport()
 const adminAccounts = authExport.users.filter((u: any) =>
   u.email.toLowerCase().includes('admin') || u.displayName.toLowerCase().includes('admin')
 )

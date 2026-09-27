@@ -12,6 +12,70 @@ duplicate that state here.
 
 ---
 
+## 2026-09-27 — Seed emulator accounts are a tracked fixture
+
+**Decision:** the Firebase emulator's seed accounts live in the tracked
+`docker/firebase/seed` (test accounts only, `@test.com`). The `firebase`
+service copies them into `.firebase/emulators` before starting whenever that
+directory holds no accounts, and `prisma/seed.ts` reads them when the live
+export has none. The `.wtp.yml` copy of `.firebase/emulators` is removed.
+Supersedes "on a fresh clone it fails" in the 2026-09-23 seed entry.
+
+**Why:** new worktrees kept starting with no accounts, so the seed crashed.
+The wtp copy was last in its hook list and never ran once an earlier copy's
+source was missing. Even when copied by hand, an emulator already running
+with an empty store exported it on exit and wiped the copy.
+
+**Rejected — rely on the wtp copy (reordered):** it covers only worktrees made
+with `wtp add`, not fresh clones or `git worktree add`, and a copy made while
+the emulator runs is still overwritten.
+
+**Rejected — seed reads only the fixture:** accounts a developer adds in their
+own emulator (e.g. a trainee) would stop being seeded.
+
+**Current state:** `docker-compose.yml` `firebase` service, `prisma/seed.ts`,
+`README.md` §2.
+
+---
+
+## 2026-09-27 — Japanese UI: a session is ツアー, a Tour is ツアー予約
+
+**Decision:** in `ja.json`, a `TourSession` is 「ツアー」 and a `Tour` is
+「ツアー予約」; 「セッション」 is gone. A date stays 「ツアー日」 and a
+reminder offset stays relative to 「ツアー」 — the value is the same for a Tour
+and its sessions. English keeps Tour / Session, and the model names are
+unchanged. The mapping is in CLAUDE.md i18n. Closes #258.
+
+**Why:** PLAB never says セッション; two sessions for one group on one day are
+"2 tours" to the team. The group's side already has words: 受付 is a group's
+application and 予約 its fixed plan, so a `Tour` — one group's fixed day — is
+that group's ツアー予約. 予約 appears nowhere else in `ja.json` (a buddy's
+`Booking` is 参加希望), so it does not collide.
+
+**Rejected — ツアー for both:** two concepts under one name; the stats texts
+(#253) had to say "1つのツアーに複数のセッション" and would read as nonsense.
+
+**Rejected — 訪問 / 団体訪問 / 来訪, 依頼, イベント:** not how the team talks;
+the team never says visit. **Rejected — 案件:** the closest fit until the
+team's own docs turned out to use 予約 for the same thing.
+
+**Rejected — ツアー予約日 for the date:** reads as the day the reservation was
+made.
+
+**Rejected — renaming the models (`Tour` → reservation, `TourSession` →
+`Tour`):** `Tour` would come to mean the other concept, and every older
+commit, doc and issue would read wrong. A UI term differing from the code
+name is ordinary once the mapping is written down.
+
+**Rejected — changing English too:** only one PLAB member uses the English UI;
+the others use Japanese.
+
+**Not changed:** the api's ja email and Slack templates
+(`apps/api/src/services/notificationTemplates/messages.ja.json`,
+`slackTemplates/messages.ja.json`) — outside #258.
+
+---
+
 ## 2026-09-26 — Buddy stats: an ⓘ explains the numbers whose name does not
 
 **Decision:** on `/admin/buddies/stats`, a number whose name does not say what

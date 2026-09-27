@@ -23,6 +23,10 @@ hooks:
     - type: copy
       from: apps/web/.env.local
       to: apps/web/.env.local
+    # Firebase emulator accounts are not copied: the firebase service fills an
+    # empty .firebase/emulators from the tracked docker/firebase/seed.
+    # Optional below: a copy whose source is missing fails the hook and skips
+    # every later step, so anything a worktree needs to start stays above.
     # Only scripts/deploy.sh reads this. Drop it if you would rather not have
     # deploy credentials in every worktree.
     - type: copy
@@ -36,11 +40,4 @@ hooks:
     - type: copy
       from: scripts/azure.stg.env
       to: scripts/azure.stg.env
-    # Firebase Auth emulator data. Without it a new worktree starts with an
-    # empty user table and every seeded login fails. The emulator rewrites this
-    # directory on export, so a worktree's copy diverges from the main
-    # checkout's — that is fine, each worktree keeps its own accounts.
-    - type: copy
-      from: .firebase/emulators
-      to: .firebase/emulators
 

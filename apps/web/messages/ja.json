@@ -33,9 +33,9 @@
     "event": {
       "account_approved": "アカウントが承認されました。ようこそ！",
       "account_rejected": "アカウント登録は承認されませんでした。",
-      "tour_published": "新しいツアーが公開されました。",
-      "tour_details_changed": "ツアー情報が更新されました。",
-      "tour_cancelled": "参加予定のツアーがキャンセルされました。",
+      "tour_published": "新しいツアー予約が公開されました。",
+      "tour_details_changed": "ツアー予約の情報が更新されました。",
+      "tour_cancelled": "参加予定のツアー予約がキャンセルされました。",
       "tour_reminder": "ツアーのリマインダーです。",
       "maybe_reminder": "「保留」回答の期限が近づいています。",
       "waitlist_promoted": "キャンセル待ちから繰り上がり、確定となりました。",
@@ -61,7 +61,7 @@
     "title": "管理",
     "buddies": "バディ一覧",
     "groups": "団体一覧",
-    "tours": "ツアー一覧"
+    "tours": "ツアー予約一覧"
   },
   "adminGroups": {
     "title": "団体",
@@ -78,11 +78,11 @@
     "save": "保存",
     "cancel": "キャンセル",
     "edit": "編集",
-    "newTour": "新規ツアー",
+    "newTour": "新規ツアー予約",
     "back": "団体一覧に戻る",
     "backToDetail": "団体詳細に戻る",
-    "tours": "ツアー履歴",
-    "noTours": "ツアーはありません",
+    "tours": "ツアー予約履歴",
+    "noTours": "ツアー予約はありません",
     "tourDate": "ツアー日",
     "status": "ステータス",
     "location": "場所",
@@ -241,8 +241,8 @@
       "memberType": "メンバータイプ",
       "createdAt": "登録日",
       "monthsSinceRegistration": "登録からの月数",
-      "sessionsAttended": "参加セッション数",
-      "toursAttended": "参加ツアー数",
+      "sessionsAttended": "参加ツアー数",
+      "toursAttended": "参加ツアー予約数",
       "noShows": "無断欠席",
       "attendanceRate": "出席率",
       "upcomingConfirmed": "今後の参加希望",
@@ -252,7 +252,7 @@
       "lastTourDate": "直近のツアー",
       "daysSinceLastTour": "未稼働日数",
       "hoursVolunteered": "活動時間",
-      "sessionsWithoutTimes": "時刻未設定のセッション",
+      "sessionsWithoutTimes": "時刻未設定のツアー",
       "bookings": "申込数",
       "cancellations": "キャンセル数",
       "lateCancellations": "期限後キャンセル",
@@ -265,34 +265,34 @@
       "reflectionRate": "ふり返り率",
       "moments": "記録した場面",
       "evaluationsReceived": "評価数",
-      "evaluationsMissing": "未評価のツアー",
+      "evaluationsMissing": "未評価のツアー予約",
       "averageScore": "平均：{criterion}",
       "profileOverallRating": "プロフィール総合評価",
       "placesGuided": "案内した場所数",
-      "sessionsAtPlace": "セッション：{place}",
+      "sessionsAtPlace": "ツアー：{place}",
       "groupTypesServed": "担当した団体種別数",
-      "sessionsForGroupType": "セッション：{groupType}"
+      "sessionsForGroupType": "ツアー：{groupType}"
     },
     "descriptions": {
-      "sessionsAttended": "完了したツアーで参加が確定していたセッションの数です。欠席を記録されたツアーの分は除きます。1つのツアーに複数のセッションがあることがあります。",
-      "toursAttended": "参加したセッションがあるツアーの数です。同じツアーで複数のセッションを担当しても1と数えます。",
-      "attendanceRate": "参加ツアー数 ÷（参加ツアー数＋欠席ツアー数）。無断欠席と期限後キャンセルを欠席と数えます（ツアーごとに1回）。",
+      "sessionsAttended": "完了したツアー予約で参加が確定していたツアーの数です。欠席を記録されたツアー予約の分は除きます。1つのツアー予約に複数のツアーがあることがあります。",
+      "toursAttended": "参加したツアーがあるツアー予約の数です。同じツアー予約で複数のツアーを担当しても1と数えます。",
+      "attendanceRate": "参加ツアー予約数 ÷（参加ツアー予約数＋欠席ツアー予約数）。無断欠席と期限後キャンセルを欠席と数えます（ツアー予約ごとに1回）。",
       "openMaybe": "今後のツアーで「未確定」のまま、参加かキャンセルが決まっていない申込です。",
-      "hoursVolunteered": "参加したセッションの開始〜終了時刻の合計です。時刻が未設定のセッションは含まないため、実際より少なく出ることがあります。",
-      "sessionsWithoutTimes": "開始または終了時刻が未設定のため、活動時間に含めていない参加セッションです。",
-      "lateCancellations": "キャンセル期限の当日以降に届いたキャンセルです。バディ個別の期限があればそれを、なければツアーの期限を使います。",
+      "hoursVolunteered": "参加したツアーの開始〜終了時刻の合計です。時刻が未設定のツアーは含まないため、実際より少なく出ることがあります。",
+      "sessionsWithoutTimes": "開始または終了時刻が未設定のため、活動時間に含めていない参加ツアーです。",
+      "lateCancellations": "キャンセル期限の当日以降に届いたキャンセルです。バディ個別の期限があればそれを、なければツアー予約の期限を使います。",
       "cancellationRate": "キャンセル数 ÷ 申込数。申込数は状態にかかわらず、すべての申込です。",
       "cancellationsUnavoidable": "PLABメンバーがキャンセル理由を確認し、やむを得ないと判断したキャンセルです。",
       "cancellationsAvoidable": "PLABメンバーがキャンセル理由を確認し、やむを得ないとは言えないと判断したキャンセルです。",
       "cancellationsUnreviewed": "PLABメンバーがまだ理由を確認していないキャンセルです。",
-      "evaluationsMissing": "参加したツアーのうち、PLABメンバーの評価がまだないツアーです。",
+      "evaluationsMissing": "参加したツアー予約のうち、PLABメンバーの評価がまだないツアー予約です。",
       "moments": "ふり返りに記録された「印象に残った場面」の数です。",
       "averageScore": "その項目が採点された評価1件ずつの平均です（1〜5）。項目が空欄の評価は含みません。"
     },
     "about": "{label}について",
     "detail": {
       "title": "統計",
-      "hint": "全期間。活動時間は開始・終了時刻のあるセッションのみ集計します。",
+      "hint": "全期間。活動時間は開始・終了時刻のあるツアーのみ集計します。",
       "allNumbers": "すべての数値",
       "sections": {
         "activity": "実績",
@@ -313,11 +313,11 @@
       "charts": {
         "tiers": "ロール別バディ数",
         "registrations": "月別の新規登録",
-        "activity": "参加セッション数別バディ数",
+        "activity": "参加ツアー数別バディ数",
         "recency": "最終参加からの期間別バディ数",
         "categories": "理由別キャンセル数",
-        "groupTypes": "団体種別ごとのセッション数",
-        "places": "場所別セッション数",
+        "groupTypes": "団体種別ごとのツアー数",
+        "places": "場所別ツアー数",
         "scores": "評価スコアの平均（1〜5）"
       },
       "recency": {
@@ -341,7 +341,7 @@
       "otherBuddies": "{count, plural, =0 {他のバディはいません} other {他のバディ {count}人}}",
       "staffInCharge": "担当スタッフ：{name}",
       "brief": "ツアーについて",
-      "details": "ツアーの詳細を見る"
+      "details": "ツアー予約の詳細を見る"
     },
     "actions": {
       "title": "対応が必要なこと",
@@ -359,9 +359,9 @@
     "bookingsLoadError": "ツアーを読み込めませんでした。ページを再読み込みしてください。"
   },
   "tour": {
-    "title": "バディ募集中のツアー",
-    "noTours": "現在バディ募集中のツアーはありません",
-    "loadError": "ツアーを読み込めませんでした。ページを再読み込みしてください。",
+    "title": "バディ募集中のツアー予約",
+    "noTours": "現在バディ募集中のツアー予約はありません",
+    "loadError": "ツアー予約を読み込めませんでした。ページを再読み込みしてください。",
     "signOut": "ログアウト",
     "meetingTime": "集合時間",
     "location": "場所",
@@ -373,7 +373,7 @@
   },
   "history": {
     "title": "ツアー記録",
-    "back": "ツアーに戻る",
+    "back": "ツアー予約一覧に戻る",
     "upcoming": "参加予定",
     "past": "参加済み",
     "noUpcoming": "参加予定のツアーはありません",
@@ -389,13 +389,13 @@
     "filterUnreflected": "ふり返りが未記入 ({count})"
   },
   "adminTours": {
-    "title": "ツアー",
-    "createTitle": "新規ツアー",
-    "editTitle": "ツアー編集",
-    "newTour": "新規ツアー",
-    "noResults": "ツアーはありません",
+    "title": "ツアー予約",
+    "createTitle": "新規ツアー予約",
+    "editTitle": "ツアー予約編集",
+    "newTour": "新規ツアー予約",
+    "noResults": "ツアー予約はありません",
     "todayDivider": "今日",
-    "noMatches": "条件に一致するツアーはありません",
+    "noMatches": "条件に一致するツアー予約はありません",
     "view": {
       "label": "表示",
       "list": "リスト",
@@ -406,11 +406,11 @@
       "nextMonth": "次の月",
       "today": "今日",
       "more": "他{count}件",
-      "emptyMonth": "今月のツアーはありません",
+      "emptyMonth": "今月のツアー予約はありません",
       "chipTitle": "{group} — {status} — {location}"
     },
     "search": {
-      "label": "ツアーを検索",
+      "label": "ツアー予約を検索",
       "placeholder": "団体名・場所で検索"
     },
     "filters": {
@@ -475,18 +475,18 @@
     },
     "save": "保存",
     "cancel": "キャンセル",
-    "back": "ツアー一覧に戻る",
-    "backToDetail": "ツアー詳細に戻る",
+    "back": "ツアー予約一覧に戻る",
+    "backToDetail": "ツアー予約詳細に戻る",
     "edit": "編集",
     "publish": "公開",
-    "cancelTour": "ツアーをキャンセル",
+    "cancelTour": "ツアー予約をキャンセル",
     "completeTour": "完了にする",
     "deleteTour": "削除",
-    "confirmDelete": "このツアーを削除しますか？この操作は元に戻せません。",
-    "confirmCancel": "このツアーをキャンセルしますか？参加希望・仮・キャンセル待ちの全バディに通知されます。",
-    "confirmComplete": "このツアーを完了にしますか？",
+    "confirmDelete": "このツアー予約を削除しますか？この操作は元に戻せません。",
+    "confirmCancel": "このツアー予約をキャンセルしますか？参加希望・仮・キャンセル待ちの全バディに通知されます。",
+    "confirmComplete": "このツアー予約を完了にしますか？",
     "completeTourModal": {
-      "title": "ツアーを完了にする",
+      "title": "ツアー予約を完了にする",
       "message": "以下の確定済みバディが対象となります：",
       "noBuddies": "確定済みバディはいません。",
       "confirm": "完了にする",
@@ -498,8 +498,8 @@
     "bookingOpenNo": "受付停止",
     "openBooking": "参加希望の受付を開始",
     "closeBooking": "参加希望の受付を終了",
-    "confirmOpenBooking": "参加希望の受付を開始しますか？バディがこのツアーに参加希望を出せるようになります。",
-    "confirmCloseBooking": "参加希望の受付を終了しますか？バディはこのツアーに参加希望を出せなくなります。",
+    "confirmOpenBooking": "参加希望の受付を開始しますか？バディがこのツアー予約に参加希望を出せるようになります。",
+    "confirmCloseBooking": "参加希望の受付を終了しますか？バディはこのツアー予約に参加希望を出せなくなります。",
     "addToCalendar": "カレンダーに追加",
     "actionError": "操作に失敗しました。もう一度お試しください。",
     "validationError": "入力内容を確認してください。",
@@ -521,14 +521,14 @@
       "label": "ラベル（任意）",
       "add": "第2回目を追加",
       "remove": "削除",
-      "confirmRemove": "このセッションを削除しますか？この操作は取り消せません。",
+      "confirmRemove": "このツアーを削除しますか？この操作は取り消せません。",
       "error": {
-        "maxSessions": "ツアーには最大2セッションまでしか追加できません。",
-        "placeInUse": "このセッションの振り返りが現在の場所のスポットを使っているため、場所を変更できません。",
-        "capacityBelowConfirmed": "最大バディ数はこのセッションの確定済みのバディ数より少なくできません。"
+        "maxSessions": "ツアー予約には最大2ツアーまでしか追加できません。",
+        "placeInUse": "このツアーの振り返りが現在の場所のスポットを使っているため、場所を変更できません。",
+        "capacityBelowConfirmed": "最大バディ数はこのツアーの確定済みのバディ数より少なくできません。"
       }
     },
-    "bookingSession": "セッション",
+    "bookingSession": "ツアー",
     "assignedAdmins": {
       "title": "担当PLABメンバー",
       "noAdmins": "担当PLABメンバーなし",
@@ -539,7 +539,7 @@
       "selectAdmin": "PLABメンバーを選択..."
     },
     "error": {
-      "notFound": "このツアーは存在しません。",
+      "notFound": "このツアー予約は存在しません。",
       "forbidden": "この操作を行う権限がありません。",
       "conflict": "この操作はすでに実行できない状態です。",
       "network": "接続エラーです。ネットワークを確認してください。",
@@ -566,7 +566,7 @@
     "noBooking": "参加希望未提出",
     "addToCalendar": "カレンダーに追加",
     "addToCalendarError": "カレンダーファイルをダウンロードできませんでした。もう一度お試しください。",
-    "notFound": "ツアーが見つかりません。",
+    "notFound": "ツアー予約が見つかりません。",
     "join": "参加する",
     "respondMaybe": "未定",
     "decline": "不参加",
@@ -594,8 +594,8 @@
     "cantGoTitle": "不参加の報告",
     "cantGoSubmit": "報告する",
     "book": "参加を希望",
-    "notEligible": "このツアーには参加できません。",
-    "sessions": "セッション",
+    "notEligible": "このツアー予約には参加できません。",
+    "sessions": "ツアー",
     "session": {
       "defaultLabel": {
         "1": "前半",
@@ -626,7 +626,7 @@
       "buddyStats": "統計",
       "groups": "団体",
       "places": "場所",
-      "tours": "ツアー",
+      "tours": "ツアー予約",
       "adminProfile": "マイプロフィール",
       "adminRoster": "PLABメンバー一覧",
       "adminNotificationPreferences": "通知設定",
@@ -698,16 +698,16 @@
       "title": "メール通知",
       "description": "受け取るメールを選べます。オフにしてもこのページの「お知らせ」には引き続き表示されます。",
       "events": {
-        "tour_published": "新しいツアーの公開",
-        "tour_publishedHelp": "ツアーの受付が開始されるたびに、アクティブなバディ全員に送信されます。",
-        "tour_details_changed": "ツアー内容の変更",
-        "tour_details_changedHelp": "参加予定のツアーの日程または場所が変更されたときに送信されます。",
+        "tour_published": "新しいツアー予約の公開",
+        "tour_publishedHelp": "ツアー予約の受付が開始されるたびに、アクティブなバディ全員に送信されます。",
+        "tour_details_changed": "ツアー予約内容の変更",
+        "tour_details_changedHelp": "参加予定のツアー予約の日程または場所が変更されたときに送信されます。",
         "tour_reminder": "ツアーのリマインド",
         "tour_reminderHelp": "参加予定のツアーの数日前に送信されます。",
         "maybe_reminder": "未定の回答期限のリマインド",
         "maybe_reminderHelp": "「未定」のツアーを確定または辞退する期限の前に送信されます。"
       },
-      "alwaysOnNotice": "ツアーの中止、キャンセル待ちからの繰り上げ、アカウントの審査結果は常にメールでお知らせします。見逃すと影響が大きいためです。",
+      "alwaysOnNotice": "ツアー予約の中止、キャンセル待ちからの繰り上げ、アカウントの審査結果は常にメールでお知らせします。見逃すと影響が大きいためです。",
       "save": "保存",
       "saving": "保存中…",
       "saveSuccess": "通知設定を保存しました",
@@ -735,7 +735,7 @@
   "adminEvaluations": {
     "sections": {
       "profileEvaluation": "プロフィール評価",
-      "perTourEvaluations": "ツアー別評価",
+      "perTourEvaluations": "ツアー予約別評価",
       "reflections": "ふり返り"
     },
     "fields": {
@@ -790,9 +790,9 @@
       "locked": "ロック済み",
       "actions": "操作",
       "evaluator": "評価者",
-      "session": "セッション"
+      "session": "ツアー"
     },
-    "tourPicker": "ツアーを選択",
+    "tourPicker": "ツアー予約を選択",
     "scoreLegend": "1 = 不十分 · 2 = やや不十分 · 3 = 普通 · 4 = 良い · 5 = 優秀",
     "notePlaceholder": "メモ（任意）",
     "messages": {
@@ -801,17 +801,17 @@
     "error": {
       "notFound": "評価が見つかりません。",
       "forbidden": "この操作を行う権限がありません。",
-      "conflict": "このバディとツアーの組み合わせの評価はすでに存在します。",
+      "conflict": "このバディとツアー予約の組み合わせの評価はすでに存在します。",
       "invalid_request": "入力内容に誤りがあります。確認してもう一度お試しください。",
       "network": "接続エラーです。ネットワークを確認してください。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
     },
     "detail": {
       "buddy": "バディ",
-      "tour": "ツアー",
+      "tour": "ツアー予約",
       "back": "戻る",
       "profileEvalTitle": "プロフィール評価",
-      "perTourEvalTitle": "ツアー別評価",
+      "perTourEvalTitle": "ツアー予約別評価",
       "noEval": "まだ評価がありません。",
       "addLink": "評価を追加 →",
       "editLink": "評価を編集 →"
@@ -885,7 +885,7 @@
     "confirmDelete": "このPLABメンバーを削除しますか？この操作は取り消せません。",
     "cancelDelete": "キャンセル",
     "actionError": "操作に失敗しました。もう一度お試しください。",
-    "conflictError": "進行中のツアーに担当者として割り当てられているため削除できません。",
+    "conflictError": "進行中のツアー予約に担当者として割り当てられているため削除できません。",
     "error": {
       "forbidden": "この操作を行う権限がありません。",
       "network": "通信エラーが発生しました。",
@@ -897,7 +897,7 @@
     "loadError": "ワークリストを読み込めませんでした。",
     "viewAll": "すべて表示",
     "calendarLink": "カレンダーを表示",
-    "sessionFallback": "セッション{order}",
+    "sessionFallback": "ツアー{order}",
     "listSeparator": "、",
     "pending": {
       "title": "承認待ちの申請",
@@ -911,13 +911,13 @@
     },
     "underfilled": {
       "title": "バディ不足（今後{days}日間）",
-      "empty": "今後のセッションはすべて最低人数を満たしています。",
+      "empty": "今後のツアーはすべて最低人数を満たしています。",
       "detail": "{date} · {sessions}",
       "session": "{session}：{min}名中{confirmed}名確定"
     },
     "missingEvaluations": {
-      "title": "評価が未入力の完了ツアー",
-      "empty": "完了したツアーはすべて評価済みです。",
+      "title": "評価が未入力の完了ツアー予約",
+      "empty": "完了したツアー予約はすべて評価済みです。",
       "detail": "{date} · 未評価 {count}名"
     },
     "notifications": {
@@ -929,10 +929,10 @@
   },
   "reflections": {
     "title": "ふり返り",
-    "backToTour": "ツアーに戻る",
+    "backToTour": "ツアー予約に戻る",
     "sessionHeading": "ふり返り",
     "atLeastOne": "少なくとも1つお答えいただくか、印象に残った場面を追加してください。この記録は今後、自分で確認することができます。",
-    "notEligible": "ふり返りは、ツアーが完了になったあと、担当したセッションについて書けるようになります。",
+    "notEligible": "ふり返りは、ツアー予約が完了になったあと、担当したツアーについて書けるようになります。",
     "prompts": {
       "didWell": "うまくできたこと",
       "couldImprove": "次に活かしたいこと",
@@ -963,9 +963,9 @@
     },
     "error": {
       "notFound": "ふり返りが見つかりませんでした。",
-      "notEligible": "このセッションのふり返りは書けません。",
+      "notEligible": "このツアーのふり返りは書けません。",
       "locked": "このふり返りの編集期間が終了しました。",
-      "alreadyExists": "このセッションのふり返りはすでに提出されています。ページを再読み込みしてください。",
+      "alreadyExists": "このツアーのふり返りはすでに提出されています。ページを再読み込みしてください。",
       "invalidRequest": "入力内容に誤りがあります。確認してもう一度お試しください。",
       "network": "接続エラーです。ネットワークを確認してください。",
       "unknown": "エラーが発生しました。もう一度お試しください。"
