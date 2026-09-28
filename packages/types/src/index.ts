@@ -816,6 +816,9 @@ export type MySessionBookingEntry = {
   sessionOrder: number
   sessionLabel: string | null
   meetingTime: string
+  startTime: string | null
+  endTime: string | null
+  place: PlaceSummary
   bookingStatus: BookingStatus
   bookedAt: string
 }
@@ -1106,7 +1109,7 @@ export type BuddyStats = {
   firstTourDate: string | null
   lastTourDate: string | null
   daysSinceLastTour: number | null
-  minutesVolunteered: number
+  minutesOnTour: number
   sessionsWithoutTimes: number
   bookings: number
   cancellations: number

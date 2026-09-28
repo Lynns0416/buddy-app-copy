@@ -244,7 +244,7 @@
       "firstTourDate": "初回ツアー",
       "lastTourDate": "直近のツアー",
       "daysSinceLastTour": "未稼働日数",
-      "hoursVolunteered": "活動時間",
+      "hoursOnTour": "活動時間",
       "sessionsWithoutTimes": "時刻未設定のツアー",
       "bookings": "申込数",
       "cancellations": "キャンセル数",
@@ -271,7 +271,7 @@
       "toursAttended": "参加したツアーがあるツアー予約の数です。同じツアー予約で複数のツアーを担当しても1と数えます。",
       "attendanceRate": "参加ツアー予約数 ÷（参加ツアー予約数＋欠席ツアー予約数）。無断欠席と期限後キャンセルを欠席と数えます（ツアー予約ごとに1回）。",
       "openMaybe": "今後のツアーで「未確定」のまま、参加かキャンセルが決まっていない申込です。",
-      "hoursVolunteered": "参加したツアーの開始〜終了時刻の合計です。時刻が未設定のツアーは含まないため、実際より少なく出ることがあります。",
+      "hoursOnTour": "参加したツアーの開始〜終了時刻の合計です。勤務時間ではありません。時刻が未設定のツアーは含まないため、実際より少なく出ることがあります。",
       "sessionsWithoutTimes": "開始または終了時刻が未設定のため、活動時間に含めていない参加ツアーです。",
       "lateCancellations": "キャンセル期限の当日以降に届いたキャンセルです。バディ個別の期限があればそれを、なければツアー予約の期限を使います。",
       "cancellationRate": "キャンセル数 ÷ 申込数。申込数は状態にかかわらず、すべての申込です。",
@@ -447,6 +447,50 @@
     "searchGroup": "団体名で検索",
     "noMatches": "条件に合う参加済みのツアーはありません",
     "filterUnreflected": "ふり返りが未記入 ({count})"
+  },
+  "buddyRecord": {
+    "title": "バディ記録",
+    "back": "ホームに戻る",
+    "empty": "最初のツアーのあと、ここにこれまでの記録が表示されます。",
+    "loadError": "記録を読み込めませんでした。ページを再読み込みしてください。",
+    "count": "{count}件",
+    "showAll": "すべて表示",
+    "last": {
+      "title": "前回のツアー",
+      "groupVisit": "この団体は{count}回目",
+      "placeVisit": "{place}は{count}回目",
+      "didWell": "できたこと",
+      "write": "ふり返りを書く"
+    },
+    "note": {
+      "title": "次のツアーへのメモ",
+      "from": "{date}のふり返り「もっとできたこと」",
+      "next": "次のツアー"
+    },
+    "milestones": {
+      "title": "バディ記録",
+      "firstTour": "はじめてのツアー",
+      "nthTour": "{count}回目のツアー",
+      "firstPlace": "はじめての{place}",
+      "groupAgain": "{group}を再び担当"
+    },
+    "questions": {
+      "title": "答えられなかった質問 ({count})",
+      "none": "ふり返りに書いた「答えられなかった質問」はまだありません。"
+    },
+    "moments": {
+      "title": "心に残った場面"
+    },
+    "totals": {
+      "title": "これまで",
+      "tours": "ツアー",
+      "groups": "団体",
+      "hoursValue": "{hours}時間",
+      "hours": "ツアー時間",
+      "withoutTimes": "開始・終了時刻のないツアー{count}件は、ツアー時間に含まれていません。",
+      "places": "場所",
+      "groupList": "団体"
+    }
   },
   "adminTours": {
     "title": "ツアー予約",
@@ -683,6 +727,7 @@
     "nav": {
       "home": "ホーム",
       "history": "活動記録・予定",
+      "record": "バディ記録",
       "profile": "プロフィール",
       "buddiesPending": "承認待ち",
       "buddies": "バディ",

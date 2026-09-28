@@ -12,6 +12,71 @@ duplicate that state here.
 
 ---
 
+## 2026-09-27 — Buddy record: a buddy's own numbers on a page of their own
+
+**Decision:** `/buddy/record` (バディ記録), mobile first, leads with what
+changes after every tour: the last tour (which visit to that group and
+place, and what the buddy did well), the latest "could have done better"
+carried to the next tour, the buddy's own milestones, the questions they
+couldn't answer and the moments they remember. Totals come last: tours,
+groups, ツアー時間 (hours on tour), and tours per place and per group as plain
+number-first lists. It is built in the browser from `GET /me/bookings` and
+`GET /me/reflections`; each `sessions[]` entry of `GET /me/bookings` now
+carries `startTime`, `endTime` and its `place`. Current state: PRD §11.9. Closes #254.
+
+**Why:** buddies have less context than PLAB members and read this on a phone,
+so the page keeps to numbers that explain themselves and prompt reflection,
+not an appraisal.
+
+**Rejected — attendance rate, cancellations, late cancellations and no-shows
+on the buddy's page:** they judge the buddy rather than help them reflect, the
+same reason the history page hides tours not attended (2026-09-17 entry).
+
+**Rejected — reuse `computeBuddyStats` for the buddy:** it leaves out tours an
+admin recorded as `absentWithoutReport`, so the buddy's count would drop and
+reveal an admin evaluation, which §9.2 keeps from them. The history page's
+rule is used instead, so a buddy's count can be higher than the admin's.
+
+**The name is バディ記録 / "Buddy record", nowhere else a coined word.**
+**Rejected — あゆみ, わたしの記録 and similar names:** the team asked for the
+plain name. No page title, section heading or label uses them.
+
+**Rejected — the top of `/buddy/history`:** the history page is a list with
+filters; figures and charts above it would push the list down on a phone.
+
+**Rejected — ⓘ explanations, percentages and comparison with other buddies:**
+a number that needs explaining does not belong on this page, and ranking
+buddies against each other was ruled out in #215.
+
+**Rejected — a figures-and-charts page (the first version):** tours per
+month, bars and a reflection-rate bar looked the same on every visit and
+gave a buddy nothing to act on or come back for. **Rejected — numbers at the
+right edge of each row:** the eye has to cross the screen between a name and
+its count. **Rejected — streaks and badges:** a streak punishes a month off;
+milestones only mark what the buddy has done.
+
+**Rejected — bars beside the place and group counts:** each row already
+shows its number; a bar sized against the largest row reads like a score the
+buddy falls short of. **Rejected — tours per group type:** nearly every tour
+is for a school; tours per group name says how often the buddy had a group.
+
+**Rejected — count tours by the tour's `places`:** a buddy who held one session
+of a two-place tour would be counted at both. Each session's `place` is used.
+
+**Hours on tour is tour time, not working hours.** Buddies are part-time
+employees; pay needs an attendance record with late arrivals and early
+leaving (#262). The admin column is renamed "Hours on tour" and
+`minutesVolunteered` → `minutesOnTour`. **Correction:** earlier entries in
+this log call buddies volunteers (2026-09-23, 2026-09-18, 2026-09-15 and the
+Apple sign-in entry). That is wrong — buddies are part-time employees (PRD §3,
+§5.2.1). The entries are left as written.
+
+**Moved here from #255:** the reflection counts and the open-questions list,
+since the data was already on hand. #255 keeps only an AI summary, which needs
+its own privacy decision.
+
+---
+
 ## 2026-09-27 — Reflection stats: one page for every buddy's reflections, under `/admin/stats/`
 
 **Decision:** `/admin/stats/reflections` lists every reflection in a scope
@@ -50,6 +115,26 @@ needs its own decision, and it adds a dependency. Tracked in #260.
 
 **Rejected — marking an open question as answered:** it would add state and a
 schema change to a page that only reads, and the team did not ask for it.
+
+---
+
+## 2026-09-27 — Seed roster buddies have emulator accounts
+
+**Decision:** the 30 synthetic roster buddies in `prisma/seed.ts`
+(`seed-buddy-01`…`30`) each have an account in `docker/firebase/seed` with the
+same uid, email `seed-buddy-NN@seed.local` and their real name as display
+name. The generic buddy loop skips them; their profiles still come from
+`ROSTER`. Seed Admin 2 stays display-only.
+
+**Why:** only three buddies could log in, all active, so the buddy side could
+not be checked at other statuses, tiers or member types.
+
+**Rejected — create the accounts from the seed via the Admin SDK:** the
+fixture is already where emulator accounts live, and a second source would
+drift from it.
+
+**Current state:** `docker/firebase/seed/auth_export/accounts.json`,
+`prisma/seed.ts` (`ROSTER_UID_PREFIX`).
 
 ---
 

@@ -51,7 +51,7 @@ describe('AppShell', () => {
     expect(screen.getByText('content')).toBeInTheDocument()
   })
 
-  it('shows tour, history and profile for an active buddy', () => {
+  it('shows tour, history, record and profile for an active buddy', () => {
     vi.mocked(useAuth).mockReturnValue({
       signOut: mockSignOut,
       dbUser: { buddyProfile: { status: 'active' } },
@@ -59,6 +59,7 @@ describe('AppShell', () => {
     render(<AppShell variant="buddy"><div /></AppShell>)
     expect(screen.getAllByRole('link', { name: 'nav.home' })[0]).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'nav.history' })[0]).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'nav.record' })[0]).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: 'nav.profile' })[0]).toBeInTheDocument()
   })
 
@@ -71,6 +72,7 @@ describe('AppShell', () => {
     expect(screen.getAllByRole('link', { name: 'nav.profile' })[0]).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'nav.home' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'nav.history' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'nav.record' })).not.toBeInTheDocument()
   })
 
   it('calls signOut and redirects to login on sign-out click', async () => {

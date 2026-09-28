@@ -75,6 +75,7 @@ export function AppShell({ variant, children }: Props) {
       ? [
           { href: routes.buddy(locale), label: t('nav.home') },
           { href: routes.buddyHistory(locale), label: t('nav.history') },
+          { href: routes.buddyRecord(locale), label: t('nav.record') },
           { href: routes.buddyProfile(locale), label: t('nav.profile') },
         ]
       : [{ href: routes.buddyProfile(locale), label: t('nav.profile') }]

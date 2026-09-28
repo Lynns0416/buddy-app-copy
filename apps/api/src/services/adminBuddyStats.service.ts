@@ -109,12 +109,12 @@ export function computeBuddyStats(input: BuddyStatsInput, now: Date = new Date()
   const firstTourDate = attendedDates[0] ?? null
   const lastTourDate = attendedDates[attendedDates.length - 1] ?? null
 
-  let minutesVolunteered = 0
+  let minutesOnTour = 0
   let sessionsWithoutTimes = 0
   for (const b of attended) {
     const { startTime, endTime } = b.session
     if (startTime && endTime && endTime > startTime) {
-      minutesVolunteered += (endTime.getTime() - startTime.getTime()) / 60000
+      minutesOnTour += (endTime.getTime() - startTime.getTime()) / 60000
     } else {
       sessionsWithoutTimes += 1
     }
@@ -168,7 +168,7 @@ export function computeBuddyStats(input: BuddyStatsInput, now: Date = new Date()
     daysSinceLastTour: lastTourDate
       ? Math.round((Date.parse(today) - Date.parse(lastTourDate)) / DAY_MS)
       : null,
-    minutesVolunteered,
+    minutesOnTour,
     sessionsWithoutTimes,
     bookings: bookings.length,
     cancellations: reasons.length,

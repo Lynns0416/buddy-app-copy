@@ -41,7 +41,7 @@ export type BuddyStatsOverview = {
   buddies: number
   everAttended: number
   sessionsAttended: number
-  minutesVolunteered: number
+  minutesOnTour: number
   // Pooled over every buddy's tours, not an average of each buddy's rate, so a
   // buddy with one tour weighs no more than their one tour.
   attendanceRate: number | null
@@ -189,7 +189,7 @@ export function buildOverview(
     buddies: rows.length,
     everAttended: rows.filter((r) => r.stats.sessionsAttended > 0).length,
     sessionsAttended,
-    minutesVolunteered: sum(rows, (r) => r.stats.minutesVolunteered),
+    minutesOnTour: sum(rows, (r) => r.stats.minutesOnTour),
     attendanceRate: ratio(toursAttended, toursAttended + toursMissed),
     noShows: sum(rows, (r) => r.stats.noShows),
     lateCancellations: sum(rows, (r) => r.stats.lateCancellations),

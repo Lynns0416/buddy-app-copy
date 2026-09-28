@@ -52,7 +52,7 @@ const baseStats = {
   noShows: 0,
   attendanceRate: null,
   lastTourDate: null,
-  minutesVolunteered: 0,
+  minutesOnTour: 0,
   averageScores: { overallRating: null },
   sessionsByPlace: {},
 } as unknown as BuddyStats
@@ -117,7 +117,7 @@ describe('filterBuddyStats', () => {
   ]
   const ids = (filtered: AdminBuddyStatsRow[]) => filtered.map((r) => r.id)
 
-  it('shows active volunteers and leaves PLAB members out by default', () => {
+  it('shows active buddies and leaves PLAB members out by default', () => {
     expect(ids(filterBuddyStats(rows, defaultBuddyStatsFilters))).toEqual(['active', 'star'])
   })
 
@@ -185,13 +185,13 @@ describe('formatStat', () => {
       stats: {
         attendanceRate: 0.666,
         averageScores: { overallRating: 4.25 } as BuddyStats['averageScores'],
-        minutesVolunteered: 150,
+        minutesOnTour: 150,
         lastTourDate: '2026-06-10',
       },
     })
     expect(formatStat(col('attendanceRate'), r, tr)).toBe('67%')
     expect(formatStat(col('averageScore.overallRating'), r, tr)).toBe('4.3')
-    expect(formatStat(col('hoursVolunteered'), r, tr)).toBe('2.5')
+    expect(formatStat(col('hoursOnTour'), r, tr)).toBe('2.5')
     expect(formatStat(col('lastTourDate'), r, tr)).toBe('2026/06/10')
   })
 

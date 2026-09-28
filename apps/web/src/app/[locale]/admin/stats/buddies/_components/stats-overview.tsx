@@ -127,7 +127,7 @@ export function BuddyStatsOverviewPanel({ overview, places, tr, onFocus }: Props
       focus: { match: any((r) => r.stats.sessionsAttended), sortField: 'sessionsAttended' },
     },
     { id: 'sessionsAttended', label: col('sessionsAttended'), value: String(overview.sessionsAttended), focus: { sortField: 'sessionsAttended' } },
-    { id: 'hoursVolunteered', label: col('hoursVolunteered'), value: (overview.minutesVolunteered / 60).toFixed(1), focus: { sortField: 'hoursVolunteered' } },
+    { id: 'hoursOnTour', label: col('hoursOnTour'), value: (overview.minutesOnTour / 60).toFixed(1), focus: { sortField: 'hoursOnTour' } },
     { id: 'attendanceRate', label: col('attendanceRate'), value: percent(overview.attendanceRate), focus: { sortField: 'attendanceRate' } },
     { id: 'noShows', label: col('noShows'), value: String(overview.noShows), focus: { match: any((r) => r.stats.noShows), sortField: 'noShows' } },
     {

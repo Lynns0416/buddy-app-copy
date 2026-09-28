@@ -558,6 +558,9 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
           order: true,
           label: true,
           meetingTime: true,
+          startTime: true,
+          endTime: true,
+          place: { select: placeSummarySelect },
           tour: {
             select: {
               tourDate: true,
@@ -597,6 +600,9 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
       sessionOrder: r.session.order,
       sessionLabel: r.session.label,
       meetingTime: r.session.meetingTime.toISOString(),
+      startTime: r.session.startTime ? r.session.startTime.toISOString() : null,
+      endTime: r.session.endTime ? r.session.endTime.toISOString() : null,
+      place: r.session.place,
       bookingStatus: r.status as BookingStatus,
       bookedAt: r.bookedAt.toISOString(),
     }

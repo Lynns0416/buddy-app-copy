@@ -680,6 +680,8 @@ describe('listMyBookings', () => {
     sessionId?: string
     order?: number
     maybeDeadline?: Date | null
+    startTime?: Date | null
+    endTime?: Date | null
   } = {}) {
     const sessionId = overrides.sessionId ?? 'session-1'
     return {
@@ -692,6 +694,9 @@ describe('listMyBookings', () => {
         order: overrides.order ?? 1,
         label: null,
         meetingTime: new Date('1970-01-01T09:00:00.000Z'),
+        startTime: overrides.startTime === undefined ? new Date('1970-01-01T09:30:00.000Z') : overrides.startTime,
+        endTime: overrides.endTime === undefined ? new Date('1970-01-01T12:00:00.000Z') : overrides.endTime,
+        place: { id: 'place-1', nameJa: '長崎', nameEn: 'Nagasaki' },
         tour: {
           tourDate: new Date('2099-05-01'),
           sessions: [{ place: { id: 'place-1', nameJa: '長崎', nameEn: 'Nagasaki' } }],
@@ -753,6 +758,22 @@ describe('listMyBookings', () => {
     mdb.booking.findMany.mockResolvedValue([bookingRow()])
     const [entry] = await listMyBookings('user-1')
     expect(entry.group).toEqual({ name: 'Sakura School', type: 'school' })
+  })
+
+  it("returns each session's start and end time and place", async () => {
+    mdb.booking.findMany.mockResolvedValue([bookingRow()])
+    const [entry] = await listMyBookings('user-1')
+    expect(entry.bookings[0]).toMatchObject({
+      startTime: '1970-01-01T09:30:00.000Z',
+      endTime: '1970-01-01T12:00:00.000Z',
+      place: { id: 'place-1', nameJa: '長崎', nameEn: 'Nagasaki' },
+    })
+  })
+
+  it('returns null times for a session without them', async () => {
+    mdb.booking.findMany.mockResolvedValue([bookingRow({ startTime: null, endTime: null })])
+    const [entry] = await listMyBookings('user-1')
+    expect(entry.bookings[0]).toMatchObject({ startTime: null, endTime: null })
   })
 
   it('groups the sessions of one tour into one entry, in session order', async () => {

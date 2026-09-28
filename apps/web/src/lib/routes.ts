@@ -31,6 +31,7 @@ export const routes = {
   buddyTour: (locale: string, id: string) => `/${locale}/buddy/tours/${id}`,
   buddyTourReflection: (locale: string, id: string) => `/${locale}/buddy/tours/${id}/reflection`,
   buddyHistory: (locale: string) => `/${locale}/buddy/history`,
+  buddyRecord: (locale: string) => `/${locale}/buddy/record`,
   buddyProfile: (locale: string) => `/${locale}/buddy/profile`,
   buddyProfileOnboarding: (locale: string) => `/${locale}/buddy/profile?onboarding=1`,
   notifications: (locale: string) => `/${locale}/notifications`,

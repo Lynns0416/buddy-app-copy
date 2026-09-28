@@ -60,7 +60,7 @@ A web-first internal booking application for managing group tour assignments. Th
 
 | Role | Description |
 |---|---|
-| **Buddy** | Tour guide. Can book tours, manage own profile, write tour reflections, view history. |
+| **Buddy** | Tour guide, a part-time employee of PLAB (not a volunteer). Can book tours, manage own profile, write tour reflections, view history and their own record. |
 | **Admin** | Regular admin. Can manage tours, groups, buddies, bookings, and evaluations. |
 | **Super Admin** | All admin capabilities plus admin account management and system configuration. |
 
@@ -468,7 +468,7 @@ Buddies never need to manually claim a freed seat. The promoted buddy receives a
 Answers "what have I done". Tours are split by the date in Japan (`getTodayJst()`): **Upcoming** is every booked tour from today on, **Past** is every earlier tour the buddy attended.
 
 - **Attended** means the tour was not `cancelled` and the buddy has a `confirmed` booking on at least one session. There is no attendance record. Past tours the buddy did not attend (tour cancelled, or only Maybe/Waitlist bookings left when the date passed) are not shown on this page.
-- **Summary line** under the title: `N tours · M groups · since <date>`, counted over attended past tours. Groups are counted by distinct group name. Hidden when there are none.
+- **Summary line** under the title: `N tours · M groups · since <date>`, counted over attended past tours. バディ記録 (§11.9) counts with the same rule. Groups are counted by distinct group name. Hidden when there are none.
 - **Past is grouped by year**, newest first, each header carrying that year's tour count after filters.
 - **Filters** (Past only, combinable):
   - *No reflection written (N)*: shows past tours with `reflectionSubmitted = false` — no reflection on any of the tour's sessions. The home screen stops prompting 30 days after a tour (§11.1), so this is where an older tour with no reflection stays reachable. Hidden when N is 0.
@@ -818,7 +818,7 @@ Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 
 
 **Today** is the date in Japan (`getTodayJst`) for every date rule on this page, including the `from` sent to `GET /tours`, as it is everywhere else in the app. Tours run in Japan and their dates are Japanese calendar dates.
 
-**Excluded from this screen:** tours-attended counts, hours volunteered and tier progress. Buddy numbers are planned as their own surface (#251); tier progress stays out — tier is a policy surface, not a UI one.
+**Excluded from this screen:** tours-attended counts, hours on tour and tier progress. Buddy numbers are on their own page, バディ記録 (§11.9); tier progress stays out — tier is a policy surface, not a UI one.
 
 **Onboarding redirect:** an approved buddy (`trainee` or `active`) with no `onboardingSeenAt` is sent to `/buddy/profile?onboarding=1`, and the visit is stamped. Neither request above is made for that buddy.
 
@@ -832,7 +832,7 @@ Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 
 
 The full booking list, including past tours, lives on `/buddy/history` (Upcoming / Past sections). History and Profile (`/buddy/profile`) are reached via the buddy nav; the home screen also links to history.
 
-**Analytics** (tours-attended counts and similar numbers, reflection summary) are tracked in #251 and belong on their own surface, not on this obligations screen.
+**Analytics** (tours-attended counts and similar numbers) are on バディ記録 (§11.9), not on this obligations screen. A summary of the buddy's reflections is tracked in #255.
 
 ### 11.2 Tour Management
 
@@ -914,7 +914,7 @@ An overview, then one table, one row per buddy, from `GET /admin/buddies/stats` 
 
 **Scope (sent to the API):** a tour date range (empty = all time, the default), a group type and a place. Every number counts only tours inside the scope, and only `published` and `completed` tours — a draft takes no bookings, and a cancelled tour's bookings say nothing about the buddy. A place scope counts the buddy's sessions at that place, and per-tour evaluations only for tours where they held one of them. Changing the scope refetches.
 
-**Row filters (in the browser):** name search, status (default `active` only), tier, and "Include PLAB members" (off by default — the page is about volunteers).
+**Row filters (in the browser):** name search, status (default `active` only), tier, and "Include PLAB members" (off by default — the page is about part-time buddies).
 
 **Column picker:** admins tick the numbers they want. The choice is saved in that admin's browser (`localStorage`), so each keeps their own layout; "Reset to default" and "Show all" are one click. The API returns every number whatever is shown.
 
@@ -927,7 +927,7 @@ An overview, then one table, one row per buddy, from `GET /admin/buddies/stats` 
 | | Attendance rate | Tours attended ÷ (tours attended + tours missed). Missed = a no-show or a late cancellation, counted once per tour and not at all if the buddy attended another session of it | ✅ |
 | | Upcoming confirmed / open Maybe / on waitlist | Bookings in that status on `published` tours dated today (JST) or later | confirmed only |
 | | First tour / last tour / days inactive | Over attended sessions; days inactive counts from the last tour to today (JST) | last two |
-| | Hours volunteered / sessions without times | `endTime − startTime` of attended sessions; a session missing either time is counted in the second column instead, so hours undercount rather than guess | — |
+| | Hours on tour / sessions without times | `endTime − startTime` of attended sessions; a session missing either time is counted in the second column instead, so hours undercount rather than guess. Tour time, not working hours — never used for pay (#262) | — |
 | Cancellations | Bookings | Every booking in scope, any status | — |
 | | Cancellations | `declined` bookings with a `CancellationReason` — a re-book reuses the booking and keeps its old reason, so a booking confirmed again is not counted | ✅ |
 | | Late cancellations | Reason recorded on or after the effective deadline (the buddy's `BuddyCancellationDeadlineOverride`, else the tour's), as a JST date — the boundary the booking service enforces | ✅ |
@@ -944,14 +944,14 @@ An overview, then one table, one row per buddy, from `GET /admin/buddies/stats` 
 
 A rate or average with nothing to divide by is `null` (shown `—`), never `0`.
 
-**Explanations:** a column whose name alone does not say what is counted carries an ⓘ after its header, opening a one-sentence explanation on hover and keyboard focus — sessions and tours attended, attendance rate, open Maybe, hours volunteered, sessions without times, late cancellations, cancellation rate, unavoidable / avoidable / unreviewed, tours not evaluated, moments recorded and Avg. *criterion*. The matching overview figures and the average-scores chart carry the same ⓘ and text (`adminBuddyStats.descriptions`).
+**Explanations:** a column whose name alone does not say what is counted carries an ⓘ after its header, opening a one-sentence explanation on hover and keyboard focus — sessions and tours attended, attendance rate, open Maybe, hours on tour, sessions without times, late cancellations, cancellation rate, unavoidable / avoidable / unreviewed, tours not evaluated, moments recorded and Avg. *criterion*. The matching overview figures and the average-scores chart carry the same ⓘ and text (`adminBuddyStats.descriptions`).
 
 **Overview (above the table):** figures across every buddy the table shows, so scope and row filters change both alike. Computed in the browser from the same rows; no extra request.
 
 | Figure | Counted as |
 |---|---|
 | Buddies / attended at least once | Rows in view / rows with a session attended |
-| Sessions attended, hours volunteered, no-shows, late cancellations, unreviewed cancellations, tours not evaluated | Sum over the rows |
+| Sessions attended, hours on tour, no-shows, late cancellations, unreviewed cancellations, tours not evaluated | Sum over the rows |
 | Attendance rate, cancellation rate, reflection rate | Pooled: Σ tours attended ÷ Σ (attended + missed), Σ cancellations ÷ Σ bookings, Σ reflections ÷ Σ sessions — not an average of each buddy's rate |
 
 | Chart | Bars |
@@ -1168,6 +1168,31 @@ Every queue renders an empty state when nothing is waiting, so an empty section 
 | `/admin/places/:id` | That place's spots, same sortable-list-with-create/edit pattern |
 
 Picking a session's place happens on the tour create/edit form itself (a dropdown of active places per session), not here — see §7.5.
+
+### 11.9 Buddy Record (`/buddy/record`)
+
+バディ記録 / "Buddy record": what the buddy has done, where, and where their reflections stand — for their own growth, not an appraisal. Active buddies only, reached from the buddy nav. Built in the browser from `GET /me/bookings` and `GET /me/reflections` (`apps/web/src/app/[locale]/buddy/record/buddy.record.ts`); no endpoint of its own.
+
+**Attended** is the history page's rule (§8.8): a past tour, not `cancelled`, with a `confirmed` booking on at least one session. It is not the buddy stats rule (§11.4), which leaves out tours an admin recorded as a no-show: admin evaluations are hidden from buddies (§9.2), and a count that dropped would tell them. A buddy's count can therefore be higher than the admin's for the same buddy.
+
+Mobile first: one column, every figure number first with its label right beside it, every link a whole row at least 44px tall. Sections, top to bottom:
+
+| Section | Shows |
+|---|---|
+| 前回のツアー / Your last tour | The latest attended tour's date, group and the places of the buddy's own sessions; which time the buddy has had this group and been at each place, counting this tour; their できたこと (`didWell`) from its reflection; a button to write the reflection when the tour is `completed` and has none |
+| 次のツアーへのメモ / A note for your next tour | The latest non-blank `couldImprove`, with its tour date, and a link to the next `published` tour with a `confirmed` booking. Hidden when no reflection has a `couldImprove` |
+| バディ記録 / Buddy record | The buddy's own milestones, newest first: first tour, the 5th, 10th and every 10th tour after it, the first tour at each place (except the first tour's places), and the second tour with a group. Five shown; "Show all" expands in place |
+| 答えられなかった質問 / Questions you couldn't answer | Every non-blank `openQuestions`, newest tour first, each a row linking to its reflection. Five shown, then "Show all" |
+| 心に残った場面 / Moments you remember | Every moment of the buddy's reflections, newest tour first, with its spot or note, each linking to its reflection. Hidden when there are none. Five shown, then "Show all" |
+| これまで / So far | Tours, groups, ツアー時間 / hours on tour (`endTime − startTime` of the confirmed sessions, with a line naming sessions left out for having no times). Then two lists, number first, largest first: tours per place (each tour once under each place of the buddy's own confirmed sessions, `sessions[].place`) and tours per group name |
+
+A buddy with no attended tour sees one line saying the record starts after their first tour. A failed request shows a load error.
+
+**Every figure explains itself** — no ⓘ, no percentages or averages, and no comparison with other buddies.
+
+**Not shown to buddies:** attendance rate, cancellations, late cancellations, no-shows, admin evaluation scores and tier progress.
+
+**Hours on tour is tour time, not working hours.** It must not be used for pay; actual working hours need an attendance record (#262).
 
 ---
 

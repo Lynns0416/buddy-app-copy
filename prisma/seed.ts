@@ -33,17 +33,21 @@ const adminAccount = adminAccounts[0]
 const traineeAccounts = authExport.users.filter((u: any) =>
   u.email?.toLowerCase().includes('trainee') || u.displayName?.toLowerCase().includes('trainee')
 )
+// Roster accounts (see ROSTER below) are in the export so they can log in, but
+// their profiles come from ROSTER, not from the generic buddy loop.
+const ROSTER_UID_PREFIX = 'seed-buddy-'
 const buddyAccounts = authExport.users.filter(
-  (u: any) => !adminAccounts.includes(u) && !traineeAccounts.includes(u)
+  (u: any) =>
+    !adminAccounts.includes(u) && !traineeAccounts.includes(u) && !u.localId.startsWith(ROSTER_UID_PREFIX)
 )
 // Synthetic second admin (always seeded, cannot log in — display only for multi-admin eval demo)
 const SEED_ADMIN2_UID = 'seed-admin2-00000000000000000000000'
 
-// Synthetic roster buddies (always seeded, cannot log in — display only).
-// The admin roster, its filters and its sorting need more rows than the
-// handful of Firebase accounts provide. These have no auth account, like
-// Seed Admin 2 above: only the Firebase accounts and the dynamic "me" user
-// can actually log in.
+// Synthetic roster buddies (always seeded). The admin roster, its filters and
+// its sorting need more rows than the handful of named Firebase accounts
+// provide. Each has an emulator account in docker/firebase/seed
+// (`seed-buddy-NN@seed.local`, display name = realName), so any of them can
+// log in to see the buddy side at their status and tier.
 //
 // Tier is a pyramid on purpose — few stars, fewer blackstars. Only active
 // and suspended buddies carry a tier; trainee, pending and rejected are
@@ -96,7 +100,7 @@ const ROSTER: RosterEntry[] = [
   { realName: '近藤 大和',   displayName: 'やまと',   status: BuddyStatus.rejected,  tier: null,                languages: ['japanese'],                        daysAgo: 30, internalNotes: '面談に来られず。再応募は可。' },
 ]
 
-const rosterUid = (i: number) => `seed-buddy-${String(i + 1).padStart(2, '0')}`
+const rosterUid = (i: number) => `${ROSTER_UID_PREFIX}${String(i + 1).padStart(2, '0')}`
 
 const FIREBASE_UIDS = [
   ...authExport.users.map((u: any) => u.localId),
@@ -1575,7 +1579,7 @@ async function main() {
   console.log('  peace-001: 参加中(buddy0) + キャンセル済み+理由あり(buddy1)')
   console.log('  peace-003: 参加済み(buddy0=junior) + キャンセル待ち(buddy1=star)')
   console.log('  tourOpen / tourPeace3: 動的バディ(me)が応募ボタンを確認できるツアー')
-  console.log(`  合成ロスター: ${ROSTER.length}名 (@seed.local — ログイン不可、一覧・絞り込み・並び替え確認用)`)
+  console.log(`  合成ロスター: ${ROSTER.length}名 (@seed.local — エミュレーターでログイン可)`)
   console.log('  追加ツアー: 完了ツアー3件（コミュニティ/その他グループ種別、浦上・原爆資料館・VOICE — バディ統計ページ確認用 #253）')
   console.log('  ロスター実績: アクティブ20名中15名が常連（直近5件のツアーの大半に参加）、5名は稀（生涯1件）。')
   console.log('  自己評価とPLABメンバー評価は独立: 自己評価が厳しくてもPLABメンバー評価が高い者、その逆もいる。')

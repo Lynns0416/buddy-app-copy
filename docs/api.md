@@ -209,7 +209,7 @@ Every buddy's numbers for the stats page (PRD §11.4 "Buddy Stats Page", which d
         "sessionsAttended": 0, "toursAttended": 0, "noShows": 0, "toursMissed": 0, "attendanceRate": "number | null",
         "upcomingConfirmed": 0, "openMaybe": 0, "openWaitlist": 0,
         "firstTourDate": "YYYY-MM-DD | null", "lastTourDate": "YYYY-MM-DD | null", "daysSinceLastTour": "number | null",
-        "minutesVolunteered": 0, "sessionsWithoutTimes": 0,
+        "minutesOnTour": 0, "sessionsWithoutTimes": 0,
         "bookings": 0, "cancellations": 0, "lateCancellations": 0,
         "cancellationsUnavoidable": 0, "cancellationsAvoidable": 0, "cancellationsUnreviewed": 0,
         "cancellationsByCategory": { "health": 0, "emergency": 0, "personal": 0, "work": 0, "other": 0 },
@@ -1116,6 +1116,9 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
           "sessionOrder": 1,
           "sessionLabel": "string | null",
           "meetingTime": "ISO8601",
+          "startTime": "ISO8601 | null",
+          "endTime": "ISO8601 | null",
+          "place": { "id": "uuid", "nameJa": "string", "nameEn": "string" },
           "bookingStatus": "confirmed | maybe | waitlist",
           "bookedAt": "ISO8601"
         }
@@ -1125,7 +1128,7 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
 }
 ```
 
-`maybeDeadline` is the tour's. `reflectionSubmitted` is whether the caller has written a reflection on **any** session of that tour — reflections are per session, the obligation is per tour. `/buddy` builds its next-tour and needs-your-action sections from these (PRD §11.1).
+`maybeDeadline` is the tour's. `startTime`, `endTime` and `place` are the session's: `places` lists every place of the tour, while a session's `place` is where that one session goes, so バディ記録 (`/buddy/record`) counts the buddy's tours by the places of the sessions they held. `reflectionSubmitted` is whether the caller has written a reflection on **any** session of that tour — reflections are per session, the obligation is per tour. `/buddy` builds its next-tour and needs-your-action sections from these (PRD §11.1).
 
 ---
 

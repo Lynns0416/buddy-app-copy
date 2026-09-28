@@ -33,7 +33,7 @@ export type BuddyStatsScope = StatsScope
 export const emptyBuddyStatsScope: BuddyStatsScope = emptyStatsScope
 
 // Client-side row filters. Active buddies only and PLAB members left out by
-// default: the page is about volunteers, and staff would skew every ranking.
+// default: the page is about part-time buddies, and PLAB members would skew every ranking.
 export type BuddyStatsFilters = {
   search: string
   statuses: BuddyStatus[]
@@ -128,7 +128,7 @@ export function buildStatColumns(places: PlaceSummary[]): StatColumn[] {
     column('firstTourDate', 'participation', 'date', (r) => r.stats.firstTourDate),
     column('lastTourDate', 'participation', 'date', (r) => r.stats.lastTourDate, true),
     column('daysSinceLastTour', 'participation', 'count', (r) => r.stats.daysSinceLastTour, true),
-    column('hoursVolunteered', 'participation', 'hours', (r) => r.stats.minutesVolunteered),
+    column('hoursOnTour', 'participation', 'hours', (r) => r.stats.minutesOnTour),
     column('sessionsWithoutTimes', 'participation', 'count', (r) => r.stats.sessionsWithoutTimes),
 
     column('bookings', 'cancellations', 'count', (r) => r.stats.bookings),
@@ -200,7 +200,7 @@ const DESCRIBED_STATS = new Set([
   'toursAttended',
   'attendanceRate',
   'openMaybe',
-  'hoursVolunteered',
+  'hoursOnTour',
   'sessionsWithoutTimes',
   'lateCancellations',
   'cancellationRate',

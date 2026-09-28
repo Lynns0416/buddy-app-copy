@@ -162,7 +162,7 @@ describe('computeBuddyStats', () => {
       ],
     }), NOW)
 
-    expect(stats.minutesVolunteered).toBe(150)
+    expect(stats.minutesOnTour).toBe(150)
     expect(stats.sessionsWithoutTimes).toBe(2)
   })
 

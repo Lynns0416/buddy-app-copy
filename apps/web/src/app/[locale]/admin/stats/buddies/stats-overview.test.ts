@@ -8,7 +8,7 @@ function stats(overrides: Partial<BuddyStats> = {}): BuddyStats {
   return {
     sessionsAttended: 0, toursAttended: 0, noShows: 0, toursMissed: 0, attendanceRate: null, upcomingConfirmed: 0,
     openMaybe: 0, openWaitlist: 0, firstTourDate: null, lastTourDate: null, daysSinceLastTour: null,
-    minutesVolunteered: 0, sessionsWithoutTimes: 0, bookings: 0, cancellations: 0, lateCancellations: 0,
+    minutesOnTour: 0, sessionsWithoutTimes: 0, bookings: 0, cancellations: 0, lateCancellations: 0,
     cancellationsUnavoidable: 0, cancellationsAvoidable: 0, cancellationsUnreviewed: 0,
     cancellationsByCategory: { health: 0, emergency: 0, personal: 0, work: 0, other: 0 },
     cancellationRate: null, reflections: 0, reflectionRate: null, moments: 0, evaluationsReceived: 0,

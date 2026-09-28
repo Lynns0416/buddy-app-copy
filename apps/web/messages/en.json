@@ -244,7 +244,7 @@
       "firstTourDate": "First tour",
       "lastTourDate": "Last tour",
       "daysSinceLastTour": "Days inactive",
-      "hoursVolunteered": "Hours volunteered",
+      "hoursOnTour": "Hours on tour",
       "sessionsWithoutTimes": "Sessions without times",
       "bookings": "Bookings",
       "cancellations": "Cancellations",
@@ -271,8 +271,8 @@
       "toursAttended": "Tours with at least one session attended. Several sessions on the same tour count once.",
       "attendanceRate": "Tours attended ÷ (tours attended + tours missed). A no-show or a late cancellation counts as missed, once per tour.",
       "openMaybe": "Bookings on upcoming tours still at Maybe: not yet confirmed or cancelled.",
-      "hoursVolunteered": "Start-to-end time of the sessions attended. Sessions without times are left out, so this can undercount.",
-      "sessionsWithoutTimes": "Sessions attended with no start or end time, so they are not counted in hours volunteered.",
+      "hoursOnTour": "Start-to-end time of the sessions attended. Tour time, not working hours. Sessions without times are left out, so this can undercount.",
+      "sessionsWithoutTimes": "Sessions attended with no start or end time, so they are not counted in hours on tour.",
       "lateCancellations": "Cancellations made on or after the cancellation deadline: the buddy's own deadline if set, otherwise the tour's.",
       "cancellationRate": "Cancellations ÷ bookings. Bookings counts every booking, whatever its status.",
       "cancellationsUnavoidable": "Cancellations an admin reviewed and marked unavoidable.",
@@ -447,6 +447,50 @@
     "searchGroup": "Search by group name",
     "noMatches": "No past tours match these filters",
     "filterUnreflected": "No reflection written ({count})"
+  },
+  "buddyRecord": {
+    "title": "Buddy record",
+    "back": "Back to home",
+    "empty": "After your first tour, your record will show here.",
+    "loadError": "Couldn't load your record. Please reload the page.",
+    "count": "{count}",
+    "showAll": "Show all",
+    "last": {
+      "title": "Your last tour",
+      "groupVisit": "{count, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} time with this group",
+      "placeVisit": "{count, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} time at {place}",
+      "didWell": "What you did well",
+      "write": "Write your reflection"
+    },
+    "note": {
+      "title": "A note for your next tour",
+      "from": "\"What I could have done better\" from {date}",
+      "next": "Next tour"
+    },
+    "milestones": {
+      "title": "Buddy record",
+      "firstTour": "Your first tour",
+      "nthTour": "Your {count, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} tour",
+      "firstPlace": "First time at {place}",
+      "groupAgain": "{group} again"
+    },
+    "questions": {
+      "title": "Questions you couldn't answer ({count})",
+      "none": "No questions you couldn't answer in your reflections yet."
+    },
+    "moments": {
+      "title": "Moments you remember"
+    },
+    "totals": {
+      "title": "So far",
+      "tours": "{count, plural, one {tour} other {tours}}",
+      "groups": "{count, plural, one {group} other {groups}}",
+      "hoursValue": "{hours} h",
+      "hours": "on tour",
+      "withoutTimes": "{count, plural, one {# session has} other {# sessions have}} no start or end time and {count, plural, one {is} other {are}} not counted in hours on tour.",
+      "places": "Places",
+      "groupList": "Groups"
+    }
   },
   "adminTours": {
     "title": "Tours",
@@ -683,6 +727,7 @@
     "nav": {
       "home": "Home",
       "history": "Upcoming & History",
+      "record": "Buddy record",
       "profile": "Profile",
       "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
