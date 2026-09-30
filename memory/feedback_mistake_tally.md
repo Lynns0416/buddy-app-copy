@@ -1,15 +1,19 @@
 ---
-name: Mistake tally
+name: mistake-tally
 description: Running count of repeated mistakes the user has already corrected — check before responding
-type: feedback
+metadata:
+  node_type: memory
+  type: feedback
+  originSessionId: 82438f26-14c3-4515-8bce-9779633e0c8c
+  modified: 2026-09-30T13:39:33.285Z
 ---
 
 Running tally of mistakes already corrected. Increment here, never in chat.
 
 | Mistake | Count | Last |
 |---|---|---|
-| Implemented without an explicit go-ahead | 1 | 2026-09-07 |
-| Message too long / padded despite the "be short" hard rule | 2 | 2026-09-10 |
+| Implemented without an explicit go-ahead | 2 | 2026-09-30 |
+| Message too long / padded despite the "be short" hard rule; prose where bullets read faster | 3 | 2026-09-30 |
 | Reported work as verified when it was not | 1 | 2026-09-07 |
 | Skipped past a user's pushback instead of answering it | 2 | 2026-09-07 |
 | Re-issued a command form after watching it fail, instead of fixing it | 1 | 2026-09-07 |

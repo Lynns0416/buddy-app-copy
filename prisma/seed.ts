@@ -1540,36 +1540,62 @@ async function main() {
     }
   }
 
-  // ── Dynamic "me" ────────────────────────────────────────────
-  // Finds any non-seed user who logged in. Login once, then re-run seed.
-  const dynamicUser = await prisma.user.findFirst({
+  // ── Existing users ("me") ────────────────────────────────────
+  // Every user who signed in for real — a local developer, or the PLAB members
+  // on staging, where the seed accounts cannot log in (Google sign-in only).
+  // Signing up creates a pending buddy profile; an admin can be a buddy too, so
+  // each one is made an active junior with bookings to see the buddy side.
+  // Status and tier are only filled in where still unset, so a real edit stays.
+  const existingUsers = await prisma.user.findMany({
     where: { firebaseUid: { notIn: FIREBASE_UIDS } },
-    include: { buddyProfile: true },
+    include: { buddyProfile: true, adminProfile: true },
   })
 
-  if (dynamicUser?.buddyProfile) {
-    const myBuddyId = dynamicUser.buddyProfile.id
-    // Set tier so the application system works (junior by default)
-    await prisma.buddyProfile.update({
-      where: { id: myBuddyId },
-      data: { tier: BuddyTier.junior },
-    })
+  for (const user of existingUsers) {
+    const isAdmin = user.role === UserRole.admin || user.role === UserRole.super_admin
+    const name = user.adminProfile?.name ?? user.email.split('@')[0]
+    // Only active and suspended buddies carry a tier (see ROSTER).
+    const status = !user.buddyProfile || user.buddyProfile.status === BuddyStatus.pending
+      ? BuddyStatus.active
+      : user.buddyProfile.status
+    const tiered = status === BuddyStatus.active || status === BuddyStatus.suspended
+    const profile = user.buddyProfile
+      ? await prisma.buddyProfile.update({
+          where: { id: user.buddyProfile.id },
+          data: {
+            status,
+            tier: tiered ? (user.buddyProfile.tier ?? BuddyTier.junior) : user.buddyProfile.tier,
+            ...(isAdmin && { memberType: MemberType.plab_member }),
+          },
+        })
+      : await prisma.buddyProfile.create({
+          data: {
+            userId: user.id,
+            status: BuddyStatus.active,
+            tier: BuddyTier.junior,
+            memberType: isAdmin ? MemberType.plab_member : MemberType.buddy,
+            displayName: name,
+            realName: name,
+            languages: ['japanese'],
+            skills: [],
+          },
+        })
     const myBookings = [
-      { buddyId: myBuddyId, tourId: ID.tourPast,    sessionId: ID.sessionPast,    status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: myBuddyId, tourId: ID.tourPeace1,  sessionId: ID.sessionPeace1,  status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: myBuddyId, tourId: ID.tourPeace2,  sessionId: ID.sessionPeace2,  status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
-      { buddyId: myBuddyId, tourId: ID.tourMidterm, sessionId: ID.sessionMidterm, status: BookingStatus.confirmed, buddyTier: BuddyTier.junior },
+      { tourId: ID.tourPast,    sessionId: ID.sessionPast },
+      { tourId: ID.tourPeace1,  sessionId: ID.sessionPeace1 },
+      { tourId: ID.tourPeace2,  sessionId: ID.sessionPeace2 },
+      { tourId: ID.tourMidterm, sessionId: ID.sessionMidterm },
     ]
     for (const booking of myBookings) {
       await prisma.booking.upsert({
-        where: { buddyId_sessionId: { buddyId: booking.buddyId, sessionId: booking.sessionId } },
+        where: { buddyId_sessionId: { buddyId: profile.id, sessionId: booking.sessionId } },
         update: {},
-        create: booking,
+        create: { ...booking, buddyId: profile.id, status: BookingStatus.confirmed, buddyTier: profile.tier ?? BuddyTier.junior },
       })
     }
-    // "me" has no booking on tourPeace3 or tourOpen → Apply button shows there.
+    // No booking on tourPeace3 or tourOpen → Apply button shows there.
     // Both sessions do carry roster bookings, with pool seats still free.
-    console.log(`  動的バディ: ${dynamicUser.email} → ブッキング追加済み、tier=junior`)
+    console.log(`  既存ユーザー: ${user.email} → ${profile.status}/${profile.tier}/${profile.memberType}、ブッキング追加済み`)
   }
 
   console.log('シード完了')

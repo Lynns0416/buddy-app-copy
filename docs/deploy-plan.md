@@ -357,6 +357,30 @@ only after that certificate exists — the value is what `CORS_ORIGIN` and the
 web bundle's `NEXT_PUBLIC_API_URL` are built from. See `decisions.md`
 2026-09-13, "Custom hostnames come from config".
 
+### Seeding staging
+
+`scripts/azure-seed.sh` runs `prisma/seed.ts` against staging from a one-shot
+job (`caj-seed`, the Dockerfile's `seed` stage), as `pb_app`, and deletes the
+job. The seed accounts cannot sign in (Google only); every real user is turned
+into an active buddy with bookings instead. Staging only — the script refuses
+anything else. See `decisions.md` 2026-09-30, "Staging is seeded".
+
+1. Before you run it:
+   - Staging is up (08:45–20:45 JST).
+   - Every admin who should get buddy data has signed in to staging once. The
+     seed only fills users that already exist.
+   - Migrations are current. If in doubt, run
+     `scripts/deploy.sh scripts/deploy.stg.env` first.
+2. `az login`
+3. `chmod 600 scripts/deploy.stg.env` (the script refuses otherwise).
+4. `scripts/azure-seed.sh scripts/deploy.stg.env`. It builds the image, runs
+   the job, prints its log and deletes it; up to 15 minutes.
+5. Sign in as an admin and open `/buddy`. The first visit goes to the profile
+   onboarding page once; the data shows from the next visit.
+
+The seed is all upserts, so re-run it freely — for example after another admin
+signs in for the first time.
+
 ### Cold starts
 
 Scale-to-zero means a request arriving after hours of silence waits for a

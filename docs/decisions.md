@@ -12,6 +12,39 @@ duplicate that state here.
 
 ---
 
+## 2026-09-30 — Staging is seeded, and its real users become buddies
+
+**Decision:** `scripts/azure-seed.sh scripts/deploy.stg.env` runs
+`prisma/seed.ts` against staging, from a one-shot Container Apps Job built
+from the Dockerfile's `seed` stage, as `pb_app`, deleted afterwards. It
+refuses any `ENVIRONMENT` but `staging`. The seed's "dynamic me" block now
+covers **every** user outside the seed uids, not the first one: a pending
+profile becomes active, an active or suspended one without a tier gets junior,
+an admin gets `plab_member` (and a buddy profile if it has none), and each gets
+the four bookings. Staging is dogfooded by PLAB members only, and an admin can
+be a buddy, so this is how they see the buddy side with data around them.
+
+**Why:** the seed accounts cannot sign in on staging — they are emulator
+Google identities, and Google is staging's only provider.
+
+**Rejected — an email/password sign-in, staging only:** staging must keep the
+sign-in methods prod will have.
+
+**Rejected — a custom-token "sign in as" endpoint on staging:** same reason,
+and an endpoint that must never reach prod.
+
+**Rejected — real Workspace accounts for the seed buddies:** 34 accounts to
+create and sign in by hand, for data the existing members can already see as
+admins and as buddies.
+
+**Trade-off:** locally, every developer who signed in is now made active (and
+`plab_member` if admin) on each api start, not just given a tier. Status and
+tier are only filled when unset, so a later edit stays. Several real users
+share the capacity-3 and capacity-4 seed sessions, which may overfill.
+
+**Current state:** `prisma/seed.ts` (existing users block),
+`apps/api/Dockerfile` (`seed`), `scripts/azure-seed.sh`, `deploy-plan.md` §5.
+
 ## 2026-09-30 — Buddy Home puts booking first; what sits above it depends on the buddy
 
 **Decision:** `/buddy` is laid out by the buddy's situation: the tour-day

@@ -54,6 +54,16 @@ ENV NODE_ENV=production
 USER node
 CMD ["/app/node_modules/.bin/prisma", "migrate", "deploy", "--schema", "/app/prisma/schema.prisma"]
 
+# --- seed (one-shot job image for staging; never prod) ----------------------
+# Run by scripts/azure-seed.sh. The seed needs a generated client and the
+# tracked emulator fixture it reads account uids from; `.firebase` is ignored
+# by the build context, so the fixture is the only source here.
+FROM deps AS seed
+COPY docker/firebase/seed/ ./docker/firebase/seed/
+RUN pnpm exec prisma generate --schema /app/prisma/schema.prisma
+USER node
+CMD ["pnpm", "exec", "prisma", "db", "seed"]
+
 # --- build ------------------------------------------------------------------
 FROM deps AS build
 COPY tsconfig.base.json ./
