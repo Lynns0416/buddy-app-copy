@@ -391,9 +391,8 @@
   },
   "home": {
     "title": "ホーム",
-    "nextTour": {
-      "title": "次の参加予定",
-      "empty": "参加が決まっているツアーはありません"
+    "upcoming": {
+      "title": "参加予定のツアー"
     },
     "tourDay": {
       "title": "今日のツアー",
@@ -405,18 +404,32 @@
     },
     "actions": {
       "title": "対応が必要なこと",
-      "empty": "対応が必要なことはありません",
       "maybeBy": "{date}までに参加かキャンセルを決めてください",
       "maybeNoDeadline": "未確定のままです。参加かキャンセルを決めてください",
       "maybeOverdue": "未確定の期限（{date}）を過ぎています",
       "waitlist": "キャンセル待ち中です",
       "reflection": "ふり返りを書いてください"
     },
+    "record": {
+      "title": "次のツアーに向けて",
+      "milestone": "{count}回目のツアーまであと{toGo}回",
+      "link": "バディ記録を見る"
+    },
     "open": {
       "showAll": "すべて表示（{count}件）",
-      "showFewer": "表示を減らす"
+      "showFewer": "表示を減らす",
+      "needed": "あと{count}人のバディが必要です",
+      "book": "{time}の回に参加する",
+      "confirm": "{time}・{place}の回に参加しますか？満員の場合はキャンセル待ちになります。",
+      "confirmBook": "参加する",
+      "back": "戻る"
     },
-    "bookingsLoadError": "ツアーを読み込めませんでした。ページを再読み込みしてください。"
+    "bookingsLoadError": "ツアーを読み込めませんでした。ページを再読み込みしてください。",
+    "links": {
+      "title": "リンク集",
+      "manualPdf": "Peace Dialogue マニュアル（PDF）",
+      "manualDoc": "Peace Dialogue マニュアル（Google ドキュメント）"
+    }
   },
   "tour": {
     "title": "バディ募集中のツアー予約",
@@ -428,15 +441,12 @@
     "buddyCount": "バディ数",
     "participantCount": "参加者数",
     "notRegistered": "バディとして登録されていないようです。不明点がある場合は、PLABスタッフまでお問い合わせください。",
-    "traineeMessage": "現在、研修中として登録されています。研修の予定は別途ご案内します。ご不明な点がある場合は、PLABスタッフまでお問い合わせください。",
-    "myBookingsLink": "過去の記録とすべての予定"
+    "traineeMessage": "現在、研修中として登録されています。研修の予定は別途ご案内します。ご不明な点がある場合は、PLABスタッフまでお問い合わせください。"
   },
   "history": {
-    "title": "ツアー記録",
+    "title": "参加したツアー",
     "back": "ツアー予約一覧に戻る",
-    "upcoming": "参加予定",
     "past": "参加済み",
-    "noUpcoming": "参加予定のツアーはありません",
     "noPast": "参加済みのツアーはありません",
     "tourDate": "日付",
     "group": "団体",
@@ -463,9 +473,7 @@
       "write": "ふり返りを書く"
     },
     "note": {
-      "title": "次のツアーへのメモ",
-      "from": "{date}のふり返り「もっとできたこと」",
-      "next": "次のツアー"
+      "from": "{date}のふり返り「もっとできたこと」"
     },
     "milestones": {
       "title": "バディ記録",
@@ -726,7 +734,7 @@
     },
     "nav": {
       "home": "ホーム",
-      "history": "活動記録・予定",
+      "history": "参加したツアー",
       "record": "バディ記録",
       "profile": "プロフィール",
       "buddiesPending": "承認待ち",
@@ -746,7 +754,8 @@
         "tours": "ツアー運営",
         "buddies": "バディ管理",
         "stats": "分析"
-      }
+      },
+      "bottomLabel": "下部メニュー"
     }
   },
   "pending": {

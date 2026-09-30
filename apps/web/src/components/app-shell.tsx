@@ -2,18 +2,18 @@
 
 import { useId, useState } from 'react'
 import Link from 'next/link'
-import { useParams, usePathname, useRouter } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Menu, X } from 'lucide-react'
+import { BookOpen, History, Home, Menu, User, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 import { routes } from '@/lib/routes'
-import { Button } from '@/components/ui/button'
-import { LanguageSwitcher } from '@/components/language-switcher'
+import { AccountActions } from '@/components/account-actions'
 import { NotificationBell } from '@/components/notification-bell'
 import { cn } from '@/lib/utils'
 
-type NavItem = { href: string; label: string }
+type NavItem = { href: string; label: string; icon?: LucideIcon }
 type NavSection = { labelKey?: string; items: NavItem[] }
 
 type Props = {
@@ -24,15 +24,9 @@ type Props = {
 export function AppShell({ variant, children }: Props) {
   const { locale } = useParams<{ locale: string }>()
   const pathname = usePathname()
-  const router = useRouter()
-  const { signOut, dbUser } = useAuth()
+  const { dbUser } = useAuth()
   const t = useTranslations('shell')
   const [drawerOpen, setDrawerOpen] = useState(false)
-
-  async function handleSignOut() {
-    await signOut()
-    router.push(routes.login(locale))
-  }
 
   const adminNavSections: NavSection[] = [
     { items: [{ href: routes.admin(locale), label: t('nav.home') }] },
@@ -73,12 +67,12 @@ export function AppShell({ variant, children }: Props) {
   const buddyNavItems: NavItem[] =
     dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active
       ? [
-          { href: routes.buddy(locale), label: t('nav.home') },
-          { href: routes.buddyHistory(locale), label: t('nav.history') },
-          { href: routes.buddyRecord(locale), label: t('nav.record') },
-          { href: routes.buddyProfile(locale), label: t('nav.profile') },
+          { href: routes.buddy(locale), label: t('nav.home'), icon: Home },
+          { href: routes.buddyRecord(locale), label: t('nav.record'), icon: BookOpen },
+          { href: routes.buddyHistory(locale), label: t('nav.history'), icon: History },
+          { href: routes.buddyProfile(locale), label: t('nav.profile'), icon: User },
         ]
-      : [{ href: routes.buddyProfile(locale), label: t('nav.profile') }]
+      : [{ href: routes.buddyProfile(locale), label: t('nav.profile'), icon: User }]
 
   const navSections: NavSection[] = variant === 'admin' ? adminNavSections : [{ items: buddyNavItems }]
   const accountItems: NavItem[] = variant === 'admin' ? adminAccountItems : []
@@ -121,15 +115,7 @@ export function AppShell({ variant, children }: Props) {
             {accountItems.map(renderLink)}
           </nav>
         )}
-        <LanguageSwitcher />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-muted-foreground"
-          onClick={handleSignOut}
-        >
-          {t('signOut')}
-        </Button>
+        <AccountActions />
       </div>
     )
   }
@@ -146,8 +132,8 @@ export function AppShell({ variant, children }: Props) {
         {renderFooter()}
       </aside>
 
-      {/* Mobile overlay */}
-      {drawerOpen && (
+      {/* Mobile overlay. Buddies have the bottom nav instead of a drawer. */}
+      {variant === 'admin' && drawerOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setDrawerOpen(false)}
@@ -155,47 +141,79 @@ export function AppShell({ variant, children }: Props) {
       )}
 
       {/* Mobile drawer */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card transition-transform duration-200 md:hidden',
-          drawerOpen ? 'translate-x-0' : '-translate-x-full'
-        )}
-      >
-        <div className="flex h-14 items-center justify-between border-b px-4">
-          <span className="text-sm font-semibold tracking-tight">{t('appName')}</span>
-          <button
-            onClick={() => setDrawerOpen(false)}
-            className="rounded-md p-1 text-muted-foreground hover:bg-accent"
-            aria-label={t('closeMenu')}
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <NavSections idPrefix="drawer" label={t('nav.mainLabel')} sections={navSections} t={t} renderLink={renderLink} />
-        {renderFooter()}
-      </aside>
+      {variant === 'admin' && (
+        <aside
+          className={cn(
+            'fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-card transition-transform duration-200 md:hidden',
+            drawerOpen ? 'translate-x-0' : '-translate-x-full'
+          )}
+        >
+          <div className="flex h-14 items-center justify-between border-b px-4">
+            <span className="text-sm font-semibold tracking-tight">{t('appName')}</span>
+            <button
+              onClick={() => setDrawerOpen(false)}
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent"
+              aria-label={t('closeMenu')}
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <NavSections idPrefix="drawer" label={t('nav.mainLabel')} sections={navSections} t={t} renderLink={renderLink} />
+          {renderFooter()}
+        </aside>
+      )}
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
         <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:hidden">
           <div className="flex items-center">
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="rounded-md p-1 text-muted-foreground hover:bg-accent"
-              aria-label={t('openMenu')}
-            >
-              <Menu size={20} />
-            </button>
-            <span className="ml-3 text-sm font-semibold tracking-tight">{t('appName')}</span>
+            {variant === 'admin' && (
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="mr-3 rounded-md p-1 text-muted-foreground hover:bg-accent"
+                aria-label={t('openMenu')}
+              >
+                <Menu size={20} />
+              </button>
+            )}
+            <span className="text-sm font-semibold tracking-tight">{t('appName')}</span>
           </div>
           <NotificationBell />
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className={cn('flex-1 overflow-y-auto p-4 md:p-6', variant === 'buddy' && 'pb-24 md:pb-6')}>
           <div className="mx-auto max-w-5xl">{children}</div>
         </main>
       </div>
+
+      {/* Mobile bottom nav for buddies (#265): their few pages within thumb reach.
+          Language and sign-out are on their Profile page. */}
+      {variant === 'buddy' && (
+        <nav
+          aria-label={t('nav.bottomLabel')}
+          className="fixed inset-x-0 bottom-0 z-30 flex border-t bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
+        >
+          {buddyNavItems.map((item) => {
+            const active = isActive(item.href)
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium',
+                  active ? 'text-primary' : 'text-muted-foreground'
+                )}
+              >
+                {Icon && <Icon size={20} aria-hidden />}
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+      )}
     </div>
   )
 }

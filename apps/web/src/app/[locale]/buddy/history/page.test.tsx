@@ -76,51 +76,41 @@ describe('BuddyHistoryPage', () => {
 
   it('renders nothing while loading', () => {
     mockUseAuth.mockReturnValue({ firebaseUser: null, dbUser: null, loading: true, signOut: vi.fn(), signInWithGoogle: vi.fn(), signInWithApple: vi.fn(), linkedProviderIds: [], linkProvider: vi.fn(), setBuddyProfile: vi.fn() })
-    mockUseMyBookings.mockReturnValue({ bookings: null, error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: null, error: false, reload: vi.fn() })
     const { container } = render(<BuddyHistoryPage />)
     expect(container.firstChild).toBeNull()
   })
 
   it('renders nothing while bookings are null', () => {
-    mockUseMyBookings.mockReturnValue({ bookings: null, error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: null, error: false, reload: vi.fn() })
     const { container } = render(<BuddyHistoryPage />)
     expect(container.firstChild).toBeNull()
   })
 
-  it('shows empty state for both sections when no bookings', async () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [], error: false })
+  it('says so when the buddy has no past tour', async () => {
+    mockUseMyBookings.mockReturnValue({ bookings: [], error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
-    await waitFor(() => expect(screen.getByText('noUpcoming')).toBeInTheDocument())
-    expect(screen.getByText('noPast')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('noPast')).toBeInTheDocument())
   })
 
-  it('places future tour in upcoming section', async () => {
-    const entry = makeEntry({ tourDate: '2099-06-01T00:00:00.000Z' })
-    mockUseMyBookings.mockReturnValue({ bookings: [entry], error: false })
+  it('lists past tours only; upcoming ones are on Home', async () => {
+    const future = makeEntry({ tourId: 'future', tourDate: '2099-06-01T00:00:00.000Z' })
+    const past = makeEntry({ tourId: 'past', tourDate: '2020-01-01T00:00:00.000Z', group: { name: 'Past School', type: 'school' } })
+    mockUseMyBookings.mockReturnValue({ bookings: [future, past], error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
-    await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
-    expect(screen.queryByText('noUpcoming')).not.toBeInTheDocument()
-    expect(screen.getByText('noPast')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Past School')).toBeInTheDocument())
+    expect(screen.queryByText('Test School')).not.toBeInTheDocument()
   })
 
-  it('places past tour in past section', async () => {
-    const entry = makeEntry({ tourDate: '2020-01-01T00:00:00.000Z' })
-    mockUseMyBookings.mockReturnValue({ bookings: [entry], error: false })
-    render(<BuddyHistoryPage />)
-    await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
-    expect(screen.getByText('noUpcoming')).toBeInTheDocument()
-    expect(screen.queryByText('noPast')).not.toBeInTheDocument()
-  })
-
-  it('judges upcoming by the date in Japan, not the UTC date', async () => {
+  it('treats a tour held today in Japan as not yet past', async () => {
     // 01:00 on 15 September in Japan, still 14 September in UTC.
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-09-14T16:00:00.000Z'))
     try {
-      mockUseMyBookings.mockReturnValue({ bookings: [makeEntry({ tourDate: '2026-09-14T00:00:00.000Z' })], error: false })
+      mockUseMyBookings.mockReturnValue({ bookings: [makeEntry({ tourDate: '2026-09-15T00:00:00.000Z' })], error: false, reload: vi.fn() })
       render(<BuddyHistoryPage />)
-      await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
-      expect(screen.getByText('noUpcoming')).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByText('noPast')).toBeInTheDocument())
+      expect(screen.queryByText('Test School')).not.toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }
@@ -133,7 +123,7 @@ describe('BuddyHistoryPage', () => {
       tourDate: '2020-02-01T00:00:00.000Z',
       bookings: [{ ...makeEntry().bookings[0], bookingStatus: 'waitlist' }],
     })
-    mockUseMyBookings.mockReturnValue({ bookings: [cancelled, notConfirmed], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [cancelled, notConfirmed], error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('noPast')).toBeInTheDocument())
     expect(screen.queryByText('Test School')).not.toBeInTheDocument()
@@ -147,8 +137,7 @@ describe('BuddyHistoryPage', () => {
         makeEntry({ tourId: 't2', tourDate: '2021-03-01T00:00:00.000Z' }),
         makeEntry({ tourId: 't3', tourDate: '2020-01-01T00:00:00.000Z' }),
       ],
-      error: false,
-    })
+      error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('summary')).toBeInTheDocument())
     expect(screen.getAllByRole('heading', { level: 3, name: 'year' })).toHaveLength(2)
@@ -160,8 +149,7 @@ describe('BuddyHistoryPage', () => {
         makeEntry({ tourId: 't1', tourDate: '2020-01-01T00:00:00.000Z', group: { name: 'Evaluated', type: 'school' }, reflectionSubmitted: true }),
         makeEntry({ tourId: 't2', tourDate: '2020-02-01T00:00:00.000Z', group: { name: 'Not evaluated', type: 'school' } }),
       ],
-      error: false,
-    })
+      error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     const toggle = await screen.findByRole('button', { name: 'filterUnreflected' })
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
@@ -174,8 +162,7 @@ describe('BuddyHistoryPage', () => {
   it('offers no reflection filter when every past tour has one', async () => {
     mockUseMyBookings.mockReturnValue({
       bookings: [makeEntry({ tourDate: '2020-01-01T00:00:00.000Z', reflectionSubmitted: true })],
-      error: false,
-    })
+      error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'filterUnreflected' })).not.toBeInTheDocument()
@@ -187,8 +174,7 @@ describe('BuddyHistoryPage', () => {
         makeEntry({ tourId: 't1', tourDate: '2020-01-01T00:00:00.000Z', group: { name: 'Sakura School', type: 'school' } }),
         makeEntry({ tourId: 't2', tourDate: '2020-02-01T00:00:00.000Z', group: { name: 'Minato Co.', type: 'company' } }),
       ],
-      error: false,
-    })
+      error: false, reload: vi.fn() })
     const { container } = render(<BuddyHistoryPage />)
     const input = await screen.findByRole('combobox', { name: 'searchGroup' })
     const options = container.querySelectorAll(`datalist#${input.getAttribute('list')} option`)
@@ -204,8 +190,7 @@ describe('BuddyHistoryPage', () => {
         makeEntry({ tourId: 't1', tourDate: '2020-01-01T00:00:00.000Z', group: { name: 'Sakura School', type: 'school' }, reflectionSubmitted: true }),
         makeEntry({ tourId: 't2', tourDate: '2020-02-01T00:00:00.000Z', group: { name: 'Minato Co.', type: 'company' } }),
       ],
-      error: false,
-    })
+      error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     fireEvent.change(await screen.findByRole('combobox', { name: 'searchGroup' }), { target: { value: 'sakura' } })
     fireEvent.click(screen.getByRole('button', { name: 'filterUnreflected' }))
@@ -213,29 +198,29 @@ describe('BuddyHistoryPage', () => {
   })
 
   it('renders tour date and location', async () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [makeEntry()], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [makeEntry({ tourDate: '2020-06-01T00:00:00.000Z' })], error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByText('Test School')).toBeInTheDocument())
-    expect(screen.getByText(/2099\/06\/01/)).toBeInTheDocument()
+    expect(screen.getByText(/2020\/06\/01/)).toBeInTheDocument()
     expect(screen.getByText(/Tokyo Station/)).toBeInTheDocument()
   })
 
   it('renders view link pointing to tour detail', async () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [makeEntry()], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [makeEntry({ tourDate: '2020-06-01T00:00:00.000Z' })], error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     await waitFor(() => expect(screen.getByRole('link', { name: 'viewTour' })).toBeInTheDocument())
     expect(screen.getByRole('link', { name: 'viewTour' })).toHaveAttribute('href', '/en/buddy/tours/t1')
   })
 
   it('passes ready=true when auth is loaded and user exists', () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [], error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     expect(mockUseMyBookings).toHaveBeenCalledWith(true)
   })
 
   it('passes ready=false when loading', () => {
     mockUseAuth.mockReturnValue({ firebaseUser: null, dbUser: null, loading: true, signOut: vi.fn(), signInWithGoogle: vi.fn(), signInWithApple: vi.fn(), linkedProviderIds: [], linkProvider: vi.fn(), setBuddyProfile: vi.fn() })
-    mockUseMyBookings.mockReturnValue({ bookings: null, error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: null, error: false, reload: vi.fn() })
     render(<BuddyHistoryPage />)
     expect(mockUseMyBookings).toHaveBeenCalledWith(false)
   })

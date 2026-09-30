@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { MyTourBookingEntry } from '@peace-buddy/types'
-import { filterPast, findPastAttended, findUpcoming, groupByYear, summarize } from './buddy.history'
+import { filterPast, findPastAttended, groupByYear, summarize } from './buddy.history'
 
 const TODAY = '2026-09-17'
 
@@ -34,12 +34,6 @@ function entry(
 }
 
 const ids = (entries: MyTourBookingEntry[]) => entries.map((e) => e.tourId)
-
-describe('findUpcoming', () => {
-  it('includes a tour held today in Japan', () => {
-    expect(ids(findUpcoming([entry('today', TODAY), entry('past', '2026-09-16')], TODAY))).toEqual(['today'])
-  })
-})
 
 describe('findPastAttended', () => {
   it('excludes tours from today on', () => {

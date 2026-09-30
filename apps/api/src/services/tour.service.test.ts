@@ -37,6 +37,7 @@ const mockSessionRow = {
   minBuddies: null as number | null,
   participantCount: 0,
   place: { id: 'place-1', nameJa: '東京駅', nameEn: 'Tokyo Station', spots: [] as { id: string; nameJa: string; nameEn: string }[] },
+  _count: { bookings: 0 },
 }
 
 const mockRow = {
@@ -96,6 +97,16 @@ describe('listTours', () => {
     mdb.tour.findMany.mockResolvedValueOnce([mockRow])
     const result = await listTours('user-1')
     expect(result[0].sessions[0].myBookingStatus).toBeNull()
+  })
+
+  it('counts confirmed buddies per session', async () => {
+    mdb.tour.findMany.mockResolvedValueOnce([{ ...mockRow, sessions: [{ ...mockSessionRow, _count: { bookings: 3 } }] }])
+    const result = await listTours('user-1')
+    expect(result[0].sessions[0].confirmedCount).toBe(3)
+    const select = mdb.tour.findMany.mock.calls[0][0] as { select: { sessions: { select: { _count: unknown } } } }
+    expect(select.select.sessions.select._count).toEqual({
+      select: { bookings: { where: { status: 'confirmed' } } },
+    })
   })
 
   it('skips the booking lookup when the caller has no buddy profile', async () => {

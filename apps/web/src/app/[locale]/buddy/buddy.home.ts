@@ -1,4 +1,4 @@
-import type { MyTourBookingEntry, TourResponse, BookingStatus } from '@peace-buddy/types'
+import type { MyTourBookingEntry, TourResponse, TourListSessionResponse, BookingStatus } from '@peace-buddy/types'
 import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
 import { isBookingAllowed, isPastDeadline } from './lib/deadline'
 
@@ -37,13 +37,15 @@ function byTourDate(a: MyTourBookingEntry, b: MyTourBookingEntry): number {
 }
 
 // A Maybe or Waitlist booking is not a commitment yet, so it never makes a tour
-// "next" — those tours are listed as action items instead.
+// "upcoming" here — those tours are listed as action items instead.
+export function findUpcomingConfirmed(bookings: MyTourBookingEntry[], today: string): MyTourBookingEntry[] {
+  return bookings
+    .filter((e) => isUpcoming(e, today) && hasBooking(e, BookingStatusSchema.enum.confirmed))
+    .sort(byTourDate)
+}
+
 export function findNextTour(bookings: MyTourBookingEntry[], today: string): MyTourBookingEntry | null {
-  return (
-    bookings
-      .filter((e) => isUpcoming(e, today) && hasBooking(e, BookingStatusSchema.enum.confirmed))
-      .sort(byTourDate)[0] ?? null
-  )
+  return findUpcomingConfirmed(bookings, today)[0] ?? null
 }
 
 // The next confirmed tour is held today in Japan, so the home screen leads with
@@ -82,6 +84,22 @@ export function findActionItems(bookings: MyTourBookingEntry[], today: string): 
   return [...maybe, ...reflection, ...waitlist]
 }
 
+// How many more confirmed buddies a session needs to reach its minBuddies —
+// the admin "short of buddies" rule (PRD §11.7). A session without a minimum
+// is never short.
+export function buddiesNeeded(session: TourListSessionResponse): number {
+  return session.minBuddies === null ? 0 : Math.max(0, session.minBuddies - session.confirmedCount)
+}
+
+// Sessions are never summed (PRD §11.7), so a tour is as short as its shortest session.
+function tourNeed(tour: TourResponse): number {
+  return Math.max(0, ...tour.sessions.map(buddiesNeeded))
+}
+
+// Tours short of buddies first, the most short first; the rest nearest first.
+// `tours` arrive nearest first, and the sort is stable, so ties keep that order.
 export function bookableTours(tours: TourResponse[], today: string): TourResponse[] {
-  return tours.filter((t) => isBookingAllowed(t.status, t.bookingOpen, t.tourDate, today))
+  return tours
+    .filter((t) => isBookingAllowed(t.status, t.bookingOpen, t.tourDate, today))
+    .sort((a, b) => tourNeed(b) - tourNeed(a))
 }

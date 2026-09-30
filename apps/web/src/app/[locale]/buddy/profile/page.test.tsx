@@ -22,6 +22,10 @@ vi.mock('@/components/app-shell', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
+vi.mock('@/components/account-actions', () => ({
+  AccountActions: () => <div data-testid="account-actions" />,
+}))
+
 vi.mock('./_components/profile-header', () => ({
   ProfileHeader: () => <div />,
 }))
@@ -65,5 +69,10 @@ describe('ProfilePage', () => {
   it('shows no notice on an ordinary visit', () => {
     render(<ProfilePage />)
     expect(screen.queryByText('onboardingNotice')).not.toBeInTheDocument()
+  })
+
+  it('holds language and sign-out, which buddies on mobile have nowhere else', () => {
+    render(<ProfilePage />)
+    expect(screen.getByTestId('account-actions')).toBeInTheDocument()
   })
 })

@@ -20,10 +20,10 @@ export type LastTour = {
   canReflect: boolean
 }
 
+// Shown on Home, not on the record page (docs/decisions.md, #265).
 export type NextTourNote = {
   couldImprove: string
   fromTourDate: string
-  nextTour: MyTourBookingEntry | null
 }
 
 export type Milestone =
@@ -54,6 +54,12 @@ export type BuddyRecord = {
 // The 5th tour, the 10th, and every 10th after it.
 function isMilestoneCount(n: number): boolean {
   return n === 5 || (n >= 10 && n % 10 === 0)
+}
+
+// The next tour-count milestone after `tours` attended, for Home.
+export function nextTourMilestone(tours: number): { count: number; toGo: number } {
+  const count = tours < 5 ? 5 : (Math.floor(tours / 10) + 1) * 10
+  return { count, toGo: count - tours }
 }
 
 function confirmedSessions(entry: MyTourBookingEntry) {
@@ -124,15 +130,6 @@ export function buildRecord(
     const text = blankToNull(r.couldImprove)
     return text ? [{ text, tour }] : []
   })[0]
-  const nextTour =
-    bookings
-      .filter(
-        (e) =>
-          dateOf(e.tourDate) >= today &&
-          e.status === TourStatusSchema.enum.published &&
-          confirmedSessions(e).length > 0,
-      )
-      .sort((a, b) => a.tourDate.localeCompare(b.tourDate))[0] ?? null
 
   let minutesOnTour = 0
   let sessionsWithoutTimes = 0
@@ -152,7 +149,7 @@ export function buildRecord(
       didWell: own.filter(({ r }) => r.tourId === latest.tourId).map(({ r }) => blankToNull(r.didWell)).find(Boolean) ?? null,
       canReflect: !latest.reflectionSubmitted && latest.status === TourStatusSchema.enum.completed,
     },
-    nextTourNote: withImprove ? { couldImprove: withImprove.text, fromTourDate: withImprove.tour.tourDate, nextTour } : null,
+    nextTourNote: withImprove ? { couldImprove: withImprove.text, fromTourDate: withImprove.tour.tourDate } : null,
     milestones: milestones.reverse(),
     openQuestions: own.flatMap(({ r, tour }) => {
       const text = blankToNull(r.openQuestions)

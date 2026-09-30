@@ -19,6 +19,8 @@ const sessionSelect = {
   minBuddies: true,
   participantCount: true,
   place: { select: placeSummarySelect },
+  // Confirmed buddies, counted as the admin "short of buddies" list counts them (PRD §11.7).
+  _count: { select: { bookings: { where: { status: BookingStatusSchema.enum.confirmed } } } },
 } as const
 
 const tourSelect = {
@@ -88,6 +90,7 @@ function mapTour(row: {
     minBuddies: number | null
     participantCount: number
     place: PlaceSummary
+    _count: { bookings: number }
   }>
 }, myBookingBySession: Map<string, BookingStatus>): TourResponse {
   const totalParticipants = row.sessions.reduce((s, sess) => s + sess.participantCount, 0)
@@ -106,6 +109,7 @@ function mapTour(row: {
     notificationOffsets: row.notificationOffsets,
     sessions: row.sessions.map((sess) => ({
       ...mapSession(sess),
+      confirmedCount: sess._count.bookings,
       myBookingStatus: myBookingBySession.get(sess.id) ?? null,
     })),
     createdAt: row.createdAt.toISOString(),

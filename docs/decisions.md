@@ -12,6 +12,71 @@ duplicate that state here.
 
 ---
 
+## 2026-09-30 — Buddy Home puts booking first; what sits above it depends on the buddy
+
+**Decision:** `/buddy` is laid out by the buddy's situation: the tour-day
+panel on the day; action items only when something is owed; for a buddy who
+has toured, the note carried to the next tour and the next milestone; then the
+tours to book, **the most short of buddies first**, each short session saying
+"N more buddies needed"; then the buddy's own confirmed upcoming tours; then
+static reference links (the Peace Dialogue manual). A session with no booking
+can be booked from its card after confirming the time and place.
+`/buddy/history` is past tours only. Nav: Home · Record · History · Profile.
+`GET /tours` sessions carry `confirmedCount`. Current state: PRD §11.1, §8.8,
+§11.9. Closes #265.
+
+**Why:** more buddies need to join more tours — some drift away, some never
+reach a first tour, some come back rarely — and the tours left unfilled are
+the big ones. Buddies are busy and some forget to book, so booking is what
+Home is for, and a big tour short by 8 must not look the same as a full one.
+
+**This reverses 2026-09-15's "leads with the next confirmed tour".** The new
+information is the team's retention goal above. The buddy's own upcoming
+tours move below the tours to book; on the day of a tour the panel still leads.
+
+**Rejected — the buddy record as Home,** the issue's starting assumption. A page
+about the buddy's past pushes the unfilled tours down on a phone, the same
+reason figures were kept off the top of `/buddy/history` (2026-09-27). Home
+takes only the record's forward-looking part; the note moved off
+`/buddy/record` so it is in one place.
+
+**Rejected — a manual "featured" flag PLAB members set on a tour** to pin the
+most demanding tours: a schema change and admin UI for an order the shortfall
+already gives. PLAB members will instead write a note to buddies on Home
+(separate issue), which can also say *why* a tour needs help.
+
+**Rejected — booking only from the tour page:** two taps lose the buddies who
+won't take the extra step. **Rejected — one tap with no confirm:** a mis-tap
+books a seat. The confirm names the time and place and says a full session
+waitlists. Maybe and changes to a booking stay on the tour page, where the
+deadlines are shown.
+
+**Shortfall is the admin rule, not a new one:** `minBuddies − confirmed`
+bookings, per session (PRD §11.7). Rejected: `belowMinimum`, which compares
+visitors to the threshold; and summing sessions, which the cards never do.
+A tour ranks by its session most short of buddies.
+
+**Rejected — notifying buddies who haven't booked that a tour is short** in
+this change: it is a new notification kind and cron job, and no scheduled job
+is deployed yet (PRD §10.5). Separate issue.
+
+**Empty sections take no room.** "Nothing needs your action" and "no confirmed
+tours" lines are gone, so a buddy with nothing booked sees the tours to book
+straight away. A buddy who has never toured sees no empty record either.
+
+**Reference links are static in code** (`BUDDY_LINKS`), kept by developers.
+Rejected for now: links PLAB members edit, which needs storage and admin UI
+for two links that rarely change.
+
+**Buddy nav is a bottom bar on mobile.** Buddies use the app on a phone and
+have four pages, which fit a bottom bar within thumb reach; the hamburger hid
+them behind a tap. Rejected: keeping the drawer beside it, for language and
+sign-out — two navigations for one app. Those two sit at the bottom of Profile
+on mobile instead. Admins keep the drawer: their nav has sections and too many
+items for a bar.
+
+---
+
 ## 2026-09-27 — Buddy record: a buddy's own numbers on a page of their own
 
 **Decision:** `/buddy/record` (バディ記録), mobile first, leads with what

@@ -32,32 +32,31 @@ export function ActionItems({ items }: { items: ActionItem[] }) {
   const label = useActionLabel()
   const headingId = useId()
 
+  // Nothing owed takes no room, so the tours to book stay near the top.
+  if (items.length === 0) return null
+
   return (
     <section aria-labelledby={headingId} className="mb-8">
       <h2 id={headingId} className="mb-3 text-base font-semibold">{t('actions.title')}</h2>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('actions.empty')}</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {items.map((item) => (
-            <li key={`${item.kind}-${item.entry.tourId}`}>
-              <Link
-                href={
-                  item.kind === 'reflection'
-                    ? routes.buddyTourReflection(locale, item.entry.tourId)
-                    : routes.buddyTour(locale, item.entry.tourId)
-                }
-                className="block rounded-md border bg-card p-3 text-sm hover:bg-accent transition-colors"
-              >
-                <p className="font-medium">{label(item)}</p>
-                <p className="text-muted-foreground">
-                  {item.entry.group.name} · {formatDate(item.entry.tourDate)}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="flex flex-col gap-2">
+        {items.map((item) => (
+          <li key={`${item.kind}-${item.entry.tourId}`}>
+            <Link
+              href={
+                item.kind === 'reflection'
+                  ? routes.buddyTourReflection(locale, item.entry.tourId)
+                  : routes.buddyTour(locale, item.entry.tourId)
+              }
+              className="block rounded-md border bg-card p-3 text-sm hover:bg-accent transition-colors"
+            >
+              <p className="font-medium">{label(item)}</p>
+              <p className="text-muted-foreground">
+                {item.entry.group.name} · {formatDate(item.entry.tourDate)}
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

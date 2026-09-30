@@ -579,6 +579,8 @@ export type TourSessionResponse = {
 // A session as listed to a buddy. Kept apart from TourSessionResponse, which
 // is also the admin tour and group session shape, where "my booking" means nothing.
 export type TourListSessionResponse = TourSessionResponse & {
+  // Confirmed buddies, the count the admin "short of buddies" list compares to minBuddies.
+  confirmedCount: number
   myBookingStatus: BookingStatus | null
 }
 
@@ -695,7 +697,8 @@ export type TourSeatCounts = {
   declined: number
 }
 
-export type TourSessionDetailResponse = Omit<TourListSessionResponse, 'place'> & {
+// The detail counts confirmed buddies in seatCounts.confirmed instead.
+export type TourSessionDetailResponse = Omit<TourListSessionResponse, 'place' | 'confirmedCount'> & {
   place: TourPlaceWithSpots
   seatCounts: TourSeatCounts
   remaining: number

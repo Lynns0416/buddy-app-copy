@@ -20,10 +20,6 @@ function isAttended(entry: MyTourBookingEntry): boolean {
   )
 }
 
-export function findUpcoming(bookings: MyTourBookingEntry[], today: string): MyTourBookingEntry[] {
-  return bookings.filter((e) => dateOf(e.tourDate) >= today)
-}
-
 // Past tours the buddy did not attend are not listed at all (see decisions.md).
 export function findPastAttended(bookings: MyTourBookingEntry[], today: string): MyTourBookingEntry[] {
   return bookings

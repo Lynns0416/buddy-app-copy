@@ -75,6 +75,26 @@ describe('AppShell', () => {
     expect(screen.queryByRole('link', { name: 'nav.record' })).not.toBeInTheDocument()
   })
 
+  it('gives an active buddy a bottom nav: Home, Record, History, Profile, current page marked', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      signOut: mockSignOut,
+      dbUser: { buddyProfile: { status: 'active' } },
+    } as never)
+    vi.mocked(usePathname).mockReturnValue('/en/buddy/record')
+    render(<AppShell variant="buddy"><div /></AppShell>)
+    const bottom = screen.getByRole('navigation', { name: 'nav.bottomLabel' })
+    const links = within(bottom).getAllByRole('link')
+    expect(links.map((l) => l.textContent)).toEqual(['nav.home', 'nav.record', 'nav.history', 'nav.profile'])
+    expect(within(bottom).getByRole('link', { name: 'nav.record' })).toHaveAttribute('aria-current', 'page')
+    expect(within(bottom).getByRole('link', { name: 'nav.home' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('gives admins no bottom nav', () => {
+    vi.mocked(usePathname).mockReturnValue('/en/admin')
+    render(<AppShell variant="admin"><div /></AppShell>)
+    expect(screen.queryByRole('navigation', { name: 'nav.bottomLabel' })).not.toBeInTheDocument()
+  })
+
   it('calls signOut and redirects to login on sign-out click', async () => {
     render(<AppShell variant="buddy"><div /></AppShell>)
     const buttons = screen.getAllByRole('button', { name: 'signOut' })

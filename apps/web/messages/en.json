@@ -391,9 +391,8 @@
   },
   "home": {
     "title": "Home",
-    "nextTour": {
-      "title": "Your next tour",
-      "empty": "No confirmed tours coming up"
+    "upcoming": {
+      "title": "Your upcoming tours"
     },
     "tourDay": {
       "title": "Your tour today",
@@ -405,18 +404,32 @@
     },
     "actions": {
       "title": "Needs your action",
-      "empty": "Nothing needs your action",
       "maybeBy": "Confirm or cancel by {date}",
       "maybeNoDeadline": "Still Maybe — confirm or cancel",
       "maybeOverdue": "Maybe deadline {date} has passed",
       "waitlist": "You're on the waitlist",
       "reflection": "Write your reflection"
     },
+    "record": {
+      "title": "Looking ahead",
+      "milestone": "{toGo, plural, one {# more tour} other {# more tours}} to your {count, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} tour",
+      "link": "See your buddy record"
+    },
     "open": {
       "showAll": "Show all {count}",
-      "showFewer": "Show fewer"
+      "showFewer": "Show fewer",
+      "needed": "{count, plural, one {# more buddy needed} other {# more buddies needed}}",
+      "book": "Book {time}",
+      "confirm": "Book the {time} session at {place}? If it's full, you'll go on the waitlist.",
+      "confirmBook": "Book",
+      "back": "Back"
     },
-    "bookingsLoadError": "Couldn't load your bookings. Please reload the page."
+    "bookingsLoadError": "Couldn't load your bookings. Please reload the page.",
+    "links": {
+      "title": "Links",
+      "manualPdf": "Peace Dialogue manual (PDF)",
+      "manualDoc": "Peace Dialogue manual (Google Docs)"
+    }
   },
   "tour": {
     "title": "Tours looking for buddies",
@@ -428,15 +441,12 @@
     "buddyCount": "Buddies",
     "participantCount": "Participants",
     "notRegistered": "Sorry, but it seems like you're not registered as a buddy. If you have any questions, please contact any of plab staff.",
-    "traineeMessage": "You're registered as a trainee. Training schedules are arranged separately for now — if you have any questions, please contact PLAB staff.",
-    "myBookingsLink": "My bookings"
+    "traineeMessage": "You're registered as a trainee. Training schedules are arranged separately for now — if you have any questions, please contact PLAB staff."
   },
   "history": {
-    "title": "My bookings",
+    "title": "Past tours",
     "back": "Back to tour",
-    "upcoming": "Upcoming",
     "past": "Past",
-    "noUpcoming": "No upcoming bookings",
     "noPast": "No past bookings",
     "tourDate": "Date",
     "group": "Group",
@@ -463,9 +473,7 @@
       "write": "Write your reflection"
     },
     "note": {
-      "title": "A note for your next tour",
-      "from": "\"What I could have done better\" from {date}",
-      "next": "Next tour"
+      "from": "\"What I could have done better\" from {date}"
     },
     "milestones": {
       "title": "Buddy record",
@@ -726,7 +734,7 @@
     },
     "nav": {
       "home": "Home",
-      "history": "Upcoming & History",
+      "history": "History",
       "record": "Buddy record",
       "profile": "Profile",
       "buddiesPending": "Pending Approval",
@@ -746,7 +754,8 @@
         "tours": "Tours",
         "buddies": "Buddies",
         "stats": "Analytics"
-      }
+      },
+      "bottomLabel": "Bottom menu"
     }
   },
   "pending": {

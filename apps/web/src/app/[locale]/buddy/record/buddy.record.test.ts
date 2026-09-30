@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { MySessionBookingEntry, MyTourBookingEntry, TourReflectionResponse } from '@peace-buddy/types'
 import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
-import { buildRecord } from './buddy.record'
+import { buildRecord, nextTourMilestone } from './buddy.record'
 
 const TODAY = '2026-09-27'
 const HIROSHIMA = { id: 'hiroshima', nameJa: '広島', nameEn: 'Hiroshima' }
@@ -155,7 +155,7 @@ describe('buildRecord', () => {
     expect(notCompleted?.lastTour.canReflect).toBe(false)
   })
 
-  it('carries the latest "could have done better" to the next confirmed tour', () => {
+  it('carries the latest "could have done better" forward, skipping blank ones', () => {
     const record = buildRecord(
       [
         tour('next', '2026-10-04', { status: TourStatusSchema.enum.published }),
@@ -174,7 +174,6 @@ describe('buildRecord', () => {
       couldImprove: 'Pace the second half',
       fromTourDate: '2026-08-01T00:00:00.000Z',
     })
-    expect(record?.nextTourNote?.nextTour?.tourId).toBe('next')
   })
 
   it('has no note when no reflection says what could have gone better', () => {
@@ -213,5 +212,15 @@ describe('buildRecord', () => {
       ['a', 'When was it built?'],
     ])
     expect(record?.moments.map((m) => m.moment.id)).toEqual(['m2', 'm3', 'm1'])
+  })
+})
+
+describe('nextTourMilestone', () => {
+  it('counts to the 5th tour, then the 10th, then every 10th', () => {
+    expect(nextTourMilestone(0)).toEqual({ count: 5, toGo: 5 })
+    expect(nextTourMilestone(4)).toEqual({ count: 5, toGo: 1 })
+    expect(nextTourMilestone(5)).toEqual({ count: 10, toGo: 5 })
+    expect(nextTourMilestone(10)).toEqual({ count: 20, toGo: 10 })
+    expect(nextTourMilestone(27)).toEqual({ count: 30, toGo: 3 })
   })
 })

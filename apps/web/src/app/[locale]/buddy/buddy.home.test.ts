@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
-import type { BookingStatus, MyTourBookingEntry } from '@peace-buddy/types'
-import { findActionItems, findNextTour, isTourDay, REFLECTION_PROMPT_DAYS } from './buddy.home'
+import { BookingStatusSchema, GroupTypeSchema, TourStatusSchema } from '@peace-buddy/types'
+import type { BookingStatus, MyTourBookingEntry, TourListSessionResponse, TourResponse } from '@peace-buddy/types'
+import {
+  bookableTours,
+  buddiesNeeded,
+  findActionItems,
+  findNextTour,
+  findUpcomingConfirmed,
+  isTourDay,
+  REFLECTION_PROMPT_DAYS,
+} from './buddy.home'
 
 const today = '2026-09-15'
 
@@ -59,6 +67,17 @@ describe('findNextTour', () => {
       makeEntry('cancelled', BookingStatusSchema.enum.confirmed, { status: TourStatusSchema.enum.cancelled }),
     ]
     expect(findNextTour(bookings, today)).toBeNull()
+  })
+})
+
+describe('findUpcomingConfirmed', () => {
+  it('lists every upcoming confirmed tour, nearest first', () => {
+    const bookings = [
+      makeEntry('later', BookingStatusSchema.enum.confirmed, { tourDate: '2026-11-01T00:00:00.000Z' }),
+      makeEntry('maybe', BookingStatusSchema.enum.maybe),
+      makeEntry('sooner', BookingStatusSchema.enum.confirmed),
+    ]
+    expect(findUpcomingConfirmed(bookings, today).map((e) => e.tourId)).toEqual(['sooner', 'later'])
   })
 })
 
@@ -154,5 +173,88 @@ describe('findActionItems', () => {
       'reflection',
       'waitlist',
     ])
+  })
+})
+
+function makeSession(overrides: Partial<TourListSessionResponse> = {}): TourListSessionResponse {
+  return {
+    id: 'session-1',
+    order: 1,
+    label: null,
+    meetingTime: '1970-01-01T09:00:00.000Z',
+    startTime: null,
+    endTime: null,
+    capacity: 10,
+    minBuddies: null,
+    participantCount: 0,
+    belowMinimum: false,
+    confirmedCount: 0,
+    myBookingStatus: null,
+    place: { id: 'place-1', nameJa: '長崎', nameEn: 'Nagasaki' },
+    ...overrides,
+  }
+}
+
+function makeTour(id: string, sessions: TourListSessionResponse[], overrides: Partial<TourResponse> = {}): TourResponse {
+  return {
+    id,
+    groupId: 'group-1',
+    group: { id: 'group-1', name: `School ${id}`, type: GroupTypeSchema.enum.school },
+    status: TourStatusSchema.enum.published,
+    tourDate: '2026-10-01T00:00:00.000Z',
+    bookingOpen: true,
+    places: [{ id: 'place-1', nameJa: '長崎', nameEn: 'Nagasaki' }],
+    participantCount: 0,
+    description: null,
+    cancellationDeadline: '2026-09-25T00:00:00.000Z',
+    maybeDeadline: null,
+    notificationOffsets: [],
+    sessions,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  }
+}
+
+describe('buddiesNeeded', () => {
+  it('is minBuddies less the confirmed buddies', () => {
+    expect(buddiesNeeded(makeSession({ minBuddies: 10, confirmedCount: 2 }))).toBe(8)
+  })
+
+  it('is zero once the minimum is met, and for a session without a minimum', () => {
+    expect(buddiesNeeded(makeSession({ minBuddies: 3, confirmedCount: 5 }))).toBe(0)
+    expect(buddiesNeeded(makeSession({ minBuddies: null, confirmedCount: 0 }))).toBe(0)
+  })
+
+  it('counts buddies, not visitors', () => {
+    expect(buddiesNeeded(makeSession({ minBuddies: 4, confirmedCount: 1, participantCount: 50 }))).toBe(3)
+  })
+})
+
+describe('bookableTours', () => {
+  it('puts the tours most short of buddies first, the rest nearest first', () => {
+    const tours = [
+      makeTour('near-full', [makeSession({ minBuddies: 2, confirmedCount: 2 })], { tourDate: '2026-09-20T00:00:00.000Z' }),
+      makeTour('short-2', [makeSession({ minBuddies: 4, confirmedCount: 2 })], { tourDate: '2026-09-21T00:00:00.000Z' }),
+      makeTour('no-minimum', [makeSession()], { tourDate: '2026-09-22T00:00:00.000Z' }),
+      makeTour('short-8', [makeSession({ minBuddies: 10, confirmedCount: 2 })], { tourDate: '2026-10-30T00:00:00.000Z' }),
+    ]
+    expect(bookableTours(tours, today).map((t) => t.id)).toEqual(['short-8', 'short-2', 'near-full', 'no-minimum'])
+  })
+
+  it('ranks a tour by its session most short of buddies, never a sum across sessions', () => {
+    const tours = [
+      makeTour('two-short', [
+        makeSession({ id: 'a', minBuddies: 3, confirmedCount: 0 }),
+        makeSession({ id: 'b', minBuddies: 3, confirmedCount: 0 }),
+      ]),
+      makeTour('one-shorter', [makeSession({ minBuddies: 5, confirmedCount: 0 })]),
+    ]
+    expect(bookableTours(tours, today).map((t) => t.id)).toEqual(['one-shorter', 'two-short'])
+  })
+
+  it('leaves out tours that cannot be booked', () => {
+    const tours = [makeTour('open', [makeSession()]), makeTour('closed', [makeSession()], { bookingOpen: false })]
+    expect(bookableTours(tours, today).map((t) => t.id)).toEqual(['open'])
   })
 })

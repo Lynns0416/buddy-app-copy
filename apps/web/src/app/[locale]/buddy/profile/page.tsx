@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth'
 import { routes } from '@/lib/routes'
 import { BuddyStatusSchema } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
+import { AccountActions } from '@/components/account-actions'
 import { ProfileHeader } from './_components/profile-header'
 import { ProfileForm } from './_components/profile-form'
 import { LinkedAccounts } from './_components/linked-accounts'
@@ -56,6 +57,11 @@ export default function ProfilePage() {
           <NotificationPreferences />
         </>
       )}
+
+      {/* On mobile buddies have only the bottom nav, so language and sign-out live here. */}
+      <div className="mt-8 space-y-3 border-t pt-6 md:hidden">
+        <AccountActions />
+      </div>
     </AppShell>
   )
 }

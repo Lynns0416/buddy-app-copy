@@ -5,22 +5,119 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { CalendarDays, MapPin, Users, Clock } from 'lucide-react'
-import type { TourResponse } from '@peace-buddy/types'
+import type { TourListSessionResponse, TourResponse } from '@peace-buddy/types'
 import { BookingStatusSchema } from '@peace-buddy/types'
 import { routes } from '@/lib/routes'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { bookingStatusBadgeVariant, getBookingStatusLabel } from '@/lib/status-display'
-import { OPEN_TOURS_PREVIEW } from '../buddy.home'
+import { OPEN_TOURS_PREVIEW, buddiesNeeded } from '../buddy.home'
+import { createInitialBooking, mapErrorToI18nKey } from '../tours/[id]/buddy.booking'
 import { formatDate } from '@/lib/format-date'
-import { placeNames } from '@/lib/place-names'
+import { placeName, placeNames } from '@/lib/place-names'
 
-// `tours` is null until loaded, then expected already filtered to what the buddy
-// can book, nearest first.
-export function OpenTours({ tours, error }: { tours: TourResponse[] | null; error: boolean }) {
+// Booking straight from Home, one session at a time. The buddy confirms the
+// time and place first; a Maybe, or changing a booking, stays on the tour page.
+function SessionRow({
+  tourId,
+  session,
+  onBooked,
+}: {
+  tourId: string
+  session: TourListSessionResponse
+  onBooked: () => void
+}) {
   const { locale } = useParams<{ locale: string }>()
   const t = useTranslations('tour')
   const tHome = useTranslations('home')
+  const tDetail = useTranslations('tourDetail')
   const tBookingStatus = useTranslations('bookingStatus')
+  const [confirming, setConfirming] = useState(false)
+  const [acting, setActing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const time = session.meetingTime.slice(11, 16)
+  const needed = buddiesNeeded(session)
+
+  const book = async () => {
+    setActing(true)
+    setError(null)
+    const result = await createInitialBooking(tourId, session.id)
+    setActing(false)
+    if (result.ok) {
+      setConfirming(false)
+      onBooked()
+    } else {
+      setError(tDetail(result.specialMessage ?? mapErrorToI18nKey(result.error.code)))
+    }
+  }
+
+  return (
+    <div className="border-t pt-2 first:border-t-0 first:pt-0">
+      {session.label && <p className="mb-1 text-sm font-medium text-foreground">{session.label}</p>}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Clock size={14} />
+          {time}
+          {/* declined means the buddy cancelled and can book again — on the card that is not booked */}
+          {session.myBookingStatus && session.myBookingStatus !== BookingStatusSchema.enum.declined && (
+            <Badge variant={bookingStatusBadgeVariant[session.myBookingStatus]}>
+              {getBookingStatusLabel(tBookingStatus, session.myBookingStatus)}
+            </Badge>
+          )}
+        </span>
+        {needed > 0 ? (
+          <span className="flex items-center gap-1.5 font-semibold text-foreground">
+            <Users size={14} />
+            {tHome('open.needed', { count: needed })}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <Users size={14} />
+            {t('buddyCount')}: {session.minBuddies ?? session.capacity}
+          </span>
+        )}
+        <span className="flex items-center gap-1.5">
+          <Users size={14} />
+          {t('participantCount')}: {session.participantCount}
+        </span>
+      </div>
+      {session.myBookingStatus === null &&
+        (confirming ? (
+          <div className="mt-2 flex flex-col gap-2 rounded-md border p-3">
+            <p className="text-sm">{tHome('open.confirm', { time, place: placeName(session.place, locale) })}</p>
+            <div className="flex gap-2">
+              <Button size="sm" className="min-h-11" disabled={acting} onClick={() => void book()}>
+                {tHome('open.confirmBook')}
+              </Button>
+              <Button size="sm" variant="outline" className="min-h-11" disabled={acting} onClick={() => setConfirming(false)}>
+                {tHome('open.back')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button size="sm" className="mt-2 min-h-11" onClick={() => setConfirming(true)}>
+            {tHome('open.book', { time })}
+          </Button>
+        ))}
+      {error && <p role="alert" className="mt-2 text-sm text-destructive">{error}</p>}
+    </div>
+  )
+}
+
+// `tours` is null until loaded, then expected already filtered to what the buddy
+// can book, the tours most short of buddies first.
+export function OpenTours({
+  tours,
+  error,
+  onBooked,
+}: {
+  tours: TourResponse[] | null
+  error: boolean
+  onBooked: () => void
+}) {
+  const { locale } = useParams<{ locale: string }>()
+  const t = useTranslations('tour')
+  const tHome = useTranslations('home')
   const [showAll, setShowAll] = useState(false)
   const headingId = useId()
 
@@ -28,7 +125,7 @@ export function OpenTours({ tours, error }: { tours: TourResponse[] | null; erro
   const visible = showAll ? list : list.slice(0, OPEN_TOURS_PREVIEW)
 
   return (
-    <section aria-labelledby={headingId}>
+    <section aria-labelledby={headingId} className="mb-8">
       <h2 id={headingId} className="mb-3 text-base font-semibold">{t('title')}</h2>
       {error ? (
         <p role="alert" className="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
@@ -39,8 +136,10 @@ export function OpenTours({ tours, error }: { tours: TourResponse[] | null; erro
       ) : (
         <div className="flex flex-col gap-3">
           {visible.map((tour) => (
-            <Link key={tour.id} href={routes.buddyTour(locale, tour.id)} className="rounded-lg border bg-card p-4 hover:bg-accent transition-colors">
-              <p className="mb-3 font-medium">{tour.group.name}</p>
+            <div key={tour.id} className="rounded-lg border bg-card p-4">
+              <Link href={routes.buddyTour(locale, tour.id)} className="mb-3 block font-medium text-primary hover:underline">
+                {tour.group.name}
+              </Link>
               {/* Tour level: the date and the location are the same for every session */}
               <div className="mb-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
@@ -55,32 +154,10 @@ export function OpenTours({ tours, error }: { tours: TourResponse[] | null; erro
               {/* One section per session — buddy numbers and participants are per session, never summed */}
               <div className="flex flex-col gap-2">
                 {tour.sessions.map((s) => (
-                  <div key={s.id} className="border-t pt-2 first:border-t-0 first:pt-0">
-                    {s.label && <p className="mb-1 text-sm font-medium text-foreground">{s.label}</p>}
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <Clock size={14} />
-                        {s.meetingTime.slice(11, 16)}
-                        {/* declined means the buddy cancelled and can book again — on the card that is not booked */}
-                        {s.myBookingStatus && s.myBookingStatus !== BookingStatusSchema.enum.declined && (
-                          <Badge variant={bookingStatusBadgeVariant[s.myBookingStatus]}>
-                            {getBookingStatusLabel(tBookingStatus, s.myBookingStatus)}
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Users size={14} />
-                        {t('buddyCount')}: {s.minBuddies ?? s.capacity}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Users size={14} />
-                        {t('participantCount')}: {s.participantCount}
-                      </span>
-                    </div>
-                  </div>
+                  <SessionRow key={s.id} tourId={tour.id} session={s} onBooked={onBooked} />
                 ))}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

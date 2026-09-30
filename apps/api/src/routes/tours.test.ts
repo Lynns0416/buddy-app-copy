@@ -57,6 +57,7 @@ const mockSessionSummary = {
   minBuddies: null,
   participantCount: 0,
   belowMinimum: false,
+  confirmedCount: 0,
   myBookingStatus: null,
   place: station,
 }

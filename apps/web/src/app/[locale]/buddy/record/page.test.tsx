@@ -89,7 +89,7 @@ beforeEach(() => {
 
 describe('BuddyRecordPage', () => {
   it('shows the empty state when the buddy has attended no tour', async () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [], error: false, reload: vi.fn() })
     mockListMyReflections.mockResolvedValue([])
     render(<BuddyRecordPage />)
     expect(await screen.findByText('empty')).toBeInTheDocument()
@@ -97,7 +97,7 @@ describe('BuddyRecordPage', () => {
   })
 
   it('shows the last tour, milestones, questions and totals once the buddy has attended a tour', async () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [entry()], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [entry()], error: false, reload: vi.fn() })
     mockListMyReflections.mockResolvedValue([])
     render(<BuddyRecordPage />)
     for (const name of ['last.title', 'milestones.title', 'questions.title', 'totals.title']) {
@@ -108,14 +108,14 @@ describe('BuddyRecordPage', () => {
   })
 
   it('links a completed last tour without a reflection to its reflection page', async () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [entry()], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [entry()], error: false, reload: vi.fn() })
     mockListMyReflections.mockResolvedValue([])
     render(<BuddyRecordPage />)
     expect(await screen.findByRole('link', { name: 'last.write' })).toHaveAttribute('href', '/en/buddy/tours/t1/reflection')
   })
 
   it('lists an open question as a link to its reflection', async () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [entry({ reflectionSubmitted: true })], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [entry({ reflectionSubmitted: true })], error: false, reload: vi.fn() })
     mockListMyReflections.mockResolvedValue([reflection()])
     render(<BuddyRecordPage />)
     expect(await screen.findByRole('link', { name: /When was it built\?/ })).toHaveAttribute('href', '/en/buddy/tours/t1/reflection')
@@ -127,7 +127,7 @@ describe('BuddyRecordPage', () => {
     )
     // Each tour after the first at a new place makes a milestone: 1 first tour + 6 first places.
     bookings.forEach((b, i) => { b.bookings[0].place = { id: `p${i}`, nameJa: `P${i}`, nameEn: `P${i}` } })
-    mockUseMyBookings.mockReturnValue({ bookings, error: false })
+    mockUseMyBookings.mockReturnValue({ bookings, error: false, reload: vi.fn() })
     mockListMyReflections.mockResolvedValue([])
     render(<BuddyRecordPage />)
     const region = await screen.findByRole('region', { name: 'milestones.title' })
@@ -137,7 +137,7 @@ describe('BuddyRecordPage', () => {
   })
 
   it('shows a load error when the reflections fail to load', async () => {
-    mockUseMyBookings.mockReturnValue({ bookings: [entry()], error: false })
+    mockUseMyBookings.mockReturnValue({ bookings: [entry()], error: false, reload: vi.fn() })
     mockListMyReflections.mockRejectedValue(new Error('boom'))
     render(<BuddyRecordPage />)
     expect(await screen.findByRole('alert')).toHaveTextContent('loadError')

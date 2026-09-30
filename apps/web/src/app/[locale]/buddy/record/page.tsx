@@ -88,25 +88,6 @@ function LastTourCard({ record, locale }: { record: BuddyRecord; locale: string 
   )
 }
 
-function NextTourNoteCard({ record, locale }: { record: BuddyRecord; locale: string }) {
-  const t = useTranslations('buddyRecord')
-  const note = record.nextTourNote
-  if (!note) return null
-  return (
-    <Section id="record-note" title={t('note.title')}>
-      <p className="text-xs text-muted-foreground">{t('note.from', { date: formatDate(note.fromTourDate) })}</p>
-      <Quote>{note.couldImprove}</Quote>
-      {note.nextTour && (
-        <RowLink href={routes.buddyTour(locale, note.nextTour.tourId)}>
-          <span className="text-sm">
-            {t('note.next')} {formatDate(note.nextTour.tourDate)} {note.nextTour.group.name}
-          </span>
-        </RowLink>
-      )}
-    </Section>
-  )
-}
-
 function MilestoneText({ milestone, locale }: { milestone: Milestone; locale: string }) {
   const t = useTranslations('buddyRecord')
   switch (milestone.kind) {
@@ -276,7 +257,6 @@ export default function BuddyRecordPage() {
         ) : (
           <div className="flex flex-col gap-4">
             <LastTourCard record={record} locale={locale} />
-            <NextTourNoteCard record={record} locale={locale} />
             <Milestones record={record} locale={locale} />
             <OpenQuestions record={record} locale={locale} />
             <Moments record={record} locale={locale} />

@@ -465,7 +465,7 @@ Buddies never need to manually claim a freed seat. The promoted buddy receives a
 
 #### Buddy history page (`/buddy/history`)
 
-Answers "what have I done". Tours are split by the date in Japan (`getTodayJst()`): **Upcoming** is every booked tour from today on, **Past** is every earlier tour the buddy attended.
+Answers "what have I done": past tours only, the tours before today in Japan (`getTodayJst()`) that the buddy attended. Upcoming tours are on Home (§11.1) since #265. Title 参加したツアー / "Past tours", third in the buddy nav (Home · Record · History · Profile).
 
 - **Attended** means the tour was not `cancelled` and the buddy has a `confirmed` booking on at least one session. There is no attendance record. Past tours the buddy did not attend (tour cancelled, or only Maybe/Waitlist bookings left when the date passed) are not shown on this page.
 - **Summary line** under the title: `N tours · M groups · since <date>`, counted over attended past tours. バディ記録 (§11.9) counts with the same rule. Groups are counted by distinct group name. Hidden when there are none.
@@ -539,10 +539,11 @@ When a `confirmed` booking is cancelled:
 #### UI Entry Point
 
 - `/buddy/tours/[id]` — the tour detail page
+- `/buddy` — each session card of "Tours looking for buddies" books a session with no booking, after the buddy confirms its time and place (§11.1). Everything else below is on the tour detail page only
 - When no booking exists and the tour is bookable: show Join (`参加を希望`) and, before the Maybe and cancellation deadlines, Maybe (`未定`)
 - When `waitlist`: show waitlist status badge and cancel option
 - When `confirmed`: show confirmed status, cancel and set-maybe options
-- Booking history lives on `/buddy/history` (§8.8)
+- Upcoming tours are on `/buddy` (§11.1); past tours on `/buddy/history` (§8.8)
 
 ---
 
@@ -803,36 +804,49 @@ not a buddy channel — §10.3).
 
 ### 11.1 Buddy Home Screen
 
-Route: `/buddy`. An obligations screen: what the buddy has committed to and still owes comes first, tours they could book come last. It fetches `GET /me/bookings` and `GET /tours?from=<today>` and builds the three sections client-side (`apps/web/src/app/[locale]/buddy/buddy.home.ts`).
+Route: `/buddy`, the post-login landing. Built so more buddies book more tours (#265): booking comes first, and what the buddy sees above it depends on their situation. It fetches `GET /me/bookings`, `GET /me/reflections` and `GET /tours?from=<today>` and builds every section client-side (`apps/web/src/app/[locale]/buddy/buddy.home.ts`). Top to bottom:
 
-1. **Your next tour** (`home.nextTour`) is the nearest `published` tour, dated today or later, where the buddy holds a `confirmed` booking. It shows group name, date, the meeting time of each confirmed session and the tour's place names, and links to the tour. A Maybe or Waitlist booking never makes a tour "next"; those tours appear in section 2.
-2. **Needs your action** (`home.actions`), in this order:
-   - Every upcoming `published` tour where the buddy holds a `maybe` booking, whatever its distance from the deadline. It reads "confirm or cancel by {maybeDeadline}". Once the deadline has passed it is marked overdue instead, with the deadline day itself counting as passed, the same rule as the tour detail page (`isPastDeadline`). A tour with no `maybeDeadline` shows no date.
-   - Every `completed` tour where the buddy held a `confirmed` booking, dated within the last 30 days (`REFLECTION_PROMPT_DAYS`), with no reflection on any of its sessions. It links to the tour's reflection page.
-   - Every upcoming `published` tour where the buddy holds a `waitlist` booking.
-3. **Tours looking for buddies** (`tour.title`) is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after today. Nearest first. The first three are shown, and "Show all" expands the rest in place. Each card is one tour-level header plus **one section per session**. The header carries group name, tour date and the tour's place names — `places` is a tour-level array (its sessions' places, each once — §7.5), so it is shown once, not per section. Each section carries the session's `label` when set, its meeting time, the booking badge, the **buddy number** and that session's `participantCount`. A single-session tour renders one section, in the same layout.
+| Section | Shown when | Shows |
+|---|---|---|
+| **Your tour today** (`home.tourDay`) | The buddy's nearest confirmed tour is today | The tour-day panel, below |
+| **Needs your action** (`home.actions`) | Something is owed | See below. Takes no room when nothing is owed, so it never pushes the tours down |
+| **Looking ahead** (`home.record`) | The buddy has attended a tour (§11.9's rule) | The latest non-blank `couldImprove` from their reflections, with its tour date (hidden when none); the next tour-count milestone and how many tours away it is (5th, 10th, then every 10th — the same milestones as §11.9); a link to バディ記録 |
+| **Tours looking for buddies** (`tour.title`) | Always | See below |
+| **Your upcoming tours** (`home.upcoming`) | The buddy holds a `confirmed` booking on an upcoming `published` tour | Every such tour, nearest first: group name, date, the meeting time of each confirmed session, place names; each links to the tour. Leaves out today's tour while the tour-day panel shows it |
+| **リンク集 / Links** (`home.links`) | Always | Set apart below a divider, in a muted block. Static links kept by the developers in `buddy/lib/constants.ts` (`BUDDY_LINKS`), opened in a new tab: the Peace Dialogue manual as PDF and as a Google Doc. Not edited by PLAB members |
 
-**On the day of a tour** section 1 becomes **Your tour today** (`home.tourDay`). It applies when the next confirmed tour (section 1's rule) is dated today, so a Maybe-only booking today never triggers it. The page then also fetches `GET /tours/:id` for that tour, and the panel shows, for each session the buddy is confirmed on, the meeting time in large type, the group's participant count and how many other buddies are confirmed (`seatCounts.confirmed` less the buddy). Below that: the tour's place names, group name and type, the staff in charge by name, the tour's `description` as the brief, and a link to the tour. Other buddies are a count, not names or tiers, and the staff in charge carries no contact details. Sections 2 and 3 stay below the panel. Until the detail loads, or if it fails, the usual next-tour card is shown. On every other day the page is unchanged.
+A buddy who has never toured therefore sees the tours to book first, and no empty record. A Maybe or Waitlist booking never counts as an upcoming tour; those tours are action items.
 
-Sections 1 and 2 stay hidden until `GET /me/bookings` has loaded, and section 3 shows no empty-state line until `GET /tours` has. Each section has its own empty-state line. A failed request shows a load error in place of its sections (`home.bookingsLoadError`, `tour.loadError`), so a failure never reads as "nothing here".
+**Needs your action**, in this order:
+- Every upcoming `published` tour where the buddy holds a `maybe` booking, whatever its distance from the deadline. It reads "confirm or cancel by {maybeDeadline}". Once the deadline has passed it is marked overdue instead, with the deadline day itself counting as passed, the same rule as the tour detail page (`isPastDeadline`). A tour with no `maybeDeadline` shows no date.
+- Every `completed` tour where the buddy held a `confirmed` booking, dated within the last 30 days (`REFLECTION_PROMPT_DAYS`), with no reflection on any of its sessions. It links to the tour's reflection page.
+- Every upcoming `published` tour where the buddy holds a `waitlist` booking.
+
+**Tours looking for buddies** is `GET /tours` filtered through `isBookingAllowed`: `published`, `bookingOpen`, and dated after today. **Tours short of buddies come first, the most short first**; the rest follow nearest first. A session is short by `minBuddies − confirmedCount`, the admin "Short of buddies" rule (§11.7), so both sides show the same number; a session without `minBuddies` is never short. A tour ranks by its session most short of buddies, never a sum across sessions. The first three tours are shown, and "Show all" expands the rest in place. Each card is one tour-level header plus **one section per session**. The header carries group name (linking to the tour), tour date and the tour's place names — `places` is a tour-level array (its sessions' places, each once — §7.5), so it is shown once, not per section. Each section carries the session's `label` when set, its meeting time, the booking badge, **"N more buddies needed"** when the session is short (otherwise the buddy number), and that session's `participantCount`. A single-session tour renders one section, in the same layout.
+
+**Booking from the card:** a session the buddy has no booking on carries a "Book {time}" button. It asks the buddy to confirm the time and place, with a note that a full session puts them on the waitlist, then calls `POST /tours/:id/bookings`, the same request as the tour page. On success the tours and the buddy's bookings are fetched again, so the badge and the upcoming list update. A refusal shows the tour page's message for it. Maybe, re-booking a declined session and every change to a booking stay on the tour page.
+
+**On the day of a tour** the page leads with **Your tour today**. It applies when the nearest upcoming confirmed tour is dated today, so a Maybe-only booking today never triggers it. The page then also fetches `GET /tours/:id` for that tour, and the panel shows, for each session the buddy is confirmed on, the meeting time in large type, the group's participant count and how many other buddies are confirmed (`seatCounts.confirmed` less the buddy). Below that: the tour's place names, group name and type, the staff in charge by name, the tour's `description` as the brief, and a link to the tour. Other buddies are a count, not names or tiers, and the staff in charge carries no contact details. Until the detail loads, or if it fails, today's tour stays in **Your upcoming tours** instead.
+
+The sections built from `GET /me/bookings` stay hidden until it has loaded, and the tour list shows no empty-state line until `GET /tours` has. A failed request shows a load error (`home.bookingsLoadError`, `tour.loadError`), so a failure never reads as "nothing here". A failed `GET /me/reflections` only leaves out **Looking ahead**.
 
 **Today** is the date in Japan (`getTodayJst`) for every date rule on this page, including the `from` sent to `GET /tours`, as it is everywhere else in the app. Tours run in Japan and their dates are Japanese calendar dates.
 
-**Excluded from this screen:** tours-attended counts, hours on tour and tier progress. Buddy numbers are on their own page, バディ記録 (§11.9); tier progress stays out — tier is a policy surface, not a UI one.
+**Excluded from this screen:** totals, hours on tour, questions, moments and tier progress. They stay on バディ記録 (§11.9); tier progress stays out — tier is a policy surface, not a UI one.
 
-**Onboarding redirect:** an approved buddy (`trainee` or `active`) with no `onboardingSeenAt` is sent to `/buddy/profile?onboarding=1`, and the visit is stamped. Neither request above is made for that buddy.
+**Onboarding redirect:** an approved buddy (`trainee` or `active`) with no `onboardingSeenAt` is sent to `/buddy/profile?onboarding=1`, and the visit is stamped. None of the requests above is made for that buddy.
 
 **Non-active buddy:** a trainee sees `tour.traineeMessage` and any other non-active buddy sees `tour.notRegistered`, in place of the whole screen.
 
-**The buddy number** on those cards is `minBuddies`, or `capacity` when `minBuddies` is null, for that one session — never a sum across sessions. `capacity` is the *maximum* number of buddies (admin label 「最大バディ数」); what a buddy weighing a signup needs is the minimum the session asks for. The two cases share one label (`tour.buddyCount` / 「バディ数」) because the value is not always a minimum. Both fields, and `participantCount`, already come back on each `sessions[]` entry of `GET /tours`.
+**The buddy number** on those cards, for a session that is not short, is `minBuddies`, or `capacity` when `minBuddies` is null, for that one session — never a sum across sessions. `capacity` is the *maximum* number of buddies (admin label 「最大バディ数」); what a buddy weighing a signup needs is the minimum the session asks for. The two cases share one label (`tour.buddyCount` / 「バディ数」) because the value is not always a minimum. These fields, `confirmedCount` and `participantCount` come back on each `sessions[]` entry of `GET /tours`.
 
 **The caller's own booking status** is shown beside each session's meeting time as a badge (`bookingStatus.*`): Confirmed, Maybe or Waitlist. It is per session because bookings are — a two-session tour can read `09:00 Confirmed · 13:00 Waitlist`. A session with no booking shows nothing, and so does a `declined` one: the buddy cancelled it and can book it again. `GET /tours` returns this as `sessions[].myBookingStatus`, resolved for every listed session in one query.
 
-**No tour status badge:** the page requests `GET /tours` without `status`, which defaults to `published`, so every card would read "Published". It told the buddy nothing and shared the primary fill with the Confirmed badge. The page title says what the list is instead: "Tours looking for buddies" / 「バディ募集中のツアー」 (`tour.title`). Only bookable tours are listed, so the title holds for every card.
+**No tour status badge:** the page requests `GET /tours` without `status`, which defaults to `published`, so every card would read "Published". It told the buddy nothing and shared the primary fill with the Confirmed badge. The section title says what the list is instead: "Tours looking for buddies" / 「バディ募集中のツアー予約」 (`tour.title`). Only bookable tours are listed, so the title holds for every card.
 
-The full booking list, including past tours, lives on `/buddy/history` (Upcoming / Past sections). History and Profile (`/buddy/profile`) are reached via the buddy nav; the home screen also links to history.
+**Buddy nav:** Home · Record (バディ記録, §11.9) · History (past tours, §8.8) · Profile. On mobile it is a bottom nav bar with an icon per item and nothing else — no menu drawer (`AppShell`, buddy variant only). Language and sign-out are at the bottom of Profile on mobile (`AccountActions`). Desktop keeps the sidebar, with them in its footer.
 
-**Analytics** (tours-attended counts and similar numbers) are on バディ記録 (§11.9), not on this obligations screen. A summary of the buddy's reflections is tracked in #255.
+**Not yet:** a note from PLAB members on Home, e.g. which tours most need buddies and why, is a separate issue. So is telling buddies who have not booked that a tour is short (a new notification kind and cron job).
 
 ### 11.2 Tour Management
 
@@ -1180,11 +1194,12 @@ Mobile first: one column, every figure number first with its label right beside 
 | Section | Shows |
 |---|---|
 | 前回のツアー / Your last tour | The latest attended tour's date, group and the places of the buddy's own sessions; which time the buddy has had this group and been at each place, counting this tour; their できたこと (`didWell`) from its reflection; a button to write the reflection when the tour is `completed` and has none |
-| 次のツアーへのメモ / A note for your next tour | The latest non-blank `couldImprove`, with its tour date, and a link to the next `published` tour with a `confirmed` booking. Hidden when no reflection has a `couldImprove` |
 | バディ記録 / Buddy record | The buddy's own milestones, newest first: first tour, the 5th, 10th and every 10th tour after it, the first tour at each place (except the first tour's places), and the second tour with a group. Five shown; "Show all" expands in place |
 | 答えられなかった質問 / Questions you couldn't answer | Every non-blank `openQuestions`, newest tour first, each a row linking to its reflection. Five shown, then "Show all" |
 | 心に残った場面 / Moments you remember | Every moment of the buddy's reflections, newest tour first, with its spot or note, each linking to its reflection. Hidden when there are none. Five shown, then "Show all" |
 | これまで / So far | Tours, groups, ツアー時間 / hours on tour (`endTime − startTime` of the confirmed sessions, with a line naming sessions left out for having no times). Then two lists, number first, largest first: tours per place (each tour once under each place of the buddy's own confirmed sessions, `sessions[].place`) and tours per group name |
+
+The note carried to the next tour (the latest non-blank `couldImprove`) is not on this page: it is on Home, with the next milestone (§11.1, #265).
 
 A buddy with no attended tour sees one line saying the record starts after their first tour. A failed request shows a load error.
 

@@ -653,6 +653,7 @@ List tours visible to the caller. Trainee buddies are excluded server-side.
           "participantCount": 0,
           "belowMinimum": false,
           "place": { "id": "uuid", "nameJa": "string", "nameEn": "string" },
+          "confirmedCount": 0,
           "myBookingStatus": "confirmed | maybe | waitlist | declined | null"
         }
       ],
@@ -666,6 +667,8 @@ List tours visible to the caller. Trainee buddies are excluded server-side.
 `sessions[].place` is the one place that session goes to. The tour-level `places` is derived from it — each session's place once, in session order — so a two-session tour shows one or two places.
 
 `sessions[].myBookingStatus` is the caller's own booking on that session — `null` when they have none or have no buddy profile. All listed sessions are resolved in one booking query.
+
+`sessions[].confirmedCount` is the session's `confirmed` bookings, counted as the admin "short of buddies" list counts them (PRD §11.7). `/buddy` shows `minBuddies − confirmedCount` as "N more buddies needed". `GET /tours/:id` leaves it out; its `seatCounts.confirmed` is the same number.
 
 ---
 

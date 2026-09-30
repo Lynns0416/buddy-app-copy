@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { MyTourBookingEntry } from '@peace-buddy/types'
 import { getTodayJst } from '@peace-buddy/types'
-import { filterPast, findPastAttended, findUpcoming, groupByYear, summarize } from './buddy.history'
+import { filterPast, findPastAttended, groupByYear, summarize } from './buddy.history'
 import { formatDate } from '@/lib/format-date'
 import { placeNames } from '@/lib/place-names'
 
@@ -54,7 +54,6 @@ export default function BuddyHistoryPage() {
   if (loading || (!bookings)) return null
 
   const today = getTodayJst()
-  const upcoming = findUpcoming(bookings, today)
   const past = findPastAttended(bookings, today)
   const summary = summarize(past)
   const unreflectedCount = filterPast(past, { unreflectedOnly: true, groupName: '' }).length
@@ -74,21 +73,8 @@ export default function BuddyHistoryPage() {
         <p className="text-sm text-muted-foreground">{t('summary', summary)}</p>
       )}
 
-      <section className="mb-8 mt-6">
-        <h2 className="mb-3 text-base font-semibold">{t('upcoming')}</h2>
-        {upcoming.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('noUpcoming')}</p>
-        ) : (
-          <div className="space-y-2">
-            {upcoming.map((b) => (
-              <BookingRow key={b.tourId} entry={b} viewLabel={t('viewTour')} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-base font-semibold">{t('past')}</h2>
+      {/* Past tours only: upcoming ones are on Home (#265). */}
+      <section className="mt-6">
         {past.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('noPast')}</p>
         ) : (
