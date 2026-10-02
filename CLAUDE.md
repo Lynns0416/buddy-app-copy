@@ -28,6 +28,7 @@ Source of truth for completed work is `git log`.
   commits (data model / API / UI), not 8. A follow-up fix to code written earlier
   in the same branch belongs *in* the unit that caused it, not appended as its
   own commit. Split only genuinely unrelated work. No co-author signature.
+- **Name filters**: a filter on a buddy, group or place name is a `SuggestInput` (`apps/web/src/components/suggest-input.tsx`): the same dropdown as `GroupCombobox` on the tour form, listing the names the page holds and still taking free text. Never a bare search `Input` or a native `<datalist>`.
 - **Web routing**: always use `routes.*` from `apps/web/src/lib/routes.ts`, never raw strings.
 - **Admin tables**: all columns must be client-side sortable. Use the `SortIcon` component from `apps/web/src/components/sort-icon.tsx` with `SortField`/`SortDir`/`handleSort`/`sorted` pattern (see `admin/groups/page.tsx` for reference).
 - **Diagrams**: all docs diagrams are mermaid fenced blocks (` ```mermaid `) — GitHub renders them natively. Never add ASCII art for entities, flows, or state machines. Directory trees stay plain ASCII (mermaid has no tree primitive). Pick the right type: `erDiagram` for schema, `stateDiagram-v2` for status lifecycles, `sequenceDiagram` for request/auth flows, `flowchart` for algorithms and infrastructure.

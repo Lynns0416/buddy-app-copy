@@ -67,10 +67,9 @@ type HasEvalFields = {
   emotionNote: string | null
   confidence: number | null
   confidenceNote: string | null
-  absentWithoutReport?: boolean
 }
 
-export function fromResponse(data: HasEvalFields): { scores: ScoreState; notes: NoteState; absentWithoutReport: boolean } {
+export function fromResponse(data: HasEvalFields): { scores: ScoreState; notes: NoteState } {
   return {
     scores: {
       overallRating: data.overallRating,
@@ -97,12 +96,11 @@ export function fromResponse(data: HasEvalFields): { scores: ScoreState; notes: 
       emotionNote: data.emotionNote ?? '',
       confidenceNote: data.confidenceNote ?? '',
     },
-    absentWithoutReport: data.absentWithoutReport ?? false,
   }
 }
 
 // Sends all fields: null scores clear existing values, empty notes send null to clear.
-export function buildPayload(scores: ScoreState, notes: NoteState, absentWithoutReport = false): UpdateAdminEvaluation {
+export function buildPayload(scores: ScoreState, notes: NoteState): UpdateAdminEvaluation {
   return {
     overallRating: scores.overallRating,
     overallRatingNote: notes.overallRatingNote || null,
@@ -125,7 +123,6 @@ export function buildPayload(scores: ScoreState, notes: NoteState, absentWithout
     emotionNote: notes.emotionNote || null,
     confidence: scores.confidence,
     confidenceNote: notes.confidenceNote || null,
-    absentWithoutReport,
   }
 }
 

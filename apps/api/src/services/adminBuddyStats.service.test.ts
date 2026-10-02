@@ -8,6 +8,7 @@ interface MockDb {
   booking: { findMany: MockFn }
   buddyCancellationDeadlineOverride: { findMany: MockFn }
   adminEvaluation: { findMany: MockFn }
+  attendance: { findMany: MockFn }
   adminProfileEvaluation: { findMany: MockFn }
   tourReflection: { findMany: MockFn }
   place: { findMany: MockFn }
@@ -19,6 +20,7 @@ vi.mock('../lib/db', () => ({
     booking: { findMany: vi.fn() },
     buddyCancellationDeadlineOverride: { findMany: vi.fn() },
     adminEvaluation: { findMany: vi.fn() },
+    attendance: { findMany: vi.fn() },
     adminProfileEvaluation: { findMany: vi.fn() },
     tourReflection: { findMany: vi.fn() },
     place: { findMany: vi.fn() },
@@ -40,6 +42,7 @@ const NOW = new Date('2026-06-20T03:00:00Z')
 
 type Booking = BuddyStatsInput['bookings'][number]
 type Evaluation = BuddyStatsInput['evaluations'][number]
+type Attendance = BuddyStatsInput['attendances'][number]
 
 function time(hhmm: string): Date {
   return new Date(`1970-01-01T${hhmm}:00.000Z`)
@@ -66,10 +69,14 @@ function booking(overrides: Partial<Omit<Booking, 'session' | 'tour'>> & {
   }
 }
 
-const noScores = Object.fromEntries(EVALUATION_SCORE_FIELDS.map((f) => [f, null])) as Omit<Evaluation, 'buddyId' | 'tourId' | 'absentWithoutReport'>
+const noScores = Object.fromEntries(EVALUATION_SCORE_FIELDS.map((f) => [f, null])) as Omit<Evaluation, 'buddyId' | 'tourId'>
 
 function evaluation(overrides: Partial<Evaluation> = {}): Evaluation {
-  return { buddyId: 'b1', tourId: 't1', absentWithoutReport: false, ...noScores, ...overrides }
+  return { buddyId: 'b1', tourId: 't1', ...noScores, ...overrides }
+}
+
+function attendance(overrides: Partial<Attendance> = {}): Attendance {
+  return { buddyId: 'b1', tourId: 't1', absent: false, absenceReported: null, lateExcused: null, ...overrides }
 }
 
 function input(overrides: Partial<BuddyStatsInput> = {}): BuddyStatsInput {
@@ -78,6 +85,7 @@ function input(overrides: Partial<BuddyStatsInput> = {}): BuddyStatsInput {
     bookings: [],
     deadlineOverrides: new Map(),
     evaluations: [],
+    attendances: [],
     profileRatings: [],
     reflectionMoments: [],
     ...overrides,
@@ -131,12 +139,37 @@ describe('computeBuddyStats', () => {
   it('voids every session of a tour the buddy was recorded absent from', () => {
     const stats = computeBuddyStats(input({
       bookings: [booking({ tourId: 't1' }), booking({ tourId: 't1' }), booking({ tourId: 't2' })],
-      evaluations: [evaluation({ tourId: 't1', absentWithoutReport: true })],
+      attendances: [attendance({ tourId: 't1', absent: true, absenceReported: false })],
     }), NOW)
 
     expect(stats.sessionsAttended).toBe(1)
     expect(stats.noShows).toBe(1)
     expect(stats.attendanceRate).toBe(0.5)
+  })
+
+  it('counts a reported absence as missed but not as a no-show', () => {
+    const stats = computeBuddyStats(input({
+      bookings: [booking({ tourId: 't1' }), booking({ tourId: 't2' })],
+      attendances: [attendance({ tourId: 't1', absent: true, absenceReported: true })],
+    }), NOW)
+
+    expect(stats.noShows).toBe(0)
+    expect(stats.toursMissed).toBe(1)
+    expect(stats.attendanceRate).toBe(0.5)
+  })
+
+  it('counts only unexcused late arrivals, and never an early leave', () => {
+    const stats = computeBuddyStats(input({
+      bookings: [booking({ tourId: 't1' }), booking({ tourId: 't2' }), booking({ tourId: 't3' })],
+      attendances: [
+        attendance({ tourId: 't1', lateExcused: false }),
+        attendance({ tourId: 't2', lateExcused: true }),
+        attendance({ tourId: 't3' }),
+      ],
+    }), NOW)
+
+    expect(stats.lateUnexcused).toBe(1)
+    expect(stats.toursAttended).toBe(3)
   })
 
   it('takes first and last tour dates from attended sessions and counts days since in JST', () => {
@@ -332,6 +365,7 @@ describe('listBuddyStats', () => {
     mdb.booking.findMany.mockResolvedValue([booking({ buddyId: 'b1' })])
     mdb.buddyCancellationDeadlineOverride.findMany.mockResolvedValue([])
     mdb.adminEvaluation.findMany.mockResolvedValue([])
+    mdb.attendance.findMany.mockResolvedValue([])
     mdb.adminProfileEvaluation.findMany.mockResolvedValue([])
     mdb.tourReflection.findMany.mockResolvedValue([{ buddyId: 'b2', _count: { moments: 2 } }])
     mdb.place.findMany.mockResolvedValue([{ id: 'p1', nameJa: 'ホール', nameEn: 'Hall' }])
@@ -369,6 +403,7 @@ describe('listBuddyStats', () => {
     expect(mdb.booking.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { tour } }))
     expect(mdb.buddyCancellationDeadlineOverride.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { tour } }))
     expect(mdb.adminEvaluation.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { tour } }))
+    expect(mdb.attendance.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { tour } }))
     expect(mdb.tourReflection.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { session: { tour } } }))
   })
 
@@ -380,12 +415,13 @@ describe('listBuddyStats', () => {
     expect(whereOf(mdb.tourReflection.findMany)).toMatchObject({ session: { placeId: 'p1' } })
   })
 
-  it('under a place scope, drops evaluations of tours the buddy held no session at there', async () => {
+  it('under a place scope, drops evaluations and absences of tours the buddy held no session at there', async () => {
     mdb.booking.findMany.mockResolvedValue([booking({ buddyId: 'b1', tourId: 't1' })])
     mdb.adminEvaluation.findMany.mockResolvedValue([
       evaluation({ buddyId: 'b1', tourId: 't1', overallRating: 4 }),
-      evaluation({ buddyId: 'b1', tourId: 't2', absentWithoutReport: true }),
+      evaluation({ buddyId: 'b1', tourId: 't2', overallRating: 2 }),
     ])
+    mdb.attendance.findMany.mockResolvedValue([attendance({ buddyId: 'b1', tourId: 't2', absent: true, absenceReported: false })])
 
     const [aya] = (await listBuddyStats({ placeId: 'p1' }, NOW)).buddies
 
@@ -410,6 +446,7 @@ describe('getBuddyStats', () => {
     mdb.booking.findMany.mockResolvedValue([])
     mdb.buddyCancellationDeadlineOverride.findMany.mockResolvedValue([])
     mdb.adminEvaluation.findMany.mockResolvedValue([])
+    mdb.attendance.findMany.mockResolvedValue([])
     mdb.adminProfileEvaluation.findMany.mockResolvedValue([])
     mdb.tourReflection.findMany.mockResolvedValue([])
   })

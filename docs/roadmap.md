@@ -49,6 +49,7 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 
 - [x] Slack delivery shipped for all six admin events — `lib/slack.ts` sender, `services/slackTemplates/`, `enqueueSlackForAdmins`, and the dispatcher case. One shared channel via `SLACK_WEBHOOK_URL`; still needs the webhook created (see "Before launch").
 - [x] Slack and email messages name the acting buddy and the tour, not just the event — shared interpolation in `lib/templateRender.ts`, payloads widened at every enqueue site, typed per event in `packages/types`. `docs/decisions.md` 2026-09-13.
+- [x] `attendance_flagged` — a buddy flags their attendance record for a day; every PLAB member in-app + Slack, always immediate, no email. #262.
 - [ ] Per-admin Slack targeting / `@mentions` — deferred. Requires per-user Slack IDs and a bot token instead of an incoming webhook. `slackEnabled` is informational only until then.
 
 ---
@@ -60,6 +61,8 @@ All four jobs share the same `X-Scheduler-Secret` middleware as the existing `/j
 - [x] **Reflection stats** — `/admin/stats/reflections`: every buddy's reflections in one sortable, searchable list, scoped by period / group type / place / tour, with figures (reflections, reflection rate, moments) and charts (moments by spot and by place, reflections per month) that narrow the list on click. The tour detail page links to it for its tour. PRD §11.4, #252.
 - [ ] **LLM summary of reflection themes** — summarise the free text on the reflection stats page. Privacy of buddies' text, provider and a cost cap to settle first. #260.
 - [ ] **Booking history for stats** — Maybe→Confirmed conversion, waitlist promotions, tier promotion dates and booking lead time need an event or history table; a `Booking` keeps only its current status. Out of #253.
+- [x] **Attendance record and working hours** — per buddy per day: the day's finish time plus recorded exceptions (late, early leave, absent, unpaid break) on the tour page once completed; a month page with lock and a finance CSV; buddies see their own days and flag a mistake (`attendance_flagged`, in-app + Slack). Absence moved off the evaluation. PRD §11.10, #262.
+- [ ] **QR check-in** — record arrival by scanning a code on the day, feeding the attendance record. Out of #262.
 - [ ] **Organisation-wide numbers over time** — sessions, tours and active buddies per month, session fill rates, share of tours below minimum. Needs a per-month query. Out of #253; tracked in #250.
 
 ---

@@ -12,6 +12,83 @@ duplicate that state here.
 
 ---
 
+## 2026-10-01 — Attendance: the unpaid break belongs to the tour
+
+**Decision:** a tour has at most one unpaid break (`AttendanceBreak`), set once
+for everyone on it from the tour page, under the finish time. With start and
+end, each buddy loses only the part inside their own start → end; with
+minutes alone, every buddy present loses them. Current state: PRD §11.10,
+data-model.md "AttendanceBreak".
+
+**Why:** the group breaks together. A break per buddy meant typing the same
+break once per row, and rows could disagree.
+
+**Rejected — a break per buddy (`Attendance.breakStart/breakEnd/breakMinutes`):**
+the first version on this branch. Dropped by the migration
+`attendance_break_per_tour`; there was no production data.
+
+**Rejected — taking the whole break from everyone:** a buddy who left before
+the break, or arrived after it, did not take it.
+
+**Also settled with it:** the finance CSV's absent column is 「欠席?」, holding
+「欠席」 for an absent day and nothing otherwise — a yes/no pair read wrongly
+for a day worked. The "late excused" column is dropped from the CSV; it stays
+on the page and in the buddy stats. In Japanese, an avoidable cancellation is
+「通常キャンセル」, not 「不可」.
+
+---
+
+## 2026-10-01 — Attendance record: a default day plus recorded exceptions
+
+**Decision:** working hours are recorded per buddy per day as defaults plus
+exceptions (#262). Current state: PRD §11.10, data-model.md "Attendance
+tables".
+
+- **Start** is the meeting time of the buddy's first confirmed session.
+- **End** is the day's finish time: one per date (`AttendanceDay`), recorded
+  by a PLAB member from any tour page of that date. Reflection happens once,
+  at the end of the day, and its length varies.
+- **Exceptions** are actual times, stored per buddy per tour only when they
+  differ (`Attendance`). Empty means "follows the default".
+- **Hours per day** = first arrival → last leave − unpaid breaks, over the
+  tours the buddy was not absent from. The gap between two sessions is paid
+  unless a break is recorded.
+- **Absent** is set per tour, reported or not, and is always 0 hours. It
+  replaces `AdminEvaluation.absentWithoutReport`.
+- **Late**: a reason (transport delay / other + note) and excused yes/no.
+  Unexcused late arrivals are counted in the buddy stats. **Early leave** is
+  recorded and never counted against the buddy.
+- Every change is logged (`AttendanceChange`). A month can be locked, and
+  unlocking is logged too. Buddies see their own days and can flag one, which
+  notifies PLAB members. Finance gets a monthly CSV, one row per buddy per day.
+- Any PLAB member can record. Covered: anyone with a confirmed booking,
+  including `plab_member`. Training is arranged outside the system, so it has
+  no record here.
+
+**Rejected — `endTime` as the standard end:** it is almost never when the day
+ends. Reflection follows the last session and runs as long as it runs.
+
+**Rejected — a finish time per tour:** reflection is once per day, so two
+tours on a date would need the same time typed twice and could disagree.
+
+**Rejected — a finish time with no individual overrides, or overrides that a
+later finish time overwrites:** the order of entry would decide the result. An
+override is never touched by a change to the finish time.
+
+**Rejected — a late / early flag without times:** pay needs the minutes.
+
+**Rejected — unpaid time as minutes only:** PLAB members usually know a
+break's start and end. The editor takes either, and the service derives the
+minutes.
+
+**Rejected — absence on the evaluation (`absentWithoutReport`):** absence is a
+fact about pay, not a judgement, and an evaluation is per admin, so two
+admins could disagree. A reported absence is also 0 hours; the old flag only
+covered the unreported one.
+
+**Rejected — QR check-in now:** a manual record first; QR check-in is a
+later issue. Salary calculation is out of scope.
+
 ## 2026-09-30 — Staging is seeded, and its real users become buddies
 
 **Decision:** `scripts/azure-seed.sh scripts/deploy.stg.env` runs

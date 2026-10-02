@@ -33,7 +33,6 @@ export function BuddyPerTourEvaluationForm({
   const [tourId, setTourId] = useState('')
   const [scores, setScores] = useState<ScoreState>(emptyScores)
   const [notes, setNotes] = useState<NoteState>(emptyNotes)
-  const [absentWithoutReport, setAbsentWithoutReport] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,7 +50,7 @@ export function BuddyPerTourEvaluationForm({
     setSaving(true)
     setError(null)
 
-    const result = await createAdminEvaluation({ buddyId, tourId, ...buildPayload(scores, notes, absentWithoutReport) })
+    const result = await createAdminEvaluation({ buddyId, tourId, ...buildPayload(scores, notes) })
 
     setSaving(false)
     if (result.ok) {
@@ -108,17 +107,6 @@ export function BuddyPerTourEvaluationForm({
           className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
         />
       </div>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={absentWithoutReport}
-          disabled={saving}
-          onChange={(e) => setAbsentWithoutReport(e.target.checked)}
-          className="h-4 w-4 rounded border"
-        />
-        {t('fields.absentWithoutReport')}
-      </label>
 
       <div className="flex gap-2">
         <Button type="submit" disabled={saving}>{t('actions.save')}</Button>

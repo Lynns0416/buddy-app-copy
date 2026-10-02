@@ -590,6 +590,17 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
     ).map((r) => r.session.tourId),
   )
 
+  // The history page leaves out a tour the attendance record marks the buddy
+  // absent from (PRD §8.8).
+  const absentTourIds = new Set(
+    (
+      await db.attendance.findMany({
+        where: { buddy: { userId }, absent: true, tourId: { in: rows.map((r) => r.tourId) } },
+        select: { tourId: true },
+      })
+    ).map((a) => a.tourId),
+  )
+
   // Group by tourId, preserving order from first booking of each tour
   const tourMap = new Map<string, MyTourBookingEntry>()
   for (const r of rows) {
@@ -617,6 +628,7 @@ export async function listMyBookings(userId: string): Promise<MyTourBookingEntry
         status: r.session.tour.status,
         maybeDeadline: r.session.tour.maybeDeadline ? r.session.tour.maybeDeadline.toISOString() : null,
         reflectionSubmitted: reflectedTourIds.has(r.tourId),
+        absent: absentTourIds.has(r.tourId),
         group: { name: r.session.tour.group.name, type: r.session.tour.group.type },
         bookings: [sessionEntry],
       })

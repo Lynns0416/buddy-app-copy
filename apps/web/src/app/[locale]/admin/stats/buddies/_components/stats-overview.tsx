@@ -131,6 +131,12 @@ export function BuddyStatsOverviewPanel({ overview, places, tr, onFocus }: Props
     { id: 'attendanceRate', label: col('attendanceRate'), value: percent(overview.attendanceRate), focus: { sortField: 'attendanceRate' } },
     { id: 'noShows', label: col('noShows'), value: String(overview.noShows), focus: { match: any((r) => r.stats.noShows), sortField: 'noShows' } },
     {
+      id: 'lateUnexcused',
+      label: col('lateUnexcused'),
+      value: String(overview.lateUnexcused),
+      focus: { match: any((r) => r.stats.lateUnexcused), sortField: 'lateUnexcused' },
+    },
+    {
       id: 'lateCancellations',
       label: col('lateCancellations'),
       value: String(overview.lateCancellations),

@@ -151,7 +151,6 @@ const mockEval: AdminEvaluationResponse = {
   emotionNote: null,
   confidence: null,
   confidenceNote: null,
-  absentWithoutReport: false,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 }

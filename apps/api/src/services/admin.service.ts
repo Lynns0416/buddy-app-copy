@@ -106,7 +106,7 @@ const adminBuddyDetailSelect = {
 export async function getBuddyDetail(id: string): Promise<AdminBuddyDetailResponse | null> {
   const [raw, absentWithoutReportCount, stats] = await Promise.all([
     db.buddyProfile.findUnique({ where: { id }, select: adminBuddyDetailSelect }),
-    db.adminEvaluation.count({ where: { buddyId: id, absentWithoutReport: true } }),
+    db.attendance.count({ where: { buddyId: id, absent: true, absenceReported: false } }),
     getBuddyStats(id),
   ])
   if (!raw || !stats) return null

@@ -16,6 +16,7 @@ function entry(
     status: 'completed',
     maybeDeadline: null,
     reflectionSubmitted: true,
+    absent: false,
     group: { name: `Group ${tourId}`, type: 'school' },
     bookings: [{
       bookingId: `b-${tourId}`,
@@ -36,6 +37,10 @@ function entry(
 const ids = (entries: MyTourBookingEntry[]) => entries.map((e) => e.tourId)
 
 describe('findPastAttended', () => {
+  it('leaves out a tour the attendance record marks the buddy absent from', () => {
+    expect(ids(findPastAttended([entry('absent', '2026-09-10', { absent: true }), entry('present', '2026-09-11')], TODAY))).toEqual(['present'])
+  })
+
   it('excludes tours from today on', () => {
     expect(ids(findPastAttended([entry('today', TODAY), entry('past', '2026-09-16')], TODAY))).toEqual(['past'])
   })

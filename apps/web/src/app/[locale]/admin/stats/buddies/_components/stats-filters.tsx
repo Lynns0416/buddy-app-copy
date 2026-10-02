@@ -9,7 +9,7 @@ import {
   type PlaceSummary,
 } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SuggestInput } from '@/components/suggest-input'
 import { getBuddyStatusLabel, getBuddyTierLabel } from '@/lib/status-display'
 import { defaultBuddyStatsFilters, type BuddyStatsFilters, type BuddyStatsScope } from '../admin.buddy-stats'
 import { StatsScopeFields } from '../../_components/scope-fields'
@@ -20,6 +20,7 @@ type Props = {
   filters: BuddyStatsFilters
   onFiltersChange: (filters: BuddyStatsFilters) => void
   places: PlaceSummary[]
+  buddyNames: string[]
   resultCount: number
   totalCount: number
 }
@@ -34,6 +35,7 @@ export function BuddyStatsFilterBar({
   filters,
   onFiltersChange,
   places,
+  buddyNames,
   resultCount,
   totalCount,
 }: Props) {
@@ -45,16 +47,13 @@ export function BuddyStatsFilterBar({
     <div className="mb-4 flex flex-col gap-4 rounded-lg border bg-card p-4">
       <StatsScopeFields scope={scope} onScopeChange={onScopeChange} hint={t('scope.hint')} places={places} />
 
-      <Input
+      <SuggestInput
         id="statsSearch"
-        type="search"
-        autoComplete="off"
+        suggestions={buddyNames}
         aria-label={t('filters.searchLabel')}
         placeholder={t('filters.searchPlaceholder')}
         value={filters.search}
-        onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
-        // Enter only ever confirms an IME candidate here; it must never submit or reload.
-        onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+        onChange={(search) => onFiltersChange({ ...filters, search })}
       />
 
       <div className="flex flex-wrap items-start gap-x-6 gap-y-3">

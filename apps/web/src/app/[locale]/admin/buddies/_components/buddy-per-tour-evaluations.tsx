@@ -131,9 +131,6 @@ export function BuddyPerTourEvaluations({ buddyId, bookings }: BuddyPerTourEvalu
                   <p className="text-sm font-medium">{tourLabel(bookings, ev.tourId)}</p>
                   <p className="text-xs text-muted-foreground">
                     {ev.createdByName} · {formatDate(ev.updatedAt)}
-                    {ev.absentWithoutReport && (
-                      <span className="ml-2 font-medium text-destructive">· {t('fields.absentWithoutReport')}</span>
-                    )}
                   </p>
                 </div>
                 <Link

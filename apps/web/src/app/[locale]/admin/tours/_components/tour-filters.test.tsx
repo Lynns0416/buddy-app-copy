@@ -15,6 +15,7 @@ function renderBar(filters: Partial<TourFilters> = {}, onSubmit = vi.fn()) {
       <TourFilterBar
         filters={{ ...emptyTourFilters, ...filters }}
         onChange={onChange}
+        suggestions={['Sakura School']}
         resultCount={2}
         totalCount={5}
       />
@@ -24,7 +25,7 @@ function renderBar(filters: Partial<TourFilters> = {}, onSubmit = vi.fn()) {
   return { onChange, onSubmit }
 }
 
-const searchBox = () => screen.getByRole('searchbox', { name: 'adminTours.search.label' })
+const searchBox = () => screen.getByRole('combobox', { name: 'adminTours.search.label' })
 
 describe('TourFilterBar', () => {
   beforeEach(() => vi.clearAllMocks())

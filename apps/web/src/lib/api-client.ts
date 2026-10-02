@@ -57,6 +57,11 @@ import type {
   UpdateNotificationPreferences,
   BuddyNotificationPreferencesResponse,
   UpdateBuddyNotificationPreferences,
+  TourAttendanceResponse,
+  UpdateAttendance,
+  SetAttendanceBreak,
+  AttendanceMonthResponse,
+  MyAttendanceResponse,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -385,5 +390,52 @@ export const apiClient = {
     apiRequest<BuddyNotificationPreferencesResponse>(apiPaths.meNotificationPreferences, {
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+
+  // Admin — Attendance
+  getTourAttendance: (tourId: string) =>
+    apiRequest<TourAttendanceResponse>(apiPaths.adminTourAttendance(tourId)),
+
+  updateAttendance: (tourId: string, buddyId: string, data: UpdateAttendance) =>
+    apiRequest<TourAttendanceResponse>(apiPaths.adminTourBuddyAttendance(tourId, buddyId), {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  setAttendanceBreak: (tourId: string, data: SetAttendanceBreak) =>
+    apiRequest<TourAttendanceResponse>(apiPaths.adminTourAttendanceBreak(tourId), {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  setFinishTime: (date: string, finishTime: string) =>
+    apiRequest<{ date: string; finishTime: string }>(apiPaths.adminAttendanceDay(date), {
+      method: 'PUT',
+      body: JSON.stringify({ finishTime }),
+    }),
+
+  getAttendanceMonth: (month: string) =>
+    apiRequest<AttendanceMonthResponse>(`${apiPaths.adminAttendance}?month=${encodeURIComponent(month)}`),
+
+  lockAttendanceMonth: (month: string) =>
+    apiRequest<{ month: string }>(apiPaths.adminAttendanceLocks, {
+      method: 'POST',
+      body: JSON.stringify({ month }),
+    }),
+
+  unlockAttendanceMonth: (month: string) =>
+    apiRequest<void>(apiPaths.adminAttendanceLock(month), { method: 'DELETE' }),
+
+  resolveAttendanceFlag: (id: string) =>
+    apiRequest<void>(apiPaths.adminAttendanceFlagResolve(id), { method: 'POST' }),
+
+  // Buddy — Attendance
+  getMyAttendance: (month: string) =>
+    apiRequest<MyAttendanceResponse>(`${apiPaths.meAttendance}?month=${encodeURIComponent(month)}`),
+
+  flagMyAttendance: (date: string, note: string) =>
+    apiRequest<{ id: string }>(apiPaths.meAttendanceFlags, {
+      method: 'POST',
+      body: JSON.stringify({ date, note }),
     }),
 }

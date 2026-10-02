@@ -13,6 +13,7 @@ interface MockDb {
   tourAdminAssignment: { findMany: MockFn }
   notificationJob: { create: MockFn; createMany: MockFn }
   tourReflection: { findMany: MockFn }
+  attendance: { findMany: MockFn }
   user: { findUnique: MockFn }
   $transaction: MockFn
 }
@@ -29,6 +30,7 @@ vi.mock('../lib/db', () => {
     tourAdminAssignment: { findMany: vi.fn().mockResolvedValue([]) },
     notificationJob: { create: vi.fn(), createMany: vi.fn() },
     tourReflection: { findMany: vi.fn().mockResolvedValue([]) },
+    attendance: { findMany: vi.fn().mockResolvedValue([]) },
     user: { findUnique: vi.fn() },
     $transaction,
   }
@@ -711,6 +713,24 @@ describe('listMyBookings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mdb.tourReflection.findMany.mockResolvedValue([])
+    mdb.attendance.findMany.mockResolvedValue([])
+  })
+
+  it('marks a tour absent when the attendance record says so', async () => {
+    mdb.booking.findMany.mockResolvedValue([
+      bookingRow({ tourId: 'absent', sessionId: 's-absent' }),
+      bookingRow({ tourId: 'present', sessionId: 's-present' }),
+    ])
+    mdb.attendance.findMany.mockResolvedValue([{ tourId: 'absent' }])
+
+    const entries = await listMyBookings('user-1')
+    expect(entries.map((e) => [e.tourId, e.absent])).toEqual([
+      ['absent', true],
+      ['present', false],
+    ])
+    expect(mdb.attendance.findMany).toHaveBeenCalledWith(
+      oc({ where: { buddy: { userId: 'user-1' }, absent: true, tourId: { in: ['absent', 'present'] } } }),
+    )
   })
 
   it("returns the tour's maybe deadline", async () => {

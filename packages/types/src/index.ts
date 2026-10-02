@@ -163,6 +163,7 @@ export const NotifEventKindSchema = z.enum([
   'cant_go_post_deadline',
   'maybe_resolved',
   'maybe_deadline_missed',
+  'attendance_flagged',
 ])
 export type NotifEventKind = z.infer<typeof NotifEventKindSchema>
 
@@ -227,6 +228,14 @@ export const NotifPayloadSchemas = {
   }),
   maybe_resolved: BookingRefPayloadSchema.extend({ resolution: BookingStatusSchema }),
   maybe_deadline_missed: TourRefPayloadSchema,
+  // `month` is `YYYY-MM`, for the link to the attendance page.
+  attendance_flagged: z.object({
+    flagId: z.string(),
+    buddyId: z.string(),
+    buddyName: z.string(),
+    date: z.string(),
+    month: z.string(),
+  }),
 } as const satisfies Record<NotifEventKind, z.ZodTypeAny>
 
 export type NotifPayloadMap = {
@@ -834,6 +843,8 @@ export type MyTourBookingEntry = {
   maybeDeadline: string | null
   // Whether the caller has written a reflection on any session of this tour.
   reflectionSubmitted: boolean
+  // The attendance record marks the caller absent from this tour.
+  absent: boolean
   group: { name: string; type: GroupType }
   bookings: MySessionBookingEntry[]
 }
@@ -871,15 +882,11 @@ const adminEvalScoreFields = {
 export const CreateAdminEvaluationSchema = z.object({
   buddyId: z.string().uuid(),
   tourId: z.string().uuid(),
-  absentWithoutReport: z.boolean().optional(),
   ...adminEvalScoreFields,
 })
 export type CreateAdminEvaluation = z.infer<typeof CreateAdminEvaluationSchema>
 
-export const UpdateAdminEvaluationSchema = z.object({
-  absentWithoutReport: z.boolean().optional(),
-  ...adminEvalScoreFields,
-})
+export const UpdateAdminEvaluationSchema = z.object(adminEvalScoreFields)
 export type UpdateAdminEvaluation = z.infer<typeof UpdateAdminEvaluationSchema>
 
 // Admin profile evaluation (overall)
@@ -922,7 +929,6 @@ export type AdminEvaluationResponse = AdminEvalScores & {
   tourGroupName: string
   createdBy: string
   createdByName: string
-  absentWithoutReport: boolean
   createdAt: string
   updatedAt: string
 }
@@ -1101,8 +1107,11 @@ export type EvaluationScoreField = (typeof EVALUATION_SCORE_FIELDS)[number]
 export type BuddyStats = {
   sessionsAttended: number
   toursAttended: number
+  // Tours absent from without reporting it.
   noShows: number
-  // Tours missed to a no-show or a late cancellation; the attendance rate's
+  // Tours arrived late to, the lateness not excused.
+  lateUnexcused: number
+  // Tours missed to an absence (reported or not) or a late cancellation; the attendance rate's
   // other half, so the overview can pool it across buddies.
   toursMissed: number
   attendanceRate: number | null
@@ -1205,4 +1214,171 @@ export function getTodayJst(now: Date = new Date()): string {
 // column, for comparing against those values in queries.
 export function jstStartOfDayUtc(now: Date = new Date()): Date {
   return new Date(`${getTodayJst(now)}T00:00:00.000Z`)
+}
+
+// ---- Attendance (#262, PRD §11.10) ----
+//
+// Times are Japanese clock times as `HH:MM`, like a session's meetingTime.
+// Minutes are whole minutes. A null `minutes` means the hours cannot be known
+// yet: the day has no finish time and the buddy has no leave time of their own.
+
+export const LateReasonSchema = z.enum(['transport_delay', 'other'])
+export type LateReason = z.infer<typeof LateReasonSchema>
+
+export const AttendanceChangeKindSchema = z.enum(['finish_time', 'attendance', 'tour_break', 'month_locked', 'month_unlocked'])
+export type AttendanceChangeKind = z.infer<typeof AttendanceChangeKindSchema>
+
+export const AttendanceTimeSchema = z.string().regex(timeRegex)
+export const AttendanceMonthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+export const AttendanceDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
+export const SetFinishTimeSchema = z.object({ finishTime: AttendanceTimeSchema })
+export type SetFinishTime = z.infer<typeof SetFinishTimeSchema>
+
+// A tour's unpaid break, taken by everyone on it together: either its start
+// and end, or minutes.
+export const AttendanceBreakSchema = z.union([
+  z
+    .object({ start: AttendanceTimeSchema, end: AttendanceTimeSchema })
+    .refine((b) => b.end > b.start, { message: 'Break must end after it starts' }),
+  z.object({ minutes: z.number().int().min(1).max(720) }),
+])
+export type AttendanceBreak = z.infer<typeof AttendanceBreakSchema>
+
+// `null` removes the break.
+export const SetAttendanceBreakSchema = z.object({ break: AttendanceBreakSchema.nullable() })
+export type SetAttendanceBreak = z.infer<typeof SetAttendanceBreakSchema>
+
+// The whole exception state of one buddy on one tour. Everything null and
+// `absent: false` is "back to default". Whether an arrival is late depends on
+// the buddy's default start, so the service checks the late fields.
+export const UpdateAttendanceSchema = z
+  .object({
+    absent: z.boolean(),
+    absenceReported: z.boolean().nullable(),
+    arrivalTime: AttendanceTimeSchema.nullable(),
+    lateReason: LateReasonSchema.nullable(),
+    lateNote: z.string().trim().max(500).nullable(),
+    lateExcused: z.boolean().nullable(),
+    leaveTime: AttendanceTimeSchema.nullable(),
+    leaveNote: z.string().trim().max(500).nullable(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.absent) {
+      if (v.absenceReported === null) ctx.addIssue({ code: 'custom', path: ['absenceReported'], message: 'Required when absent' })
+      if (v.arrivalTime !== null || v.leaveTime !== null)
+        ctx.addIssue({ code: 'custom', path: ['absent'], message: 'An absent buddy has no times' })
+    } else if (v.absenceReported !== null) {
+      ctx.addIssue({ code: 'custom', path: ['absenceReported'], message: 'Only when absent' })
+    }
+    if (v.lateReason === LateReasonSchema.enum.other && !v.lateNote)
+      ctx.addIssue({ code: 'custom', path: ['lateNote'], message: 'Required for "other"' })
+  })
+export type UpdateAttendance = z.infer<typeof UpdateAttendanceSchema>
+
+export const LockAttendanceMonthSchema = z.object({ month: AttendanceMonthSchema })
+export type LockAttendanceMonth = z.infer<typeof LockAttendanceMonthSchema>
+
+export const CreateAttendanceFlagSchema = z.object({
+  date: AttendanceDateSchema,
+  note: z.string().trim().min(1).max(1000),
+})
+export type CreateAttendanceFlag = z.infer<typeof CreateAttendanceFlagSchema>
+
+export type AttendanceTourRef = { tourId: string; groupName: string }
+
+// One buddy on one tour, as the tour page shows it.
+export type TourAttendanceRow = {
+  buddyId: string
+  displayName: string
+  realName: string
+  memberType: MemberType
+  defaultArrival: string
+  arrivalTime: string | null
+  // Minutes after the default start; 0 when on time or early.
+  lateMinutes: number
+  lateReason: LateReason | null
+  lateNote: string | null
+  lateExcused: boolean | null
+  leaveTime: string | null
+  leaveNote: string | null
+  // Minutes before the finish time; 0 when not early, null when there is no finish time.
+  earlyMinutes: number | null
+  absent: boolean
+  absenceReported: boolean | null
+  // The part of the tour's break inside this buddy's start → end.
+  breakMinutes: number
+  // This tour alone: start → end − break. 0 when absent.
+  minutes: number | null
+}
+
+export type AttendanceChangeEntry = {
+  id: string
+  kind: AttendanceChangeKind
+  buddyName: string | null
+  // Fields that differ between before and after.
+  fields: string[]
+  changedByName: string
+  createdAt: string
+}
+
+export type TourAttendanceResponse = {
+  tourId: string
+  date: string
+  // Completed and in an unlocked month.
+  editable: boolean
+  locked: boolean
+  finishTime: string | null
+  break: { start: string | null; end: string | null; minutes: number } | null
+  // Buddies on any completed tour of the date whose end is the finish time.
+  followingFinish: number
+  rows: TourAttendanceRow[]
+  changes: AttendanceChangeEntry[]
+}
+
+// One buddy on one day, over every completed tour of that date.
+export type AttendanceDay = {
+  date: string
+  tours: AttendanceTourRef[]
+  start: string | null
+  end: string | null
+  breakMinutes: number
+  minutes: number | null
+  // Absent from every tour of the day.
+  absent: boolean
+  finishMissing: boolean
+}
+
+export type AdminAttendanceDay = AttendanceDay & {
+  buddyId: string
+  displayName: string
+  realName: string
+  memberType: MemberType
+  lateMinutes: number
+  lateExcused: boolean | null
+}
+
+export type AttendanceFlagEntry = {
+  id: string
+  buddyId: string
+  displayName: string
+  date: string
+  note: string
+  createdAt: string
+}
+
+export type AttendanceMonthResponse = {
+  month: string
+  lock: { lockedAt: string; lockedByName: string } | null
+  days: AdminAttendanceDay[]
+  openFlags: AttendanceFlagEntry[]
+}
+
+export type MyAttendanceDay = AttendanceDay & {
+  flag: { id: string; note: string; createdAt: string; resolvedAt: string | null } | null
+}
+
+export type MyAttendanceResponse = {
+  month: string
+  days: MyAttendanceDay[]
 }

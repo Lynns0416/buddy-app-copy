@@ -28,6 +28,9 @@ erDiagram
     User ||--o{ Notification : receives
     User ||--o{ NotificationJob : "recipient of"
     User ||--o{ DigestQueue : "queued for [admin only]"
+
+    BuddyProfile ||--o{ AttendanceFlag : "raises"
+    User ||--o{ AttendanceFlag : "resolvedBy [admin only]"
 ```
 
 `NotificationDispatchLog` has no relations — it is a standalone idempotency log keyed by `eventKey`.
@@ -57,7 +60,21 @@ erDiagram
     AdminProfile ||--o{ Tour : "staffInCharge of"
     AdminProfile ||--o{ TourAdminAssignment : "assigned via"
     Tour ||--o{ TourAdminAssignment : "staffed by"
+
+    BuddyProfile ||--o{ Attendance : "worked"
+    Tour ||--o{ Attendance : "recorded for"
+    User ||--o{ Attendance : "updatedBy [admin only]"
+    Tour ||--o| AttendanceBreak : "breaks for"
+    User ||--o{ AttendanceDay : "updatedBy [admin only]"
+    User ||--o{ AttendanceBreak : "updatedBy [admin only]"
+    User ||--o{ AttendanceChange : "changedBy [admin only]"
+    User ||--o{ AttendanceMonthLock : "lockedBy [admin only]"
 ```
+
+`AttendanceDay` is keyed by date, not by tour: every tour on that date shares
+its finish time. `AttendanceBreak` is keyed by tour: everyone on the tour
+takes its break together. `AttendanceChange` names the buddy and tour it touched by id
+only, with no foreign key — it is a log, and must outlive what it describes.
 
 ## Schema
 
@@ -289,7 +306,6 @@ Per-tour evaluation written by an admin about a specific buddy. Score fields are
 | emotionNote | Text? | No score — text only |
 | confidence | Int? | 1–5 |
 | confidenceNote | Text? | |
-| absentWithoutReport | Boolean | Default false — set by admin when buddy was absent without advance notice |
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
 
@@ -297,11 +313,13 @@ Per-tour evaluation written by an admin about a specific buddy. Score fields are
 
 Scale: 1 = Needs Improvement / 2 = Developing / 3 = Proficient / 4 = Advanced / 5 = Exceptional.
 
-`absentWithoutReport` is a factual record. Admins use the count (surfaced on the buddy detail page as `absenceSummary.absentWithoutReport`) to inform the `reliability` score in `AdminProfileEvaluation`. No auto-computation.
+Absence is not on the evaluation: it moved to `Attendance.absent` (#262), and
+the migration turned every `absentWithoutReport = true` into an absent,
+unreported `Attendance` row.
 
 ### AdminProfileEvaluation
 
-Overall profile-level evaluation of a buddy, not tied to a specific tour. Same score scale as AdminEvaluation. Does not include `absentWithoutReport` (that is per-tour fact, not profile judgement).
+Overall profile-level evaluation of a buddy, not tied to a specific tour. Same score scale as AdminEvaluation.
 
 | Field | Type | Constraints |
 |---|---|---|
@@ -388,6 +406,103 @@ Not in PRD. Stores per-buddy overrides of a tour's cancellation deadline.
 
 **Unique:** `(buddyId, tourId)`
 
+### Attendance tables
+
+The record of when each buddy actually worked (#262, PRD §11.10). Working
+hours per buddy per day are first arrival → last leave − breaks, over the
+tours of that date they were not absent from. `TourSession.endTime` plays no
+part. See `docs/decisions.md` 2026-10-01.
+
+### AttendanceDay
+When the day ended: reflection closes each tour day once, for everyone.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| date | Date | Unique — one finish time per tour date |
+| finishTime | Time | The default leave time of everyone who worked that date |
+| updatedBy | UUID | FK → User (admin) |
+| updatedAt | Timestamp | |
+
+### Attendance
+A buddy's exceptions on one tour. No row, or a null time, means the default.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| buddyId | UUID | FK → BuddyProfile |
+| tourId | UUID | FK → Tour |
+| absent | Boolean | Default false. Absent = 0 hours, reported or not |
+| absenceReported | Boolean? | Set only when absent |
+| arrivalTime | Time? | Null = the meeting time of the buddy's first confirmed session |
+| lateReason | Enum? | `transport_delay` / `other`; only with an arrival after the default |
+| lateNote | Text? | |
+| lateExcused | Boolean? | Only when late. `false` counts in the buddy stats |
+| leaveTime | Time? | Null = the day's `finishTime`. Never overwritten by a change to it |
+| leaveNote | Text? | Early leave is recorded, never counted against the buddy |
+| updatedBy | UUID | FK → User (admin) |
+| createdAt | Timestamp | |
+| updatedAt | Timestamp | |
+
+**Unique:** `(buddyId, tourId)` · **Index:** `tourId`
+
+### AttendanceBreak
+The tour's unpaid break, taken by everyone on it together. No row = no break.
+With start and end, each buddy loses only the part inside their own arrival →
+leave; with minutes alone, every buddy present loses them (up to their span).
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| tourId | UUID | FK → Tour. Unique — one break per tour |
+| breakStart | Time? | With `breakEnd`, or neither |
+| breakEnd | Time? | |
+| breakMinutes | Int | Unpaid minutes; derived from start/end when those are given |
+| updatedBy | UUID | FK → User (admin) |
+| updatedAt | Timestamp | |
+
+### AttendanceChange
+Append-only log of every change to the record.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| kind | Enum | `finish_time` / `attendance` / `tour_break` / `month_locked` / `month_unlocked` |
+| date | Date | The tour date, or the month's first day for a lock |
+| buddyId | UUID? | No FK |
+| tourId | UUID? | No FK |
+| before | JSON? | Row before the change; null when created |
+| after | JSON? | Row after the change; null when removed |
+| changedBy | UUID | FK → User (admin) |
+| createdAt | Timestamp | |
+
+**Index:** `date`
+
+### AttendanceMonthLock
+A closed month. Its record is read-only until unlocked; unlocking deletes the row.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| month | Date | Unique — the month's first day |
+| lockedBy | UUID | FK → User (admin) |
+| lockedAt | Timestamp | |
+
+### AttendanceFlag
+A buddy saying their record for a day looks wrong.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| buddyId | UUID | FK → BuddyProfile |
+| date | Date | The tour date flagged |
+| note | Text | What the buddy says is wrong |
+| createdAt | Timestamp | |
+| resolvedAt | Timestamp? | Null = open |
+| resolvedBy | UUID? | FK → User (admin) |
+
+**Index:** `date`, `buddyId`
+
 ### Notification Tables
 
 ### NotificationPreference
@@ -451,6 +566,9 @@ Pending items for admin daily digest emails.
 | Notification | `(userId, readAt)` | Unread count |
 | DigestQueue | `(adminId, flushedAt)` | Pending digest fetch |
 | AdminProfile | `deletedAt` | Active admin filter |
+| Attendance | `tourId` | A tour's attendance sheet |
+| AttendanceChange | `date` | A day's or month's change log |
+| AttendanceFlag | `date`, `buddyId` | Open flags per month; a buddy's own flags |
 
 ## Soft Delete Policy
 
@@ -462,3 +580,6 @@ Pending items for admin daily digest emails.
 | Tour | Draft → hard delete allowed; Published/Cancelled/Completed → never deleted |
 | Group | No delete in v1 |
 | Evaluations | No delete in v1 |
+| Attendance | "Back to default" deletes the row; the change log keeps it |
+| AttendanceBreak | "None" deletes the row; the change log keeps it |
+| AttendanceChange | Never deleted or updated |

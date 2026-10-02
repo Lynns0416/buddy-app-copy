@@ -25,6 +25,8 @@ vi.mock('@/lib/auth', () => ({
   useAuth: vi.fn(),
 }))
 
+vi.mock('./_components/working-hours', () => ({ WorkingHours: () => null }))
+
 vi.mock('@/hooks/use-my-bookings', () => ({
   useMyBookings: vi.fn(),
 }))
@@ -42,6 +44,7 @@ const makeEntry = (overrides: Partial<MyTourBookingEntry> = {}): MyTourBookingEn
   status: 'published',
   maybeDeadline: null,
   reflectionSubmitted: false,
+  absent: false,
   group: { name: 'Test School', type: 'school' },
   bookings: [{
     bookingId: 'b1',
@@ -175,11 +178,12 @@ describe('BuddyHistoryPage', () => {
         makeEntry({ tourId: 't2', tourDate: '2020-02-01T00:00:00.000Z', group: { name: 'Minato Co.', type: 'company' } }),
       ],
       error: false, reload: vi.fn() })
-    const { container } = render(<BuddyHistoryPage />)
+    render(<BuddyHistoryPage />)
     const input = await screen.findByRole('combobox', { name: 'searchGroup' })
-    const options = container.querySelectorAll(`datalist#${input.getAttribute('list')} option`)
-    expect(Array.from(options, (o) => o.getAttribute('value'))).toEqual(['Minato Co.', 'Sakura School'])
+    fireEvent.click(input)
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Minato Co.', 'Sakura School'])
     fireEvent.change(input, { target: { value: 'minato' } })
+    fireEvent.keyDown(input, { key: 'Escape' })
     expect(screen.queryByText('Sakura School')).not.toBeInTheDocument()
     expect(screen.getByText('Minato Co.')).toBeInTheDocument()
   })

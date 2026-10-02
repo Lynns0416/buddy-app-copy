@@ -17,6 +17,7 @@ import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display
 import { placeName, placeNames } from '@/lib/place-names'
 import { TourBookingsTable } from '../_components/tour-bookings-table'
 import { TourBuddyEvalSection } from '../_components/tour-buddy-eval-section'
+import { TourAttendanceSection } from '../_components/tour-attendance-section'
 import { CompleteTourModal } from '../_components/complete-tour-modal'
 import { TierCapacityForm } from '../_components/tier-capacity-form'
 import { AddSessionForm } from '../_components/add-session-form'
@@ -34,6 +35,7 @@ export default function AdminTourDetailPage() {
   const t = useTranslations('adminTours')
   const tTourStatus = useTranslations('tourStatus')
   const tEval = useTranslations('adminEvaluations')
+  const tAttendance = useTranslations('adminAttendance')
   const [tour, setTour] = useState<AdminTourDetailResponse | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -349,6 +351,8 @@ export default function AdminTourDetailPage() {
 
       {tour.status === TourStatusSchema.enum.completed && (
         <>
+          <h2 className="mt-8 mb-3 text-base font-semibold">{tAttendance('title')}</h2>
+          <TourAttendanceSection tourId={tour.id} />
           <h2 className="mt-8 mb-3 text-base font-semibold">{tEval('sections.perTourEvaluations')}</h2>
           <TourBuddyEvalSection tourId={tour.id} bookings={tour.bookings} />
           <h2 className="mt-8 mb-3 text-base font-semibold">{t('reflections.title')}</h2>

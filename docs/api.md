@@ -206,7 +206,7 @@ Every buddy's numbers for the stats page (PRD §11.4 "Buddy Stats Page", which d
       "memberType": "buddy | plab_member",
       "createdAt": "ISO8601",
       "stats": {
-        "sessionsAttended": 0, "toursAttended": 0, "noShows": 0, "toursMissed": 0, "attendanceRate": "number | null",
+        "sessionsAttended": 0, "toursAttended": 0, "noShows": 0, "lateUnexcused": 0, "toursMissed": 0, "attendanceRate": "number | null",
         "upcomingConfirmed": 0, "openMaybe": 0, "openWaitlist": 0,
         "firstTourDate": "YYYY-MM-DD | null", "lastTourDate": "YYYY-MM-DD | null", "daysSinceLastTour": "number | null",
         "minutesOnTour": 0, "sessionsWithoutTimes": 0,
@@ -1111,6 +1111,7 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
       "status": "draft | published | cancelled | completed",
       "maybeDeadline": "ISO8601 | null",
       "reflectionSubmitted": false,
+      "absent": false,
       "group": { "name": "string", "type": "school | company | community | other" },
       "bookings": [
         {
@@ -1131,7 +1132,7 @@ List the caller's own bookings. **Declined bookings are excluded.** Results are 
 }
 ```
 
-`maybeDeadline` is the tour's. `startTime`, `endTime` and `place` are the session's: `places` lists every place of the tour, while a session's `place` is where that one session goes, so バディ記録 (`/buddy/record`) counts the buddy's tours by the places of the sessions they held. `reflectionSubmitted` is whether the caller has written a reflection on **any** session of that tour — reflections are per session, the obligation is per tour. `/buddy` builds its next-tour and needs-your-action sections from these (PRD §11.1).
+`maybeDeadline` is the tour's. `startTime`, `endTime` and `place` are the session's: `places` lists every place of the tour, while a session's `place` is where that one session goes, so バディ記録 (`/buddy/record`) counts the buddy's tours by the places of the sessions they held. `absent` is whether the attendance record marks the caller absent from the tour; `/buddy/history` leaves such a tour out (PRD §8.8). `reflectionSubmitted` is whether the caller has written a reflection on **any** session of that tour — reflections are per session, the obligation is per tour. `/buddy` builds its next-tour and needs-your-action sections from these (PRD §11.1).
 
 ---
 
@@ -1206,7 +1207,6 @@ Submits a per-tour evaluation. One per `(buddyId, tourId, createdBy)`.
 {
   "buddyId": "uuid",
   "tourId": "uuid",
-  "absentWithoutReport": false,
   "overallRating": 1, "overallRatingNote": "string",
   "reliability": 1, "reliabilityNote": "string",
   "communication": 1, "communicationNote": "string",
@@ -1221,7 +1221,7 @@ Submits a per-tour evaluation. One per `(buddyId, tourId, createdBy)`.
 }
 ```
 
-All score / note / `absentWithoutReport` fields are optional except `buddyId` and `tourId`.
+All score / note fields are optional except `buddyId` and `tourId`. Absence is not here: it is on the attendance record (`PUT /admin/tours/:id/attendance/:buddyId`).
 
 **Response `201`** — `AdminEvaluationResponse` (see below)
 
@@ -1252,7 +1252,6 @@ Lists admin per-tour evaluations. Filter by buddy and/or tour.
       "tourGroupName": "string",
       "createdBy": "uuid",
       "createdByName": "string",
-      "absentWithoutReport": false,
       "overallRating": 1, "overallRatingNote": "string | null",
       "reliability": 1, "reliabilityNote": "string | null",
       "...": "all other score/note pairs",
@@ -1315,7 +1314,7 @@ Upsert the requester's profile evaluation for a buddy.
 
 **Auth:** `admin`
 
-**Request** — `UpsertAdminProfileEvaluationSchema` (same score / note fields as admin per-tour, **no** `absentWithoutReport`, **no** `tourId`)
+**Request** — `UpsertAdminProfileEvaluationSchema` (same score / note fields as admin per-tour, **no** `tourId`)
 
 **Response `200`** — `AdminProfileEvaluationResponse`
 ```json
@@ -1503,6 +1502,203 @@ Fetch a single reflection.
 **Auth:** `admin`
 
 **Response `200`** — `AdminTourReflectionResponse` or `404`
+
+---
+
+## Attendance
+
+The record of when each buddy actually worked (#262, PRD §11.10). Times are
+JST clock times as `HH:MM`; `minutes` are whole minutes, and `null` when the
+hours cannot be known yet (no finish time for the day, and no leave time of
+the buddy's own). Every write is logged in `AttendanceChange`. A write that
+touches a locked month returns `409 conflict`.
+
+### Admin: `GET /admin/tours/:id/attendance`
+The tour's attendance sheet: one row per confirmed buddy.
+
+**Auth:** `admin`
+
+**Response `200`** — `TourAttendanceResponse`
+```json
+{
+  "tourId": "uuid",
+  "date": "YYYY-MM-DD",
+  "editable": true,
+  "locked": false,
+  "finishTime": "HH:MM | null",
+  "break": { "start": "HH:MM | null", "end": "HH:MM | null", "minutes": 45 },
+  "followingFinish": 5,
+  "rows": [
+    {
+      "buddyId": "uuid", "displayName": "string", "realName": "string", "memberType": "buddy | plab_member",
+      "defaultArrival": "HH:MM",
+      "arrivalTime": "HH:MM | null", "lateMinutes": 0,
+      "lateReason": "transport_delay | other | null", "lateNote": "string | null", "lateExcused": "boolean | null",
+      "leaveTime": "HH:MM | null", "leaveNote": "string | null", "earlyMinutes": "number | null",
+      "absent": false, "absenceReported": "boolean | null",
+      "breakMinutes": 0,
+      "minutes": "number | null"
+    }
+  ],
+  "changes": [
+    { "id": "uuid", "kind": "finish_time | attendance | tour_break", "buddyName": "string | null", "fields": ["arrivalTime"], "changedByName": "string", "createdAt": "ISO8601" }
+  ]
+}
+```
+
+`editable` is false until the tour is `completed`, and while its month is
+locked. `followingFinish` counts buddies on every completed tour of the date
+whose end is the finish time. `break` is the tour's unpaid break, `null` for
+none; a row's `breakMinutes` is the part of it inside that buddy's start → end
+(0 when absent). `changes` covers the whole date, newest first, plus this
+tour's break changes.
+
+**Errors:** `404` — tour not found
+
+---
+
+### Admin: `PUT /admin/attendance/days/:date`
+Sets the finish time of a tour date (`YYYY-MM-DD`). It is the default end of
+every buddy on every tour of that date; individual leave times are untouched.
+
+**Auth:** `admin`
+
+**Request** — `SetFinishTimeSchema`: `{ "finishTime": "HH:MM" }`
+
+**Response `200`** — `{ "date": "YYYY-MM-DD", "finishTime": "HH:MM" }`
+
+**Errors:** `400` — invalid date or time, or a time at or before the start of a buddy present that day without a leave time of their own · `404` — no completed tour on that date · `409` — month locked
+
+---
+
+### Admin: `PUT /admin/tours/:id/attendance/:buddyId`
+Replaces one buddy's exceptions on the tour. Sending the default state
+(`absent: false`, everything else `null`) deletes the row — "Back to default".
+
+**Auth:** `admin`
+
+**Request** — `UpdateAttendanceSchema`
+```json
+{
+  "absent": false,
+  "absenceReported": null,
+  "arrivalTime": "HH:MM | null",
+  "lateReason": "transport_delay | other | null",
+  "lateNote": "string | null",
+  "lateExcused": "boolean | null",
+  "leaveTime": "HH:MM | null",
+  "leaveNote": "string | null"
+}
+```
+
+Rules, beyond the schema:
+- Absent needs `absenceReported` and no times.
+- An arrival after the buddy's default start needs `lateReason` and
+  `lateExcused`; `other` needs `lateNote`. For an arrival that is not late the
+  late fields are stored as `null`.
+- Arrival must be before leave (or the finish time).
+
+**Response `200`** — the updated `TourAttendanceResponse`, as `GET /admin/tours/:id/attendance`
+
+**Errors:** `400` — invalid body or rule · `404` — tour not found, or the buddy has no confirmed booking on it · `409` — tour not `completed`, or month locked
+
+---
+
+### Admin: `PUT /admin/tours/:id/attendance/break`
+Sets or removes the tour's unpaid break. Everyone on the tour takes it
+together: with start and end, each buddy loses only the part inside their own
+start → end; with minutes alone, every buddy present loses them, up to their
+own span.
+
+**Auth:** `admin`
+
+**Request** — `SetAttendanceBreakSchema`: `{ "break": { "start": "HH:MM", "end": "HH:MM" } }`,
+`{ "break": { "minutes": 45 } }`, or `{ "break": null }` to remove it. End must
+be after start; minutes 1–720.
+
+**Response `200`** — the updated `TourAttendanceResponse`, as `GET /admin/tours/:id/attendance`
+
+**Errors:** `400` — invalid body · `404` — tour not found · `409` — tour not `completed`, or month locked
+
+---
+
+### Admin: `GET /admin/attendance?month=YYYY-MM`
+The month: one row per buddy per day, the lock, and open flags.
+
+**Auth:** `admin`
+
+**Response `200`** — `AttendanceMonthResponse`
+```json
+{
+  "month": "YYYY-MM",
+  "lock": { "lockedAt": "ISO8601", "lockedByName": "string" },
+  "days": [
+    {
+      "date": "YYYY-MM-DD", "buddyId": "uuid", "displayName": "string", "realName": "string", "memberType": "buddy | plab_member",
+      "tours": [{ "tourId": "uuid", "groupName": "string" }],
+      "start": "HH:MM | null", "end": "HH:MM | null", "breakMinutes": 0, "minutes": "number | null",
+      "absent": false, "finishMissing": false, "lateMinutes": 0, "lateExcused": "boolean | null"
+    }
+  ],
+  "openFlags": [
+    { "id": "uuid", "buddyId": "uuid", "displayName": "string", "date": "YYYY-MM-DD", "note": "string", "createdAt": "ISO8601" }
+  ]
+}
+```
+
+`lock` is `null` for an open month. A day covers the buddy's completed tours
+of that date: `start` is the first arrival, `end` the last leave, and
+`minutes` = end − start − `breakMinutes`. `absent` is true only when the buddy
+was absent from every tour of the day (0 minutes). The web filters this
+response (buddy, tour, member type, status, date range) and builds the finance
+CSV from the rows the filters leave.
+
+---
+
+### Admin: `POST /admin/attendance/locks`
+Locks a month. **Request** — `{ "month": "YYYY-MM" }`. **Response `201`** — `{ "month": "YYYY-MM" }`. **Errors:** `409` — already locked.
+
+### Admin: `DELETE /admin/attendance/locks/:month`
+Unlocks a month. **Response `204`**. **Errors:** `404` — not locked.
+
+### Admin: `POST /admin/attendance/flags/:id/resolve`
+Marks a buddy's flag resolved. **Response `204`**. **Errors:** `404` — not found · `409` — already resolved.
+
+---
+
+### Buddy: `GET /me/attendance?month=YYYY-MM`
+The caller's own days in the month, over completed tours.
+
+**Auth:** any authenticated buddy
+
+**Response `200`** — `MyAttendanceResponse`
+```json
+{
+  "month": "YYYY-MM",
+  "days": [
+    {
+      "date": "YYYY-MM-DD",
+      "tours": [{ "tourId": "uuid", "groupName": "string" }],
+      "start": "HH:MM | null", "end": "HH:MM | null", "breakMinutes": 0, "minutes": "number | null",
+      "absent": false, "finishMissing": false,
+      "flag": { "id": "uuid", "note": "string", "createdAt": "ISO8601", "resolvedAt": "ISO8601 | null" }
+    }
+  ]
+}
+```
+
+`flag` is the day's latest flag, or `null`. Late reasons and whether a
+lateness was excused are not included.
+
+### Buddy: `POST /me/attendance/flags`
+Reports a mistake in the caller's record for a day. Notifies every PLAB
+member in-app and posts to Slack (`attendance_flagged`).
+
+**Request** — `CreateAttendanceFlagSchema`: `{ "date": "YYYY-MM-DD", "note": "string" }`
+
+**Response `201`** — `{ "id": "uuid" }`
+
+**Errors:** `400` — invalid body · `404` — the caller has no record on that date · `409` — an open flag already exists for that date
 
 ---
 

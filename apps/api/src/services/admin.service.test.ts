@@ -6,7 +6,7 @@ type MockFn = Mock<(...args: unknown[]) => unknown>
 interface MockDb {
   buddyProfile: { findMany: MockFn; findUnique: MockFn; update: MockFn }
   cancellationReason: { update: MockFn }
-  adminEvaluation: { count: MockFn }
+  attendance: { count: MockFn }
   booking: { update: MockFn }
   user: { findUnique: MockFn }
   notificationJob: { create: MockFn }
@@ -24,7 +24,7 @@ vi.mock('../lib/db', () => {
     cancellationReason: {
       update: vi.fn(),
     },
-    adminEvaluation: {
+    attendance: {
       count: vi.fn(),
     },
     booking: {
@@ -157,7 +157,7 @@ describe('getBuddyDetail', () => {
 
   it('carries the all-time stats of the buddy', async () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockRawWithBookings as unknown)
-    mdb.adminEvaluation.count.mockResolvedValueOnce(0)
+    mdb.attendance.count.mockResolvedValueOnce(0)
     const result = await getBuddyDetail('profile-1')
     expect(getBuddyStats).toHaveBeenCalledWith('profile-1')
     expect(result!.stats).toBe(buddyStats)
@@ -165,7 +165,7 @@ describe('getBuddyDetail', () => {
 
   it('returns mapped buddy with bookings when found', async () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockRawWithBookings as unknown)
-    mdb.adminEvaluation.count.mockResolvedValueOnce(0)
+    mdb.attendance.count.mockResolvedValueOnce(0)
     const result = await getBuddyDetail('profile-1')
     expect(result).not.toBeNull()
     expect(result!.email).toBe('buddy@example.com')
@@ -182,7 +182,7 @@ describe('getBuddyDetail', () => {
 
   it('returns null when not found', async () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(null)
-    mdb.adminEvaluation.count.mockResolvedValueOnce(0)
+    mdb.attendance.count.mockResolvedValueOnce(0)
     vi.mocked(getBuddyStats).mockResolvedValueOnce(null)
     const result = await getBuddyDetail('missing')
     expect(result).toBeNull()
@@ -190,7 +190,7 @@ describe('getBuddyDetail', () => {
 
   it('returns cancellationSummary with zero counts when no bookings have reasons', async () => {
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockRawWithBookings as unknown)
-    mdb.adminEvaluation.count.mockResolvedValueOnce(0)
+    mdb.attendance.count.mockResolvedValueOnce(0)
     const result = await getBuddyDetail('profile-1')
     expect(result!.cancellationSummary).toEqual({ total: 0, unavoidable: 0, avoidable: 0, unreviewed: 0 })
   })
@@ -223,10 +223,11 @@ describe('getBuddyDetail', () => {
       ],
     }
     mdb.buddyProfile.findUnique.mockResolvedValueOnce(rawWithReasons as unknown)
-    mdb.adminEvaluation.count.mockResolvedValueOnce(2)
+    mdb.attendance.count.mockResolvedValueOnce(2)
     const result = await getBuddyDetail('profile-1')
     expect(result!.cancellationSummary).toEqual({ total: 3, unavoidable: 1, avoidable: 1, unreviewed: 1 })
     expect(result!.absenceSummary).toEqual({ absentWithoutReport: 2 })
+    expect(mdb.attendance.count).toHaveBeenCalledWith({ where: { buddyId: 'profile-1', absent: true, absenceReported: false } })
   })
 })
 

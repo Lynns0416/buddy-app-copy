@@ -46,5 +46,13 @@
     },
     "cta": "ツアーを確認する",
     "path": "/admin/tours/{tourId}"
+  },
+  "attendance_flagged": {
+    "text": ":clock3: *勤務記録の確認依頼* がありました。",
+    "detail": {
+      "text": ":clock3: *勤務記録の確認依頼* — {buddyName} さんが {date} の記録の確認を依頼しています。"
+    },
+    "cta": "勤務記録を確認する",
+    "path": "/admin/attendance?month={month}"
   }
 }

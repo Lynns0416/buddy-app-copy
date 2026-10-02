@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { TourStatusSchema, GroupTypeSchema, type TourStatus, type GroupType } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SuggestInput } from '@/components/suggest-input'
 import { Label } from '@/components/ui/label'
 import { getTourStatusLabel, getGroupTypeLabel } from '@/lib/status-display'
 import { TourDateRangeSchema, emptyTourFilters, isTourFilterActive, type TourFilters } from '../admin.tour'
@@ -11,6 +11,8 @@ import { TourDateRangeSchema, emptyTourFilters, isTourFilterActive, type TourFil
 type Props = {
   filters: TourFilters
   onChange: (filters: TourFilters) => void
+  // Group and place names the search can match.
+  suggestions: string[]
   resultCount: number
   totalCount: number
 }
@@ -19,7 +21,7 @@ function toggle<T>(values: T[], value: T): T[] {
   return values.includes(value) ? values.filter((v) => v !== value) : [...values, value]
 }
 
-export function TourFilterBar({ filters, onChange, resultCount, totalCount }: Props) {
+export function TourFilterBar({ filters, onChange, suggestions, resultCount, totalCount }: Props) {
   const t = useTranslations('adminTours')
   const tTourStatus = useTranslations('tourStatus')
   const tGroupType = useTranslations('groupType')
@@ -27,16 +29,13 @@ export function TourFilterBar({ filters, onChange, resultCount, totalCount }: Pr
 
   return (
     <div className="mb-4 flex flex-col gap-3 rounded-lg border bg-card p-4">
-      <Input
+      <SuggestInput
         id="tourSearch"
-        type="search"
-        autoComplete="off"
+        suggestions={suggestions}
         aria-label={t('search.label')}
         placeholder={t('search.placeholder')}
         value={filters.search}
-        onChange={(e) => onChange({ ...filters, search: e.target.value })}
-        // Enter only ever confirms an IME candidate here; it must never submit or reload.
-        onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault() }}
+        onChange={(search) => onChange({ ...filters, search })}
       />
 
       <div className="flex flex-wrap items-start gap-x-6 gap-y-3">

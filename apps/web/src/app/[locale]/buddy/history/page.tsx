@@ -9,12 +9,13 @@ import { routes } from '@/lib/routes'
 import { useMyBookings } from '@/hooks/use-my-bookings'
 import { AppShell } from '@/components/app-shell'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { SuggestInput } from '@/components/suggest-input'
 import type { MyTourBookingEntry } from '@peace-buddy/types'
 import { getTodayJst } from '@peace-buddy/types'
 import { filterPast, findPastAttended, groupByYear, summarize } from './buddy.history'
 import { formatDate } from '@/lib/format-date'
 import { placeNames } from '@/lib/place-names'
+import { WorkingHours } from './_components/working-hours'
 
 function BookingRow({ entry, viewLabel }: { entry: MyTourBookingEntry; viewLabel: string }) {
   const { locale } = useParams<{ locale: string }>()
@@ -57,7 +58,6 @@ export default function BuddyHistoryPage() {
   const past = findPastAttended(bookings, today)
   const summary = summarize(past)
   const unreflectedCount = filterPast(past, { unreflectedOnly: true, groupName: '' }).length
-  const groupNames = [...new Set(past.map((e) => e.group.name))].sort()
   const years = groupByYear(filterPast(past, { unreflectedOnly, groupName }))
 
   return (
@@ -72,6 +72,8 @@ export default function BuddyHistoryPage() {
       {summary && (
         <p className="text-sm text-muted-foreground">{t('summary', summary)}</p>
       )}
+
+      <WorkingHours />
 
       {/* Past tours only: upcoming ones are on Home (#265). */}
       <section className="mt-6">
@@ -90,19 +92,14 @@ export default function BuddyHistoryPage() {
                   {t('filterUnreflected', { count: unreflectedCount })}
                 </Button>
               )}
-              <Input
-                className="h-8 w-full sm:w-56"
-                list="history-group-names"
+              <SuggestInput
+                className="w-full sm:w-56"
+                suggestions={past.map((e) => e.group.name)}
                 aria-label={t('searchGroup')}
                 placeholder={t('searchGroup')}
                 value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
+                onChange={setGroupName}
               />
-              <datalist id="history-group-names">
-                {groupNames.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
             </div>
             {years.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t('noMatches')}</p>

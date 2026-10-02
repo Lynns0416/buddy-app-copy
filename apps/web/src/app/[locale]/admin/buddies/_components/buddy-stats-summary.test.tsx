@@ -11,7 +11,7 @@ vi.mock('next-intl', () => ({
 vi.mock('@/i18n/routing', () => ({ routing: { defaultLocale: 'en' } }))
 
 const stats: BuddyStats = {
-  sessionsAttended: 4, toursAttended: 3, noShows: 0, toursMissed: 0, attendanceRate: 0.75, upcomingConfirmed: 1,
+  sessionsAttended: 4, toursAttended: 3, noShows: 0, lateUnexcused: 0, toursMissed: 0, attendanceRate: 0.75, upcomingConfirmed: 1,
   openMaybe: 0, openWaitlist: 0, firstTourDate: null, lastTourDate: null, daysSinceLastTour: null,
   minutesOnTour: 0, sessionsWithoutTimes: 0, bookings: 0, cancellations: 0, lateCancellations: 0,
   cancellationsUnavoidable: 0, cancellationsAvoidable: 0, cancellationsUnreviewed: 0,
@@ -48,7 +48,7 @@ describe('BuddyStatsSummary', () => {
     ])
     expect(sections.map(labelsOf)).toEqual([
       ['sessionsAttended', 'toursAttended', 'reflections'],
-      ['attendanceRate', 'noShows', 'lateCancellations'],
+      ['attendanceRate', 'noShows', 'lateUnexcused', 'lateCancellations'],
       ['lastTourDate', 'daysSinceLastTour', 'upcomingConfirmed'],
     ])
   })

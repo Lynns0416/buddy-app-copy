@@ -46,6 +46,7 @@ export type BuddyStatsOverview = {
   // buddy with one tour weighs no more than their one tour.
   attendanceRate: number | null
   noShows: number
+  lateUnexcused: number
   lateCancellations: number
   cancellationRate: number | null
   reflectionRate: number | null
@@ -192,6 +193,7 @@ export function buildOverview(
     minutesOnTour: sum(rows, (r) => r.stats.minutesOnTour),
     attendanceRate: ratio(toursAttended, toursAttended + toursMissed),
     noShows: sum(rows, (r) => r.stats.noShows),
+    lateUnexcused: sum(rows, (r) => r.stats.lateUnexcused),
     lateCancellations: sum(rows, (r) => r.stats.lateCancellations),
     cancellationRate: ratio(sum(rows, (r) => r.stats.cancellations), sum(rows, (r) => r.stats.bookings)),
     reflectionRate: ratio(sum(rows, (r) => r.stats.reflections), sessionsAttended),

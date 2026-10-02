@@ -121,6 +121,7 @@ export function buildStatColumns(places: PlaceSummary[]): StatColumn[] {
     column('sessionsAttended', 'participation', 'count', (r) => r.stats.sessionsAttended, true),
     column('toursAttended', 'participation', 'count', (r) => r.stats.toursAttended, true),
     column('noShows', 'participation', 'count', (r) => r.stats.noShows, true),
+    column('lateUnexcused', 'participation', 'count', (r) => r.stats.lateUnexcused, true),
     column('attendanceRate', 'participation', 'rate', (r) => r.stats.attendanceRate, true),
     column('upcomingConfirmed', 'participation', 'count', (r) => r.stats.upcomingConfirmed, true),
     column('openMaybe', 'participation', 'count', (r) => r.stats.openMaybe),
@@ -198,6 +199,7 @@ export function statLabel(label: StatLabel, tr: StatTranslators, locale: string)
 const DESCRIBED_STATS = new Set([
   'sessionsAttended',
   'toursAttended',
+  'lateUnexcused',
   'attendanceRate',
   'openMaybe',
   'hoursOnTour',

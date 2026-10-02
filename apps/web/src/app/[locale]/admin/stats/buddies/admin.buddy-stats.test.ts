@@ -97,6 +97,7 @@ describe('buildStatColumns', () => {
       'sessionsAttended',
       'toursAttended',
       'noShows',
+      'lateUnexcused',
       'attendanceRate',
       'upcomingConfirmed',
       'lastTourDate',

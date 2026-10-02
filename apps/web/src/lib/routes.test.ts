@@ -12,6 +12,16 @@ describe('routes', () => {
     })
   })
 
+  describe('adminAttendance', () => {
+    it('returns the bare path when no month is given', () => {
+      expect(routes.adminAttendance('ja')).toBe('/ja/admin/attendance')
+    })
+
+    it('appends the month when given', () => {
+      expect(routes.adminAttendance('en', '2026-06')).toBe('/en/admin/attendance?month=2026-06')
+    })
+  })
+
   describe('adminTourNew', () => {
     it('returns the bare path when no group is given', () => {
       expect(routes.adminTourNew('en')).toBe('/en/admin/tours/new')

@@ -10,6 +10,8 @@ export const apiPaths = {
   meNotifications: '/me/notifications',
   meNotificationsRead: '/me/notifications/read',
   meNotificationPreferences: '/me/notification-preferences',
+  meAttendance: '/me/attendance',
+  meAttendanceFlags: '/me/attendance/flags',
 
   tours: '/tours',
   tour: (id: string) => `/tours/${id}`,
@@ -44,6 +46,15 @@ export const apiPaths = {
   adminTourAdmins: (tourId: string) => `/admin/tours/${tourId}/admins`,
   adminTourAdmin: (tourId: string, adminId: string) => `/admin/tours/${tourId}/admins/${adminId}`,
   adminTourStaffInCharge: (tourId: string) => `/admin/tours/${tourId}/staff-in-charge`,
+  adminTourAttendance: (tourId: string) => `/admin/tours/${tourId}/attendance`,
+  adminTourAttendanceBreak: (tourId: string) => `/admin/tours/${tourId}/attendance/break`,
+  adminTourBuddyAttendance: (tourId: string, buddyId: string) => `/admin/tours/${tourId}/attendance/${buddyId}`,
+
+  adminAttendance: '/admin/attendance',
+  adminAttendanceDay: (date: string) => `/admin/attendance/days/${date}`,
+  adminAttendanceLocks: '/admin/attendance/locks',
+  adminAttendanceLock: (month: string) => `/admin/attendance/locks/${month}`,
+  adminAttendanceFlagResolve: (id: string) => `/admin/attendance/flags/${id}/resolve`,
 
   adminEvaluations: '/admin/evaluations',
   adminEvaluation: (id: string) => `/admin/evaluations/${id}`,

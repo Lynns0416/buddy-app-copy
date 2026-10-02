@@ -11,11 +11,13 @@ function dateOf(iso: string): string {
   return iso.slice(0, 10)
 }
 
-// There is no attendance record. A past tour counts as attended when the org did
-// not cancel it and the buddy held a confirmed seat on at least one session.
+// A past tour counts as attended when the org did not cancel it, the buddy held
+// a confirmed seat on at least one session, and the attendance record does not
+// mark them absent from it (PRD §8.8).
 function isAttended(entry: MyTourBookingEntry): boolean {
   return (
     entry.status !== TourStatusSchema.enum.cancelled &&
+    !entry.absent &&
     entry.bookings.some((b) => b.bookingStatus === BookingStatusSchema.enum.confirmed)
   )
 }

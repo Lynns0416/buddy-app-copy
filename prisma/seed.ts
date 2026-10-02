@@ -9,6 +9,7 @@ import {
   BookingStatus,
   CancellationCategory,
   BookingPool,
+  LateReason,
 } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -1144,19 +1145,33 @@ async function main() {
     })
   }
 
-  // No-show: r(14) held a confirmed booking on tourCommunityPast but the
-  // evaluation records they never turned up, which voids the session.
-  const noShowBuddyId = r(14)
-  if (noShowBuddyId) {
-    await prisma.adminEvaluation.upsert({
-      where: { buddyId_tourId_createdBy: { buddyId: noShowBuddyId, tourId: ID.tourCommunityPast, createdBy: adminUser.id } },
+  // Attendance on tourCommunityPast (meeting 10:00): the day finished at
+  // 15:30. r(14) is a no-show, which voids the session; r(12) arrived 25
+  // minutes late, unexcused; r(10) left early. The tour broke for lunch
+  // 12:00–12:45, unpaid for everyone on it. r(8) follows the day, so has no
+  // row.
+  await prisma.attendanceDay.upsert({
+    where: { date: daysFromNow(-75) },
+    update: {},
+    create: { date: daysFromNow(-75), finishTime: timeOnly(15, 30), updatedBy: adminUser.id },
+  })
+  const attendanceRows = [
+    { index: 14, data: { absent: true, absenceReported: false } },
+    { index: 12, data: { arrivalTime: timeOnly(10, 25), lateReason: LateReason.other, lateNote: '寝坊', lateExcused: false } },
+    { index: 10, data: { leaveTime: timeOnly(14, 0), leaveNote: '授業のため' } },
+  ]
+  await prisma.attendanceBreak.upsert({
+    where: { tourId: ID.tourCommunityPast },
+    update: {},
+    create: { tourId: ID.tourCommunityPast, breakStart: timeOnly(12, 0), breakEnd: timeOnly(12, 45), breakMinutes: 45, updatedBy: adminUser.id },
+  })
+  for (const { index, data } of attendanceRows) {
+    const buddyId = r(index)
+    if (!buddyId) continue
+    await prisma.attendance.upsert({
+      where: { buddyId_tourId: { buddyId, tourId: ID.tourCommunityPast } },
       update: {},
-      create: {
-        buddyId: noShowBuddyId,
-        tourId: ID.tourCommunityPast,
-        createdBy: adminUser.id,
-        absentWithoutReport: true,
-      },
+      create: { buddyId, tourId: ID.tourCommunityPast, updatedBy: adminUser.id, ...data },
     })
   }
 

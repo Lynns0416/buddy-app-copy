@@ -49,6 +49,7 @@ vi.mock('@/components/app-shell', () => ({
 vi.mock('../hooks/use-all-admins', () => ({ useAllAdmins: () => [] }))
 vi.mock('../_components/tour-bookings-table', () => ({ TourBookingsTable: () => null }))
 vi.mock('../_components/tour-buddy-eval-section', () => ({ TourBuddyEvalSection: () => null }))
+vi.mock('../_components/tour-attendance-section', () => ({ TourAttendanceSection: () => null }))
 vi.mock('../_components/complete-tour-modal', () => ({ CompleteTourModal: () => null }))
 vi.mock('../_components/tour-admin-assignment', () => ({ TourAdminAssignment: () => null }))
 

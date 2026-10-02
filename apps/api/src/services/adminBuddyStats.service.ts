@@ -48,13 +48,16 @@ type BookingRow = {
   cancellationReason: { category: string; unavoidable: boolean | null; createdAt: Date } | null
 }
 
-type EvaluationRow = { buddyId: string; tourId: string; absentWithoutReport: boolean } & Record<EvaluationScoreField, number | null>
+type EvaluationRow = { buddyId: string; tourId: string } & Record<EvaluationScoreField, number | null>
+
+type AttendanceRow = { buddyId: string; tourId: string; absent: boolean; absenceReported: boolean | null; lateExcused: boolean | null }
 
 export type BuddyStatsInput = {
   createdAt: Date
   bookings: BookingRow[]
   deadlineOverrides: Map<string, Date>
   evaluations: EvaluationRow[]
+  attendances: AttendanceRow[]
   profileRatings: (number | null)[]
   reflectionMoments: number[]
 }
@@ -88,11 +91,12 @@ function countBy<K extends string>(keys: readonly K[], values: K[]): Record<K, n
 // counting rules are tested without Prisma (PRD §11.4 "Buddy Stats").
 export function computeBuddyStats(input: BuddyStatsInput, now: Date = new Date()): BuddyStats {
   const today = getTodayJst(now)
-  const { bookings, evaluations } = input
+  const { bookings, evaluations, attendances } = input
 
-  // A no-show is recorded per tour, on the evaluation, so it voids every
-  // session the buddy held on that tour.
-  const absentTours = new Set(evaluations.filter((e) => e.absentWithoutReport).map((e) => e.tourId))
+  // Absence is recorded per tour on the attendance record, reported or not,
+  // so it voids every session the buddy held on that tour (PRD §11.10).
+  const absences = attendances.filter((a) => a.absent)
+  const absentTours = new Set(absences.map((a) => a.tourId))
   const attended = bookings.filter(
     (b) =>
       b.status === BookingStatusSchema.enum.confirmed &&
@@ -138,7 +142,7 @@ export function computeBuddyStats(input: BuddyStatsInput, now: Date = new Date()
     .map((c) => c.booking)
 
   // Attendance is per tour: of the tours the buddy was held to, how many they
-  // turned up for. A tour missed by a no-show or a late cancellation counts
+  // turned up for. A tour missed by an absence or a late cancellation counts
   // once, and not at all if the buddy still attended another of its sessions.
   const missedTours = new Set([...absentTours, ...late.map((b) => b.tourId)].filter((id) => !attendedTours.has(id)))
 
@@ -157,7 +161,9 @@ export function computeBuddyStats(input: BuddyStatsInput, now: Date = new Date()
   return {
     sessionsAttended: attended.length,
     toursAttended: attendedTours.size,
-    noShows: absentTours.size,
+    noShows: absences.filter((a) => a.absenceReported === false).length,
+    // Early leave is never counted against the buddy; only lateness not excused.
+    lateUnexcused: attendances.filter((a) => !a.absent && a.lateExcused === false).length,
     toursMissed: missedTours.size,
     attendanceRate: ratio(attendedTours.size, attendedTours.size + missedTours.size),
     upcomingConfirmed: upcoming.filter((b) => b.status === BookingStatusSchema.enum.confirmed).length,
@@ -217,7 +223,7 @@ async function loadStats(
   const tour = tourWhere(scope)
   const buddyIdFilter = buddyId ? { buddyId } : {}
 
-  const [buddies, bookings, overrides, evaluations, profileEvaluations, reflections] = await Promise.all([
+  const [buddies, bookings, overrides, evaluations, attendances, profileEvaluations, reflections] = await Promise.all([
     db.buddyProfile.findMany({
       where: buddyId ? { id: buddyId } : {},
       select: { id: true, displayName: true, realName: true, status: true, tier: true, memberType: true, createdAt: true },
@@ -243,7 +249,11 @@ async function loadStats(
         ...buddyIdFilter,
         tour: { ...tour, ...(scope.placeId ? { sessions: { some: { placeId: scope.placeId } } } : {}) },
       },
-      select: { buddyId: true, tourId: true, absentWithoutReport: true, ...scoreSelect },
+      select: { buddyId: true, tourId: true, ...scoreSelect },
+    }),
+    db.attendance.findMany({
+      where: { ...buddyIdFilter, tour },
+      select: { buddyId: true, tourId: true, absent: true, absenceReported: true, lateExcused: true },
     }),
     db.adminProfileEvaluation.findMany({
       where: buddyIdFilter,
@@ -261,17 +271,19 @@ async function loadStats(
     return map
   }
 
-  // A place scope keeps only the buddy's own sessions there, but an evaluation
-  // is per tour. Keep it only for a tour the buddy held a session at that place,
-  // so a no-show at another place of the same tour does not count against it.
+  // A place scope keeps only the buddy's own sessions there, but evaluations
+  // and attendance are per tour. Keep them only for a tour the buddy held a
+  // session at that place, so a no-show on a tour with no session there does
+  // not count against it.
   const bookedTours = new Set(bookings.map((b) => `${b.buddyId}:${b.tourId}`))
-  const evaluationsInScope = scope.placeId
-    ? evaluations.filter((e) => bookedTours.has(`${e.buddyId}:${e.tourId}`))
-    : evaluations
+  const inScope = <T extends { buddyId: string; tourId: string }>(rows: T[]): T[] =>
+    scope.placeId ? rows.filter((r) => bookedTours.has(`${r.buddyId}:${r.tourId}`)) : rows
+  const evaluationsInScope = inScope(evaluations)
 
   const bookingsBy = byBuddy(bookings)
   const overridesBy = byBuddy(overrides)
   const evaluationsBy = byBuddy(evaluationsInScope)
+  const attendancesBy = byBuddy(inScope(attendances))
   const profileBy = byBuddy(profileEvaluations)
   const reflectionsBy = byBuddy(reflections)
 
@@ -283,6 +295,7 @@ async function loadStats(
         bookings: bookingsBy.get(buddy.id) ?? [],
         deadlineOverrides: new Map((overridesBy.get(buddy.id) ?? []).map((o) => [o.tourId, o.deadline])),
         evaluations: evaluationsBy.get(buddy.id) ?? [],
+        attendances: attendancesBy.get(buddy.id) ?? [],
         profileRatings: (profileBy.get(buddy.id) ?? []).map((p) => p.overallRating),
         reflectionMoments: (reflectionsBy.get(buddy.id) ?? []).map((r) => r._count.moments),
       },

@@ -48,6 +48,7 @@ const entry = (overrides: Partial<MyTourBookingEntry> = {}): MyTourBookingEntry 
   status: 'completed',
   maybeDeadline: null,
   reflectionSubmitted: false,
+  absent: false,
   group: { name: 'Test School', type: 'school' },
   bookings: [{
     bookingId: 'b1',

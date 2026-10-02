@@ -31,7 +31,7 @@ const mockList = vi.mocked(apiClient.listBuddyStats)
 
 function stats(overrides: Partial<BuddyStats> = {}): BuddyStats {
   return {
-    sessionsAttended: 0, toursAttended: 0, noShows: 0, toursMissed: 0, attendanceRate: null, upcomingConfirmed: 0,
+    sessionsAttended: 0, toursAttended: 0, noShows: 0, lateUnexcused: 0, toursMissed: 0, attendanceRate: null, upcomingConfirmed: 0,
     openMaybe: 0, openWaitlist: 0, firstTourDate: null, lastTourDate: null, daysSinceLastTour: null,
     minutesOnTour: 0, sessionsWithoutTimes: 0, bookings: 0, cancellations: 0, lateCancellations: 0,
     cancellationsUnavoidable: 0, cancellationsAvoidable: 0, cancellationsUnreviewed: 0,

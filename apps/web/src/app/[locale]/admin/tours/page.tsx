@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortIcon } from '@/components/sort-icon'
-import { placeNames } from '@/lib/place-names'
+import { placeName, placeNames } from '@/lib/place-names'
 import {
   fetchTours,
   sortTours,
@@ -168,6 +168,7 @@ function AdminToursList() {
         <TourFilterBar
           filters={filters}
           onChange={(next) => syncUrl({ filters: next })}
+          suggestions={tours.flatMap((tour) => [tour.group.name, ...tour.places.map((p) => placeName(p, locale))])}
           resultCount={sorted.length}
           totalCount={tours.length}
         />

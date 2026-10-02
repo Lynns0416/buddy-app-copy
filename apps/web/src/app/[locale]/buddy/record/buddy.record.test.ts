@@ -31,6 +31,7 @@ function tour(tourId: string, tourDate: string, overrides: Partial<MyTourBooking
     status: TourStatusSchema.enum.completed,
     maybeDeadline: null,
     reflectionSubmitted: true,
+    absent: false,
     group: { name: `Group ${tourId}`, type: 'school' },
     bookings: [session({ sessionId: `s-${tourId}` })],
     ...overrides,

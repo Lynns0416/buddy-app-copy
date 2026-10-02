@@ -117,6 +117,7 @@ export default function AdminBuddyStatsPage() {
         filters={filters}
         onFiltersChange={setFilters}
         places={data?.places ?? []}
+        buddyNames={rows.map((r) => r.displayName)}
         resultCount={filtered.length}
         totalCount={rows.length}
       />

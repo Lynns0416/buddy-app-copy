@@ -104,6 +104,20 @@ enum NotificationChannel {
   slack
 }
 
+// Why a buddy arrived after the standard start (docs/decisions.md 2026-10-01).
+enum LateReason {
+  transport_delay
+  other
+}
+
+enum AttendanceChangeKind {
+  finish_time
+  attendance
+  tour_break
+  month_locked
+  month_unlocked
+}
+
 enum NotificationJobStatus {
   pending
   sent
@@ -128,6 +142,12 @@ model User {
   digestQueue                 DigestQueue[]
   cancellationReasonsRecorded CancellationReason[]
   deadlineOverridesSet        BuddyCancellationDeadlineOverride[]
+  attendanceDaysUpdated       AttendanceDay[]
+  attendanceBreaksUpdated     AttendanceBreak[]
+  attendancesUpdated          Attendance[]
+  attendanceChanges           AttendanceChange[]
+  attendanceMonthsLocked      AttendanceMonthLock[]
+  attendanceFlagsResolved     AttendanceFlag[]
 }
 
 model BuddyProfile {
@@ -153,6 +173,8 @@ model BuddyProfile {
   adminEvaluations   AdminEvaluation[]
   profileEvaluations AdminProfileEvaluation[]
   deadlineOverrides BuddyCancellationDeadlineOverride[]
+  attendances       Attendance[]
+  attendanceFlags   AttendanceFlag[]
 }
 
 model AdminProfile {
@@ -202,6 +224,8 @@ model Tour {
   adminEvaluations     AdminEvaluation[]
   deadlineOverrides    BuddyCancellationDeadlineOverride[]
   adminAssignments     TourAdminAssignment[]
+  attendances          Attendance[]
+  attendanceBreak      AttendanceBreak?
 
   @@index([status, tourDate])
 }
@@ -345,7 +369,6 @@ model AdminEvaluation {
   emotionNote         String?
   confidence          Int?
   confidenceNote      String?
-  absentWithoutReport Boolean      @default(false)
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   buddy               BuddyProfile @relation(fields: [buddyId], references: [id])
@@ -441,6 +464,112 @@ model BuddyCancellationDeadlineOverride {
   setter    User         @relation(fields: [setBy], references: [id])
 
   @@unique([buddyId, tourId])
+}
+
+// Attendance record (#262, docs/decisions.md 2026-10-01). Working hours per
+// buddy per day are first arrival → last leave − breaks, over the tours of
+// that date they were not absent from. Tour time (endTime − startTime) plays
+// no part.
+
+// When the day ended. Reflection closes each tour day once, for everyone, and
+// runs as long as it runs, so a PLAB member records it. One row per date,
+// shared by every tour on it.
+model AttendanceDay {
+  id         String   @id @default(uuid())
+  date       DateTime @unique @db.Date
+  finishTime DateTime @db.Time
+  updatedBy  String
+  updatedAt  DateTime @updatedAt
+  updater    User     @relation(fields: [updatedBy], references: [id])
+}
+
+// A buddy's exceptions on one tour. No row, or a null time, means the default:
+// arrival at the meeting time of their first confirmed session, leave at the
+// day's finish time. An override is never overwritten by a change to the
+// finish time, so the order of entry does not matter.
+// Late fields are set only with an arrival later than the default; absence
+// clears every time.
+model Attendance {
+  id              String       @id @default(uuid())
+  buddyId         String
+  tourId          String
+  absent          Boolean      @default(false)
+  absenceReported Boolean?
+  arrivalTime     DateTime?    @db.Time
+  lateReason      LateReason?
+  lateNote        String?
+  lateExcused     Boolean?
+  leaveTime       DateTime?    @db.Time
+  leaveNote       String?
+  updatedBy       String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  buddy           BuddyProfile @relation(fields: [buddyId], references: [id])
+  tour            Tour         @relation(fields: [tourId], references: [id])
+  updater         User         @relation(fields: [updatedBy], references: [id])
+
+  @@unique([buddyId, tourId])
+  @@index([tourId])
+}
+
+// The tour's unpaid break, taken by everyone on it together. No row means no
+// break. With start and end, each buddy loses only the part inside their own
+// arrival → leave; with minutes alone, every buddy present loses them.
+// breakMinutes is always set — derived from breakStart/breakEnd when given.
+model AttendanceBreak {
+  id           String    @id @default(uuid())
+  tourId       String    @unique
+  breakStart   DateTime? @db.Time
+  breakEnd     DateTime? @db.Time
+  breakMinutes Int
+  updatedBy    String
+  updatedAt    DateTime  @updatedAt
+  tour         Tour      @relation(fields: [tourId], references: [id])
+  updater      User      @relation(fields: [updatedBy], references: [id])
+}
+
+// Append-only log of every change to the record: who, when, before and after.
+// `date` is the tour date, or the month's first day for a lock or unlock.
+model AttendanceChange {
+  id        String               @id @default(uuid())
+  kind      AttendanceChangeKind
+  date      DateTime             @db.Date
+  buddyId   String?
+  tourId    String?
+  before    Json?
+  after     Json?
+  changedBy String
+  createdAt DateTime             @default(now())
+  changer   User                 @relation(fields: [changedBy], references: [id])
+
+  @@index([date])
+}
+
+// A closed month: its record is read-only until unlocked. Unlocking deletes
+// the row; both are logged in AttendanceChange.
+model AttendanceMonthLock {
+  id       String   @id @default(uuid())
+  month    DateTime @unique @db.Date
+  lockedBy String
+  lockedAt DateTime @default(now())
+  locker   User     @relation(fields: [lockedBy], references: [id])
+}
+
+// A buddy saying their record for a day looks wrong. PLAB members are
+// notified and resolve it after checking.
+model AttendanceFlag {
+  id         String       @id @default(uuid())
+  buddyId    String
+  date       DateTime     @db.Date
+  note       String
+  createdAt  DateTime     @default(now())
+  resolvedAt DateTime?
+  resolvedBy String?
+  buddy      BuddyProfile @relation(fields: [buddyId], references: [id])
+  resolver   User?        @relation(fields: [resolvedBy], references: [id])
+
+  @@index([date])
+  @@index([buddyId])
 }
 
 // Per-user, per-event email configuration, for admins and buddies alike.

@@ -137,6 +137,7 @@ function ReflectionStats() {
         filters={filters}
         onFiltersChange={setFilters}
         places={data?.places ?? []}
+        buddyNames={rows.map((r) => r.buddyDisplayName)}
         resultCount={filtered.length}
         totalCount={rows.length}
       />

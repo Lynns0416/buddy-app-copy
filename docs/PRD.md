@@ -467,7 +467,8 @@ Buddies never need to manually claim a freed seat. The promoted buddy receives a
 
 Answers "what have I done": past tours only, the tours before today in Japan (`getTodayJst()`) that the buddy attended. Upcoming tours are on Home (§11.1) since #265. Title 参加したツアー / "Past tours", third in the buddy nav (Home · Record · History · Profile).
 
-- **Attended** means the tour was not `cancelled` and the buddy has a `confirmed` booking on at least one session. There is no attendance record. Past tours the buddy did not attend (tour cancelled, or only Maybe/Waitlist bookings left when the date passed) are not shown on this page.
+- **Attended** means the tour was not `cancelled`, the buddy has a `confirmed` booking on at least one session, and the attendance record (§11.10) does not mark them absent from it (`MyTourBookingEntry.absent`). Past tours the buddy did not attend (tour cancelled, absent, or only Maybe/Waitlist bookings left when the date passed) are not shown on this page.
+- **Working hours** sit above the tour list: the buddy's own attendance days, one month at a time (§11.10).
 - **Summary line** under the title: `N tours · M groups · since <date>`, counted over attended past tours. バディ記録 (§11.9) counts with the same rule. Groups are counted by distinct group name. Hidden when there are none.
 - **Past is grouped by year**, newest first, each header carrying that year's tour count after filters.
 - **Filters** (Past only, combinable):
@@ -581,7 +582,6 @@ All score fields use the scale: **1 = Poor / 2 = Below Average / 3 = Average / 4
 | Adaptability | 1–5 | ✅ | ✅ | ✅ | Handling unexpected situations |
 | Emotion | — | ✅ | ✅ | ✅ | Warmth, empathy, expressiveness — cannot be meaningfully scored (`emotionNote` only) |
 | Confidence | 1–5 | ✅ | ✅ | ✅ | |
-| Absent without report | boolean | — | ✅ | — | Per-tour only. Admin sets when a buddy missed the tour without advance notice. Surfaces as `absenceSummary.absentWithoutReport` count on the buddy detail page |
 | Evaluator | — | — | ✅ | ✅ | Auto-filled from submitting admin's `AdminProfile.name` (returned as `createdByName`) |
 | Date | — | — | ✅ | ✅ | Auto-filled |
 
@@ -600,6 +600,7 @@ All score fields use the scale: **1 = Poor / 2 = Below Average / 3 = Average / 4
 - When an admin clicks **Mark Complete**, a single confirmation modal appears showing the list of confirmed buddies
 - Admin confirms in that modal; the tour is marked completed and the page refreshes
 - The existing evaluation section on the tour detail page serves as the natural prompt to add evaluations — no second modal is shown
+- Absence is not an evaluation field: it is on the attendance record (§11.10), reported or not
 
 ### 9.3 Buddy Tour Reflections
 
@@ -705,8 +706,9 @@ channel, and an admin may opt back into email per event.
 | Post-deadline "I can't go" report (`cant_go_post_deadline`) | In-app + Slack + email | **Always immediate — not configurable** | Shipped |
 | Maybe → Confirmed or Declined (`maybe_resolved`) | In-app + Slack (email opt-in) | Immediate | Shipped |
 | Maybe deadline passed unresolved (`maybe_deadline_missed`) | In-app + Slack (email opt-in) | On deadline (hourly evaluation) | Shipped |
+| Buddy flagged their attendance record (`attendance_flagged`) | In-app (every PLAB member) + Slack | **Always immediate — not configurable** | Shipped |
 
-`NotifEventType` enum values shipped in code: `new_signup`, `new_booking`, `cancellation`, `maybe_resolved`, `maybe_deadline_missed`. Post-deadline "I can't go" is handled by code as always-immediate and is intentionally not a configurable preference — it is not in the enum. It is the one admin event that still emails by default, deliberately: it is the most urgent and warrants a second channel.
+`NotifEventType` enum values shipped in code: `new_signup`, `new_booking`, `cancellation`, `maybe_resolved`, `maybe_deadline_missed`. Post-deadline "I can't go" and `attendance_flagged` are handled by code as always-immediate and are intentionally not configurable preferences — they are not in the enum. `attendance_flagged` has no email template. It is the one admin event that still emails by default, deliberately: it is the most urgent and warrants a second channel.
 
 **Slack targeting caveat:** Slack posts go to one shared channel, so the
 "assigned admins only" routing above applies to the in-app and email channels
@@ -856,7 +858,7 @@ The sections built from `GET /me/bookings` stay hidden until it has loaded, and 
 |---|---|
 | `/admin/tours` | List or month-calendar view of tours, chosen by `?view=`. **List:** client-side search on group name and place names; filters for status, date range (upcoming / past / all), group type and below-minimum-only, combined with AND and kept in the URL query string; sortable by every column; "today" divider in list. **Calendar:** six Monday-first weeks for `?month=YYYY-MM`, one chip per tour (status dot, group name, `confirmed/capacity`, below-minimum marker), three chips per day before the rest collapse into a count. The leading and trailing days belong to the neighbouring months and carry no chips — they hold the grid at six rows, and a tour landing on one is only shown by that month's own grid. All four statuses appear; cancelled is struck through. The calendar ignores the list's filters and hides the filter bar, but leaves the filter params in the URL so switching back to the list restores them |
 | `/admin/tours/new` | Create tour form. The group picker is a type-to-filter combobox; the selected group shows a summary (type, contact fields, notes) and a new-tab link to its detail page |
-| `/admin/tours/:id` | Tour detail — metadata, sessions, tier capacities, bookings, admin assignments, evaluations |
+| `/admin/tours/:id` | Tour detail — metadata, sessions, tier capacities, bookings, admin assignments, attendance (once completed, §11.10), evaluations |
 | `/admin/tours/:id/edit` | Edit tour form — same group picker and selected-group summary as the create form. Every field of each existing session (place, label, meeting time, capacity, min buddies, participant count) is editable; adding or removing a session is not (done from the detail page) |
 
 **Capabilities:**
@@ -871,7 +873,7 @@ The sections built from `GET /me/bookings` stay hidden until it has loaded, and 
 - View all bookings per tour (buddy name, status, sessions booked, bookedAt, cancellation reason)
 - Assign / unassign admins via `POST` / `DELETE /admin/tours/:id/admins`
 - Designate staff in charge via `PUT /admin/tours/:id/staff-in-charge`. Server enforces: staff-in-charge must be one of the assigned admins; cannot null it out while admins are still assigned; unassigning the current staff-in-charge admin while others remain requires designating a replacement first
-- After a tour is `completed`, the per-tour evaluation section appears on the detail page; admins use it to record evaluations (see §9). Below it, a link opens the reflection stats page narrowed to that tour (`/admin/stats/reflections?tourId=`, §11.4)
+- After a tour is `completed`, the attendance section appears on the detail page (§11.10), then the per-tour evaluation section; admins use it to record evaluations (see §9). Below it, a link opens the reflection stats page narrowed to that tour (`/admin/stats/reflections?tourId=`, §11.4)
 
 **Planned (not shipped):**
 - Per-buddy cancellation deadline override — `BuddyCancellationDeadlineOverride` schema exists but no admin API or UI manages it yet
@@ -898,7 +900,7 @@ The sections built from `GET /me/bookings` stay hidden until it has loaded, and 
 
 #### Pages & Routes
 
-**Navigation:** "Pending Approval", "Buddies" and "Trainees" are separate items under the バディ管理 heading of the task-grouped admin sidebar. "Buddy stats" and "Reflections" sit under their own 分析 (Analytics) heading, below it. The stats pages live under `/admin/stats/`; there is no page at `/admin/stats` itself.
+**Navigation:** "Pending Approval", "Buddies", "Trainees" and "Attendance" (§11.10) are separate items under the バディ管理 heading of the task-grouped admin sidebar. "Buddy stats" and "Reflections" sit under their own 分析 (Analytics) heading, below it. The stats pages live under `/admin/stats/`; there is no page at `/admin/stats` itself.
 
 | Route | Purpose | Access |
 |---|---|---|
@@ -935,10 +937,11 @@ An overview, then one table, one row per buddy, from `GET /admin/buddies/stats` 
 | Group | Column | Counted as | Default |
 |---|---|---|---|
 | Profile | Status, tier, member type, registered, months since registration | Profile fields; months are whole months in JST | tier only |
-| Participation | Sessions attended | `confirmed` bookings on `completed` tours, less tours the buddy was recorded absent from | ✅ |
+| Participation | Sessions attended | `confirmed` bookings on `completed` tours, less tours the attendance record marks the buddy absent from (§11.10) | ✅ |
 | | Tours attended | Distinct tours among those sessions | ✅ |
-| | No-shows | Tours with an `AdminEvaluation` marked `absentWithoutReport`; voids every session the buddy held on that tour | ✅ |
-| | Attendance rate | Tours attended ÷ (tours attended + tours missed). Missed = a no-show or a late cancellation, counted once per tour and not at all if the buddy attended another session of it | ✅ |
+| | No-shows | Tours the buddy was absent from without reporting it (`Attendance.absent`, `absenceReported = false`) | ✅ |
+| | Late (unexcused) | Tours the buddy arrived late to, with the lateness not excused (`lateExcused = false`). Early leave is never counted | ✅ |
+| | Attendance rate | Tours attended ÷ (tours attended + tours missed). Missed = an absence (reported or not) or a late cancellation, counted once per tour | ✅ |
 | | Upcoming confirmed / open Maybe / on waitlist | Bookings in that status on `published` tours dated today (JST) or later | confirmed only |
 | | First tour / last tour / days inactive | Over attended sessions; days inactive counts from the last tour to today (JST) | last two |
 | | Hours on tour / sessions without times | `endTime − startTime` of attended sessions; a session missing either time is counted in the second column instead, so hours undercount rather than guess. Tour time, not working hours — never used for pay (#262) | — |
@@ -958,14 +961,14 @@ An overview, then one table, one row per buddy, from `GET /admin/buddies/stats` 
 
 A rate or average with nothing to divide by is `null` (shown `—`), never `0`.
 
-**Explanations:** a column whose name alone does not say what is counted carries an ⓘ after its header, opening a one-sentence explanation on hover and keyboard focus — sessions and tours attended, attendance rate, open Maybe, hours on tour, sessions without times, late cancellations, cancellation rate, unavoidable / avoidable / unreviewed, tours not evaluated, moments recorded and Avg. *criterion*. The matching overview figures and the average-scores chart carry the same ⓘ and text (`adminBuddyStats.descriptions`).
+**Explanations:** a column whose name alone does not say what is counted carries an ⓘ after its header, opening a one-sentence explanation on hover and keyboard focus — sessions and tours attended, late (unexcused), attendance rate, open Maybe, hours on tour, sessions without times, late cancellations, cancellation rate, unavoidable / avoidable / unreviewed, tours not evaluated, moments recorded and Avg. *criterion*. The matching overview figures and the average-scores chart carry the same ⓘ and text (`adminBuddyStats.descriptions`).
 
 **Overview (above the table):** figures across every buddy the table shows, so scope and row filters change both alike. Computed in the browser from the same rows; no extra request.
 
 | Figure | Counted as |
 |---|---|
 | Buddies / attended at least once | Rows in view / rows with a session attended |
-| Sessions attended, hours on tour, no-shows, late cancellations, unreviewed cancellations, tours not evaluated | Sum over the rows |
+| Sessions attended, hours on tour, no-shows, late (unexcused), late cancellations, unreviewed cancellations, tours not evaluated | Sum over the rows |
 | Attendance rate, cancellation rate, reflection rate | Pooled: Σ tours attended ÷ Σ (attended + missed), Σ cancellations ÷ Σ bookings, Σ reflections ÷ Σ sessions — not an average of each buddy's rate |
 
 | Chart | Bars |
@@ -1020,8 +1023,8 @@ Clicking a bar narrows the list to the reflections behind it; a line above the l
 - Internal notes
 - Created date
 - **Cancellation summary** — total / unavoidable / avoidable / unreviewed counts derived from the buddy's `CancellationReason` rows
-- **Absence summary** — `absentWithoutReport` count from `AdminEvaluation` rows; admins use it to inform the `reliability` score in `AdminProfileEvaluation`
-- **Stats** — the stats page's numbers for this buddy, all time. Key numbers lead in three stacked sections — activity (sessions attended, tours attended, reflections), reliability (attendance rate, no-shows, late cancellations) and recent & upcoming (last tour, days inactive, upcoming confirmed); below them every group of the column picker is a collapsed section listing all its numbers, with zeros and `—` greyed. Profile columns (already on the page) and per-place counts (the stats page has them) are left out. The cancellation summary stays in the booking history, where it updates as an admin reviews a reason.
+- **Absence summary** — count of tours the attendance record marks absent without report (§11.10); admins use it to inform the `reliability` score in `AdminProfileEvaluation`
+- **Stats** — the stats page's numbers for this buddy, all time. Key numbers lead in three stacked sections — activity (sessions attended, tours attended, reflections), reliability (attendance rate, no-shows, late (unexcused), late cancellations) and recent & upcoming (last tour, days inactive, upcoming confirmed); below them every group of the column picker is a collapsed section listing all its numbers, with zeros and `—` greyed. Profile columns (already on the page) and per-place counts (the stats page has them) are left out. The cancellation summary stays in the booking history, where it updates as an admin reviews a reason.
 - Full booking history (table of tours + booking status) — see below
 
 **Edit form** (`PUT /admin/buddies/:id` — body `{tier?, memberType?, internalNotes?}`):
@@ -1187,7 +1190,7 @@ Picking a session's place happens on the tour create/edit form itself (a dropdow
 
 バディ記録 / "Buddy record": what the buddy has done, where, and where their reflections stand — for their own growth, not an appraisal. Active buddies only, reached from the buddy nav. Built in the browser from `GET /me/bookings` and `GET /me/reflections` (`apps/web/src/app/[locale]/buddy/record/buddy.record.ts`); no endpoint of its own.
 
-**Attended** is the history page's rule (§8.8): a past tour, not `cancelled`, with a `confirmed` booking on at least one session. It is not the buddy stats rule (§11.4), which leaves out tours an admin recorded as a no-show: admin evaluations are hidden from buddies (§9.2), and a count that dropped would tell them. A buddy's count can therefore be higher than the admin's for the same buddy.
+**Attended** is the history page's rule (§8.8): a past tour, not `cancelled`, with a `confirmed` booking on at least one session, and not marked absent on the attendance record. The buddy stats (§11.4) also need the tour `completed`, so a past tour not yet completed counts here first.
 
 Mobile first: one column, every figure number first with its label right beside it, every link a whole row at least 44px tall. Sections, top to bottom:
 
@@ -1207,7 +1210,94 @@ A buddy with no attended tour sees one line saying the record starts after their
 
 **Not shown to buddies:** attendance rate, cancellations, late cancellations, no-shows, admin evaluation scores and tier progress.
 
-**Hours on tour is tour time, not working hours.** It must not be used for pay; actual working hours need an attendance record (#262).
+**Hours on tour is tour time, not working hours.** It must not be used for pay; working hours come from the attendance record (§11.10), shown on the history page.
+
+### 11.10 Attendance and Working Hours
+
+The record of when each buddy actually worked, so salaries are paid
+accurately (#262). A manual record; QR check-in is a later issue, and salary
+calculation is out of scope. Why it is shaped this way: `docs/decisions.md`
+2026-10-01.
+
+**Who is covered:** anyone with a `confirmed` booking on a `completed` tour,
+including `plab_member`. Training is arranged outside the system.
+
+**Defaults.** Nothing is typed for a buddy who followed the day:
+
+- **Start** = the meeting time of the buddy's first confirmed session on the tour.
+- **End** = the day's **finish time**. Reflection happens once, at the end of
+  the day, and its length varies, so a PLAB member records it. One finish time
+  per date, set from any tour page of that date. `endTime` plays no part.
+
+**Exceptions** are actual times, stored only when they differ. Empty means
+"follows the default". Changing the finish time never overwrites an
+individual time, so the order of entry doesn't matter.
+
+| Exception | Recorded | Counted against the buddy |
+|---|---|---|
+| Late | Arrival time; reason (transport delay / other + note); excused yes / no | Unexcused only — "Late (unexcused)" in the buddy stats |
+| Early leave | Leave time; note | Never |
+| Absent | Per tour; reported / not reported | Unreported = no-show. Either way 0 hours |
+| Unpaid break | Per tour, for everyone on it: start and end, or minutes — the PLAB member chooses. With times, each buddy loses only the part inside their own start → end | — |
+
+**Working hours per buddy per day** = first arrival → last leave − breaks,
+over the tours of that date the buddy was not absent from. The gap between two
+sessions is paid (it is usually about 15 minutes) unless a break is recorded.
+Hours are unknown until the finish time is recorded, unless every tour of the
+buddy's day has its own leave time.
+
+#### Tour detail page — Attendance section
+
+Shown once the tour is `completed`, above the evaluations.
+
+- **Finish time** at the top, for the tour date, with how many buddies follow
+  it that day (every tour of the date). Editing it changes their end.
+- **Unpaid break** under it, for the whole tour: none, start and end, or
+  minutes.
+- **One row per confirmed buddy.** Columns: buddy, Start, End, Hours. Every
+  column sortable.
+  - Start: "On time", or "Late 10:25 (+25 min)" with the reason and excused.
+  - End: "Finish", or "Left early 14:00", with the buddy's share of the break.
+  - Absent rows say so, reported or not, with 0 hours.
+  - An exception is highlighted.
+- **Clicking Start or End** opens an editor: a time, a reason, and "Back to
+  default". The Start editor also holds Absent (with reported / not
+  reported).
+- **Change log** under the rows: who changed whose record, and when.
+- A locked month shows the section read-only.
+
+#### Attendance page (`/admin/attendance?month=YYYY-MM`)
+
+Under the バディ管理 / Buddies heading of the admin sidebar, as 勤務記録 / Attendance.
+
+- One row per buddy per day in the month: date, buddy, tours, start, end,
+  break, hours. Sortable. A day with no finish time is marked, with a link to
+  its tours.
+- **Filters**: buddy (display or real name), tour (group name), member type,
+  status (absent / late / late (unavoidable) / no finish time — any of those
+  chosen), and a date range picked from the days of the month shown (no year or month to enter).
+- **Open flags** from buddies, each with its note and "Resolve".
+- **Lock / Unlock month.** A locked month is read-only everywhere; both
+  actions are logged.
+- **Export CSV** for finance: the rows the filters leave, one per buddy per
+  day — date, buddy name, real name, member type, start, end, break minutes,
+  working minutes, working hours, absent? (「欠席」 when absent, empty
+  otherwise), late minutes, tours.
+
+#### Buddy side (`/buddy/history`)
+
+- **Working hours**, one month at a time: each day with start, end, break and
+  hours, or "Absent". A day waiting for its finish time says so.
+- **"Report a mistake"** on a day: a note, sent to PLAB members
+  (`attendance_flagged`, §10.2). One open flag per day; the day shows it is
+  being checked until a PLAB member resolves it.
+
+**Rules:**
+
+- Any PLAB member can record, lock and unlock.
+- Every change is kept in an append-only log (`AttendanceChange`): who, when,
+  before and after.
+- A locked month refuses edits (`409 conflict`) until unlocked.
 
 ---
 

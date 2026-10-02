@@ -17,7 +17,7 @@ function isEmpty(column: StatColumn, buddy: AdminBuddyStatsRow): boolean {
 // done, whether they turn up, whether they are still active.
 const KEY_SECTIONS = [
   { id: 'activity', columns: ['sessionsAttended', 'toursAttended', 'reflections'] },
-  { id: 'reliability', columns: ['attendanceRate', 'noShows', 'lateCancellations'] },
+  { id: 'reliability', columns: ['attendanceRate', 'noShows', 'lateUnexcused', 'lateCancellations'] },
   { id: 'recent', columns: ['lastTourDate', 'daysSinceLastTour', 'upcomingConfirmed'] },
 ] as const
 

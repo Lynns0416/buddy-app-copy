@@ -9,6 +9,7 @@ import { adminProfileEvaluationRoutes } from './adminProfileEvaluations'
 import { adminReflectionRoutes } from './adminReflections'
 import { adminProfileRoutes } from './adminProfiles'
 import { adminDashboardRoutes } from './adminDashboard'
+import { adminAttendanceRoutes, adminTourAttendanceRoutes } from './adminAttendance'
 import { listBuddyStats } from '../services/adminBuddyStats.service'
 import { BuddyStatsQuerySchema } from './statsQuery'
 import type { AuthEnv } from '../types'
@@ -18,6 +19,8 @@ const adminRoutes = new Hono<AuthEnv>()
 adminRoutes.route('/groups', adminGroupRoutes)
 adminRoutes.route('/places', adminPlaceRoutes)
 adminRoutes.route('/tours', adminTourRoutes)
+adminRoutes.route('/tours', adminTourAttendanceRoutes)
+adminRoutes.route('/attendance', adminAttendanceRoutes)
 adminRoutes.route('/evaluations', adminEvaluationRoutes)
 adminRoutes.route('/profile-evaluations', adminProfileEvaluationRoutes)
 adminRoutes.route('/reflections', adminReflectionRoutes)

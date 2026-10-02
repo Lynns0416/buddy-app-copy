@@ -5,6 +5,7 @@ import type { AdminReflectionStatsPlace } from '@peace-buddy/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SuggestInput } from '@/components/suggest-input'
 import { placeName } from '@/lib/place-names'
 import { StatsScopeFields, statsSelectClass } from '../../_components/scope-fields'
 import {
@@ -23,6 +24,7 @@ type Props = {
   filters: ReflectionStatsFilters
   onFiltersChange: (filters: ReflectionStatsFilters) => void
   places: AdminReflectionStatsPlace[]
+  buddyNames: string[]
   resultCount: number
   totalCount: number
 }
@@ -38,6 +40,7 @@ export function ReflectionStatsFilterBar({
   filters,
   onFiltersChange,
   places,
+  buddyNames,
   resultCount,
   totalCount,
 }: Props) {
@@ -59,14 +62,12 @@ export function ReflectionStatsFilterBar({
       </StatsScopeFields>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Input
-          type="search"
-          autoComplete="off"
+        <SuggestInput
+          suggestions={buddyNames}
           aria-label={t('filters.buddyLabel')}
           placeholder={t('filters.buddyPlaceholder')}
           value={filters.buddy}
-          onChange={(e) => onFiltersChange({ ...filters, buddy: e.target.value })}
-          onKeyDown={keepEnter}
+          onChange={(buddy) => onFiltersChange({ ...filters, buddy })}
         />
         <Input
           type="search"
