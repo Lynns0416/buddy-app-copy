@@ -12,6 +12,24 @@ duplicate that state here.
 
 ---
 
+## 2026-10-03 — Profile スキル is 得意なこと; no separate 好きなこと field
+
+**Decision:** the buddy profile's `skills` field is labelled 得意なこと
+("Things I'm good at"). The field id, column and one-item-per-line format stay
+as they are; existing data carries over. Closes #131.
+
+**Why:** スキル read as a professional-competency list and put buddies off
+filling it in.
+
+**Rejected — a second 好きなこと field:** needs a schema change, migration,
+types, API and form work for a field nobody has yet said they will read. Add it
+when someone names who reads it and where.
+
+**Current state:** `apps/web/messages/ja.json`, `apps/web/messages/en.json`
+(`buddy.profile.skills`, `skillsHelp`).
+
+---
+
 ## 2026-10-02 — 参加不可, answered from Home and the tour page
 
 **Decision:** a `declined` booking reads 参加不可 in Japanese (was 辞退),

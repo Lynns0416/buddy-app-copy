@@ -925,8 +925,8 @@
     "realName": "Full name",
     "bio": "Bio",
     "contactInfo": "Contact info",
-    "skills": "Skills",
-    "skillsHelp": "One skill per line",
+    "skills": "Things I'm good at",
+    "skillsHelp": "One per line",
     "languages": "Languages",
     "photo": {
       "altText": "Profile photo of {name}",
