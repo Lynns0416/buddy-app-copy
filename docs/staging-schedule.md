@@ -47,7 +47,7 @@ flowchart LR
 
 ## Setup log
 
-As of 2026-09-17.
+As of 2026-10-03. Steps 6–8 run 2026-10-01 00:40 JST; step 9 verified 2026-10-03 (#270).
 
 | Step | What | Status |
 |---|---|---|
@@ -56,15 +56,14 @@ As of 2026-09-17.
 | 2 | Automation account and its identity | ✅ principal `30144a08-de24-4ed3-a249-345e3912f9d4` |
 | 3 | Role assignment on the server | ✅ |
 | 4 | Runbook created, uploaded, published | ✅ |
-| 5 | Test by hand | ◐ `start` on a running server passed; the real stop and start haven't been run |
-| 6 | Schedules and job schedules | ⬜ |
-| 7 | Failure alert | ⬜ |
-| 8 | Staging budget ¥1,600 → ¥2,600 | ⬜ |
-| 9 | Verify | ⬜ |
+| 5 | Test by hand | ✅ `start` on a running server passed by hand. The real stop and start were skipped by hand and proven by the first scheduled runs (step 9) |
+| 6 | Schedules and job schedules | ✅ first runs 2026-10-01; job schedules `01fa412f-15a4-47f6-8dc8-6a117c5d37ae` (start), `79ed26dc-18d6-4023-aad6-56b2de2d338e` (stop) |
+| 7 | Failure alert | ✅ |
+| 8 | Staging budget ¥1,600 → ¥2,600 | ✅ |
+| 9 | Verify | ✅ stops 10-01 and 10-02 20:45 printed `stop accepted (202).`, start 10-02 08:45 printed `start accepted (202).`; server `Stopped` before 08:45 on 10-03 |
 
 Every command is split across short lines on purpose. A long line copied out of
 a chat window can break in two, and each half then runs as its own command.
-Steps 6 and 7 **haven't been run yet**, so their commands may need adjusting.
 
 ### 0. Prerequisites
 
@@ -250,7 +249,8 @@ identity can sign in, the role allows read, and the script runs on 5.1. It does
 **not** prove that start or stop work, because the runbook returned before
 calling either.
 
-**Still to run: a real stop, then a start.**
+**Skipped on 2026-10-01: a real stop, then a start.** The first scheduled
+runs cover it instead (step 9). To run it by hand later:
 
 1. Run the same three commands with `Action=stop`.
 2. Check that
@@ -261,7 +261,7 @@ calling either.
 Staging is unavailable for roughly 5–10 minutes during this, so pick a time when
 nobody is testing.
 
-### 6. Schedules — not run yet
+### 6. Schedules
 
 ```
 az automation schedule create \
@@ -295,7 +295,7 @@ az rest --method put \
 
 Then make the same link for start.
 
-### 7. Failure alert — not run yet
+### 7. Failure alert
 
 The account emits a `TotalJob` metric with `Runbook` and `Status` dimensions,
 which `az monitor metrics list-definitions` confirms.
@@ -319,7 +319,7 @@ az monitor metrics alert create \
 
 `<COST_ALERT_EMAIL>` is the address in `scripts/azure.stg.env`.
 
-### 8. Budget — not run yet
+### 8. Budget
 
 Set `BUDGET_SERVER_MONTHLY_JPY=2600` in `scripts/azure.stg.env`, then run:
 
@@ -327,7 +327,7 @@ Set `BUDGET_SERVER_MONTHLY_JPY=2600` in `scripts/azure.stg.env`, then run:
 scripts/azure-cost-alerts.sh scripts/azure.stg.env
 ```
 
-### 9. Verify — not run yet
+### 9. Verify
 
 ```
 az automation schedule list \
@@ -337,8 +337,40 @@ az automation schedule list \
   -o table
 ```
 
-The next morning, `az automation job list` should show a `Completed` stop job
-from 20:45 and a `Completed` start job from 08:45.
+Because step 5's real stop and start were skipped, the first scheduled runs are
+the test. On 2026-10-01 at 08:45 the start job finds the server running and
+prints `Already running.`, so it proves nothing new. **The 20:45 stop on
+2026-10-01 is the first real stop, and the 08:45 start on 2026-10-02 is the first
+real start.** After 08:45 on 2026-10-02, check:
+
+```
+az automation job list \
+  -g rg-peace-buddy \
+  --automation-account-name aa-peace-buddy-stg \
+  --query "[].{job:name, status:status, start:startTime}" \
+  -o table
+```
+
+Then read the output of each job. The output URL takes the job's GUID
+(`jobId`), not the `SCH_…` name that `job list` prints, so look the GUIDs up
+first. `$AA` is set as in step 5:
+
+```
+A=(-g rg-peace-buddy)
+A+=(--automation-account-name aa-peace-buddy-stg)
+IDS=($(az automation job list $A --query "[].jobId" -o tsv))
+V="api-version=2023-11-01"
+for ID in $IDS
+do echo "== $ID"
+az rest --method get --url "$AA/jobs/$ID/output?$V"
+done
+```
+
+The stop job should print
+`Server state: Ready` and not `Already stopped.`, and the start job should print
+`Server state: Stopped`. Also check that the server is `Ready`.
+
+If a job ends `Failed`, `alert-staging-power-failed` emails within the hour.
 
 ## Cost
 
@@ -401,3 +433,8 @@ After that:
 - **The first job stays at `New` for a while.** Automation has to prepare a
   sandbox for it. Wait and check again.
 - **`Completed` doesn't mean the job did anything.** Read the job output.
+- **A line ending in `\` doesn't survive a paste inside `$(...)`.** Each
+  continuation line ran as its own command (`command not found: -g`). The
+  step 9 loop builds its arguments in a zsh array instead.
+- **A scheduled job's output URL returns `Job not found` for its `SCH_…`
+  name.** It needs the `jobId` GUID.
