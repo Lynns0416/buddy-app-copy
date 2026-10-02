@@ -89,13 +89,6 @@ describe('TourCalendar', () => {
     expect(within(cell(container, '2025-07-04')).getAllByRole('link')).toHaveLength(5)
   })
 
-  it('flags a tour whose session is below its minimum', () => {
-    const below = { belowMinimum: true } as TourSessionResponse
-    const { container } = renderCalendar([tour({ sessions: [below] })])
-
-    expect(within(cell(container, '2025-07-04')).getByLabelText('adminTours.belowMinimum')).toBeTruthy()
-  })
-
   it('says so when the month has no tours at all', () => {
     renderCalendar([tour({ tourDate: '2025-09-04' })])
 

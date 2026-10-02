@@ -36,7 +36,13 @@ vi.mock('@/hooks/use-my-bookings', () => ({
 }))
 
 vi.mock('@/lib/api-client', () => ({
-  apiClient: { markOnboardingSeen: vi.fn(), getTour: vi.fn(), listMyReflections: vi.fn(), createBooking: vi.fn() },
+  apiClient: {
+    markOnboardingSeen: vi.fn(),
+    getTour: vi.fn(),
+    listMyReflections: vi.fn(),
+    listMyAnnouncements: vi.fn(),
+    createBooking: vi.fn(),
+  },
 }))
 
 import { useAuth } from '../../../lib/auth'
@@ -47,6 +53,7 @@ import { useMyBookings } from '@/hooks/use-my-bookings'
 import { BookingStatusSchema, GroupTypeSchema, TourStatusSchema } from '@peace-buddy/types'
 import type {
   BookingStatus,
+  MyAnnouncementResponse,
   MyTourBookingEntry,
   TourDetailResponse,
   TourReflectionResponse,
@@ -102,10 +109,9 @@ function makeTour(
       startTime: null,
       endTime: null,
       capacity: 10,
-      minBuddies: null,
+      minBuddies: 3,
       participantCount: 0,
-      belowMinimum: false,
-      confirmedCount: 0,
+      confirmedCount: 3,
       myBookingStatus,
       place: { id: 'place-1', nameJa: 'Tokyo Station', nameEn: 'Tokyo Station' },
     })),
@@ -164,11 +170,16 @@ function makeEntry(
   }
 }
 
+function announcement(id: string, title: string, tourId: string | null = null): MyAnnouncementResponse {
+  return { id, titleJa: `${title} (ja)`, bodyJa: 'ja', titleEn: title, bodyEn: 'body', tourId }
+}
+
 describe('BuddyHomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockBookings([])
     vi.mocked(apiClient.listMyReflections).mockResolvedValue([])
+    vi.mocked(apiClient.listMyAnnouncements).mockResolvedValue([])
     // A tour-day detail that never arrives leaves the upcoming list in place.
     vi.mocked(apiClient.getTour).mockReturnValue(new Promise(() => {}))
   })
@@ -217,6 +228,29 @@ describe('BuddyHomePage', () => {
     expect(screen.getByText('traineeMessage')).toBeInTheDocument()
     expect(screen.queryByText('notRegistered')).not.toBeInTheDocument()
     expect(screen.queryAllByRole('heading')).toHaveLength(0)
+  })
+
+  it('shows a trainee the announcements meant for them, below the message', async () => {
+    vi.mocked(apiClient.listMyAnnouncements).mockResolvedValue([announcement('a1', 'Contract renewal')])
+    mockStatus('trainee')
+    render(<BuddyHomePage />)
+    expect(await screen.findByRole('heading', { level: 3, name: 'Contract renewal' })).toBeInTheDocument()
+    expect(screen.getByText('traineeMessage')).toBeInTheDocument()
+  })
+
+  it('puts announcements above the tours to book, in the order PLAB members set', async () => {
+    vi.mocked(apiClient.listMyAnnouncements).mockResolvedValue([
+      announcement('a1', 'First'),
+      announcement('a2', 'Second', 'tour-9'),
+    ])
+    mockTours([makeTour('open')])
+    mockStatus('active')
+    render(<BuddyHomePage />)
+    expect(await screen.findByText('School open')).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['First', 'Second'])
+    const headings = screen.getAllByRole('heading', { level: 2 })
+    expect(headings[0].closest('section')).toContainElement(screen.getByRole('heading', { level: 3, name: 'First' }))
+    expect(screen.getByRole('link', { name: 'viewTour' })).toHaveAttribute('href', routes.buddyTour('en', 'tour-9'))
   })
 
   it('tells a rejected buddy they are not registered, in place of the whole screen', () => {
@@ -473,14 +507,15 @@ describe('BuddyHomePage', () => {
     expect(screen.getByText(BookingStatusSchema.enum.waitlist)).toBeInTheDocument()
   })
 
-  it('shows no booking status for a session not booked or declined', async () => {
+  it('shows 参加不可 on a declined session and no status on one not booked', async () => {
     mockTours([makeTour('t1', {}, [null, BookingStatusSchema.enum.declined])])
     mockStatus('active')
     render(<BuddyHomePage />)
     expect(await screen.findByText('School t1')).toBeInTheDocument()
-    for (const status of BookingStatusSchema.options) {
-      expect(screen.queryByText(status)).not.toBeInTheDocument()
-    }
+    expect(screen.queryByText(BookingStatusSchema.enum.waitlist)).not.toBeInTheDocument()
+    // One 参加不可 button, on the session not booked, and one badge.
+    expect(screen.getAllByRole('button', { name: BookingStatusSchema.enum.declined })).toHaveLength(1)
+    expect(screen.getAllByText(BookingStatusSchema.enum.declined)).toHaveLength(2)
   })
 
   it('shows no tour status badge, since every tour listed here is published', async () => {

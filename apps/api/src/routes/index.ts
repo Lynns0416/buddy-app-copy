@@ -11,6 +11,7 @@ import { adminRoutes } from './admin'
 import { reflectionRoutes } from './reflections'
 import { notificationRoutes } from './notifications'
 import { myAttendanceRoutes } from './attendance'
+import { myAnnouncementRoutes } from './announcements'
 import {
   notificationPreferenceRoutes,
   buddyNotificationPreferenceRoutes,
@@ -34,6 +35,7 @@ protectedApp.route('/me', buddyRoutes)
 protectedApp.route('/me/reflections', reflectionRoutes)
 protectedApp.route('/me/notifications', notificationRoutes)
 protectedApp.route('/me/attendance', myAttendanceRoutes)
+protectedApp.route('/me/announcements', myAnnouncementRoutes)
 protectedApp.route('/me/notification-preferences', buddyNotificationPreferenceRoutes)
 protectedApp.use('/tours/*', authMiddleware)
 protectedApp.route('/tours', tourRoutes)

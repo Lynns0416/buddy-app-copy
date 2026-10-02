@@ -190,9 +190,8 @@ const mockSession: TourSessionResponse = {
   startTime: null,
   endTime: null,
   capacity: 5,
-  minBuddies: null,
+  minBuddies: 3,
   participantCount: 0,
-  belowMinimum: false,
   place: { id: 'place-1', nameJa: '東京駅', nameEn: 'Tokyo Station' },
 }
 
@@ -228,10 +227,10 @@ const validCreateBody = {
   tourDate: '2026-06-01',
   cancellationDeadline: '2026-05-25',
   notificationOffsets: [3, 1],
-  sessions: [{ meetingTime: '09:00', capacity: 5, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
+  sessions: [{ meetingTime: '09:00', capacity: 5, minBuddies: 3, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
 }
 
-const validSessionBody = { meetingTime: '10:00', capacity: 8, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }
+const validSessionBody = { meetingTime: '10:00', capacity: 8, minBuddies: 6, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }
 
 describe('GET /admin/tours', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -377,6 +376,19 @@ describe('POST /admin/tours', () => {
       body: JSON.stringify({
         ...validCreateBody,
         sessions: [{ meetingTime: '09:00', capacity: 5, minBuddies: -1 }],
+      }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockCreateTour).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when a session has no minBuddies', async () => {
+    const res = await buildApp().request('/admin/tours', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...validCreateBody,
+        sessions: [{ meetingTime: '09:00', capacity: 5, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
       }),
     })
     expect(res.status).toBe(400)
@@ -795,19 +807,24 @@ describe('PUT /admin/tours/:id/sessions/:sessionId', () => {
     )
   })
 
-  it('forwards explicit null minBuddies to clear the value', async () => {
-    mockUpdateSession.mockResolvedValueOnce(mockDetail)
+  it('rejects null minBuddies: a session always has one', async () => {
     const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ minBuddies: null }),
     })
-    expect(res.status).toBe(200)
-    expect(mockUpdateSession).toHaveBeenCalledWith(
-      'tour-1',
-      'session-1',
-      expect.objectContaining({ minBuddies: null }),
-    )
+    expect(res.status).toBe(400)
+    expect(mockUpdateSession).not.toHaveBeenCalled()
+  })
+
+  it('rejects minBuddies of 0', async () => {
+    const res = await buildApp().request('/admin/tours/tour-1/sessions/session-1', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ minBuddies: 0 }),
+    })
+    expect(res.status).toBe(400)
+    expect(mockUpdateSession).not.toHaveBeenCalled()
   })
 })
 

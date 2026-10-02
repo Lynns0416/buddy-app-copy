@@ -42,7 +42,7 @@ export const bookingStatusBadgeVariant: Record<BookingStatus, BadgeVariant> = {
   confirmed: 'default',
   maybe: 'secondary',
   waitlist: 'outline',
-  declined: 'destructive',
+  declined: 'outline',
 }
 
 export const groupTypeBadgeClass: Record<GroupType, string> = {

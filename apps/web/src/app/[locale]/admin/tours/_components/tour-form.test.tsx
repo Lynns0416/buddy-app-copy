@@ -29,6 +29,7 @@ const validFields = {
   tourDate: '2026-06-01',
   sessionMeetingTime: '09:00',
   sessionCapacity: '5',
+  sessionMinBuddies: '3',
   cancellationDeadline: '2026-05-25',
   notificationOffsets: '3, 1',
 }
@@ -70,6 +71,7 @@ async function fillAndSubmit(overrides: Partial<typeof validFields> = {}, onSubm
   await user.type(screen.getByLabelText('meetingTime'), fields.sessionMeetingTime)
   await user.clear(screen.getByLabelText('capacity'))
   await user.type(screen.getByLabelText('capacity'), fields.sessionCapacity)
+  if (fields.sessionMinBuddies) await user.type(screen.getByLabelText('minBuddies'), fields.sessionMinBuddies)
   await user.type(screen.getByLabelText('cancellationDeadline'), fields.cancellationDeadline)
 
   await user.click(screen.getByRole('button', { name: 'save' }))
@@ -100,9 +102,8 @@ function editTour(bookings: AdminTourDetailResponse['bookings'] = []): AdminTour
       startTime: null,
       endTime: null,
       capacity: 10,
-      minBuddies: null,
+      minBuddies: 1,
       participantCount: 0,
-      belowMinimum: false,
       place: { id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' },
     }],
     bookings,
@@ -177,6 +178,7 @@ describe('TourForm', () => {
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
+    await user.type(screen.getByLabelText('minBuddies'), validFields.sessionMinBuddies)
     await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
 
     await user.click(screen.getByRole('button', { name: 'save' }))
@@ -239,6 +241,7 @@ describe('TourForm', () => {
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
+    await user.type(screen.getByLabelText('minBuddies'), validFields.sessionMinBuddies)
     await user.type(screen.getByLabelText('cancellationDeadline'), '2026-05-25')
     await user.type(screen.getByLabelText('maybeDeadline'), '2026-05-26')
 
@@ -297,6 +300,7 @@ describe('TourForm', () => {
     await user.type(screen.getByLabelText('meetingTime'), validFields.sessionMeetingTime)
     await user.clear(screen.getByLabelText('capacity'))
     await user.type(screen.getByLabelText('capacity'), validFields.sessionCapacity)
+    await user.type(screen.getByLabelText('minBuddies'), validFields.sessionMinBuddies)
     await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
 
     await user.click(screen.getByRole('button', { name: 'save' }))
@@ -307,13 +311,12 @@ describe('TourForm', () => {
     resolve()
   })
 
-  it('submits minBuddies as null when the input is empty', async () => {
+  it('asks for minBuddies and blocks submit when the input is empty', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    await fillAndSubmit({}, onSubmit)
+    await fillAndSubmit({ sessionMinBuddies: '' }, onSubmit)
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
-    const values = onSubmit.mock.calls[0][0]
-    expect(values.sessions[0].minBuddies).toBeNull()
+    await waitFor(() => expect(screen.getByText('minBuddiesRequired')).toBeInTheDocument())
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('submits minBuddies as a number when filled', async () => {
@@ -336,15 +339,16 @@ describe('TourForm', () => {
     expect(values.sessions[0].minBuddies).toBe(2)
   })
 
-  it('submits a minBuddies of 0 as 0, not null', async () => {
+  it('rejects a minBuddies of 0', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     renderEditForm({ ...editTour(), sessions: [{ ...editTour().sessions[0], minBuddies: 0 }] }, onSubmit)
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: 'save' }))
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
-    expect(onSubmit.mock.calls[0][0].sessions[0].minBuddies).toBe(0)
+    // The input's own min of 1 stops the submit before the schema sees it.
+    expect(screen.getByLabelText('minBuddies')).toBeInvalid()
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('shows error and blocks submit when minBuddies exceeds capacity', async () => {
@@ -394,9 +398,8 @@ describe('TourForm', () => {
             startTime: null,
             endTime: null,
             capacity: 10,
-            minBuddies: null,
+            minBuddies: 3,
             participantCount: 0,
-            belowMinimum: false,
             place: { id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' },
           }],
           bookings: [],
@@ -447,9 +450,8 @@ describe('TourForm', () => {
             startTime: null,
             endTime: null,
             capacity: 10,
-            minBuddies: null,
+            minBuddies: 3,
             participantCount: 0,
-            belowMinimum: false,
             place: { id: 'place-2', nameJa: '浦上天主堂', nameEn: 'Urakami Cathedral' },
           }],
           bookings: [],
@@ -514,6 +516,9 @@ describe('TourForm', () => {
     await user.type(secondTime, '13:00')
     for (const input of screen.getAllByLabelText('capacity')) {
       await user.type(input, '5')
+    }
+    for (const input of screen.getAllByLabelText('minBuddies')) {
+      await user.type(input, '3')
     }
     await user.type(screen.getByLabelText('cancellationDeadline'), validFields.cancellationDeadline)
     await user.click(screen.getByRole('button', { name: 'save' }))

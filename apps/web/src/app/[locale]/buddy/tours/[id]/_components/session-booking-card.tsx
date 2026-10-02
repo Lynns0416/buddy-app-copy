@@ -14,6 +14,7 @@ import { createInitialBooking, updateBookingStatus, reportCantGo, mapErrorToI18n
 import { CANCEL_CATEGORIES } from '../../../lib/constants'
 import { isPastDeadline, canSelectMaybeStatus, isBookingAllowed } from '../../../lib/deadline'
 import { getBookingStatusLabel, bookingStatusBadgeVariant } from '@/lib/status-display'
+import { BookingResponseButtons, type BookingResponse } from '../../../_components/booking-response-buttons'
 
 interface Props {
   tourId: string
@@ -58,9 +59,10 @@ export function SessionBookingCard({
 
   const sessionLabel = session.label ?? (totalSessions > 1 ? t(`session.defaultLabel.${session.order}`) : null)
 
-  const handleBook = async (status?: typeof BookingStatusSchema.enum.maybe) => {
+  const handleBook = async (response: BookingResponse) => {
     setActing(true)
     setActionError(null)
+    const status = response === BookingStatusSchema.enum.confirmed ? undefined : response
     const result = await createInitialBooking(tourId, session.id, status)
     if (result.ok) {
       await onRefetch()
@@ -262,26 +264,15 @@ export function SessionBookingCard({
             </div>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {session.myBookingStatus === null && isBookable && (
-                <Button size="sm" onClick={() => void handleBook()} disabled={acting}>
-                  {t('book')}
-                </Button>
-              )}
-              {session.myBookingStatus === null && isBookable && canSelectMaybe && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary/10 hover:text-primary"
-                  onClick={() => void handleBook(BookingStatusSchema.enum.maybe)}
+              {(session.myBookingStatus === null || session.myBookingStatus === BookingStatusSchema.enum.declined) &&
+                isBookable && (
+                <BookingResponseButtons
+                  className="w-full"
+                  current={session.myBookingStatus}
+                  canMaybe={canSelectMaybe}
                   disabled={acting}
-                >
-                  {t('respondMaybe')}
-                </Button>
-              )}
-              {session.myBookingStatus === BookingStatusSchema.enum.declined && isBookable && effectiveRemaining > 0 && (
-                <Button size="sm" variant="outline" onClick={() => void handleUpdate(BookingStatusSchema.enum.confirmed)} disabled={acting}>
-                  {t('revert')}
-                </Button>
+                  onRespond={(response) => void handleBook(response)}
+                />
               )}
               {session.myBookingStatus === BookingStatusSchema.enum.confirmed && canSelectMaybe && (
                 <Button size="sm" variant="outline" onClick={() => void handleUpdate(BookingStatusSchema.enum.maybe)} disabled={acting}>

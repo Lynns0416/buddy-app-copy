@@ -55,7 +55,6 @@ export type TourFilters = {
   statuses: TourStatus[]
   dateRange: TourDateRange
   groupTypes: GroupType[]
-  belowMinimumOnly: boolean
 }
 
 export const emptyTourFilters: TourFilters = {
@@ -63,7 +62,6 @@ export const emptyTourFilters: TourFilters = {
   statuses: [],
   dateRange: TourDateRangeSchema.enum.all,
   groupTypes: [],
-  belowMinimumOnly: false,
 }
 
 export function isTourFilterActive(filters: TourFilters): boolean {
@@ -71,8 +69,7 @@ export function isTourFilterActive(filters: TourFilters): boolean {
     filters.search.trim() !== '' ||
     filters.statuses.length > 0 ||
     filters.dateRange !== TourDateRangeSchema.enum.all ||
-    filters.groupTypes.length > 0 ||
-    filters.belowMinimumOnly
+    filters.groupTypes.length > 0
   )
 }
 
@@ -88,7 +85,6 @@ export function filterTours(
     if (term && !searchable.some((f) => f.toLowerCase().includes(term))) return false
     if (filters.statuses.length > 0 && !filters.statuses.includes(tour.status)) return false
     if (filters.groupTypes.length > 0 && !filters.groupTypes.includes(tour.group.type)) return false
-    if (filters.belowMinimumOnly && !tour.sessions.some((s) => s.belowMinimum)) return false
     if (filters.dateRange !== TourDateRangeSchema.enum.all) {
       const upcoming = tour.tourDate.slice(0, 10) >= today
       if (upcoming !== (filters.dateRange === TourDateRangeSchema.enum.upcoming)) return false
@@ -103,7 +99,6 @@ const SEARCH_PARAM = 'q'
 const STATUS_PARAM = 'status'
 const RANGE_PARAM = 'range'
 const GROUP_TYPE_PARAM = 'groupType'
-const BELOW_MIN_PARAM = 'belowMin'
 
 function parseList<T extends string>(raw: string | null, schema: z.ZodType<T>): T[] {
   if (!raw) return []
@@ -121,7 +116,6 @@ export function tourFiltersFromParams(params: URLSearchParams): TourFilters {
     statuses: parseList(params.get(STATUS_PARAM), TourStatusSchema),
     dateRange: range.success ? range.data : TourDateRangeSchema.enum.all,
     groupTypes: parseList(params.get(GROUP_TYPE_PARAM), GroupTypeSchema),
-    belowMinimumOnly: params.get(BELOW_MIN_PARAM) === '1',
   }
 }
 
@@ -131,7 +125,6 @@ export function tourFiltersToParams(filters: TourFilters): URLSearchParams {
   if (filters.statuses.length > 0) params.set(STATUS_PARAM, filters.statuses.join(','))
   if (filters.dateRange !== TourDateRangeSchema.enum.all) params.set(RANGE_PARAM, filters.dateRange)
   if (filters.groupTypes.length > 0) params.set(GROUP_TYPE_PARAM, filters.groupTypes.join(','))
-  if (filters.belowMinimumOnly) params.set(BELOW_MIN_PARAM, '1')
   return params
 }
 

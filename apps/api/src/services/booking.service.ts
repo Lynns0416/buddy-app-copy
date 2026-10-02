@@ -76,7 +76,7 @@ export async function createBooking(
   tourId: string,
   sessionId: string,
   userId: string,
-  status?: typeof BookingStatusSchema.enum.maybe,
+  status?: typeof BookingStatusSchema.enum.maybe | typeof BookingStatusSchema.enum.declined,
 ): Promise<CreateBookingResult> {
   const [session, buddy] = await Promise.all([
     db.tourSession.findUnique({
@@ -118,7 +118,11 @@ export async function createBooking(
 
   const buddyTier = buddy.tier as BuddyTier
   let finalStatus: PrismaBookingStatus
-  if (status === BookingStatusSchema.enum.maybe) {
+  if (status === BookingStatusSchema.enum.declined) {
+    // 参加不可 answered up front: it holds no seat and needs no reason, so it
+    // is not a cancellation and no deadline applies.
+    finalStatus = PrismaBookingStatus.declined
+  } else if (status === BookingStatusSchema.enum.maybe) {
     const deadlineOverride = await db.buddyCancellationDeadlineOverride.findUnique({
       where: { buddyId_tourId: { buddyId: buddy.id, tourId } },
       select: { deadline: true },
@@ -185,8 +189,11 @@ export async function createBooking(
           status: row.status as BookingStatus,
         },
       }
-      await enqueueInAppForTourAdmins(tourId, bookingArgs, tx)
-      await enqueueSlackForAdmins(bookingArgs, tx)
+      // Saying 参加不可 is not a booking PLAB members need to hear about.
+      if (finalStatus !== PrismaBookingStatus.declined) {
+        await enqueueInAppForTourAdmins(tourId, bookingArgs, tx)
+        await enqueueSlackForAdmins(bookingArgs, tx)
+      }
       return row
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 

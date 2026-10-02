@@ -233,6 +233,43 @@ describe('createBooking', () => {
     )
   })
 
+  describe('as declined (参加不可)', () => {
+    it('records it without counting seats or checking deadlines', async () => {
+      mdb.tourSession.findUnique.mockResolvedValueOnce({
+        ...futureSession,
+        tour: { ...futureSession.tour, cancellationDeadline: new Date('2000-01-01') },
+      })
+      mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+      mdb.booking.findUnique.mockResolvedValueOnce(null)
+      mdb.booking.create.mockResolvedValueOnce({ ...mockBookingRow, status: 'declined' })
+
+      const result = await createBooking('tour-1', 'session-1', 'user-1', 'declined')
+      expect(result.ok).toBe(true)
+      expect(mdb.booking.count).not.toHaveBeenCalled()
+      expect(mdb.buddyCancellationDeadlineOverride.findUnique).not.toHaveBeenCalled()
+      expect(mdb.booking.create).toHaveBeenCalledWith(oc({ data: oc({ status: 'declined' }) }))
+    })
+
+    it('tells PLAB members nothing', async () => {
+      mdb.tourSession.findUnique.mockResolvedValueOnce(futureSession)
+      mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+      mdb.booking.findUnique.mockResolvedValueOnce(null)
+      mdb.booking.create.mockResolvedValueOnce({ ...mockBookingRow, status: 'declined' })
+
+      await createBooking('tour-1', 'session-1', 'user-1', 'declined')
+      expect(mdb.notificationJob.create).not.toHaveBeenCalled()
+    })
+
+    it('refuses a buddy who already holds a booking on the session', async () => {
+      mdb.tourSession.findUnique.mockResolvedValueOnce(futureSession)
+      mdb.buddyProfile.findUnique.mockResolvedValueOnce(mockBuddy)
+      mdb.booking.findUnique.mockResolvedValueOnce({ id: 'booking-1', status: 'confirmed' })
+
+      const result = await createBooking('tour-1', 'session-1', 'user-1', 'declined')
+      expect(result).toEqual({ ok: false, code: 'ALREADY_BOOKED' })
+    })
+  })
+
   describe('as maybe', () => {
     const maybeSession = {
       ...futureSession,

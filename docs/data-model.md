@@ -31,6 +31,10 @@ erDiagram
 
     BuddyProfile ||--o{ AttendanceFlag : "raises"
     User ||--o{ AttendanceFlag : "resolvedBy [admin only]"
+
+    AdminProfile ||--o{ Announcement : "createdBy / updatedBy"
+    Announcement ||--o{ AnnouncementRecipient : "selected buddies"
+    BuddyProfile ||--o{ AnnouncementRecipient : "picked for"
 ```
 
 `NotificationDispatchLog` has no relations — it is a standalone idempotency log keyed by `eventKey`.
@@ -69,6 +73,8 @@ erDiagram
     User ||--o{ AttendanceBreak : "updatedBy [admin only]"
     User ||--o{ AttendanceChange : "changedBy [admin only]"
     User ||--o{ AttendanceMonthLock : "lockedBy [admin only]"
+
+    Tour ||--o{ Announcement : "linked from"
 ```
 
 `AttendanceDay` is keyed by date, not by tour: every tour on that date shares
@@ -206,8 +212,8 @@ Per-session capacity and timing record. A tour must have at least one session.
 | startTime | Time? | |
 | endTime | Time? | |
 | capacity | Int | Total seats for this session |
-| minBuddies | Int? | Optional minimum-buddies threshold. When `participantCount < minBuddies` the session is flagged `belowMinimum` in API responses. |
-| participantCount | Int | Default 0; cached count of participants (group size — visitors, not buddies) |
+| minBuddies | Int | Required, ≥ 1, ≤ `capacity`. The session is short of buddies while its `confirmed` bookings are below it (PRD §11.7) |
+| participantCount | Int | Default 0; the group's 参加者数 (people in the group, not buddies) |
 | placeId | UUID | FK → Place. Exactly one per session; the two sessions of a tour may go to different places. Changing it is refused while a `TourReflectionMoment` on this session references a spot of the current place (enforced in `adminSession.service.ts`, not the DB). |
 | createdAt | Timestamp | |
 | updatedAt | Timestamp | |
@@ -554,6 +560,43 @@ Pending items for admin daily digest emails.
 | eventKey | String | Unique. Format `<eventType>:<scope>:<recipientUserId>`, e.g. `tour_reminder:<tourId>:<offsetDays>:<userId>` |
 | createdAt | Timestamp | |
 
+### Announcement
+An announcement (お知らせ) PLAB members write for buddies' Home. Not a
+notification: it exists only on Home and has no read state. Its audience is
+evaluated on every load, never snapshotted.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| titleJa | String | |
+| bodyJa | Text | Limited Markdown (`MarkdownText`) |
+| titleEn | String? | Shown to an `en` buddy when set, with `bodyEn` |
+| bodyEn | Text? | |
+| audience | Enum | `rule` / `selected` |
+| statuses | BuddyStatus[] | `rule` only: `trainee` / `active`; empty = either |
+| tiers | BuddyTier[] | `rule` only: empty = any, including no tier. A buddy with no tier never matches a rule with tiers |
+| startDate | Date | Shown while `startDate ≤ today (JST) ≤ endDate` |
+| endDate | Date | ≥ `startDate` |
+| position | Int | Order on Home and the admin list; lower first |
+| tourId | UUID? | FK → Tour, cascade delete. Hidden once no session of the tour is short of buddies |
+| createdById | UUID | FK → AdminProfile |
+| updatedById | UUID | FK → AdminProfile |
+| createdAt | Timestamp | |
+| updatedAt | Timestamp | |
+
+**Index:** `(startDate, endDate)`, `tourId`
+
+### AnnouncementRecipient
+A buddy picked by name for an `audience = selected` announcement.
+
+| Field | Type | Constraints |
+|---|---|---|
+| id | UUID | PK |
+| announcementId | UUID | FK → Announcement, cascade delete |
+| buddyId | UUID | FK → BuddyProfile |
+
+**Unique:** `(announcementId, buddyId)` · **Index:** `buddyId`
+
 ## Indexes
 
 | Table | Index | Reason |
@@ -569,6 +612,8 @@ Pending items for admin daily digest emails.
 | Attendance | `tourId` | A tour's attendance sheet |
 | AttendanceChange | `date` | A day's or month's change log |
 | AttendanceFlag | `date`, `buddyId` | Open flags per month; a buddy's own flags |
+| Announcement | `(startDate, endDate)` | Announcements showing today |
+| AnnouncementRecipient | `buddyId` | A buddy's selected announcements |
 
 ## Soft Delete Policy
 
@@ -583,3 +628,4 @@ Pending items for admin daily digest emails.
 | Attendance | "Back to default" deletes the row; the change log keeps it |
 | AttendanceBreak | "None" deletes the row; the change log keeps it |
 | AttendanceChange | Never deleted or updated |
+| Announcement | Hard delete; removed from Home at once |

@@ -11,9 +11,8 @@ const session: AdminTourDetailResponse['sessions'][number] = {
   startTime: null,
   endTime: null,
   capacity: 10,
-  minBuddies: null,
+  minBuddies: 3,
   participantCount: 0,
-  belowMinimum: false,
   place: { id: 'place-1', nameJa: '平和公園', nameEn: 'Peace Park' },
 }
 
@@ -21,7 +20,7 @@ const unchanged: SessionFormValues = {
   label: undefined,
   meetingTime: '09:30',
   capacity: 10,
-  minBuddies: null,
+  minBuddies: 3,
   participantCount: 0,
   placeId: 'place-1',
 }
@@ -44,10 +43,10 @@ describe('sessionChanges', () => {
       label: 'Morning',
       meetingTime: '10:00',
       capacity: 12,
-      minBuddies: 3,
+      minBuddies: 4,
       participantCount: 20,
       placeId: 'place-2',
-    })).toEqual({ label: 'Morning', meetingTime: '10:00', capacity: 12, minBuddies: 3, participantCount: 20, placeId: 'place-2' })
+    })).toEqual({ label: 'Morning', meetingTime: '10:00', capacity: 12, minBuddies: 4, participantCount: 20, placeId: 'place-2' })
   })
 })
 

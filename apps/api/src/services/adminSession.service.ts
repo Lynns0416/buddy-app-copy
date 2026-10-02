@@ -78,7 +78,7 @@ export async function addSession(tourId: string, data: CreateTourSession): Promi
       startTime: data.startTime ? parseTime(data.startTime) : null,
       endTime: data.endTime ? parseTime(data.endTime) : null,
       capacity: data.capacity,
-      minBuddies: data.minBuddies ?? null,
+      minBuddies: data.minBuddies,
       participantCount: data.participantCount ?? 0,
       placeId: data.placeId,
     },
@@ -98,8 +98,8 @@ export async function updateSession(tourId: string, sessionId: string, data: Upd
   // The schema only compares the two when both are sent; a partial update is
   // checked against the stored value of the one left out.
   const capacity = data.capacity ?? session.capacity
-  const minBuddies = data.minBuddies !== undefined ? data.minBuddies : session.minBuddies
-  if (minBuddies != null && minBuddies > capacity) throw new MinBuddiesExceedsCapacityError()
+  const minBuddies = data.minBuddies ?? session.minBuddies
+  if (minBuddies > capacity) throw new MinBuddiesExceedsCapacityError()
 
   const placeChanged = data.placeId !== undefined && data.placeId !== session.placeId
   const meetingTimeChanged =

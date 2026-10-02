@@ -93,7 +93,7 @@ function mapSession(row: {
   startTime: Date | null
   endTime: Date | null
   capacity: number
-  minBuddies: number | null
+  minBuddies: number
   participantCount: number
   place: PlaceSummary
 }): TourSessionResponse {
@@ -107,7 +107,6 @@ function mapSession(row: {
     capacity: row.capacity,
     minBuddies: row.minBuddies,
     participantCount: row.participantCount,
-    belowMinimum: row.minBuddies != null && row.participantCount < row.minBuddies,
     place: row.place,
   }
 }
@@ -129,7 +128,7 @@ function mapSummary(row: {
     startTime: Date | null
     endTime: Date | null
     capacity: number
-    minBuddies: number | null
+    minBuddies: number
     participantCount: number
     place: PlaceSummary
   }>
@@ -181,8 +180,7 @@ export async function listAdminTours(params: { status?: TourStatus }): Promise<A
 }
 
 // Published tours in the next `days` JST days with a session whose confirmed
-// buddies are below its `minBuddies` (PRD §11.7). This is not `belowMinimum`:
-// that flag compares the visitor count to the threshold; this counts buddies.
+// buddies are below its `minBuddies` (PRD §11.7).
 export async function listUnderfilledTours(
   now: Date,
   days: number,
@@ -192,14 +190,12 @@ export async function listUnderfilledTours(
     where: {
       status: TourStatusSchema.enum.published,
       tourDate: { gte: today, lt: addDays(today, days) },
-      sessions: { some: { minBuddies: { not: null } } },
     },
     select: {
       id: true,
       tourDate: true,
       group: { select: { name: true } },
       sessions: {
-        where: { minBuddies: { not: null } },
         select: {
           id: true,
           order: true,
@@ -215,7 +211,7 @@ export async function listUnderfilledTours(
 
   return rows.flatMap((row) => {
     const sessions = row.sessions.flatMap((s) =>
-      s.minBuddies != null && s._count.bookings < s.minBuddies
+      s._count.bookings < s.minBuddies
         ? [{ id: s.id, order: s.order, label: s.label, minBuddies: s.minBuddies, confirmedCount: s._count.bookings }]
         : [],
     )
@@ -244,7 +240,7 @@ export async function createTour(data: CreateTour): Promise<AdminTourDetailRespo
           startTime: s.startTime ? parseTime(s.startTime) : null,
           endTime: s.endTime ? parseTime(s.endTime) : null,
           capacity: s.capacity,
-          minBuddies: s.minBuddies ?? null,
+          minBuddies: s.minBuddies,
           participantCount: s.participantCount ?? 0,
           placeId: s.placeId,
         })),

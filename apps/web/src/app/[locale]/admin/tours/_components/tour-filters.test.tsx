@@ -75,15 +75,6 @@ describe('TourFilterBar', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ dateRange: 'past' }))
   })
 
-  it('reports the below-minimum toggle', async () => {
-    const user = userEvent.setup()
-    const { onChange } = renderBar()
-
-    await user.click(screen.getByRole('checkbox', { name: 'adminTours.filters.belowMinimumOnly' }))
-
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ belowMinimumOnly: true }))
-  })
-
   it('hides the result count and clear-all while nothing is active', () => {
     renderBar()
 

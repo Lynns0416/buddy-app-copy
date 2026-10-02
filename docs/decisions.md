@@ -12,6 +12,77 @@ duplicate that state here.
 
 ---
 
+## 2026-10-02 — 参加不可, answered from Home and the tour page
+
+**Decision:** a `declined` booking reads 参加不可 in Japanese (was 辞退),
+everywhere including the ja emails. A buddy can answer 参加不可 to a session
+they hold no booking on, from the tour page and from Home, where all three
+answers — 参加希望, 未定, 参加不可 — now sit on each session
+(`BookingResponseButtons`). `POST /tours/:id/bookings` takes
+`status: "declined"`. Current state: PRD §11.1, api.md.
+
+**This reverses 2026-09-30's "Maybe … stay on the tour page"** for a session
+with no live booking. The team asked for all three answers on Home.
+**Kept from that entry:** 参加希望 still asks to confirm the time and place,
+since it takes a seat; 未定 and 参加不可 hold none, so they apply at once.
+Changing a live booking stays on the tour page.
+
+**参加不可 up front is not a cancellation:** no reason, no deadline, no admin
+notification, and the buddy stats count a cancellation only with a reason.
+**Rejected — notifying PLAB members of it:** it is not a booking they act on.
+
+**Rejected — a red (destructive) 参加不可 button or badge:** it is an ordinary
+answer. The button is neutral grey and the badge neutral outline; 参加希望
+stays the filled, emphasised one.
+
+**Replaced — 「キャンセルを取り消す」 on a declined session:** the three answers
+cover it, and a buddy who answered 参加不可 up front never cancelled.
+
+---
+
+## 2026-10-02 — Announcements on buddy Home; 最小バディ数 is required
+
+**Decision:** PLAB members write お知らせ that buddies read on Home (#266),
+targeted by a rule (statuses × tiers) or by picked buddies, matched on every
+load, with a showing period, an order the members set, and an optional tour
+link that hides itself once the tour no longer needs that buddy. Current
+state: PRD §11.11, §11.1; data-model.md "Announcement"; api.md
+"Announcements".
+
+**Rejected — sending it as a notification (email, Slack, in-app):** Home is
+where buddies already look before booking, and a notification would add a new
+event kind, templates and a muting question for something that is read, not
+acted on at once.
+
+**Rejected — read / dismiss state:** it shows until its end date or until a
+member removes it. Dismissing would need per-buddy rows, and a buddy could
+hide a task such as a contract renewal before doing it.
+
+**Rejected — a snapshot of the audience at publish time:** a trainee promoted
+later would keep seeing a "trainees" announcement and a new buddy would miss
+an "all buddies" one.
+
+**`TourSession.minBuddies` is required, at least 1,** so "filled" is always
+defined for a tour-linked announcement. Before, a session without it was
+never short, so its announcement would never hide. Existing sessions were
+backfilled from 最大バディ数 (`capacity`): all of it up to 5, 2 fewer for
+6–10, 3 fewer above; a stored 0 was replaced the same way, since a session
+asking for no buddies makes no sense. **Rejected — falling back to
+`capacity` at read time** (the old buddy-number rule): it hides the gap
+between "enough" and "full", and two places would keep two rules.
+
+**Removed — the 「最小未満」 badge and filter (`belowMinimum`):** it flagged a
+session whose 参加者数 (the group's headcount) was below 最小バディ数, two
+numbers that measure different things. With 最小バディ数 required, every
+session with no headcount entered yet would have been flagged. A shortfall of
+buddies is shown on admin Home (§11.7) and in the tours buddies see.
+
+**Also settled:** a new announcement goes to the top of the order; English
+title and body are both set or both empty; trainees never see a tour-linked
+announcement, since tours are hidden from them.
+
+---
+
 ## 2026-10-01 — Attendance: the unpaid break belongs to the tour
 
 **Decision:** a tour has at most one unpaid break (`AttendanceBreak`), set once

@@ -425,6 +425,129 @@ The admin home worklist (PRD §11.7). Each queue is computed by the service that
 
 ---
 
+## Announcements
+
+お知らせ PLAB members write for buddies' Home (PRD §11.11). Not a notification:
+nothing is sent. Dates are JST calendar dates as `YYYY-MM-DD`.
+
+### Admin: `GET /admin/announcements`
+Every announcement, in the members' order (`position` ascending).
+
+**Auth:** `admin`
+
+**Response `200`** — `AdminAnnouncementResponse[]`
+```json
+[
+  {
+    "id": "uuid",
+    "titleJa": "string",
+    "bodyJa": "string (limited Markdown)",
+    "titleEn": "string | null",
+    "bodyEn": "string | null",
+    "audience": "rule | selected",
+    "statuses": ["trainee | active"],
+    "tiers": ["junior | buddy | star | blackstar"],
+    "buddies": [{ "id": "uuid", "displayName": "string", "realName": "string" }],
+    "startDate": "YYYY-MM-DD",
+    "endDate": "YYYY-MM-DD",
+    "position": 0,
+    "tour": { "id": "uuid", "tourDate": "ISO8601", "groupName": "string" },
+    "createdBy": { "name": "string" },
+    "updatedBy": { "name": "string" },
+    "createdAt": "ISO8601",
+    "updatedAt": "ISO8601"
+  }
+]
+```
+
+`statuses` and `tiers` are set for `rule` only, `buddies` for `selected` only. `tour` is `null` when none is linked.
+
+### Admin: `GET /admin/announcements/:id`
+**Auth:** `admin` · **Response `200`** — `AdminAnnouncementResponse` · **Errors** — `404`
+
+### Admin: `POST /admin/announcements`
+Create one. It goes to the top of the order. The caller is recorded as author and last editor.
+
+**Auth:** `admin`
+
+**Request** — `UpsertAnnouncementSchema`
+```json
+{
+  "titleJa": "string",
+  "bodyJa": "string",
+  "titleEn": "string | null",
+  "bodyEn": "string | null",
+  "audience": "rule | selected",
+  "statuses": ["trainee | active"],
+  "tiers": ["junior | buddy | star | blackstar"],
+  "buddyIds": ["uuid"],
+  "startDate": "YYYY-MM-DD",
+  "endDate": "YYYY-MM-DD",
+  "tourId": "uuid | null"
+}
+```
+
+- `titleJa` and `bodyJa` are required; `titleEn` and `bodyEn` are both set or both `null`
+- `endDate` ≥ `startDate`
+- `rule`: `statuses` AND `tiers`, an empty list meaning any; `buddyIds` is ignored
+- `selected`: at least one `buddyIds`; `statuses` and `tiers` are ignored
+
+**Response `201`** — `AdminAnnouncementResponse`
+
+**Errors**
+- `400` — invalid body, or a `tourId` / `buddyIds` entry that does not exist
+
+### Admin: `PUT /admin/announcements/:id`
+Replace one, including its picked buddies. The caller becomes the last editor. Silent: nothing is sent.
+
+**Auth:** `admin` · **Request** — `UpsertAnnouncementSchema` · **Response `200`** — `AdminAnnouncementResponse`
+
+**Errors**
+- `400` — as for `POST`
+- `404` — not found
+
+### Admin: `DELETE /admin/announcements/:id`
+Delete one; it leaves buddies' Home at once.
+
+**Auth:** `admin` · **Response `204`** · **Errors** — `404`
+
+### Admin: `PUT /admin/announcements/order`
+Set the order.
+
+**Auth:** `admin`
+
+**Request** — `ReorderAnnouncementsSchema`: `{ "ids": ["uuid"] }`, top first, every announcement exactly once.
+
+**Response `200`** — `AdminAnnouncementResponse[]` in the new order
+
+**Errors**
+- `409` — `ids` is not every announcement exactly once (one was added or deleted meanwhile)
+
+### Admin: `POST /admin/announcements/audience-count`
+How many buddies an audience matches now, for the form's live count.
+
+**Auth:** `admin`
+
+**Request** — `AnnouncementAudienceInputSchema`: `{ "audience", "statuses", "tiers", "buddyIds" }`
+
+**Response `200`** — `{ "count": 0 }`: `trainee` and `active` buddies only. A rule with tiers never counts a buddy without a tier.
+
+### Buddy: `GET /me/announcements`
+What the caller sees on Home, in the members' order.
+
+**Auth:** any signed-in user; empty unless the caller is a `trainee` or `active` buddy
+
+**Response `200`** — `MyAnnouncementResponse[]`
+```json
+[{ "id": "uuid", "titleJa": "string", "bodyJa": "string", "titleEn": "string | null", "bodyEn": "string | null", "tourId": "uuid | null" }]
+```
+
+Only announcements with `startDate ≤ today (JST) ≤ endDate` whose audience matches the caller now. The response never carries the audience, so nothing says why the buddy got it.
+
+A tour-linked announcement is left out when no session of the tour is short of buddies (`confirmed < minBuddies`), the tour is not `published`, or its date is before today; and, for this buddy, when no short session has room for them — they already hold a `confirmed`, `maybe` or `waitlist` booking there, or `myRemaining` (`GET /tours/:id`) is 0. A trainee never sees one: `GET /tours/:id` hides tours from them.
+
+---
+
 ## Groups
 
 All group endpoints are admin-only and mounted under `/admin/groups`. No public or buddy-facing group routes. Groups cannot be deleted in v1.
@@ -488,7 +611,7 @@ Group detail including the linked tour history.
 }
 ```
 
-`tours` is ordered by `tourDate` descending. Each session in `tours[].sessions` carries a `belowMinimum` flag (`minBuddies != null && participantCount < minBuddies`).
+`tours` is ordered by `tourDate` descending.
 
 **Errors**
 - `404` — group not found
@@ -649,9 +772,8 @@ List tours visible to the caller. Trainee buddies are excluded server-side.
           "startTime": "HH:MM | null",
           "endTime": "HH:MM | null",
           "capacity": 0,
-          "minBuddies": 0,
+          "minBuddies": 1,
           "participantCount": 0,
-          "belowMinimum": false,
           "place": { "id": "uuid", "nameJa": "string", "nameEn": "string" },
           "confirmedCount": 0,
           "myBookingStatus": "confirmed | maybe | waitlist | declined | null"
@@ -755,8 +877,8 @@ Create a tour. Status is initialised to `draft`.
       "meetingTime": "HH:MM",
       "startTime": "HH:MM",
       "endTime": "HH:MM",
-      "capacity": 0,
-      "minBuddies": 0,
+      "capacity": 1,
+      "minBuddies": 1,
       "participantCount": 0,
       "placeId": "uuid"
     }
@@ -765,6 +887,7 @@ Create a tour. Status is initialised to `draft`.
 ```
 
 - `sessions` is required, length 1 or 2; additional sessions are added later via the session endpoints
+- Each session's `minBuddies` is required: an integer from 1 to its `capacity`
 - Each session's `placeId` is required — exactly one place per session, and the two sessions may differ (see `## Places and Spots`). An unknown `placeId` is not caught as a `400`
 - Server validates `maybeDeadline < cancellationDeadline` when both are set
 
@@ -878,7 +1001,7 @@ Add a session to an existing tour. Tour must already exist with one session; the
 
 **Auth:** `admin`
 
-**Request** — `CreateTourSessionSchema` (`label?`, `meetingTime`, `startTime?`, `endTime?`, `capacity`, `minBuddies?`, `participantCount?`, `placeId`)
+**Request** — `CreateTourSessionSchema` (`label?`, `meetingTime`, `startTime?`, `endTime?`, `capacity`, `minBuddies` (1 to `capacity`), `participantCount?`, `placeId`)
 
 **Response `201`** — `AdminTourDetailResponse`
 
@@ -893,7 +1016,7 @@ Update a session.
 
 **Auth:** `admin`
 
-**Request** — `UpdateTourSessionSchema` (all fields optional, including `placeId`)
+**Request** — `UpdateTourSessionSchema` (all fields optional, including `placeId`). `minBuddies`, when sent, is at least 1; it cannot be cleared
 
 **Response `200`** — `AdminTourDetailResponse`
 
@@ -1009,15 +1132,15 @@ Set or clear the staff-in-charge designation.
 Bookings are scoped to a **session** (one booking per `(buddyId, sessionId)`). All buddy-facing endpoints sit under tour-shaped paths; admin overrides live under `/admin/bookings`. There is no separate booking-create vs status-change endpoint shape — `POST` creates, `PUT /me` updates the caller's own.
 
 ### Buddy: `POST /tours/:id/bookings`
-Create a booking for one session of the tour. Without `status`, the server decides `confirmed` vs `waitlist` from the session's tier pool state (see PRD §8.9). With `status: "maybe"`, the booking is created as `maybe`: it holds no seat, so the pools are not consulted.
+Create a booking for one session of the tour. Without `status`, the server decides `confirmed` vs `waitlist` from the session's tier pool state (see PRD §8.9). With `status: "maybe"`, the booking is created as `maybe`: it holds no seat, so the pools are not consulted. With `status: "declined"`, the buddy answers 参加不可 up front: the booking is created as `declined`, with no deadline check, no cancellation reason and no admin notification. It is not counted as a cancellation.
 
 **Auth:** any authenticated active buddy with a tier assigned
 
 **Request** — `CreateBookingBodySchema`
 ```json
-{ "sessionId": "uuid", "status": "maybe" }
+{ "sessionId": "uuid", "status": "maybe | declined" }
 ```
-`status` is optional, and `maybe` is its only accepted value.
+`status` is optional; `maybe` and `declined` are its only accepted values.
 
 **Response `201`** — `BookingResponse`
 ```json
@@ -1026,7 +1149,7 @@ Create a booking for one session of the tour. Without `status`, the server decid
   "tourId": "uuid",
   "sessionId": "uuid",
   "buddyTier": "junior | buddy | star | blackstar",
-  "status": "confirmed | waitlist | maybe",
+  "status": "confirmed | waitlist | maybe | declined",
   "bookedAt": "ISO8601",
   "updatedAt": "ISO8601"
 }

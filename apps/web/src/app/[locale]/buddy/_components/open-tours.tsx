@@ -6,24 +6,27 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { CalendarDays, MapPin, Users, Clock } from 'lucide-react'
 import type { TourListSessionResponse, TourResponse } from '@peace-buddy/types'
-import { BookingStatusSchema } from '@peace-buddy/types'
+import { BookingStatusSchema, getTodayJst } from '@peace-buddy/types'
 import { routes } from '@/lib/routes'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { bookingStatusBadgeVariant, getBookingStatusLabel } from '@/lib/status-display'
 import { OPEN_TOURS_PREVIEW, buddiesNeeded } from '../buddy.home'
 import { createInitialBooking, mapErrorToI18nKey } from '../tours/[id]/buddy.booking'
+import { canSelectMaybeStatus, isPastDeadline } from '../lib/deadline'
+import { BookingResponseButtons, type BookingResponse } from './booking-response-buttons'
 import { formatDate } from '@/lib/format-date'
 import { placeName, placeNames } from '@/lib/place-names'
 
-// Booking straight from Home, one session at a time. The buddy confirms the
-// time and place first; a Maybe, or changing a booking, stays on the tour page.
+// Answering straight from Home, one session at a time: 参加希望, 未定 or 参加不可,
+// as on the tour page. Only 参加希望 takes a seat, so only it asks the buddy to
+// confirm the time and place first. Changing a live booking stays on the tour page.
 function SessionRow({
-  tourId,
+  tour,
   session,
   onBooked,
 }: {
-  tourId: string
+  tour: TourResponse
   session: TourListSessionResponse
   onBooked: () => void
 }) {
@@ -33,15 +36,21 @@ function SessionRow({
   const tDetail = useTranslations('tourDetail')
   const tBookingStatus = useTranslations('bookingStatus')
   const [confirming, setConfirming] = useState(false)
+  const today = getTodayJst()
+  const canMaybe = canSelectMaybeStatus(
+    tour.maybeDeadline ? isPastDeadline(today, tour.maybeDeadline) : false,
+    isPastDeadline(today, tour.cancellationDeadline),
+  )
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const time = session.meetingTime.slice(11, 16)
   const needed = buddiesNeeded(session)
 
-  const book = async () => {
+  const respond = async (response: BookingResponse) => {
     setActing(true)
     setError(null)
-    const result = await createInitialBooking(tourId, session.id)
+    const status = response === BookingStatusSchema.enum.confirmed ? undefined : response
+    const result = await createInitialBooking(tour.id, session.id, status)
     setActing(false)
     if (result.ok) {
       setConfirming(false)
@@ -52,14 +61,13 @@ function SessionRow({
   }
 
   return (
-    <div className="border-t pt-2 first:border-t-0 first:pt-0">
+    <div className="border-t pt-4 pb-1 first:border-t-0 first:pt-0 last:pb-0">
       {session.label && <p className="mb-1 text-sm font-medium text-foreground">{session.label}</p>}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Clock size={14} />
           {time}
-          {/* declined means the buddy cancelled and can book again — on the card that is not booked */}
-          {session.myBookingStatus && session.myBookingStatus !== BookingStatusSchema.enum.declined && (
+          {session.myBookingStatus && (
             <Badge variant={bookingStatusBadgeVariant[session.myBookingStatus]}>
               {getBookingStatusLabel(tBookingStatus, session.myBookingStatus)}
             </Badge>
@@ -73,7 +81,7 @@ function SessionRow({
         ) : (
           <span className="flex items-center gap-1.5">
             <Users size={14} />
-            {t('buddyCount')}: {session.minBuddies ?? session.capacity}
+            {t('buddyCount')}: {session.minBuddies}
           </span>
         )}
         <span className="flex items-center gap-1.5">
@@ -81,12 +89,12 @@ function SessionRow({
           {t('participantCount')}: {session.participantCount}
         </span>
       </div>
-      {session.myBookingStatus === null &&
+      {(session.myBookingStatus === null || session.myBookingStatus === BookingStatusSchema.enum.declined) &&
         (confirming ? (
           <div className="mt-2 flex flex-col gap-2 rounded-md border p-3">
             <p className="text-sm">{tHome('open.confirm', { time, place: placeName(session.place, locale) })}</p>
             <div className="flex gap-2">
-              <Button size="sm" className="min-h-11" disabled={acting} onClick={() => void book()}>
+              <Button size="sm" className="min-h-11" disabled={acting} onClick={() => void respond(BookingStatusSchema.enum.confirmed)}>
                 {tHome('open.confirmBook')}
               </Button>
               <Button size="sm" variant="outline" className="min-h-11" disabled={acting} onClick={() => setConfirming(false)}>
@@ -95,9 +103,16 @@ function SessionRow({
             </div>
           </div>
         ) : (
-          <Button size="sm" className="mt-2 min-h-11" onClick={() => setConfirming(true)}>
-            {tHome('open.book', { time })}
-          </Button>
+          <BookingResponseButtons
+            className="mt-2"
+            size="compact"
+            current={session.myBookingStatus}
+            canMaybe={canMaybe}
+            disabled={acting}
+            onRespond={(response) =>
+              response === BookingStatusSchema.enum.confirmed ? setConfirming(true) : void respond(response)
+            }
+          />
         ))}
       {error && <p role="alert" className="mt-2 text-sm text-destructive">{error}</p>}
     </div>
@@ -154,7 +169,7 @@ export function OpenTours({
               {/* One section per session — buddy numbers and participants are per session, never summed */}
               <div className="flex flex-col gap-2">
                 {tour.sessions.map((s) => (
-                  <SessionRow key={s.id} tourId={tour.id} session={s} onBooked={onBooked} />
+                  <SessionRow key={s.id} tour={tour} session={s} onBooked={onBooked} />
                 ))}
               </div>
             </div>

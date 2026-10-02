@@ -10,6 +10,7 @@ import {
   CancellationCategory,
   BookingPool,
   LateReason,
+  AnnouncementAudience,
 } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -160,6 +161,14 @@ const ID = {
   spotMonumentAisle:    '00000000-0000-0000-0004-000000000007',
   spotPeaceStatue:      '00000000-0000-0000-0004-000000000008',
   spotClosing:          '00000000-0000-0000-0004-000000000009',
+  announcementContract:      '00000000-0000-0000-0005-000000000001',
+  announcementWinter:        '00000000-0000-0000-0005-000000000002',
+  announcementStarTraining:  '00000000-0000-0000-0005-000000000003',
+  announcementTraineeGuide:  '00000000-0000-0000-0005-000000000004',
+  announcementMeetingPoint:  '00000000-0000-0000-0005-000000000005',
+  announcementSelected:      '00000000-0000-0000-0005-000000000006',
+  announcementScheduled:     '00000000-0000-0000-0005-000000000007',
+  announcementEnded:         '00000000-0000-0000-0005-000000000008',
 }
 
 function daysFromNow(days: number): Date {
@@ -182,7 +191,7 @@ async function main() {
   })
 
   // ── Admin profile ────────────────────────────────────────────
-  await prisma.adminProfile.upsert({
+  const adminProfile = await prisma.adminProfile.upsert({
     where: { userId: adminUser.id },
     update: {},
     create: {
@@ -197,7 +206,7 @@ async function main() {
     update: {},
     create: { firebaseUid: SEED_ADMIN2_UID, email: 'admin2@seed.local', role: UserRole.admin },
   })
-  await prisma.adminProfile.upsert({
+  const admin2Profile = await prisma.adminProfile.upsert({
     where: { userId: admin2User.id },
     update: {},
     create: { userId: admin2User.id, name: 'Seed Admin 2' },
@@ -479,7 +488,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionUrgent },
     update: {},
-    create: { id: ID.sessionUrgent, tourId: ID.tourUrgent, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 10, participantCount: 90 },
+    create: { id: ID.sessionUrgent, tourId: ID.tourUrgent, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 10, minBuddies: 8, participantCount: 90 },
   })
 
   await prisma.tour.upsert({
@@ -500,7 +509,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionMidterm },
     update: {},
-    create: { id: ID.sessionMidterm, tourId: ID.tourMidterm, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(13, 30), capacity: 3, participantCount: 12 },
+    create: { id: ID.sessionMidterm, tourId: ID.tourMidterm, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(13, 30), capacity: 3, minBuddies: 3, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -520,12 +529,12 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionOpen },
     update: {},
-    create: { id: ID.sessionOpen, tourId: ID.tourOpen, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(10), capacity: 8, participantCount: 60 },
+    create: { id: ID.sessionOpen, tourId: ID.tourOpen, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(10), capacity: 8, minBuddies: 6, participantCount: 60 },
   })
   await prisma.tourSession.upsert({
     where: { id: ID.sessionOpen2 },
     update: {},
-    create: { id: ID.sessionOpen2, tourId: ID.tourOpen, placeId: ID.placePeacePark, order: 2, meetingTime: timeOnly(13), capacity: 5, participantCount: 60 },
+    create: { id: ID.sessionOpen2, tourId: ID.tourOpen, placeId: ID.placePeacePark, order: 2, meetingTime: timeOnly(13), capacity: 5, minBuddies: 5, participantCount: 60 },
   })
 
   await prisma.tour.upsert({
@@ -544,7 +553,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPast },
     update: {},
-    create: { id: ID.sessionPast, tourId: ID.tourPast, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(14), capacity: 3, participantCount: 12 },
+    create: { id: ID.sessionPast, tourId: ID.tourPast, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(14), capacity: 3, minBuddies: 3, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -562,7 +571,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionDraft },
     update: {},
-    create: { id: ID.sessionDraft, tourId: ID.tourDraft, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 4, participantCount: 12 },
+    create: { id: ID.sessionDraft, tourId: ID.tourDraft, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 4, minBuddies: 4, participantCount: 12 },
   })
 
   await prisma.tour.upsert({
@@ -580,7 +589,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionCancelled },
     update: {},
-    create: { id: ID.sessionCancelled, tourId: ID.tourCancelled, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(11), capacity: 3, participantCount: 20 },
+    create: { id: ID.sessionCancelled, tourId: ID.tourCancelled, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(11), capacity: 3, minBuddies: 3, participantCount: 20 },
   })
 
   // ── Tours (new — all at 平和公園) ───────────────────────────
@@ -602,7 +611,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPeace1 },
     update: {},
-    create: { id: ID.sessionPeace1, tourId: ID.tourPeace1, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9, 30), capacity: 15, participantCount: 120 },
+    create: { id: ID.sessionPeace1, tourId: ID.tourPeace1, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9, 30), capacity: 15, minBuddies: 12, participantCount: 120 },
   })
 
   await prisma.tour.upsert({
@@ -623,7 +632,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPeace2 },
     update: {},
-    create: { id: ID.sessionPeace2, tourId: ID.tourPeace2, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(10), capacity: 4, participantCount: 20 },
+    create: { id: ID.sessionPeace2, tourId: ID.tourPeace2, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(10), capacity: 4, minBuddies: 4, participantCount: 20 },
   })
 
   await prisma.tour.upsert({
@@ -644,7 +653,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPeace3 },
     update: {},
-    create: { id: ID.sessionPeace3, tourId: ID.tourPeace3, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(13), capacity: 12, participantCount: 100 },
+    create: { id: ID.sessionPeace3, tourId: ID.tourPeace3, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(13), capacity: 12, minBuddies: 9, participantCount: 100 },
   })
 
   await prisma.tour.upsert({
@@ -663,7 +672,7 @@ async function main() {
   await prisma.tourSession.upsert({
     where: { id: ID.sessionPeace4 },
     update: {},
-    create: { id: ID.sessionPeace4, tourId: ID.tourPeace4, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 8, participantCount: 60 },
+    create: { id: ID.sessionPeace4, tourId: ID.tourPeace4, placeId: ID.placePeacePark, order: 1, meetingTime: timeOnly(9), capacity: 8, minBuddies: 6, participantCount: 60 },
   })
 
   // ── Tours (buddy stats seed — #253) ─────────────────────────
@@ -696,7 +705,7 @@ async function main() {
       meetingTime: timeOnly(10),
       startTime: timeOnly(10, 5),
       endTime: timeOnly(11, 50),
-      capacity: 10,
+      capacity: 10, minBuddies: 8,
       participantCount: 40,
     },
   })
@@ -723,7 +732,7 @@ async function main() {
       placeId: ID.placeAtomicBombMuseum,
       order: 1,
       meetingTime: timeOnly(14),
-      capacity: 6,
+      capacity: 6, minBuddies: 4,
       participantCount: 8,
     },
   })
@@ -752,7 +761,7 @@ async function main() {
       meetingTime: timeOnly(9, 30),
       startTime: timeOnly(9, 35),
       endTime: timeOnly(11, 5),
-      capacity: 8,
+      capacity: 8, minBuddies: 6,
       participantCount: 30,
     },
   })
@@ -1334,7 +1343,7 @@ async function main() {
         meetingTime: timeOnly(10),
         startTime: timeOnly(10, 5),
         endTime: timeOnly(11, 45),
-        capacity: 6,
+        capacity: 6, minBuddies: 4,
         participantCount: 35,
       },
     })
@@ -1555,6 +1564,127 @@ async function main() {
     }
   }
 
+  // ── Announcements (#266) ─────────────────────────────────────
+  // One per audience shape, plus one scheduled and one ended, so both the
+  // buddy Home section and every admin state badge have something to show.
+  // Dates move with the seed run; rerunning refreshes them in place.
+  const ANNOUNCEMENTS: Array<{
+    id: string
+    titleJa: string
+    bodyJa: string
+    titleEn?: string
+    bodyEn?: string
+    audience: AnnouncementAudience
+    statuses?: BuddyStatus[]
+    tiers?: BuddyTier[]
+    start: number
+    end: number
+    tourId?: string
+    createdById: string
+    recipients?: string[]
+  }> = [
+    {
+      id: ID.announcementContract,
+      titleJa: '契約書更新について',
+      bodyJa: '来年度の雇用契約書をお送りしています。**10月末まで**に署名をお願いします。\n\n不明な点はPLABメンバーまでご連絡ください。',
+      titleEn: 'Contract renewal',
+      bodyEn: 'Next year\'s employment contract has been sent. Please sign it **by the end of October**.',
+      audience: AnnouncementAudience.rule,
+      start: -1, end: 5,
+      createdById: adminProfile.id,
+    },
+    {
+      id: ID.announcementWinter,
+      titleJa: '冬季ツアーの服装について',
+      bodyJa: '平和公園は風が強くなります。防寒着と歩きやすい靴でお越しください。\n\n- 貸出用のカイロあり\n- 雨天時はレインコートを持参',
+      audience: AnnouncementAudience.rule,
+      statuses: [BuddyStatus.active],
+      start: 0, end: 30,
+      createdById: admin2Profile.id,
+    },
+    {
+      id: ID.announcementStarTraining,
+      titleJa: 'スター向けリーダー研修',
+      bodyJa: '11月の第2土曜日にリーダー研修を行います。参加可否をフォームからお知らせください。',
+      titleEn: 'Leader training for stars',
+      bodyEn: 'Leader training is on the second Saturday of November. Please reply via the form.',
+      audience: AnnouncementAudience.rule,
+      tiers: [BuddyTier.star, BuddyTier.blackstar],
+      start: 0, end: 14,
+      createdById: adminProfile.id,
+    },
+    {
+      id: ID.announcementTraineeGuide,
+      titleJa: '研修生ガイダンスの資料',
+      bodyJa: 'ガイダンスで使ったスライドを共有フォルダに置きました。初回ツアーまでに目を通してください。',
+      audience: AnnouncementAudience.rule,
+      statuses: [BuddyStatus.trainee],
+      start: -2, end: 10,
+      createdById: adminProfile.id,
+    },
+    {
+      id: ID.announcementMeetingPoint,
+      titleJa: '集合場所の変更',
+      bodyJa: 'このツアーの集合場所は、工事のため**平和祈念像の正面**に変更になりました。',
+      titleEn: 'Meeting point moved',
+      bodyEn: 'Due to construction, this tour now meets **in front of the Peace Statue**.',
+      audience: AnnouncementAudience.rule,
+      start: 0, end: 7,
+      tourId: ID.tourMidterm,
+      createdById: admin2Profile.id,
+    },
+    {
+      id: ID.announcementSelected,
+      titleJa: '撮影へのご協力のお願い',
+      bodyJa: '広報用の写真撮影にご協力いただける方へお送りしています。日程はおってご連絡します。',
+      audience: AnnouncementAudience.selected,
+      start: 0, end: 7,
+      createdById: adminProfile.id,
+      recipients: buddies.slice(0, 2),
+    },
+    {
+      id: ID.announcementScheduled,
+      titleJa: '年末年始の休業期間',
+      bodyJa: '12月28日から1月4日までツアーはありません。',
+      audience: AnnouncementAudience.rule,
+      start: 10, end: 20,
+      createdById: admin2Profile.id,
+    },
+    {
+      id: ID.announcementEnded,
+      titleJa: 'アンケートご協力のお礼',
+      bodyJa: '秋のアンケートへのご回答ありがとうございました。',
+      audience: AnnouncementAudience.rule,
+      start: -20, end: -5,
+      createdById: adminProfile.id,
+    },
+  ]
+  for (const [index, a] of ANNOUNCEMENTS.entries()) {
+    const data = {
+      titleJa: a.titleJa,
+      bodyJa: a.bodyJa,
+      titleEn: a.titleEn ?? null,
+      bodyEn: a.bodyEn ?? null,
+      audience: a.audience,
+      statuses: a.statuses ?? [],
+      tiers: a.tiers ?? [],
+      startDate: daysFromNow(a.start),
+      endDate: daysFromNow(a.end),
+      position: index + 1,
+      tourId: a.tourId ?? null,
+      createdById: a.createdById,
+      updatedById: a.createdById,
+    }
+    await prisma.announcement.upsert({ where: { id: a.id }, update: data, create: { id: a.id, ...data } })
+    for (const buddyId of a.recipients ?? []) {
+      await prisma.announcementRecipient.upsert({
+        where: { announcementId_buddyId: { announcementId: a.id, buddyId } },
+        update: {},
+        create: { announcementId: a.id, buddyId },
+      })
+    }
+  }
+
   // ── Existing users ("me") ────────────────────────────────────
   // Every user who signed in for real — a local developer, or the PLAB members
   // on staging, where the seed accounts cannot log in (Google sign-in only).
@@ -1623,6 +1753,7 @@ async function main() {
   console.log(`  合成ロスター: ${ROSTER.length}名 (@seed.local — エミュレーターでログイン可)`)
   console.log('  追加ツアー: 完了ツアー3件（コミュニティ/その他グループ種別、浦上・原爆資料館・VOICE — バディ統計ページ確認用 #253）')
   console.log('  ロスター実績: アクティブ20名中15名が常連（直近5件のツアーの大半に参加）、5名は稀（生涯1件）。')
+  console.log('  お知らせ: 8件（全員・アクティブ・スター以上・研修生・ツアー紐付け・個別指定・予定・終了）')
   console.log('  自己評価とPLABメンバー評価は独立: 自己評価が厳しくてもPLABメンバー評価が高い者、その逆もいる。')
 }
 

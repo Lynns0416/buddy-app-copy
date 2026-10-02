@@ -63,12 +63,12 @@
   },
   "maybe_reminder": {
     "subject": "【Peace Buddy】「保留」の参加希望をご確認ください",
-    "bodyText": "「保留」のままになっているツアーの参加希望があります。期限までに参加するか辞退するかを確定してください。\n\n{url}",
-    "bodyHtml": "<p>「保留」のままになっているツアーの参加希望があります。期限までに参加するか辞退するかを確定してください。</p>",
+    "bodyText": "「保留」のままになっているツアーの参加希望があります。期限までに参加するか参加不可にするかを確定してください。\n\n{url}",
+    "bodyHtml": "<p>「保留」のままになっているツアーの参加希望があります。期限までに参加するか参加不可にするかを確定してください。</p>",
     "detail": {
       "subject": "【Peace Buddy】「保留」の参加希望をご確認ください：{groupName}（{tourDate}）",
-      "bodyText": "「保留」のままになっているツアーの参加希望があります。期限までに参加するか辞退するかを確定してください。\n\n{groupName}（{tourDate}）\n\n{url}",
-      "bodyHtml": "<p>「保留」のままになっているツアーの参加希望があります。期限までに参加するか辞退するかを確定してください。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
+      "bodyText": "「保留」のままになっているツアーの参加希望があります。期限までに参加するか参加不可にするかを確定してください。\n\n{groupName}（{tourDate}）\n\n{url}",
+      "bodyHtml": "<p>「保留」のままになっているツアーの参加希望があります。期限までに参加するか参加不可にするかを確定してください。</p><p><strong>{groupName}</strong>（{tourDate}）</p>"
     },
     "cta": "回答する",
     "path": "/buddy/tours/{tourId}"
@@ -110,13 +110,13 @@
     "path": "/admin/tours/{tourId}"
   },
   "maybe_resolved": {
-    "subject": "【Peace Buddy】「保留」の参加希望が確定または辞退になりました",
-    "bodyText": "「保留」の参加希望が確定または辞退に変わりました。\n\n{url}",
-    "bodyHtml": "<p>「保留」の参加希望が確定または辞退に変わりました。</p>",
+    "subject": "【Peace Buddy】「保留」の参加希望が確定または参加不可になりました",
+    "bodyText": "「保留」の参加希望が確定または参加不可に変わりました。\n\n{url}",
+    "bodyHtml": "<p>「保留」の参加希望が確定または参加不可に変わりました。</p>",
     "detail": {
-      "subject": "【Peace Buddy】「保留」の参加希望が確定または辞退になりました：{buddyName} さん／{groupName}（{tourDate}）",
-      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）の「保留」の参加希望を確定または辞退に変えました。\n\n{url}",
-      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）の「保留」の参加希望を確定または辞退に変えました。</p>"
+      "subject": "【Peace Buddy】「保留」の参加希望が確定または参加不可になりました：{buddyName} さん／{groupName}（{tourDate}）",
+      "bodyText": "{buddyName} さんが {groupName}（{tourDate}）の「保留」の参加希望を確定または参加不可に変えました。\n\n{url}",
+      "bodyHtml": "<p><strong>{buddyName}</strong> さんが {groupName}（{tourDate}）の「保留」の参加希望を確定または参加不可に変えました。</p>"
     },
     "cta": "ツアーを開く",
     "path": "/admin/tours/{tourId}"

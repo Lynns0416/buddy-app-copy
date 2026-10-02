@@ -1,5 +1,5 @@
-import type { MyTourBookingEntry, TourResponse, TourListSessionResponse, BookingStatus } from '@peace-buddy/types'
-import { BookingStatusSchema, TourStatusSchema } from '@peace-buddy/types'
+import type { MyTourBookingEntry, TourResponse, TourListSessionResponse, BookingStatus, MyAnnouncementResponse } from '@peace-buddy/types'
+import { BookingStatusSchema, LocaleSchema, TourStatusSchema } from '@peace-buddy/types'
 import { isBookingAllowed, isPastDeadline } from './lib/deadline'
 
 // How long after a tour a missing reflection is still asked for. Writing one has
@@ -8,6 +8,16 @@ export const REFLECTION_PROMPT_DAYS = 30
 
 // Open tours shown before the buddy expands the list.
 export const OPEN_TOURS_PREVIEW = 3
+
+// Announcements shown before the buddy expands the list, in PLAB members' order.
+export const ANNOUNCEMENTS_PREVIEW = 3
+
+// An `en` buddy reads the English version when PLAB members wrote one;
+// everyone else, and anything without one, reads the Japanese.
+export function announcementText(a: MyAnnouncementResponse, locale: string): { title: string; body: string } {
+  if (locale === LocaleSchema.enum.en && a.titleEn !== null && a.bodyEn !== null) return { title: a.titleEn, body: a.bodyEn }
+  return { title: a.titleJa, body: a.bodyJa }
+}
 
 export type ActionItem =
   | { kind: 'maybe'; entry: MyTourBookingEntry; deadlinePassed: boolean }
@@ -85,10 +95,9 @@ export function findActionItems(bookings: MyTourBookingEntry[], today: string): 
 }
 
 // How many more confirmed buddies a session needs to reach its minBuddies —
-// the admin "short of buddies" rule (PRD §11.7). A session without a minimum
-// is never short.
+// the admin "short of buddies" rule (PRD §11.7).
 export function buddiesNeeded(session: TourListSessionResponse): number {
-  return session.minBuddies === null ? 0 : Math.max(0, session.minBuddies - session.confirmedCount)
+  return Math.max(0, session.minBuddies - session.confirmedCount)
 }
 
 // Sessions are never summed (PRD §11.7), so a tour is as short as its shortest session.

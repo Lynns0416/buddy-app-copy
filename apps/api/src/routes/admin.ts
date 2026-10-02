@@ -10,6 +10,7 @@ import { adminReflectionRoutes } from './adminReflections'
 import { adminProfileRoutes } from './adminProfiles'
 import { adminDashboardRoutes } from './adminDashboard'
 import { adminAttendanceRoutes, adminTourAttendanceRoutes } from './adminAttendance'
+import { adminAnnouncementRoutes } from './adminAnnouncements'
 import { listBuddyStats } from '../services/adminBuddyStats.service'
 import { BuddyStatsQuerySchema } from './statsQuery'
 import type { AuthEnv } from '../types'
@@ -25,6 +26,7 @@ adminRoutes.route('/evaluations', adminEvaluationRoutes)
 adminRoutes.route('/profile-evaluations', adminProfileEvaluationRoutes)
 adminRoutes.route('/reflections', adminReflectionRoutes)
 adminRoutes.route('/dashboard', adminDashboardRoutes)
+adminRoutes.route('/announcements', adminAnnouncementRoutes)
 adminRoutes.route('', adminProfileRoutes)
 
 adminRoutes.get('/buddies', async (c) => {

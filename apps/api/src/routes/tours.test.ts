@@ -54,9 +54,8 @@ const mockSessionSummary = {
   startTime: null,
   endTime: null,
   capacity: 10,
-  minBuddies: null,
+  minBuddies: 3,
   participantCount: 0,
-  belowMinimum: false,
   confirmedCount: 0,
   myBookingStatus: null,
   place: station,
@@ -346,7 +345,17 @@ describe('POST /tours/:id/bookings', () => {
     expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', SESSION_ID, dbUser.id, 'maybe')
   })
 
-  it('returns 400 when status is anything but maybe', async () => {
+  it('passes status declined to createBooking', async () => {
+    mockCreateBooking.mockResolvedValueOnce({ ok: true, booking: { ...mockBooking, status: 'declined' } })
+    await buildApp().request('/tours/tour-1/bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: SESSION_ID, status: 'declined' }),
+    })
+    expect(mockCreateBooking).toHaveBeenCalledWith('tour-1', SESSION_ID, dbUser.id, 'declined')
+  })
+
+  it('returns 400 when status is anything but maybe or declined', async () => {
     const res = await buildApp().request('/tours/tour-1/bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

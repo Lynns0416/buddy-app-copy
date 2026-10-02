@@ -47,7 +47,7 @@ function mapSession(row: {
   startTime: Date | null
   endTime: Date | null
   capacity: number
-  minBuddies: number | null
+  minBuddies: number
   participantCount: number
   place: PlaceSummary
 }): TourSessionResponse {
@@ -61,7 +61,6 @@ function mapSession(row: {
     capacity: row.capacity,
     minBuddies: row.minBuddies,
     participantCount: row.participantCount,
-    belowMinimum: row.minBuddies != null && row.participantCount < row.minBuddies,
     place: row.place,
   }
 }
@@ -87,7 +86,7 @@ function mapTour(row: {
     startTime: Date | null
     endTime: Date | null
     capacity: number
-    minBuddies: number | null
+    minBuddies: number
     participantCount: number
     place: PlaceSummary
     _count: { bookings: number }

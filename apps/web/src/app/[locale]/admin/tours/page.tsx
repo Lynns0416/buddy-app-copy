@@ -29,7 +29,6 @@ import {
   type TourListSortField,
   type TourView,
 } from './admin.tour'
-import { BelowMinimumBadge } from './_components/below-minimum-badge'
 import { TourFilterBar } from './_components/tour-filters'
 import { getTourStatusLabel, tourStatusBadgeVariant } from '@/lib/status-display'
 import { TodayDivider } from './_components/today-divider'
@@ -222,7 +221,6 @@ function AdminToursList() {
                         <span>{t('capacity')}: {tour.capacity}</span>
                         <span>{t('participantCount')}: {tour.participantCount}</span>
                         <span>{t('confirmedCount')}: {tour.confirmedCount}</span>
-                        {tour.sessions.some((s) => s.belowMinimum) && <BelowMinimumBadge />}
                       </div>
                     </div>
                   </Fragment>
@@ -270,10 +268,7 @@ function AdminToursList() {
                           <TableCell>{placeNames(tour.places, locale)}</TableCell>
                           <TableCell className="text-center">{tour.capacity}</TableCell>
                           <TableCell className="text-center">
-                            <div className="inline-flex items-center gap-2">
-                              <span className="tabular-nums">{tour.participantCount}</span>
-                              {tour.sessions.some((s) => s.belowMinimum) && <BelowMinimumBadge />}
-                            </div>
+                            <span className="tabular-nums">{tour.participantCount}</span>
                           </TableCell>
                           <TableCell className="text-center">{tour.confirmedCount}</TableCell>
                           <TableCell className="whitespace-nowrap">

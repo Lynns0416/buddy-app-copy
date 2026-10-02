@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { BookingStatusSchema, GroupTypeSchema, TourStatusSchema } from '@peace-buddy/types'
 import type { BookingStatus, MyTourBookingEntry, TourListSessionResponse, TourResponse } from '@peace-buddy/types'
 import {
+  announcementText,
   bookableTours,
   buddiesNeeded,
   findActionItems,
@@ -186,10 +187,9 @@ function makeSession(overrides: Partial<TourListSessionResponse> = {}): TourList
     startTime: null,
     endTime: null,
     capacity: 10,
-    minBuddies: null,
+    minBuddies: 3,
     participantCount: 0,
-    belowMinimum: false,
-    confirmedCount: 0,
+    confirmedCount: 3,
     myBookingStatus: null,
     place: { id: 'place-1', nameJa: '長崎', nameEn: 'Nagasaki' },
     ...overrides,
@@ -224,7 +224,6 @@ describe('buddiesNeeded', () => {
 
   it('is zero once the minimum is met, and for a session without a minimum', () => {
     expect(buddiesNeeded(makeSession({ minBuddies: 3, confirmedCount: 5 }))).toBe(0)
-    expect(buddiesNeeded(makeSession({ minBuddies: null, confirmedCount: 0 }))).toBe(0)
   })
 
   it('counts buddies, not visitors', () => {
@@ -237,10 +236,10 @@ describe('bookableTours', () => {
     const tours = [
       makeTour('near-full', [makeSession({ minBuddies: 2, confirmedCount: 2 })], { tourDate: '2026-09-20T00:00:00.000Z' }),
       makeTour('short-2', [makeSession({ minBuddies: 4, confirmedCount: 2 })], { tourDate: '2026-09-21T00:00:00.000Z' }),
-      makeTour('no-minimum', [makeSession()], { tourDate: '2026-09-22T00:00:00.000Z' }),
+      makeTour('filled', [makeSession()], { tourDate: '2026-09-22T00:00:00.000Z' }),
       makeTour('short-8', [makeSession({ minBuddies: 10, confirmedCount: 2 })], { tourDate: '2026-10-30T00:00:00.000Z' }),
     ]
-    expect(bookableTours(tours, today).map((t) => t.id)).toEqual(['short-8', 'short-2', 'near-full', 'no-minimum'])
+    expect(bookableTours(tours, today).map((t) => t.id)).toEqual(['short-8', 'short-2', 'near-full', 'filled'])
   })
 
   it('ranks a tour by its session most short of buddies, never a sum across sessions', () => {
@@ -257,5 +256,21 @@ describe('bookableTours', () => {
   it('leaves out tours that cannot be booked', () => {
     const tours = [makeTour('open', [makeSession()]), makeTour('closed', [makeSession()], { bookingOpen: false })]
     expect(bookableTours(tours, today).map((t) => t.id)).toEqual(['open'])
+  })
+})
+
+describe('announcementText', () => {
+  const a = { id: 'a', titleJa: 'お知らせ', bodyJa: '本文', titleEn: 'Notice', bodyEn: 'Body', tourId: null }
+
+  it('gives an en buddy the English version', () => {
+    expect(announcementText(a, 'en')).toEqual({ title: 'Notice', body: 'Body' })
+  })
+
+  it('gives a ja buddy the Japanese version', () => {
+    expect(announcementText(a, 'ja')).toEqual({ title: 'お知らせ', body: '本文' })
+  })
+
+  it('falls back to Japanese when there is no English version', () => {
+    expect(announcementText({ ...a, titleEn: null, bodyEn: null }, 'en')).toEqual({ title: 'お知らせ', body: '本文' })
   })
 })

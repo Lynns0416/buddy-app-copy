@@ -40,7 +40,7 @@ function makeSessionRow(overrides: Record<string, unknown> = {}) {
     startTime: null as Date | null,
     endTime: null as Date | null,
     capacity: 10,
-    minBuddies: null as number | null,
+    minBuddies: 3,
     participantCount: 0,
     place: { id: 'place-1', nameJa: '東京', nameEn: 'Tokyo' },
     ...overrides,
@@ -113,13 +113,13 @@ describe('createTour', () => {
       bookingOpen: false,
       cancellationDeadline: new Date('2026-05-25'),
       notificationOffsets: [3, 1],
-      sessions: [{ meetingTime: '09:00', capacity: 10, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
+      sessions: [{ meetingTime: '09:00', capacity: 10, minBuddies: 7, placeId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }],
     })
 
     const call = mdb.tour.create.mock.calls[0][0] as {
-      data: { sessions: { create: Array<{ minBuddies: number | null }> } }
+      data: { sessions: { create: Array<{ minBuddies: number }> } }
     }
-    expect(call.data.sessions.create[0].minBuddies).toBeNull()
+    expect(call.data.sessions.create[0].minBuddies).toBe(7)
   })
 
   it('persists each session\'s own place', async () => {
@@ -136,8 +136,8 @@ describe('createTour', () => {
       cancellationDeadline: new Date('2026-05-25'),
       notificationOffsets: [3, 1],
       sessions: [
-        { meetingTime: '09:00', capacity: 10, placeId: peacePark },
-        { meetingTime: '13:00', capacity: 10, placeId: cathedral },
+        { meetingTime: '09:00', capacity: 10, minBuddies: 8, placeId: peacePark },
+        { meetingTime: '13:00', capacity: 10, minBuddies: 8, placeId: cathedral },
       ],
     })
 
@@ -159,7 +159,7 @@ describe('getAdminTourDetail', () => {
     expect(result).toBeNull()
   })
 
-  it('exposes minBuddies and belowMinimum on each session', async () => {
+  it('exposes minBuddies on each session', async () => {
     mdb.tour.findUnique.mockResolvedValueOnce(
       makeDetailRow([
         makeSessionRow({ id: 's1', minBuddies: 5, participantCount: 2 }),
@@ -169,19 +169,8 @@ describe('getAdminTourDetail', () => {
 
     const result = await getAdminTourDetail('tour-1')
 
-    expect(result!.sessions[0]).toMatchObject({ minBuddies: 5, belowMinimum: true })
-    expect(result!.sessions[1]).toMatchObject({ minBuddies: 2, belowMinimum: false })
-  })
-
-  it('belowMinimum=false when minBuddies is null', async () => {
-    mdb.tour.findUnique.mockResolvedValueOnce(
-      makeDetailRow([makeSessionRow({ minBuddies: null, participantCount: 0 })]),
-    )
-
-    const result = await getAdminTourDetail('tour-1')
-
-    expect(result!.sessions[0].minBuddies).toBeNull()
-    expect(result!.sessions[0].belowMinimum).toBe(false)
+    expect(result!.sessions[0]).toMatchObject({ minBuddies: 5 })
+    expect(result!.sessions[1]).toMatchObject({ minBuddies: 2 })
   })
 
   it('gives each session its place and the tour its sessions\' places, each once', async () => {
@@ -239,7 +228,7 @@ describe('getAdminTourIcs', () => {
 describe('listAdminTours', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns sessions with minBuddies and belowMinimum derived from each row', async () => {
+  it('returns sessions with minBuddies from each row', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([
       makeListRow([makeSessionRow({ minBuddies: 4, participantCount: 1 })]),
     ])
@@ -247,7 +236,6 @@ describe('listAdminTours', () => {
     const result = await listAdminTours({})
 
     expect(result[0].sessions[0].minBuddies).toBe(4)
-    expect(result[0].sessions[0].belowMinimum).toBe(true)
   })
 })
 
@@ -291,22 +279,14 @@ describe('listUnderfilledTours', () => {
     expect(where.tourDate.lt.toISOString()).toBe('2026-07-05T00:00:00.000Z')
   })
 
-  it('counts only confirmed bookings on sessions that set minBuddies', async () => {
+  it('counts only confirmed bookings', async () => {
     mdb.tour.findMany.mockResolvedValueOnce([])
 
     await listUnderfilledTours(NOW, 14)
 
-    const { where, select } = mdb.tour.findMany.mock.calls[0][0] as {
-      where: { sessions: { some: { minBuddies: { not: null } } } }
-      select: {
-        sessions: {
-          where: { minBuddies: { not: null } }
-          select: { _count: { select: { bookings: { where: { status: string } } } } }
-        }
-      }
+    const { select } = mdb.tour.findMany.mock.calls[0][0] as {
+      select: { sessions: { select: { _count: { select: { bookings: { where: { status: string } } } } } } }
     }
-    expect(where.sessions.some.minBuddies).toEqual({ not: null })
-    expect(select.sessions.where.minBuddies).toEqual({ not: null })
     expect(select.sessions.select._count.select.bookings.where.status).toBe('confirmed')
   })
 
@@ -336,9 +316,4 @@ describe('listUnderfilledTours', () => {
     expect(await listUnderfilledTours(NOW, 14)).toEqual([])
   })
 
-  it('never flags a session with no minBuddies', async () => {
-    mdb.tour.findMany.mockResolvedValueOnce([underfilledRow([{ id: 's1', minBuddies: null, confirmed: 0 }])])
-
-    expect(await listUnderfilledTours(NOW, 14)).toEqual([])
-  })
 })

@@ -62,6 +62,11 @@ import type {
   SetAttendanceBreak,
   AttendanceMonthResponse,
   MyAttendanceResponse,
+  AdminAnnouncementResponse,
+  AnnouncementAudienceInput,
+  AnnouncementAudienceCountResponse,
+  UpsertAnnouncement,
+  MyAnnouncementResponse,
 } from '@peace-buddy/types'
 
 export const apiClient = {
@@ -299,7 +304,11 @@ export const apiClient = {
   downloadTourCalendar: (id: string) =>
     apiDownload(apiPaths.tourCalendar(id)),
 
-  createBooking: (tourId: string, sessionId: string, status?: typeof BookingStatusSchema.enum.maybe) =>
+  createBooking: (
+    tourId: string,
+    sessionId: string,
+    status?: typeof BookingStatusSchema.enum.maybe | typeof BookingStatusSchema.enum.declined,
+  ) =>
     apiRequest<BookingResponse>(apiPaths.tourBookings(tourId), {
       method: 'POST',
       body: JSON.stringify({ sessionId, status }),
@@ -428,6 +437,44 @@ export const apiClient = {
 
   resolveAttendanceFlag: (id: string) =>
     apiRequest<void>(apiPaths.adminAttendanceFlagResolve(id), { method: 'POST' }),
+
+  // Admin — Announcements
+  listAnnouncements: () =>
+    apiRequest<AdminAnnouncementResponse[]>(apiPaths.adminAnnouncements),
+
+  getAnnouncement: (id: string) =>
+    apiRequest<AdminAnnouncementResponse>(apiPaths.adminAnnouncement(id)),
+
+  createAnnouncement: (data: UpsertAnnouncement) =>
+    apiRequest<AdminAnnouncementResponse>(apiPaths.adminAnnouncements, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateAnnouncement: (id: string, data: UpsertAnnouncement) =>
+    apiRequest<AdminAnnouncementResponse>(apiPaths.adminAnnouncement(id), {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteAnnouncement: (id: string) =>
+    apiRequest<void>(apiPaths.adminAnnouncement(id), { method: 'DELETE' }),
+
+  reorderAnnouncements: (ids: string[]) =>
+    apiRequest<AdminAnnouncementResponse[]>(apiPaths.adminAnnouncementOrder, {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    }),
+
+  countAnnouncementAudience: (data: AnnouncementAudienceInput) =>
+    apiRequest<AnnouncementAudienceCountResponse>(apiPaths.adminAnnouncementAudienceCount, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Buddy — Announcements
+  listMyAnnouncements: () =>
+    apiRequest<MyAnnouncementResponse[]>(apiPaths.meAnnouncements),
 
   // Buddy — Attendance
   getMyAttendance: (month: string) =>

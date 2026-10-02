@@ -12,6 +12,7 @@ export const apiPaths = {
   meNotificationPreferences: '/me/notification-preferences',
   meAttendance: '/me/attendance',
   meAttendanceFlags: '/me/attendance/flags',
+  meAnnouncements: '/me/announcements',
 
   tours: '/tours',
   tour: (id: string) => `/tours/${id}`,
@@ -55,6 +56,11 @@ export const apiPaths = {
   adminAttendanceLocks: '/admin/attendance/locks',
   adminAttendanceLock: (month: string) => `/admin/attendance/locks/${month}`,
   adminAttendanceFlagResolve: (id: string) => `/admin/attendance/flags/${id}/resolve`,
+
+  adminAnnouncements: '/admin/announcements',
+  adminAnnouncement: (id: string) => `/admin/announcements/${id}`,
+  adminAnnouncementOrder: '/admin/announcements/order',
+  adminAnnouncementAudienceCount: '/admin/announcements/audience-count',
 
   adminEvaluations: '/admin/evaluations',
   adminEvaluation: (id: string) => `/admin/evaluations/${id}`,

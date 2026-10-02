@@ -10,7 +10,7 @@ export type BookingActionResult = ActionResult<void> & { specialMessage?: string
 export async function createInitialBooking(
   tourId: string,
   sessionId: string,
-  status?: typeof BookingStatusSchema.enum.maybe,
+  status?: typeof BookingStatusSchema.enum.maybe | typeof BookingStatusSchema.enum.declined,
 ): Promise<BookingActionResult> {
   try {
     await apiClient.createBooking(tourId, sessionId, status)

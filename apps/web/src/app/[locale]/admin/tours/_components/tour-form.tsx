@@ -24,12 +24,15 @@ const SessionFormSchema = z
     label: z.string().optional(),
     meetingTime: z.string().regex(timeRegex),
     capacity: z.coerce.number().int().positive(),
-    minBuddies: z.coerce.number().int().min(0).optional(),
+    minBuddies: z.coerce
+      .number({ invalid_type_error: 'minBuddiesRequired' })
+      .int()
+      .min(1, { message: 'minBuddiesRequired' }),
     participantCount: z.coerce.number().int().min(0),
     placeId: z.string().min(1, { message: 'placeRequired' }),
   })
   .refine(
-    (d) => d.minBuddies == null || d.minBuddies <= d.capacity,
+    (d) => d.minBuddies <= d.capacity,
     { message: 'minBuddiesExceedsCapacity', path: ['minBuddies'] },
   )
 
@@ -56,6 +59,7 @@ const emptySession: TourFormFields['sessions'][number] = {
   label: '',
   meetingTime: '',
   capacity: '' as unknown as number,
+  minBuddies: '' as unknown as number,
   participantCount: 0,
   placeId: '',
 }
@@ -64,7 +68,7 @@ export type SessionFormValues = {
   label?: string
   meetingTime: string
   capacity: number
-  minBuddies: number | null
+  minBuddies: number
   participantCount: number
   placeId: string
 }
@@ -130,7 +134,7 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
               label: firstSession.label ?? '',
               meetingTime: firstSession.meetingTime.slice(11, 16),
               capacity: firstSession.capacity,
-              minBuddies: firstSession.minBuddies ?? undefined,
+              minBuddies: firstSession.minBuddies,
               participantCount: firstSession.participantCount,
               placeId: firstSession.place.id,
             },
@@ -139,7 +143,7 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
                   label: secondSession.label ?? '',
                   meetingTime: secondSession.meetingTime.slice(11, 16),
                   capacity: secondSession.capacity,
-                  minBuddies: secondSession.minBuddies ?? undefined,
+                  minBuddies: secondSession.minBuddies,
                   participantCount: secondSession.participantCount,
                   placeId: secondSession.place.id,
                 }]
@@ -189,7 +193,7 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
         label: s.label || undefined,
         meetingTime: s.meetingTime,
         capacity: s.capacity,
-        minBuddies: s.minBuddies ?? null,
+        minBuddies: s.minBuddies,
         participantCount: s.participantCount,
         placeId: s.placeId,
       })),
@@ -315,15 +319,15 @@ export function TourForm({ defaultValues, initialGroupId, groups, places, cancel
                 <Input
                   id={`sessions.${idx}.minBuddies`}
                   type="number"
-                  min={0}
-                  // An empty input means no minimum; coercing '' would read 0.
+                  min={1}
+                  // Empty must fail as missing; coercing '' would read 0.
                   {...register(`sessions.${idx}.minBuddies`, { setValueAs: (v) => (v === '' ? undefined : v) })}
                 />
                 {errors.sessions?.[idx]?.minBuddies && (
                   <p className="text-xs text-destructive">
                     {errors.sessions[idx]?.minBuddies?.message === 'minBuddiesExceedsCapacity'
                       ? t('minBuddiesExceedsCapacity')
-                      : errors.sessions[idx]?.minBuddies?.message}
+                      : t('minBuddiesRequired')}
                   </p>
                 )}
               </div>

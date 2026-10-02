@@ -344,13 +344,12 @@ export const CreateTourSessionSchema = z
     startTime: z.string().regex(timeRegex).optional(),
     endTime: z.string().regex(timeRegex).optional(),
     capacity: z.number().int().positive(),
-    minBuddies: z.number().int().min(0).nullable().optional(),
+    minBuddies: z.number().int().min(1),
     participantCount: z.number().int().min(0).optional(),
     placeId: z.string().uuid(),
   })
   .refine(
-    (d: { capacity: number; minBuddies?: number | null }) =>
-      d.minBuddies == null || d.minBuddies <= d.capacity,
+    (d: { capacity: number; minBuddies: number }) => d.minBuddies <= d.capacity,
     { message: 'minBuddies must be ≤ capacity', path: ['minBuddies'] },
   )
 export type CreateTourSession = z.infer<typeof CreateTourSessionSchema>
@@ -362,12 +361,12 @@ export const UpdateTourSessionSchema = z
     startTime: z.string().regex(timeRegex).nullable().optional(),
     endTime: z.string().regex(timeRegex).nullable().optional(),
     capacity: z.number().int().positive().optional(),
-    minBuddies: z.number().int().min(0).nullable().optional(),
+    minBuddies: z.number().int().min(1).optional(),
     participantCount: z.number().int().min(0).optional(),
     placeId: z.string().uuid().optional(),
   })
   .refine(
-    (d: { capacity?: number; minBuddies?: number | null }) =>
+    (d: { capacity?: number; minBuddies?: number }) =>
       d.capacity == null || d.minBuddies == null || d.minBuddies <= d.capacity,
     { message: 'minBuddies must be ≤ capacity', path: ['minBuddies'] },
   )
@@ -579,9 +578,8 @@ export type TourSessionResponse = {
   startTime: string | null
   endTime: string | null
   capacity: number
-  minBuddies: number | null
+  minBuddies: number
   participantCount: number
-  belowMinimum: boolean
   place: PlaceSummary
 }
 
@@ -1381,4 +1379,88 @@ export type MyAttendanceDay = AttendanceDay & {
 export type MyAttendanceResponse = {
   month: string
   days: MyAttendanceDay[]
+}
+
+// ---- Announcements (#266, PRD §11.11) ----
+//
+// お知らせ PLAB members write for buddies' Home. Not a notification: it exists
+// only on Home and has no read state. Dates are `YYYY-MM-DD` JST calendar
+// dates, shown while `startDate ≤ getTodayJst() ≤ endDate`.
+
+export const AnnouncementAudienceSchema = z.enum(['rule', 'selected'])
+export type AnnouncementAudience = z.infer<typeof AnnouncementAudienceSchema>
+
+// Only trainee and active buddies reach Home, so a rule picks from these two.
+export const AnnouncementBuddyStatusSchema = BuddyStatusSchema.extract(['trainee', 'active'])
+export type AnnouncementBuddyStatus = z.infer<typeof AnnouncementBuddyStatusSchema>
+
+const announcementDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
+// What decides who sees it, also posted alone for the form's live count.
+// `statuses` and `tiers` are read for `rule` only, `buddyIds` for `selected` only.
+export const AnnouncementAudienceInputSchema = z.object({
+  audience: AnnouncementAudienceSchema,
+  statuses: z.array(AnnouncementBuddyStatusSchema),
+  tiers: z.array(BuddyTierSchema),
+  buddyIds: z.array(z.string().uuid()),
+})
+export type AnnouncementAudienceInput = z.infer<typeof AnnouncementAudienceInputSchema>
+
+export const UpsertAnnouncementSchema = AnnouncementAudienceInputSchema.extend({
+  titleJa: z.string().trim().min(1),
+  bodyJa: z.string().trim().min(1),
+  titleEn: z.string().trim().min(1).nullable(),
+  bodyEn: z.string().trim().min(1).nullable(),
+  startDate: announcementDate,
+  endDate: announcementDate,
+  tourId: z.string().uuid().nullable(),
+})
+  .refine((d: { startDate: string; endDate: string }) => d.endDate >= d.startDate, {
+    message: 'endDate must not be before startDate',
+    path: ['endDate'],
+  })
+  .refine((d: { titleEn: string | null; bodyEn: string | null }) => (d.titleEn === null) === (d.bodyEn === null), {
+    message: 'titleEn and bodyEn go together',
+    path: ['bodyEn'],
+  })
+  .refine((d: { audience: AnnouncementAudience; buddyIds: string[] }) => d.audience !== 'selected' || d.buddyIds.length > 0, {
+    message: 'Pick at least one buddy',
+    path: ['buddyIds'],
+  })
+export type UpsertAnnouncement = z.infer<typeof UpsertAnnouncementSchema>
+
+// The full order, top first: every announcement's id exactly once.
+export const ReorderAnnouncementsSchema = z.object({ ids: z.array(z.string().uuid()) })
+export type ReorderAnnouncements = z.infer<typeof ReorderAnnouncementsSchema>
+
+export type AdminAnnouncementResponse = {
+  id: string
+  titleJa: string
+  bodyJa: string
+  titleEn: string | null
+  bodyEn: string | null
+  audience: AnnouncementAudience
+  statuses: AnnouncementBuddyStatus[]
+  tiers: BuddyTier[]
+  buddies: Array<{ id: string; displayName: string; realName: string }>
+  startDate: string
+  endDate: string
+  position: number
+  tour: { id: string; tourDate: string; groupName: string } | null
+  createdBy: { name: string }
+  updatedBy: { name: string }
+  createdAt: string
+  updatedAt: string
+}
+
+export type AnnouncementAudienceCountResponse = { count: number }
+
+// What a buddy is shown: never the audience, so nothing says why they got it.
+export type MyAnnouncementResponse = {
+  id: string
+  titleJa: string
+  bodyJa: string
+  titleEn: string | null
+  bodyEn: string | null
+  tourId: string | null
 }

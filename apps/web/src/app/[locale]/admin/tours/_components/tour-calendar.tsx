@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { AdminTourSummaryResponse } from '@peace-buddy/types'
 import { TourStatusSchema } from '@peace-buddy/types'
@@ -171,7 +171,6 @@ function DayCell({
 function TourChip({ tour, locale }: { tour: AdminTourSummaryResponse; locale: string }) {
   const t = useTranslations('adminTours')
   const tTourStatus = useTranslations('tourStatus')
-  const belowMinimum = tour.sessions.some((s) => s.belowMinimum)
   const cancelled = tour.status === TourStatusSchema.enum.cancelled
 
   return (
@@ -194,9 +193,6 @@ function TourChip({ tour, locale }: { tour: AdminTourSummaryResponse; locale: st
       <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
         {tour.confirmedCount}/{tour.capacity}
       </span>
-      {belowMinimum && (
-        <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" aria-label={t('belowMinimum')} />
-      )}
     </Link>
   )
 }

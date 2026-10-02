@@ -78,7 +78,7 @@ function mapGroupTour(raw: {
     startTime: Date | null
     endTime: Date | null
     capacity: number
-    minBuddies: number | null
+    minBuddies: number
     participantCount: number
     place: PlaceSummary
   }[]
@@ -102,7 +102,6 @@ function mapGroupTour(raw: {
       capacity: s.capacity,
       minBuddies: s.minBuddies,
       participantCount: s.participantCount,
-      belowMinimum: s.minBuddies != null && s.participantCount < s.minBuddies,
       place: s.place,
     })),
     createdAt: raw.createdAt.toISOString(),

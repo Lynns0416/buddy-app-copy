@@ -174,7 +174,7 @@
       "health": "Health",
       "emergency": "Emergency",
       "personal": "Personal",
-      "work": "Work",
+      "work": "School or work",
       "other": "Other"
     },
     "profileSectionTitle": "Profile",
@@ -405,6 +405,12 @@
       "brief": "About this tour",
       "details": "View tour details"
     },
+    "announcements": {
+      "title": "Announcements",
+      "viewTour": "View the tour",
+      "showAll": "Show all ({count})",
+      "showFewer": "Show fewer"
+    },
     "actions": {
       "title": "Needs your action",
       "maybeBy": "Confirm or cancel by {date}",
@@ -422,7 +428,6 @@
       "showAll": "Show all {count}",
       "showFewer": "Show fewer",
       "needed": "{count, plural, one {# more buddy needed} other {# more buddies needed}}",
-      "book": "Book {time}",
       "confirm": "Book the {time} session at {place}? If it's full, you'll go on the waitlist.",
       "confirmBook": "Book",
       "back": "Back"
@@ -687,7 +692,6 @@
         "upcoming": "Upcoming",
         "past": "Past"
       },
-      "belowMinimumOnly": "Below minimum only",
       "clearAll": "Clear all",
       "resultCount": "{count} of {total} tours"
     },
@@ -708,11 +712,11 @@
     "minBuddies": "Min Buddies",
     "capacityBelowConfirmed": "Max Buddies cannot be lower than the number of confirmed buddies ({count})",
     "minBuddiesExceedsCapacity": "Min Buddies must be less than or equal to Max Buddies",
+    "minBuddiesRequired": "Enter Min Buddies (1 or more)",
     "groupRequired": "Select a group",
     "placeRequired": "Select a place",
     "selectPlace": "Select a place",
     "inactivePlace": "inactive",
-    "belowMinimum": "Below min",
     "participantCount": "Participants",
     "description": "Description",
     "adminMemo": "Admin Memo",
@@ -735,7 +739,7 @@
       "health": "Health",
       "emergency": "Emergency",
       "personal": "Personal",
-      "work": "Work",
+      "work": "School or work",
       "other": "Other"
     },
     "save": "Save",
@@ -837,9 +841,6 @@
     "addToCalendarError": "Could not download the calendar file. Please try again.",
     "notFound": "Tour not found.",
     "join": "Join",
-    "respondMaybe": "Maybe",
-    "decline": "Decline",
-    "revert": "Revert cancellation",
     "setMaybe": "Change to Maybe",
     "confirmBooking": "Confirm",
     "cancelBooking": "Cancel Booking",
@@ -854,7 +855,7 @@
     "cancelReasonHealth": "Health",
     "cancelReasonEmergency": "Emergency",
     "cancelReasonPersonal": "Personal",
-    "cancelReasonWork": "Work",
+    "cancelReasonWork": "School or work",
     "cancelReasonOther": "Other",
     "cancelReasonFreeText": "Additional details (optional)",
     "cancelReasonSubmit": "Confirm cancellation",
@@ -862,7 +863,6 @@
     "cantGo": "I can't go",
     "cantGoTitle": "Report inability to attend",
     "cantGoSubmit": "Submit report",
-    "book": "Join",
     "notEligible": "You are not currently eligible to book this tour.",
     "sessions": "Sessions",
     "session": {
@@ -892,6 +892,7 @@
       "profile": "Profile",
       "buddiesPending": "Pending Approval",
       "buddies": "Buddies",
+      "announcements": "Announcements",
       "trainees": "Trainees",
       "attendance": "Attendance",
       "buddyStats": "Buddy stats",
@@ -1120,6 +1121,11 @@
     "cancelled": "Cancelled",
     "completed": "Completed"
   },
+  "bookingResponse": {
+    "confirmed": "Join",
+    "maybe": "Maybe",
+    "declined": "Can't join"
+  },
   "bookingStatus": {
     "confirmed": "Confirmed",
     "maybe": "Maybe",
@@ -1254,5 +1260,76 @@
     "preview": "Preview",
     "previewEmpty": "Nothing to preview",
     "hint": "Select text, then use the buttons above for bold, lists and links."
+  },
+  "adminAnnouncements": {
+    "title": "Announcements",
+    "intro": "Shown on buddies' Home. Not sent by email or Slack.",
+    "new": "New announcement",
+    "createTitle": "New announcement",
+    "editTitle": "Edit announcement",
+    "create": "Create",
+    "save": "Save",
+    "back": "Back to announcements",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Delete \"{title}\"? It disappears from buddies' Home at once.",
+    "empty": "No announcements yet.",
+    "moveUp": "Move \"{title}\" up",
+    "moveDown": "Move \"{title}\" down",
+    "audienceAll": "All buddies",
+    "audienceSelected": "{count, plural, one {# buddy picked} other {# buddies picked}}",
+    "updatedBy": "Last edited by {name} ({date})",
+    "column": {
+      "position": "Order",
+      "title": "Title",
+      "audience": "Audience",
+      "period": "Showing",
+      "tour": "Tour",
+      "author": "Author",
+      "state": "State"
+    },
+    "state": {
+      "scheduled": "Scheduled",
+      "showing": "Showing",
+      "ended": "Ended"
+    },
+    "error": {
+      "notFound": "Announcement not found.",
+      "invalid": "Check what you entered.",
+      "conflict": "The list has changed. Reload the page.",
+      "network": "Could not connect. Check your connection.",
+      "unknown": "Something went wrong."
+    },
+    "form": {
+      "ja": "Japanese",
+      "en": "English (optional)",
+      "enHint": "Buddies using English see it in English only when both the English title and body are filled in.",
+      "title": "Title",
+      "body": "Body",
+      "audience": "Audience",
+      "audienceOption": {
+        "rule": "By rule",
+        "selected": "Pick buddies"
+      },
+      "statuses": "Status (none ticked = any)",
+      "tiers": "Tier (none ticked = any)",
+      "ruleHint": "Shown to buddies who match both status and tier. A buddy who stops matching, e.g. after a promotion, stops seeing it.",
+      "tiersExcludeTrainees": "Trainees have no tier, so picking a tier leaves every trainee out.",
+      "pickBuddy": "Type a name to add a buddy",
+      "removeBuddy": "Remove {name}",
+      "unknownBuddy": "Buddy no longer eligible",
+      "count": "{count, plural, one {Shows to # buddy now} other {Shows to # buddies now}}",
+      "period": "Showing period",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "tour": "Link to a tour (optional)",
+      "noTour": "None",
+      "tourHint": "Hidden automatically once the tour has enough buddies, or from a buddy who cannot join it. Never shown to trainees.",
+      "error": {
+        "endBeforeStart": "The end date must not be before the start date.",
+        "enPair": "Fill in both the English title and body, or leave both empty.",
+        "noBuddies": "Pick at least one buddy."
+      }
+    }
   }
 }

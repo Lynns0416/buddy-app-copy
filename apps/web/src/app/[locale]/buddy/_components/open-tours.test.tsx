@@ -40,9 +40,8 @@ function makeSession(
     startTime: null,
     endTime: null,
     capacity: 10,
-    minBuddies: null,
+    minBuddies: 3,
     participantCount: 0,
-    belowMinimum: false,
     confirmedCount: 0,
     myBookingStatus: null,
     place: { id: 'place-1', nameJa: 'Tokyo Station', nameEn: 'Tokyo Station' },
@@ -120,18 +119,6 @@ describe('OpenTours', () => {
     expect(within(card()).getAllByText('Tokyo Station')).toHaveLength(1)
   })
 
-  it('falls back to capacity when the session has no minBuddies', () => {
-    render(
-      <OpenTours
-        tours={[makeTour([makeSession(1, { minBuddies: null, capacity: 7 })])]}
-        error={false}
-        onBooked={onBooked}
-      />,
-    )
-
-    expect(card().textContent).toContain('buddyCount: 7')
-  })
-
   it('renders a single section for a one-session tour', () => {
     render(
       <OpenTours
@@ -147,7 +134,7 @@ describe('OpenTours', () => {
     expect(text).toContain('01:00')
   })
 
-  it('badges a booked session and leaves a declined one unbadged', () => {
+  it('badges a booked session and a declined one', () => {
     render(
       <OpenTours
         tours={[
@@ -161,8 +148,10 @@ describe('OpenTours', () => {
       />,
     )
 
-    expect(within(card()).getByText(BookingStatusSchema.enum.confirmed)).toBeTruthy()
-    expect(within(card()).queryByText(BookingStatusSchema.enum.declined)).toBeNull()
+    // The confirmed badge, and the join button the declined session still offers.
+    expect(within(card()).getAllByText(BookingStatusSchema.enum.confirmed)).toHaveLength(2)
+    expect(within(card()).getByText(BookingStatusSchema.enum.declined)).toBeTruthy()
+    expect(within(card()).queryByRole('button', { name: 'declined' })).toBeNull()
   })
 
   it('shows the load error instead of the list', () => {
@@ -195,32 +184,32 @@ describe('OpenTours', () => {
     vi.mocked(createInitialBooking).mockResolvedValue({ ok: true, data: undefined })
     render(<OpenTours tours={[makeTour([makeSession(1)])]} error={false} onBooked={onBooked} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /^open\.book / }))
+    fireEvent.click(screen.getByRole('button', { name: 'confirmed' }))
     expect(createInitialBooking).not.toHaveBeenCalled()
     expect(screen.getByText(/^open\.confirm /)).toHaveTextContent('Tokyo Station')
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'open.confirmBook' }))
     })
-    expect(createInitialBooking).toHaveBeenCalledWith('tour-1', 'session-1')
+    expect(createInitialBooking).toHaveBeenCalledWith('tour-1', 'session-1', undefined)
     expect(onBooked).toHaveBeenCalled()
   })
 
   it('goes back without booking', () => {
     render(<OpenTours tours={[makeTour([makeSession(1)])]} error={false} onBooked={onBooked} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /^open\.book / }))
+    fireEvent.click(screen.getByRole('button', { name: 'confirmed' }))
     fireEvent.click(screen.getByRole('button', { name: 'open.back' }))
 
     expect(createInitialBooking).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: /^open\.book / })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'confirmed' })).toBeInTheDocument()
   })
 
   it('says why a booking failed', async () => {
     vi.mocked(createInitialBooking).mockResolvedValue({ ok: false, error: { code: 'forbidden' } } as never)
     render(<OpenTours tours={[makeTour([makeSession(1)])]} error={false} onBooked={onBooked} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /^open\.book / }))
+    fireEvent.click(screen.getByRole('button', { name: 'confirmed' }))
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'open.confirmBook' }))
     })
@@ -229,7 +218,7 @@ describe('OpenTours', () => {
     expect(onBooked).not.toHaveBeenCalled()
   })
 
-  it('offers booking only on a session the buddy has no booking on', () => {
+  it('offers the answers only on a session with no live booking', () => {
     render(
       <OpenTours
         tours={[
@@ -244,6 +233,30 @@ describe('OpenTours', () => {
       />,
     )
 
-    expect(screen.getAllByRole('button', { name: /^open\.book / })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'confirmed' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'declined' })).toHaveLength(1)
+  })
+
+  it.each([
+    [BookingStatusSchema.enum.maybe],
+    [BookingStatusSchema.enum.declined],
+  ])('answers %s at once, with no confirm step', async (status) => {
+    vi.mocked(createInitialBooking).mockResolvedValue({ ok: true, data: undefined })
+    render(<OpenTours tours={[makeTour([makeSession(1)])]} error={false} onBooked={onBooked} />)
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: status }))
+    })
+    expect(createInitialBooking).toHaveBeenCalledWith('tour-1', 'session-1', status)
+    expect(onBooked).toHaveBeenCalled()
+  })
+
+  it('offers no maybe once the maybe deadline has passed', () => {
+    render(
+      <OpenTours tours={[makeTour([makeSession(1)], { maybeDeadline: '2000-01-01T00:00:00.000Z' })]} error={false} onBooked={onBooked} />,
+    )
+
+    expect(screen.getByRole('button', { name: 'confirmed' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'maybe' })).toBeNull()
   })
 })

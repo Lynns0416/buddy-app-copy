@@ -21,7 +21,6 @@ import { TourAttendanceSection } from '../_components/tour-attendance-section'
 import { CompleteTourModal } from '../_components/complete-tour-modal'
 import { TierCapacityForm } from '../_components/tier-capacity-form'
 import { AddSessionForm } from '../_components/add-session-form'
-import { BelowMinimumBadge } from '../_components/below-minimum-badge'
 import { TourAdminAssignment } from '../_components/tour-admin-assignment'
 import { useAllAdmins } from '../hooks/use-all-admins'
 import { formatDate } from '@/lib/format-date'
@@ -253,14 +252,11 @@ export default function AdminTourDetailPage() {
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">{t('minBuddies')}</div>
-                    <div className="font-medium tabular-nums">{session.minBuddies ?? '—'}</div>
+                    <div className="font-medium tabular-nums">{session.minBuddies}</div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">{t('participantCount')}</div>
-                    <div className="font-medium tabular-nums flex items-center gap-2">
-                      <span>{session.participantCount}</span>
-                      {session.belowMinimum && <BelowMinimumBadge />}
-                    </div>
+                    <div className="font-medium tabular-nums">{session.participantCount}</div>
                   </div>
                 </div>
                 <TierCapacityForm

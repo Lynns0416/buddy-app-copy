@@ -88,16 +88,6 @@ export function TourFilterBar({ filters, onChange, suggestions, resultCount, tot
             ))}
           </select>
         </div>
-
-        <label className="flex items-center gap-1.5 self-end pb-2 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-input"
-            checked={filters.belowMinimumOnly}
-            onChange={() => onChange({ ...filters, belowMinimumOnly: !filters.belowMinimumOnly })}
-          />
-          {t('filters.belowMinimumOnly')}
-        </label>
       </div>
 
       {active && (

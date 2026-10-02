@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useAuth } from '../../../lib/auth'
 import { routes } from '../../../lib/routes'
 import { apiClient } from '@/lib/api-client'
-import type { TourDetailResponse, TourReflectionResponse, TourResponse } from '@peace-buddy/types'
+import type { MyAnnouncementResponse, TourDetailResponse, TourReflectionResponse, TourResponse } from '@peace-buddy/types'
 import { BuddyStatusSchema, getTodayJst } from '@peace-buddy/types'
 import { AppShell } from '@/components/app-shell'
 import { useMyBookings } from '@/hooks/use-my-bookings'
@@ -19,9 +19,10 @@ import { ActionItems } from './_components/action-items'
 import { RecordAhead } from './_components/record-ahead'
 import { OpenTours } from './_components/open-tours'
 import { BuddyLinks } from './_components/buddy-links'
+import { Announcements } from './_components/announcements'
 
 // Home by the buddy's situation (#265, PRD §11.1): the tour-day panel on the
-// day; anything owed, kept short; for a buddy who has toured, the note carried
+// day; PLAB members' announcements (#266); anything owed, kept short; for a buddy who has toured, the note carried
 // to the next tour and the next milestone; then the tours to book, the most
 // short of buddies first. Their own confirmed tours and the reference links
 // close the page.
@@ -37,6 +38,7 @@ export default function BuddyHomePage() {
   const [toursVersion, setToursVersion] = useState(0)
   const [reflections, setReflections] = useState<TourReflectionResponse[] | null>(null)
   const [tourDayDetail, setTourDayDetail] = useState<TourDetailResponse | null>(null)
+  const [announcements, setAnnouncements] = useState<MyAnnouncementResponse[]>([])
   const sentToOnboarding = useRef(false)
 
   // A buddy not yet sent to their profile is redirected there, so nothing is fetched for them.
@@ -46,6 +48,11 @@ export default function BuddyHomePage() {
     dbUser?.buddyProfile?.status === BuddyStatusSchema.enum.active &&
     !!dbUser.buddyProfile.onboardingSeenAt
   const { bookings, error: bookingsError, reload: reloadBookings } = useMyBookings(isActive)
+  // Trainees see announcements too; nothing else on Home is theirs yet.
+  const status = dbUser?.buddyProfile?.status
+  const readsAnnouncements =
+    isActive ||
+    (!loading && !!firebaseUser && status === BuddyStatusSchema.enum.trainee && !!dbUser?.buddyProfile?.onboardingSeenAt)
 
   useEffect(() => {
     if (loading) return
@@ -92,6 +99,16 @@ export default function BuddyHomePage() {
   }, [isActive, toursVersion])
 
   useEffect(() => {
+    if (!readsAnnouncements) return
+    apiClient
+      .listMyAnnouncements()
+      .then(setAnnouncements)
+      .catch(() => {
+        // Without announcements the rest of Home still works.
+      })
+  }, [readsAnnouncements, toursVersion])
+
+  useEffect(() => {
     if (!isActive) return
     apiClient
       .listMyReflections()
@@ -135,9 +152,10 @@ export default function BuddyHomePage() {
       dbUser.buddyProfile?.status === BuddyStatusSchema.enum.trainee ? t('traineeMessage') : t('notRegistered')
     return (
       <AppShell variant="buddy">
-        <div className="rounded-lg border bg-card p-6">
+        <div className="mb-8 rounded-lg border bg-card p-6">
           <p className="text-sm text-muted-foreground">{message}</p>
         </div>
+        <Announcements announcements={announcements} />
       </AppShell>
     )
   }
@@ -155,6 +173,7 @@ export default function BuddyHomePage() {
         </p>
       )}
       {showTourDay && <TourDayPanel tour={tourDayDetail} />}
+      <Announcements announcements={announcements} />
       {bookings && <ActionItems items={findActionItems(bookings, today)} />}
       {record && <RecordAhead record={record} />}
 

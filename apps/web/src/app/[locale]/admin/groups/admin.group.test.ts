@@ -116,9 +116,8 @@ const session = (capacity: number) => ({
   startTime: null,
   endTime: null,
   capacity,
-  minBuddies: null,
+  minBuddies: 3,
   participantCount: 0,
-  belowMinimum: false,
   place: place('Tokyo'),
 })
 

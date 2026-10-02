@@ -14,7 +14,7 @@ const ToursQuerySchema = z.object({
 
 const CreateBookingBodySchema = z.object({
   sessionId: z.string().uuid(),
-  status: z.literal(BookingStatusSchema.enum.maybe).optional(),
+  status: z.enum([BookingStatusSchema.enum.maybe, BookingStatusSchema.enum.declined]).optional(),
 })
 
 const tourRoutes = new Hono<AuthEnv>()

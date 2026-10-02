@@ -537,8 +537,6 @@ describe('saveSessionTierCapacities', () => {
 
 const TODAY = '2025-07-15'
 
-const session = (belowMinimum: boolean) => ({ belowMinimum } as TourSessionResponse)
-
 const f = (overrides: Partial<TourFilters> = {}): TourFilters => ({ ...emptyTourFilters, ...overrides })
 
 describe('filterTours', () => {
@@ -589,13 +587,6 @@ describe('filterTours', () => {
     expect(result.map((t) => t.id)).toEqual(['t1', 't2'])
   })
 
-  it('keeps only tours with a session below its minimum', () => {
-    const below = tour({ id: 'below', sessions: [session(false), session(true)] })
-    const fine = tour({ id: 'fine', sessions: [session(false)] })
-    const result = filterTours([below, fine], f({ belowMinimumOnly: true }), TODAY)
-    expect(result.map((t) => t.id)).toEqual(['below'])
-  })
-
   it('combines search and filters with AND', () => {
     const result = filterTours([t1, t2, t3], f({ search: 'kyo', statuses: ['completed'] }), TODAY)
     expect(result.map((t) => t.id)).toEqual(['t3'])
@@ -623,7 +614,6 @@ describe('isTourFilterActive', () => {
     ['statuses', f({ statuses: ['draft'] })],
     ['dateRange', f({ dateRange: 'past' })],
     ['groupTypes', f({ groupTypes: ['school'] })],
-    ['belowMinimumOnly', f({ belowMinimumOnly: true })],
   ])('is true when %s is set', (_label, filters) => {
     expect(isTourFilterActive(filters)).toBe(true)
   })
@@ -642,13 +632,11 @@ describe('tourFiltersToParams', () => {
       statuses: ['draft', 'published'],
       dateRange: 'upcoming',
       groupTypes: ['school'],
-      belowMinimumOnly: true,
     }))
     expect(params.get('q')).toBe('alpha')
     expect(params.get('status')).toBe('draft,published')
     expect(params.get('range')).toBe('upcoming')
     expect(params.get('groupType')).toBe('school')
-    expect(params.get('belowMin')).toBe('1')
   })
 })
 
@@ -659,7 +647,6 @@ describe('tourFiltersFromParams', () => {
       statuses: ['draft', 'published'],
       dateRange: 'upcoming',
       groupTypes: ['school'],
-      belowMinimumOnly: true,
     })
     expect(tourFiltersFromParams(tourFiltersToParams(filters))).toEqual(filters)
   })
@@ -671,10 +658,6 @@ describe('tourFiltersFromParams', () => {
   it('drops values that are not valid enum members', () => {
     const params = new URLSearchParams('status=draft,bogus&groupType=nope&range=sideways')
     expect(tourFiltersFromParams(params)).toEqual(f({ statuses: ['draft'] }))
-  })
-
-  it('treats any belowMin value other than 1 as off', () => {
-    expect(tourFiltersFromParams(new URLSearchParams('belowMin=true')).belowMinimumOnly).toBe(false)
   })
 })
 

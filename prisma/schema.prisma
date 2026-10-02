@@ -118,6 +118,12 @@ enum AttendanceChangeKind {
   month_unlocked
 }
 
+// Who an Announcement is shown to (docs/decisions.md 2026-10-02).
+enum AnnouncementAudience {
+  rule
+  selected
+}
+
 enum NotificationJobStatus {
   pending
   sent
@@ -175,6 +181,7 @@ model BuddyProfile {
   deadlineOverrides BuddyCancellationDeadlineOverride[]
   attendances       Attendance[]
   attendanceFlags   AttendanceFlag[]
+  announcements     AnnouncementRecipient[]
 }
 
 model AdminProfile {
@@ -186,6 +193,8 @@ model AdminProfile {
   user             User                  @relation(fields: [userId], references: [id])
   tourAssignments  TourAdminAssignment[]
   toursInCharge    Tour[]                @relation("StaffInCharge")
+  announcementsCreated Announcement[]    @relation("AnnouncementCreator")
+  announcementsUpdated Announcement[]    @relation("AnnouncementUpdater")
 
   @@index([deletedAt])
 }
@@ -226,6 +235,7 @@ model Tour {
   adminAssignments     TourAdminAssignment[]
   attendances          Attendance[]
   attendanceBreak      AttendanceBreak?
+  announcements        Announcement[]
 
   @@index([status, tourDate])
 }
@@ -280,7 +290,9 @@ model TourSession {
   startTime        DateTime?     @db.Time
   endTime          DateTime?     @db.Time
   capacity         Int
-  minBuddies       Int?
+  // Required, at least 1: a session is short of buddies while its confirmed
+  // bookings are below it (PRD §11.7), so "filled" is always defined.
+  minBuddies       Int
   participantCount Int           @default(0)
   // Exactly one place per session; sessions of one tour may go to different
   // places. Changing it is locked while a moment on this session references
@@ -569,6 +581,52 @@ model AttendanceFlag {
   resolver   User?        @relation(fields: [resolvedBy], references: [id])
 
   @@index([date])
+  @@index([buddyId])
+}
+
+// An announcement (お知らせ) PLAB members write for buddies' Home (#266,
+// docs/decisions.md 2026-10-02). Not a notification: it exists only on Home,
+// with no read state. Shown while startDate ≤ today (JST) ≤ endDate.
+// The audience is evaluated on every load, never snapshotted: `rule` matches
+// `statuses` AND `tiers`, an empty list meaning any (a buddy with no tier
+// never matches a rule with tiers); `selected` matches AnnouncementRecipient.
+// Lower `position` comes first. A linked tour hides the announcement once no
+// session of it is short of buddies; deleting the tour deletes it.
+model Announcement {
+  id          String                  @id @default(uuid())
+  titleJa     String
+  bodyJa      String
+  titleEn     String?
+  bodyEn      String?
+  audience    AnnouncementAudience
+  statuses    BuddyStatus[]
+  tiers       BuddyTier[]
+  startDate   DateTime                @db.Date
+  endDate     DateTime                @db.Date
+  position    Int
+  tourId      String?
+  createdById String
+  updatedById String
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  tour        Tour?                   @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  createdBy   AdminProfile            @relation("AnnouncementCreator", fields: [createdById], references: [id])
+  updatedBy   AdminProfile            @relation("AnnouncementUpdater", fields: [updatedById], references: [id])
+  recipients  AnnouncementRecipient[]
+
+  @@index([startDate, endDate])
+  @@index([tourId])
+}
+
+// A buddy picked by name for an Announcement with `audience = selected`.
+model AnnouncementRecipient {
+  id             String       @id @default(uuid())
+  announcementId String
+  buddyId        String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  buddy          BuddyProfile @relation(fields: [buddyId], references: [id])
+
+  @@unique([announcementId, buddyId])
   @@index([buddyId])
 }
 

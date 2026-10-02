@@ -36,9 +36,9 @@ export function AddSessionForm({ tourId, onAdded, onCancel }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!placeId || !meetingTime || !capacity) return
-    const minBuddiesNum = minBuddies === '' ? null : Number(minBuddies)
-    if (minBuddiesNum != null && minBuddiesNum > Number(capacity)) {
+    if (!placeId || !meetingTime || !capacity || !minBuddies) return
+    const minBuddiesNum = Number(minBuddies)
+    if (minBuddiesNum > Number(capacity)) {
       setError(t('minBuddiesExceedsCapacity'))
       return
     }
@@ -104,9 +104,10 @@ export function AddSessionForm({ tourId, onAdded, onCancel }: Props) {
         <Input
           id="add-session-minBuddies"
           type="number"
-          min={0}
+          min={1}
           value={minBuddies}
           onChange={(e) => setMinBuddies(e.target.value)}
+          required
         />
       </div>
       {placesFailed && <p className="text-xs text-destructive">{t('error.unknown')}</p>}
